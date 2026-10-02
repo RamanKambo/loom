@@ -1,0 +1,23 @@
+{
+  "name": "loom-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Loom: a schema-driven systems-engineering model. One portable JSON model is the single source of truth; every artifact is projected from it; mutations cascade and are rejected with precise errors unless the model stays valid.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "packages/cli",
+    "packages/mcp-server"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "self-test": "node packages/cli/dist/index.js --self-test",
+    "smoke:mcp": "node packages/mcp-server/dist/smoke.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,260 @@
+/**
+ * Structural meta-schema for a Loom model FILE. loadModel() runs this (via Ajv)
+ * before any semantic rule, so a malformed document is rejected with a precise
+ * JSON-pointer error rather than crashing a later pass. `additionalProperties:
+ * false` everywhere is deliberate: a stray or misspelled field is exactly the
+ * kind of mutation error this tool exists to catch.
+ */
+export const META_SCHEMA_ID = 'urn:loom:meta-schema';
+
+const kind = { type: 'string', enum: ['string', 'integer', 'number', 'boolean', 'enum'] };
+
+export const META_SCHEMA = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: META_SCHEMA_ID,
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'version',
+    'components',
+    'types',
+    'operations',
+    'routines',
+    'mutations',
+    'workflows',
+    'edges',
+    'requirements',
+    'scenarios',
+  ],
+  properties: {
+    version: { type: 'number' },
+    components: { type: 'array', items: { $ref: '#/definitions/component' } },
+    types: { type: 'array', items: { $ref: '#/definitions/typeDef' } },
+    operations: { type: 'array', items: { $ref: '#/definitions/operation' } },
+    routines: { type: 'array', items: { $ref: '#/definitions/routine' } },
+    mutations: { type: 'array', items: { $ref: '#/definitions/mutation' } },
+    workflows: { type: 'array', items: { $ref: '#/definitions/workflow' } },
+    edges: { type: 'array', items: { $ref: '#/definitions/edge' } },
+    requirements: { type: 'array', items: { $ref: '#/definitions/requirement' } },
+    scenarios: { type: 'array', items: { $ref: '#/definitions/scenario' } },
+  },
+  definitions: {
+    bounds: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        min: { type: 'number' },
+        max: { type: 'number' },
+        minLength: { type: 'number' },
+        maxLength: { type: 'number' },
+      },
+    },
+    property: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name', 'kind', 'required', 'nullable', 'immutable', 'origin'],
+      properties: {
+        name: { type: 'string', minLength: 1 },
+        kind,
+        required: { type: 'boolean' },
+        nullable: { type: 'boolean' },
+        immutable: { type: 'boolean' },
+        origin: { type: 'string' },
+        enumValues: { type: 'array', items: { type: 'string' } },
+        bounds: { $ref: '#/definitions/bounds' },
+      },
+    },
+    component: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'purpose'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        purpose: { type: 'string' },
+      },
+    },
+    typeDef: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'version', 'owner', 'properties'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        version: { type: 'number' },
+        owner: { type: 'string', minLength: 1 },
+        stateProperty: { type: 'string' },
+        table: { type: 'string', minLength: 1 },
+        key: { type: 'array', items: { type: 'string', minLength: 1 } },
+        properties: { type: 'array', items: { $ref: '#/definitions/property' } },
+      },
+    },
+    authority: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['permission'],
+      properties: {
+        permission: { type: 'string', minLength: 1 },
+        scope: { type: 'string' },
+      },
+    },
+    binding: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['transport'],
+      properties: {
+        transport: { type: 'string', minLength: 1 },
+        method: { type: 'string' },
+        path: { type: 'string' },
+      },
+    },
+    operation: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'version', 'owner', 'kind', 'authority'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        version: { type: 'number' },
+        owner: { type: 'string', minLength: 1 },
+        kind: { type: 'string', enum: ['query', 'command', 'async-command'] },
+        request: { type: 'string' },
+        response: { type: 'string' },
+        result: { type: 'string' },
+        authority: { $ref: '#/definitions/authority' },
+        bindings: { type: 'array', items: { $ref: '#/definitions/binding' } },
+      },
+    },
+    routineParam: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name', 'kind', 'required', 'nullable'],
+      properties: {
+        name: { type: 'string', minLength: 1 },
+        kind,
+        required: { type: 'boolean' },
+        nullable: { type: 'boolean' },
+        binds: { type: 'string', minLength: 1 },
+      },
+    },
+    resultColumn: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name', 'kind', 'nullable'],
+      properties: {
+        name: { type: 'string', minLength: 1 },
+        kind,
+        nullable: { type: 'boolean' },
+        binds: { type: 'string', minLength: 1 },
+      },
+    },
+    routine: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'id',
+        'version',
+        'owner',
+        'host',
+        'params',
+        'resultSet',
+        'performsMutations',
+        'authority',
+      ],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        version: { type: 'number' },
+        owner: { type: 'string', minLength: 1 },
+        host: { type: 'string', enum: ['sql-procedure', 'runbook', 'function'] },
+        source: { type: 'string', minLength: 1 },
+        params: { type: 'array', items: { $ref: '#/definitions/routineParam' } },
+        resultSet: { type: 'array', items: { $ref: '#/definitions/resultColumn' } },
+        performsMutations: { type: 'array', items: { type: 'string' } },
+        writesTables: { type: 'array', items: { type: 'string' } },
+        writesColumns: { type: 'array', items: { type: 'string' } },
+        transactionScope: { type: 'array', items: { type: 'string' } },
+        authority: { $ref: '#/definitions/authority' },
+      },
+    },
+    mutation: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'id',
+        'type',
+        'owner',
+        'from',
+        'to',
+        'writes',
+        'guard',
+        'effect',
+        'requirements',
+        'scenarios',
+      ],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        type: { type: 'string', minLength: 1 },
+        owner: { type: 'string', minLength: 1 },
+        from: { type: 'array', items: { type: 'string' } },
+        to: { type: 'string', minLength: 1 },
+        writes: { type: 'array', items: { type: 'string' } },
+        guard: { type: 'string' },
+        effect: { type: 'string' },
+        requirements: { type: 'array', items: { type: 'string' } },
+        scenarios: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    typeImport: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['typeId', 'version'],
+      properties: {
+        typeId: { type: 'string', minLength: 1 },
+        version: { type: 'number' },
+      },
+    },
+    workflow: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'status', 'dependsOn', 'imports', 'requirements'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        status: { type: 'string', enum: ['planned', 'active'] },
+        dependsOn: { type: 'array', items: { type: 'string' } },
+        imports: { type: 'array', items: { $ref: '#/definitions/typeImport' } },
+        operations: { type: 'array', items: { type: 'string' } },
+        mutations: { type: 'array', items: { type: 'string' } },
+        requirements: { type: 'array', items: { type: 'string' } },
+      },
+    },
+    edge: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['from', 'to', 'kind'],
+      properties: {
+        from: { type: 'string', minLength: 1 },
+        to: { type: 'string', minLength: 1 },
+        kind: {
+          type: 'string',
+          enum: ['semantic', 'structural', 'runtime', 'build', 'integration'],
+        },
+      },
+    },
+    requirement: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'outcome'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        outcome: { type: 'string' },
+      },
+    },
+    scenario: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'requirements', 'expected'],
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        requirements: { type: 'array', items: { type: 'string' } },
+        expected: { type: 'string' },
+      },
+    },
+  },
+} as const;

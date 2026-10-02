@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "loom": {
+      "command": "node",
+      "args": ["${USERPROFILE}/Codebase/Tools/loom/packages/mcp-server/dist/index.js"]
+    }
+  }
+}

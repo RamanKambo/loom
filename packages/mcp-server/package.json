@@ -1,0 +1,17 @@
+{
+  "name": "@loom/mcp-server",
+  "version": "0.1.0",
+  "description": "Loom MCP server (stdio transport): exposes the Loom engine as Model Context Protocol tools for live use by an MCP client.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "loom-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@loom/core": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.31.0"
+  }
+}

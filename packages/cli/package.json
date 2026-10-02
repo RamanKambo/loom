@@ -1,0 +1,17 @@
+{
+  "name": "@loom/cli",
+  "version": "0.1.0",
+  "description": "Loom CLI: run the engine self-test, check a model file, and project deterministic artifacts to disk.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "loom": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "@loom/core": "0.1.0"
+  }
+}
