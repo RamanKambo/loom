@@ -32,7 +32,7 @@ An npm-workspaces monorepo:
 | Package | Role |
 | --- | --- |
 | `packages/core` | Pure engine: load, validate, mutate, diff, project, export. Deps: `ajv`, `ajv-formats`, `yaml`. |
-| `packages/cli` | File IO front end (`--self-test`, `--check`, `--write`): drift check and the standard-tool probes. Also validates the OpenAPI projection with `@apidevtools/swagger-parser`. |
+| `packages/cli` | File IO front end (`--self-test`, `--check`, `--write`): drift check and the standard-tool probes. Also validates the OpenAPI projection with `@apidevtools/swagger-parser` and every projected Mermaid diagram with `mermaid` (`jsdom` supplies the `document` it needs). |
 | `packages/mcp-server` | Model Context Protocol server (stdio) exposing the engine as tools. Dep: `@modelcontextprotocol/sdk`. |
 | `apps/designer` | Angular 22 designer, a thin projection of the core; it consumes `@loom/core` through a `file:` link to `packages/core` and has its own `package.json` and lockfile (see [Designer](#designer)). |
 | `examples/` | Test fixtures for the generated Pester file: `conforming/` and `violating/` copies of the sample runbook. |
@@ -55,8 +55,10 @@ JSON and YAML round-trips.
 
 The CLI self-test then proves the drift check and validates the OpenAPI projection with
 `swagger-parser`, and runs the standard-tool probes. A probe reports `PASS` or `FAIL` only when its
-tool ran; an absent tool, a load failure or an unreadable result is `UNKNOWN`, never a pass, and
-nothing is installed.
+tool ran; an absent tool, a load failure or an unreadable result is `UNKNOWN`, never a pass.
+Probes (a)-(c) use external tools that nothing in this repository installs. Probes (d) and (e) use
+declared dependencies, `yaml` through `importModel` and `mermaid` with `jsdom`; (e) is `UNKNOWN`
+only if `mermaid` or `jsdom` fails to load.
 
 | Probe | Proof | Tool |
 | --- | --- | --- |
@@ -64,6 +66,7 @@ nothing is installed.
 | (b) | The generated tests pass on `examples/conforming` and fail on `examples/violating` | Pester, the newest installed release of each major from 5, one process per release |
 | (c) | `schema.sql` and `contract-tests.sql` parse with zero errors | `Microsoft.SqlServer.TransactSql.ScriptDom`, the newest `TSqlNNNParser`, from `PSModulePath` or a NuGet, DacFx, SSMS, Visual Studio or Azure Data Studio install |
 | (d) | `model.yaml` parses back to the identical canonical model | `importModel` (the `yaml` package) |
+| (e) | Every `stateDiagram-v2` and `flowchart` Mermaid block in `workflows.md` and `reference.md` parses, and a deliberately malformed diagram is rejected | `mermaid.parse()`, with `jsdom` supplying the `document` it needs |
 
 ## CLI
 
@@ -365,5 +368,7 @@ import, such as the self-test.
 
 ## License
 
-MIT. Runtime dependencies are MIT, Apache-2.0 or ISC: `ajv`, `ajv-formats`,
-`@apidevtools/swagger-parser`, `@modelcontextprotocol/sdk` (MIT) and `yaml` (ISC).
+MIT. Direct runtime dependencies are MIT or ISC: `ajv`, `ajv-formats`,
+`@apidevtools/swagger-parser`, `mermaid`, `jsdom`, `@modelcontextprotocol/sdk` (MIT) and `yaml`
+(ISC). Through `mermaid`, the transitive tree also includes `elkjs` (EPL-2.0) and `dompurify`
+(MPL-2.0 OR Apache-2.0).

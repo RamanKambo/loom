@@ -1,11 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
+import { createRequire } from 'node:module';
 
 /**
  * Standard-tool proofs of the generated artifacts. Each probe reports PASS or
  * FAIL only when the tool actually ran; a tool that is absent, fails to load,
- * or returns no readable result yields UNKNOWN, never a pass. Nothing is
- * installed: tools are probed for and used where already present.
+ * or returns no readable result yields UNKNOWN, never a pass. External tools
+ * (pwsh, Pester, ScriptDom) are never installed: they are probed for and used
+ * where already present. Probe (e) uses declared @loom/cli dependencies.
  */
 export type ProbeStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
 
@@ -15,6 +17,8 @@ export interface ProbeResult {
   status: ProbeStatus;
   detail: string;
 }
+
+const requireFromHere = createRequire(import.meta.url);
 
 /** A PowerShell single-quoted literal. */
 const psq = (s: string): string => `'${s.replace(/'/g, "''")}'`;
@@ -195,5 +199,109 @@ export function probeScriptDom(sqlFiles: string[]): ProbeResult {
     title,
     status: 'FAIL',
     detail: bad.map((x) => `${x.file} ${x.errors} error(s): ${x.first.join('; ')}`).join(' | '),
+  };
+}
+
+/**
+ * A mermaid error in one line: its first line names the position and its last
+ * the expectation ("Parse error on line 3: ... Expecting 'X', got 'EOF'").
+ */
+function mermaidError(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  const lines = e.message.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return lines.length > 1 ? `${lines[0]} ${lines[lines.length - 1]}` : (lines[0] ?? e.name);
+}
+
+/** Every ```mermaid fenced code block in a Markdown document, in document order. */
+export function mermaidBlocks(markdown: string): string[] {
+  const blocks: string[] = [];
+  const re = /```mermaid\r?\n([\s\S]*?)```/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown)) !== null) blocks.push(m[1]);
+  return blocks;
+}
+
+/**
+ * Deliberately malformed: an unterminated composite `state` block. mermaid's
+ * own grammar rejects it (confirmed by running it), so this is the negative
+ * control that proves the probe can fail and not only ever pass.
+ */
+const BROKEN_DIAGRAM = ['stateDiagram-v2', '    state s0 {', '        s0a --> s0b'].join('\n');
+
+/**
+ * (e) `mermaid.parse()` parses every Mermaid diagram Loom projects into the
+ * given Markdown files, and rejects a deliberately malformed diagram.
+ * `@mermaid-js/parser` does not cover `stateDiagram-v2` or `flowchart`, so
+ * this uses the full `mermaid` package; its diagram detection depends on
+ * DOMPurify, which needs a `document`, so `jsdom` supplies one. No network
+ * call and no Chromium download: both run as plain Node modules. `mermaid`
+ * and `jsdom` are declared `@loom/cli` dependencies rather than probed-for
+ * external tools, but a load failure still yields UNKNOWN rather than a pass,
+ * per this module's probe convention.
+ */
+export async function probeMermaid(files: Record<string, string>): Promise<ProbeResult> {
+  const id = 'e';
+  const title = 'mermaid.parse() parses every projected Mermaid diagram';
+
+  let mermaidVersion: string;
+  let jsdomVersion: string;
+  let parse: (text: string) => Promise<unknown>;
+  try {
+    mermaidVersion = String(requireFromHere('mermaid/package.json').version);
+    jsdomVersion = String(requireFromHere('jsdom/package.json').version);
+    const { JSDOM } = await import('jsdom');
+    const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+    const g = globalThis as unknown as { window?: unknown; document?: unknown };
+    g.window = dom.window;
+    g.document = dom.window.document;
+    const mermaid = (await import('mermaid')).default;
+    parse = (text: string) => mermaid.parse(text) as Promise<unknown>;
+  } catch (e) {
+    return { id, title, status: 'UNKNOWN', detail: `mermaid or jsdom did not load: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  const diagrams: Array<{ file: string; text: string }> = [];
+  for (const [file, markdown] of Object.entries(files)) {
+    for (const text of mermaidBlocks(markdown)) diagrams.push({ file, text });
+  }
+  if (diagrams.length === 0) {
+    return { id, title, status: 'FAIL', detail: `no \`\`\`mermaid block found in ${Object.keys(files).join(', ')}` };
+  }
+
+  const failed: string[] = [];
+  for (const d of diagrams) {
+    try {
+      await parse(d.text);
+    } catch (e) {
+      failed.push(`${d.file}: ${mermaidError(e)}`);
+    }
+  }
+
+  let rejectedBroken = false;
+  let rejection = 'the deliberately malformed diagram was not rejected';
+  try {
+    await parse(BROKEN_DIAGRAM);
+  } catch (e) {
+    rejectedBroken = true;
+    rejection = mermaidError(e);
+  }
+
+  const via = `mermaid ${mermaidVersion} + jsdom ${jsdomVersion}`;
+  if (failed.length > 0) {
+    return {
+      id,
+      title,
+      status: 'FAIL',
+      detail: `${failed.length} of ${diagrams.length} diagram(s) failed to parse (${via}): ${failed.join('; ')}`,
+    };
+  }
+  if (!rejectedBroken) {
+    return { id, title, status: 'FAIL', detail: `${diagrams.length} diagram(s) parsed OK (${via}), but ${rejection}` };
+  }
+  return {
+    id,
+    title,
+    status: 'PASS',
+    detail: `${diagrams.length} diagram(s) parsed across ${Object.keys(files).length} file(s) (${via}); rejected the malformed negative control: ${rejection}`,
   };
 }

@@ -17,7 +17,7 @@ import {
   type Finding,
   type Model,
 } from '@loom/core';
-import { probePesterParse, probePesterRun, probeScriptDom, type ProbeResult } from './probes.js';
+import { probePesterParse, probePesterRun, probeScriptDom, probeMermaid, type ProbeResult } from './probes.js';
 
 type Log = (line: string) => void;
 const out: Log = (line) => console.log(line);
@@ -195,6 +195,10 @@ async function runSelfTest(): Promise<number> {
       probePesterRun(testFile, EXAMPLES),
       probeScriptDom([join(projection, 'schema.sql'), join(projection, 'contract-tests.sql')]),
       probeYaml(readFileSync(join(projection, 'model.yaml'), 'utf8'), model),
+      await probeMermaid({
+        'workflows.md': readFileSync(join(projection, 'workflows.md'), 'utf8'),
+        'reference.md': readFileSync(join(projection, 'reference.md'), 'utf8'),
+      }),
     ];
     for (const p of probes) out(`probe (${p.id}) ${p.title}: ${p.status} - ${p.detail}`);
 
