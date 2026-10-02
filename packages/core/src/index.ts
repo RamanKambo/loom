@@ -30,12 +30,13 @@ export type {
 } from './types.js';
 export { ABSENT_STATE } from './types.js';
 
-export { FINDING } from './codes.js';
-export type { FindingCode } from './codes.js';
+export { FINDING, FINDING_RULES } from './codes.js';
+export type { FindingCode, FindingRule } from './codes.js';
 export { LoomStructuralError, LoomInvalidModelError } from './errors.js';
 export { loadModel, structuralFindings } from './load.js';
 export { validate } from './validate.js';
-export { diff } from './diff.js';
+export { diff, DIFF_RULES } from './diff.js';
+export type { DiffRule, DiffRuleId } from './diff.js';
 export {
   project,
   projectToFiles,

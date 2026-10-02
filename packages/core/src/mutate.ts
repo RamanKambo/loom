@@ -15,7 +15,7 @@ import type {
   Scenario,
   Authority,
 } from './types.js';
-import { FINDING } from './codes.js';
+import { FINDING, FINDING_RULES, type FindingCode } from './codes.js';
 import { deepClone } from './canonical.js';
 import { validate } from './validate.js';
 import { diff } from './diff.js';
@@ -94,8 +94,8 @@ export interface MutateResult {
 }
 
 class PatchError extends Error {
-  readonly code: string;
-  constructor(code: string, message: string) {
+  readonly code: FindingCode;
+  constructor(code: FindingCode, message: string) {
     super(message);
     this.name = 'PatchError';
     this.code = code;
@@ -310,7 +310,7 @@ function breakingGuards(before: Model, after: Model, changes: Change[], acknowle
     if (bv !== undefined && av !== undefined && !(av > bv)) {
       out.push({
         code: FINDING.BREAKING_CHANGE_WITHOUT_VERSION_BUMP,
-        severity: 'error',
+        severity: FINDING_RULES[FINDING.BREAKING_CHANGE_WITHOUT_VERSION_BUMP].severity,
         path: `${collection}/${id}/version`,
         message: `${g.kind} '${id}' has a breaking change without a version bump (${bv} -> ${av}): ${reasons}`,
         impact: consumers,
@@ -320,7 +320,7 @@ function breakingGuards(before: Model, after: Model, changes: Change[], acknowle
     if (!acked.has(id)) {
       out.push({
         code: FINDING.BREAKING_CHANGE_UNACKNOWLEDGED,
-        severity: 'error',
+        severity: FINDING_RULES[FINDING.BREAKING_CHANGE_UNACKNOWLEDGED].severity,
         path: `${collection}/${id}`,
         message: `${g.kind} '${id}' has an unacknowledged breaking change: ${reasons}`,
         impact: consumers,
@@ -367,7 +367,7 @@ export function mutate(
   if (list.length === 0) {
     return refusal({
       code: FINDING.PATCH_INVALID,
-      severity: 'error',
+      severity: FINDING_RULES[FINDING.PATCH_INVALID].severity,
       path: 'patches',
       message: 'the batch contains no patch',
       impact: [],
@@ -388,7 +388,7 @@ export function mutate(
       const op = patch !== null && typeof patch === 'object' ? String((patch as { op?: unknown }).op) : '?';
       return refusal({
         code,
-        severity: 'error',
+        severity: FINDING_RULES[code].severity,
         path: `patches[${i}]`,
         message: `patch ${i} (${op}): ${reason}; the whole batch was refused`,
         impact: [],

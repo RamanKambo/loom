@@ -47,7 +47,9 @@ scripts: @package.json
 
   | Fact | Home |
   | --- | --- |
-  | Finding codes | `packages/core/src/codes.ts` |
+  | Finding codes, and each code's severity and one-line rule | `FINDING` and `FINDING_RULES` in `packages/core/src/codes.ts` |
+  | Change rules: each diff rule's kind and one-line description | `DIFF_RULES` in `packages/core/src/diff.ts` |
+  | The human-readable rule list | the Rules section of the `reference` projection, rendered from both tables |
   | Kind to T-SQL mapping and type families | `packages/core/src/sql-types.ts` |
   | Source-notice text | `packages/core/src/projections/notice.ts` |
   | Projection targets and their file names | `PROJECTION_TARGETS` and `PROJECTION_FILES` in `packages/core/src/project.ts`; the MCP tool enum and the designer read them |
@@ -59,12 +61,14 @@ scripts: @package.json
   `--check <model> <dir>` reports a hand edit as drift.
 - **Keep projection output deterministic:** no timestamps, random values or machine paths. Drift
   detection compares bytes, and `selfTest()` renders every target twice and compares.
-- **A new semantic rule** adds its code to `packages/core/src/codes.ts` and returns a finding with
-  `path`, `impact` and an imperative `fix`. It also needs a `CONTRADICTIONS` entry in
+- **A new semantic rule** adds its code to `FINDING` and its severity and one-line rule to
+  `FINDING_RULES`, both in `packages/core/src/codes.ts`, and returns a finding with `path`, `impact`
+  and an imperative `fix`. It also needs a `CONTRADICTIONS` entry in
   `packages/core/src/selftest.ts`: the self-test asserts that each entry yields its code with a fix,
-  which is the proof that the rule can fire.
-- **A new breaking-change rule** goes in `packages/core/src/diff.ts`, with a `BREAKING_DIFFS` entry
-  in the same self-test.
+  which is the proof that the rule can fire, and fails on any code nothing raises.
+- **A new diff rule** adds its kind and one-line description to `DIFF_RULES` in
+  `packages/core/src/diff.ts` and records its changes under that id, with a `BREAKING_DIFFS` or
+  `COMPATIBLE_DIFFS` entry in the same self-test, which fails on a rule no case emits.
 - **A model-format change** edits `packages/core/src/types.ts` and `packages/core/src/meta-schema.ts`
   together, and keeps `packages/core/src/sample.ts` valid. The meta-schema runs before every semantic
   rule, so a field it lacks is rejected on import.

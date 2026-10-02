@@ -202,6 +202,8 @@ export type ElementKind = 'type' | 'operation' | 'routine' | 'mutation' | 'workf
 export interface Change {
   path: string;
   kind: ChangeKind;
+  /** Stable id of the rule that classified the change, a key of DIFF_RULES in diff.ts. */
+  rule: string;
   reason: string;
   /** Element ids affected by this change (reverse-reachability over the before-model). */
   consumers: string[];

@@ -2,7 +2,7 @@ import { Ajv, type ValidateFunction } from 'ajv';
 import addFormatsModule from 'ajv-formats';
 import { META_SCHEMA } from './meta-schema.js';
 import { LoomStructuralError } from './errors.js';
-import { FINDING } from './codes.js';
+import { FINDING, FINDING_RULES } from './codes.js';
 import type { Model, Finding } from './types.js';
 
 // ajv-formats ships only a CommonJS default export. Under NodeNext the default
@@ -48,7 +48,7 @@ export function structuralFindings(value: unknown): Finding[] {
     const d = describe(e);
     return {
       code: FINDING.STRUCTURAL_INVALID,
-      severity: 'error' as const,
+      severity: FINDING_RULES[FINDING.STRUCTURAL_INVALID].severity,
       path: d.path,
       message: `${d.path}: ${d.message}`,
       fix: `correct the value at ${d.path} to satisfy the model meta-schema`,

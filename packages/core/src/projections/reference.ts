@@ -2,6 +2,8 @@ import type { Model, Property, Authority } from '../types.js';
 import { makeConsumerResolver, allElementIds } from '../reachability.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
 import { workflowSections } from './mermaid.js';
+import { FINDING, FINDING_RULES } from '../codes.js';
+import { DIFF_RULES } from '../diff.js';
 
 const code = (s: string): string => `\`${s.replace(/`/g, "'")}\``;
 const codes = (values: readonly string[]): string => (values.length ? values.map(code).join(', ') : '(none)');
@@ -27,8 +29,8 @@ function authorityText(a: Authority): string {
 /**
  * Markdown reference of the model, organised by component: each component's
  * types, operations, routines and mutations; then the workflows (which have no
- * owning component), a consumers index by reverse reachability, and the
- * workflow diagrams.
+ * owning component), a consumers index by reverse reachability, the workflow
+ * diagrams, and the rules the model is checked against.
  */
 export function projectReference(model: Model): string {
   const L: string[] = [MARKDOWN_NOTICE, '# Loom model reference', ''];
@@ -128,6 +130,37 @@ export function projectReference(model: Model): string {
   for (const id of allElementIds(model)) {
     L.push(`| ${code(id)} | ${codes(consumersOf([id]))} |`);
   }
-  L.push('', ...workflowSections(model, 2));
+  L.push('', ...workflowSections(model, 2), ...rulesSection());
   return toText(L);
+}
+
+/** Rule prose in a table cell; `<` and `>` are escaped so '<component>.<table>' is not read as HTML. */
+const prose = (s: string): string => cell(s).replace(/[<>]/g, '\\$&');
+
+/**
+ * The rules every model is checked against, rendered from the engine's own
+ * tables (FINDING_RULES in codes.ts, DIFF_RULES in diff.ts), so the list
+ * cannot drift from the code that enforces it.
+ */
+function rulesSection(): string[] {
+  const L: string[] = [
+    '## Rules',
+    '',
+    'Every finding code `validate()` and `mutate()` report, then every rule `diff()` classifies a change by.',
+    '',
+    '### Finding codes',
+    '',
+    '| Code | Severity | Rule |',
+    '| --- | --- | --- |',
+  ];
+  for (const findingCode of Object.values(FINDING)) {
+    const r = FINDING_RULES[findingCode];
+    L.push(`| ${code(findingCode)} | ${r.severity} | ${prose(r.rule)} |`);
+  }
+  L.push('', '### Change rules', '', '| Rule | Applies to | Kind | Change |', '| --- | --- | --- | --- |');
+  for (const [id, r] of Object.entries(DIFF_RULES)) {
+    L.push(`| ${code(id)} | ${r.subject} | ${r.kind} | ${prose(r.change)} |`);
+  }
+  L.push('');
+  return L;
 }

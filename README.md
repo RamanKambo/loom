@@ -49,12 +49,15 @@ npm run smoke:mcp    # in-memory MCP smoke test (enumerate + call tools)
 ```
 
 The engine self-test (`packages/core/src/selftest.ts`) passes the sample model, then breaks it
-on purpose: every validate rule and every breaking-diff rule has a deliberate contradiction that
-must yield its finding code, at its path, with a fix. It also proves the mutation gate (refused
-without a version bump, without acknowledgment, with a stale bound consumer or referencing
-property, or with a stale workflow pin; accepted as the complete batch, including the Walkthrough's),
-determinism and fail-closed refusal for every projection target, and lossless
-JSON and YAML round-trips.
+on purpose: every validate rule has a deliberate contradiction that must yield its finding code,
+at its path and severity, with a fix, and every breaking-diff rule one that must yield a breaking
+change with consumers. It also proves the mutation gate (refused without a version bump, without
+acknowledgment, with a stale bound consumer or referencing property, or with a stale workflow pin;
+accepted as the complete batch, including the Walkthrough's), determinism and fail-closed refusal
+for every projection target, and lossless JSON and YAML round-trips. Every code in `FINDING` must
+have its rule in `FINDING_RULES` and be raised by a contradiction or a mutate refusal, and every
+rule in `DIFF_RULES` must be emitted by a diff case, so the generated rule list names only rules
+the engine applies.
 
 The CLI self-test then proves the drift check and validates the OpenAPI projection with
 `swagger-parser`, and runs the standard-tool probes. A probe reports `PASS` or `FAIL` only when its
@@ -197,62 +200,12 @@ expects. Ids may contain dots, so bindings, table qualifiers and written columns
 longest known id or table prefix.
 
 Each model is first checked against a structural meta-schema (via Ajv), then against the
-semantic rules:
-
-- id uniqueness across all records; reference integrity for every id, including bindings;
-- `mutation.owner` must equal the owner of its type; `from`/`to` must be legal states of the
-  type's `stateProperty` enum; an immutable property may be written only during creation
-  (`from` includes `$absent`), which must write every required property;
-- length bounds (`minLength`, `maxLength`) apply only to strings and numeric bounds (`min`,
-  `max`) only to integers and numbers; an enum property must list at least one value in
-  `enumValues`;
-- tables are schema-qualified `<component>.<table>` (an unqualified name is owned by the
-  declaring element's owner): a type's `table` must be owned by the type's owner, no two types may
-  bind the same table, and a routine may only write tables its owner owns;
-- a table-backed type needs a `key`; every key property must exist and be required and
-  non-nullable. A table-backed key must also be a valid SQL Server primary key: a string key
-  property needs a `maxLength` of at most 4,000, because an `NVARCHAR(MAX)` column cannot be an index
-  key column, and a key holds at most 32 columns. A key declaring more than 900 bytes is a warning:
-  SQL Server accepts it but rejects writes whose key data exceeds 900 bytes (Microsoft Learn,
-  *Maximum capacity specifications for SQL Server*, Database Engine objects);
-- a routine may only perform mutations it owns, and must list in `writesTables` the table of
-  every table-backed type it mutates; each `writesColumns` entry must name a table in its
-  `writesTables` and a property of the type bound to that table; its `source` must be
-  repository-relative (no leading slash or drive letter); its result set must be non-empty with
-  uniquely-named columns;
-- a bound param or column must match its producer property's kind and nullability exactly, and a
-  param or column of kind `enum` must bind an enum property, which supplies its values;
-- a property's `binds` must name the whole key of a type, possibly its own, and that key must be a
-  single property, because a property is one column. The kinds must match exactly. When both types
-  are table-backed, the projected SQL column types must also be identical, because a foreign key
-  column must match the data type and size of the key it references (Microsoft Learn, *Modify
-  Foreign Key Relationships*, Limitations and Restrictions). A nullable property is an optional
-  reference;
-- a workflow's import must pin the imported type's current version (an error, so a version
-  bump must carry its pinned consumers in the same change); dependency graphs must be acyclic;
-- every mutation must trace to at least one requirement and one scenario, and a scenario must
-  cover one of its requirements.
-
-Every finding names the offending element, the rule, its impact set, and a one-line `fix`.
-
-`diff()` classifies each change as breaking or compatible and attributes it to the element
-that changed. Breaking, with consumers listed by reverse-reachability:
-
-- types: the `owner`, `stateProperty`, `table` or `key` changed;
-- type properties: removed; kind changed; nullability changed (either direction); became
-  required; became optional; became immutable; an enum value removed; a bound tightened (added,
-  `min`/`minLength` raised, `max`/`maxLength` lowered); `binds` added, changed or removed; a new
-  required property;
-- routines: the `owner` or `host` changed; params removed, retyped, nullability changed,
-  optional to required, or a required param added; result columns removed, retyped, reordered or
-  with nullability changed; any `binds` change;
-- operations: the `owner` or kind changed; request/response/result type changed; an HTTP
-  binding removed or its method/path changed;
-- an authority permission changed or a scope added/changed, on an operation or routine;
-- a type, operation, routine, mutation or workflow removed.
-
-Loosened bounds, optional additions, added enum values, appended result columns, added HTTP
-bindings, a removed authority scope and a moved routine `source` are compatible.
+semantic rules. Every finding carries a stable code, the path of the offending element, its impact
+set and a one-line `fix`. `diff()` classifies each change as breaking or compatible under a named
+rule, attributes it to the element that changed, and lists the consumers of a breaking change by
+reverse reachability. The Rules section of the projected `reference.md` lists every finding code
+and change rule with its one-line rule, generated from `FINDING_RULES` in
+`packages/core/src/codes.ts` and `DIFF_RULES` in `packages/core/src/diff.ts`.
 
 ## Projections
 
@@ -268,7 +221,7 @@ all under these file names.
 | `pester-contract-tests` | `Routines.Contract.Tests.ps1` | One Pester 5 test file for the `runbook` and `function` routines that declare a `source`; it also runs under Pester 6. |
 | `yaml` | `model.yaml` | The canonical model as YAML 1.2, keys sorted. `importModel()` reads it back losslessly. |
 | `workflow` | `workflows.md` | Mermaid: a `stateDiagram-v2` per stateful type (transitions from its mutations, `[*]` for `$absent`) and a flowchart of workflows with their dependencies, operations and mutations. |
-| `reference` | `reference.md` | Markdown reference by component (types, operations, routines, mutations), then workflows, a consumers index by reverse reachability, and the workflow diagrams. |
+| `reference` | `reference.md` | Markdown reference by component (types, operations, routines, mutations), then workflows, a consumers index by reverse reachability, the workflow diagrams, and the Rules: every finding code with its severity and rule, and every change rule with what it applies to and whether it is breaking. |
 
 The SQL kind mapping is: string → `NVARCHAR(maxLength)`, or `NVARCHAR(MAX)` when there is no
 `maxLength` or it exceeds 4,000; integer → `BIGINT`; number → `FLOAT`; boolean → `BIT`; enum →

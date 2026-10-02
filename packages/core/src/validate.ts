@@ -1,6 +1,6 @@
 import type { Model, Finding, Scenario, Kind, TypeDef, Bounds, Property } from './types.js';
 import { ABSENT_STATE } from './types.js';
-import { FINDING } from './codes.js';
+import { FINDING, FINDING_RULES, type FindingCode } from './codes.js';
 import { makeConsumerResolver, allElementIds } from './reachability.js';
 import { resolveBinding, tableOwner, qualifyTable } from './refs.js';
 import { structuralFindings } from './load.js';
@@ -96,17 +96,15 @@ export function validate(model: Model): Finding[] {
 
   const findings: Finding[] = [];
   const consumersOf = makeConsumerResolver(model);
-  const error = (
-    code: string,
+  // The code decides the severity (FINDING_RULES), so a rule's severity has one home.
+  const report = (
+    code: FindingCode,
     path: string,
     message: string,
     impactOf: string[],
     fix: string,
   ): void => {
-    findings.push({ code, severity: 'error', path, message, impact: consumersOf(impactOf), fix });
-  };
-  const warning = (code: string, path: string, message: string, impactOf: string[], fix: string): void => {
-    findings.push({ code, severity: 'warning', path, message, impact: consumersOf(impactOf), fix });
+    findings.push({ code, severity: FINDING_RULES[code].severity, path, message, impact: consumersOf(impactOf), fix });
   };
 
   const componentIds = new Set(model.components.map((c) => c.id));
@@ -136,7 +134,7 @@ export function validate(model: Model): Finding[] {
   model.scenarios.forEach((s, i) => register(s.id, `scenarios[${i}]`));
   for (const [id, paths] of idPaths) {
     if (paths.length > 1) {
-      error(
+      report(
         FINDING.DUPLICATE_ID,
         paths.join(', '),
         `id '${id}' is declared ${paths.length} times; ids must be unique across all records`,
@@ -151,7 +149,7 @@ export function validate(model: Model): Finding[] {
   const checkBounds = (t: TypeDef): void => {
     for (const p of t.properties) {
       if (p.kind === 'enum' && (!p.enumValues || p.enumValues.length === 0)) {
-        error(
+        report(
           FINDING.ENUM_WITHOUT_VALUES,
           `types/${t.id}/properties/${p.name}/enumValues`,
           `enum property '${t.id}.${p.name}' declares no enumValues`,
@@ -161,7 +159,7 @@ export function validate(model: Model): Finding[] {
       }
       const misplaced = misplacedBounds(p.kind, p.bounds);
       if (misplaced.length) {
-        error(
+        report(
           FINDING.BOUNDS_KIND_MISMATCH,
           `types/${t.id}/properties/${p.name}/bounds`,
           `property '${t.id}.${p.name}' is '${p.kind}' but declares ${misplaced.join(', ')}`,
@@ -180,7 +178,7 @@ export function validate(model: Model): Finding[] {
     const keyPath = `types/${t.id}/key`;
     if (t.table !== undefined && (!t.key || t.key.length === 0)) {
       const hasId = t.properties.some((p) => p.name === 'id');
-      error(
+      report(
         FINDING.TYPE_TABLE_WITHOUT_KEY,
         keyPath,
         `type '${t.id}' binds table '${t.table}' but declares no key`,
@@ -197,12 +195,12 @@ export function validate(model: Model): Finding[] {
     for (const k of t.key ?? []) {
       const p = byName.get(k);
       if (seen.has(k)) {
-        error(FINDING.TYPE_KEY_INVALID, keyPath, `type '${t.id}' key lists '${k}' twice`, [t.id], `remove the duplicate '${k}' from type '${t.id}' key`);
+        report(FINDING.TYPE_KEY_INVALID, keyPath, `type '${t.id}' key lists '${k}' twice`, [t.id], `remove the duplicate '${k}' from type '${t.id}' key`);
         continue;
       }
       seen.add(k);
       if (!p) {
-        error(
+        report(
           FINDING.TYPE_KEY_INVALID,
           keyPath,
           `type '${t.id}' key names '${k}', which is not a property of '${t.id}'`,
@@ -213,7 +211,7 @@ export function validate(model: Model): Finding[] {
         continue;
       }
       if (!p.required || p.nullable) {
-        error(
+        report(
           FINDING.TYPE_KEY_INVALID,
           keyPath,
           `type '${t.id}' key property '${k}' must be required and non-nullable`,
@@ -225,7 +223,7 @@ export function validate(model: Model): Finding[] {
       const width = keyColumnBytes(p);
       if (width === null) {
         indexable = false;
-        error(
+        report(
           FINDING.TYPE_KEY_INVALID,
           keyPath,
           `type '${t.id}' key property '${k}' projects to NVARCHAR(MAX), which cannot be a primary key column`,
@@ -238,7 +236,7 @@ export function validate(model: Model): Finding[] {
     }
     if (t.table === undefined || !t.key) return;
     if (t.key.length > PRIMARY_KEY_MAX_COLUMNS) {
-      error(
+      report(
         FINDING.TYPE_KEY_INVALID,
         keyPath,
         `type '${t.id}' key has ${t.key.length} columns; a primary key allows at most ${PRIMARY_KEY_MAX_COLUMNS}`,
@@ -247,7 +245,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (indexable && bytes > PRIMARY_KEY_MAX_BYTES) {
-      warning(
+      report(
         FINDING.TYPE_KEY_WIDE,
         keyPath,
         `type '${t.id}' key declares ${bytes} bytes; writes whose key data exceeds ${PRIMARY_KEY_MAX_BYTES} bytes fail`,
@@ -260,7 +258,7 @@ export function validate(model: Model): Finding[] {
   // --- types: owner, stateProperty, table ---
   for (const t of model.types) {
     if (!componentIds.has(t.owner)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `types/${t.id}/owner`,
         `type '${t.id}' owner '${t.owner}' is not a known component`,
@@ -271,7 +269,7 @@ export function validate(model: Model): Finding[] {
     if (t.stateProperty !== undefined) {
       const sp = t.properties.find((p) => p.name === t.stateProperty);
       if (!sp || sp.kind !== 'enum' || !sp.enumValues || sp.enumValues.length === 0) {
-        error(
+        report(
           FINDING.TYPE_STATE_PROPERTY_INVALID,
           `types/${t.id}/stateProperty`,
           `type '${t.id}' stateProperty '${t.stateProperty}' must name an enum property with at least one enumValue`,
@@ -283,7 +281,7 @@ export function validate(model: Model): Finding[] {
     if (t.table !== undefined) {
       const own = tableOwner(t.table, componentIds);
       if (own && !own.known) {
-        error(
+        report(
           FINDING.TABLE_COMPONENT_UNKNOWN,
           `types/${t.id}/table`,
           `type '${t.id}' table '${t.table}' is qualified by unknown component '${own.owner}'`,
@@ -291,7 +289,7 @@ export function validate(model: Model): Finding[] {
           `set type '${t.id}' table to '${t.owner}.${own.bare}'`,
         );
       } else if (own && own.owner !== t.owner) {
-        error(
+        report(
           FINDING.TYPE_TABLE_NONOWNER,
           `types/${t.id}/table`,
           `type '${t.id}' (owner '${t.owner}') binds table '${t.table}' owned by '${own.owner}'`,
@@ -311,7 +309,7 @@ export function validate(model: Model): Finding[] {
     const qualified = qualifyTable(t.table, t.owner);
     const first = typeByTable.get(qualified);
     if (first) {
-      error(
+      report(
         FINDING.TYPE_TABLE_DUPLICATE,
         `types/${t.id}/table`,
         `type '${t.id}' binds table '${qualified}', which type '${first.id}' already binds`,
@@ -337,7 +335,7 @@ export function validate(model: Model): Finding[] {
       const ref = resolveBinding(p.binds, typeIds);
       const target = ref ? typeById.get(ref.typeId) : undefined;
       if (!ref || !target) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           path,
           `${label} binds '${p.binds}', which names no known type`,
@@ -354,7 +352,7 @@ export function validate(model: Model): Finding[] {
           : `remove binds from property '${p.name}', or give type '${target.id}' a single-property key and bind that`;
       const keyProperty = target.properties.find((x) => x.name === ref.property);
       if (!keyProperty) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           path,
           `${label} binds '${p.binds}', but type '${target.id}' has no property '${ref.property}'`,
@@ -368,7 +366,7 @@ export function validate(model: Model): Finding[] {
         if (key.length === 0) why = `type '${target.id}' declares no key`;
         else if (key.length > 1) why = `the key of '${target.id}' is composite (${key.join(', ')})`;
         else why = `'${keyProperty.name}' is not the key of '${target.id}' (key: ${keyName ?? ''})`;
-        error(
+        report(
           FINDING.BINDING_NOT_KEY,
           path,
           `${label} binds '${p.binds}', but ${why}; a property is one column, so it may reference only a single-property key`,
@@ -380,7 +378,7 @@ export function validate(model: Model): Finding[] {
       if (keyProperty.kind !== p.kind) {
         const drop = misplacedBounds(keyProperty.kind, p.bounds);
         const alsoDrop = drop.length ? ` and remove ${drop.join(', ')} from its bounds` : '';
-        error(
+        report(
           FINDING.BINDING_KIND_MISMATCH,
           path,
           `${label} is '${p.kind}' but binds '${p.binds}', which is '${keyProperty.kind}'`,
@@ -393,7 +391,7 @@ export function validate(model: Model): Finding[] {
       const column = sqlColumnType(p);
       const keyColumn = sqlColumnType(keyProperty);
       if (column !== keyColumn) {
-        error(
+        report(
           FINDING.BINDING_SQL_TYPE_MISMATCH,
           path,
           `${label} projects to ${column} but binds '${p.binds}', which projects to ${keyColumn}; a foreign key's columns must have the same SQL type and length`,
@@ -407,7 +405,7 @@ export function validate(model: Model): Finding[] {
   // --- operations: owner + request/response/result ---
   for (const o of model.operations) {
     if (!componentIds.has(o.owner)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `operations/${o.id}/owner`,
         `operation '${o.id}' owner '${o.owner}' is not a known component`,
@@ -421,7 +419,7 @@ export function validate(model: Model): Finding[] {
       ['result', o.result],
     ] as const) {
       if (ref !== undefined && !typeById.has(ref)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `operations/${o.id}/${field}`,
           `operation '${o.id}' ${field} references unknown type '${ref}'`,
@@ -445,7 +443,7 @@ export function validate(model: Model): Finding[] {
     if (binds === undefined) {
       // An enum slot's values are known only through the enum property it binds.
       if (kind === 'enum') {
-        error(
+        report(
           FINDING.ENUM_PARAM_UNBOUND,
           path,
           `routine '${routineId}' ${role} '${name}' is an enum but binds no enum property, so its values are unknown`,
@@ -458,7 +456,7 @@ export function validate(model: Model): Finding[] {
     const ref = resolveBinding(binds, typeIds);
     const t = ref ? typeById.get(ref.typeId) : undefined;
     if (!ref || !t) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         path,
         `routine '${routineId}' ${role} '${name}' binds '${binds}', which names no known type`,
@@ -469,7 +467,7 @@ export function validate(model: Model): Finding[] {
     }
     const p = t.properties.find((x) => x.name === ref.property);
     if (!p) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         path,
         `routine '${routineId}' ${role} '${name}' binds '${binds}', but type '${t.id}' has no property '${ref.property}'`,
@@ -480,7 +478,7 @@ export function validate(model: Model): Finding[] {
     }
     const consumerStep = `bump routine '${routineId}' version and list '${routineId}' in acknowledgeBreaking`;
     if (p.kind !== kind) {
-      error(
+      report(
         FINDING.BINDING_KIND_MISMATCH,
         path,
         `routine '${routineId}' ${role} '${name}' is '${kind}' but binds '${binds}', which is '${p.kind}'`,
@@ -489,7 +487,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (p.nullable !== nullable) {
-      error(
+      report(
         FINDING.BINDING_NULLABILITY_MISMATCH,
         path,
         `routine '${routineId}' ${role} '${name}' is ${nullability(nullable)} but binds '${binds}', which is ${nullability(p.nullable)}`,
@@ -501,7 +499,7 @@ export function validate(model: Model): Finding[] {
 
   for (const r of model.routines) {
     if (!componentIds.has(r.owner)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `routines/${r.id}/owner`,
         `routine '${r.id}' owner '${r.owner}' is not a known component`,
@@ -510,7 +508,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (r.resultSet.length === 0) {
-      error(
+      report(
         FINDING.ROUTINE_EMPTY_RESULTSET,
         `routines/${r.id}/resultSet`,
         `routine '${r.id}' has an empty resultSet`,
@@ -521,7 +519,7 @@ export function validate(model: Model): Finding[] {
     const seenCols = new Set<string>();
     for (const col of r.resultSet) {
       if (seenCols.has(col.name)) {
-        error(
+        report(
           FINDING.ROUTINE_DUPLICATE_COLUMN,
           `routines/${r.id}/resultSet/${col.name}`,
           `routine '${r.id}' resultSet has a duplicate column '${col.name}'`,
@@ -534,7 +532,7 @@ export function validate(model: Model): Finding[] {
     for (const mid of r.performsMutations) {
       const mu = mutationById.get(mid);
       if (!mu) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `routines/${r.id}/performsMutations`,
           `routine '${r.id}' performsMutations references unknown mutation '${mid}'`,
@@ -542,7 +540,7 @@ export function validate(model: Model): Finding[] {
           `remove '${mid}' from routine '${r.id}' performsMutations or add the mutation`,
         );
       } else if (mu.owner !== r.owner) {
-        error(
+        report(
           FINDING.ROUTINE_MUTATION_OWNER_MISMATCH,
           `routines/${r.id}/performsMutations`,
           `routine '${r.id}' (owner '${r.owner}') performs mutation '${mid}' owned by '${mu.owner}'`,
@@ -557,7 +555,7 @@ export function validate(model: Model): Finding[] {
       const own = tableOwner(tbl, componentIds);
       if (!own) continue;
       if (!own.known) {
-        error(
+        report(
           FINDING.TABLE_COMPONENT_UNKNOWN,
           `routines/${r.id}/writesTables`,
           `routine '${r.id}' writes table '${tbl}' whose owning component '${own.owner}' does not exist`,
@@ -565,7 +563,7 @@ export function validate(model: Model): Finding[] {
           `qualify table '${own.bare}' with an existing component id`,
         );
       } else if (own.owner !== r.owner) {
-        error(
+        report(
           FINDING.ROUTINE_NONOWNER_TABLE_WRITE,
           `routines/${r.id}/writesTables`,
           `routine '${r.id}' (owner '${r.owner}') writes table '${tbl}' owned by '${own.owner}'`,
@@ -585,7 +583,7 @@ export function validate(model: Model): Finding[] {
       const need = qualifyTable(t.table, t.owner);
       if (written.has(need) || reported.has(need)) continue;
       reported.add(need);
-      error(
+      report(
         FINDING.ROUTINE_WRITE_SET_INCOMPLETE,
         `routines/${r.id}/writesTables`,
         `routine '${r.id}' performs mutation '${mid}' on type '${t.id}' (table '${need}') but does not list that table in writesTables`,
@@ -614,7 +612,7 @@ export function validate(model: Model): Finding[] {
       }
       const path = `routines/${r.id}/writesColumns`;
       if (prefix === null) {
-        error(
+        report(
           FINDING.ROUTINE_WRITES_UNKNOWN_COLUMN,
           path,
           `routine '${r.id}' writes column '${entry}', which names no known table`,
@@ -627,7 +625,7 @@ export function validate(model: Model): Finding[] {
       const column = entry.slice(prefix.length + 1);
       const bound = typeByTable.get(table);
       if (!written.has(table)) {
-        error(
+        report(
           FINDING.ROUTINE_WRITES_UNKNOWN_COLUMN,
           path,
           `routine '${r.id}' writes column '${entry}', but table '${table}' is not in its writesTables`,
@@ -635,7 +633,7 @@ export function validate(model: Model): Finding[] {
           `add '${table}' to routine '${r.id}' writesTables`,
         );
       } else if (!bound) {
-        error(
+        report(
           FINDING.ROUTINE_WRITES_UNKNOWN_COLUMN,
           path,
           `routine '${r.id}' writes column '${entry}', but no type is bound to table '${table}'`,
@@ -643,7 +641,7 @@ export function validate(model: Model): Finding[] {
           `remove '${entry}' from routine '${r.id}' writesColumns`,
         );
       } else if (!bound.properties.some((p) => p.name === column)) {
-        error(
+        report(
           FINDING.ROUTINE_WRITES_UNKNOWN_COLUMN,
           path,
           `routine '${r.id}' writes column '${entry}', but type '${bound.id}' (table '${table}') has no property '${column}'`,
@@ -655,7 +653,7 @@ export function validate(model: Model): Finding[] {
 
     if (r.source !== undefined && (/^[\\/]/.test(r.source) || r.source.includes(':'))) {
       const base = r.source.split(/[\\/]/).pop() ?? r.source;
-      error(
+      report(
         FINDING.ROUTINE_SOURCE_NOT_RELATIVE,
         `routines/${r.id}/source`,
         `routine '${r.id}' source '${r.source}' is absolute or carries a drive letter`,
@@ -676,7 +674,7 @@ export function validate(model: Model): Finding[] {
   for (const m of model.mutations) {
     const t = typeById.get(m.type);
     if (!t) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `mutations/${m.id}/type`,
         `mutation '${m.id}' references unknown type '${m.type}'`,
@@ -685,7 +683,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (!componentIds.has(m.owner)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `mutations/${m.id}/owner`,
         `mutation '${m.id}' owner '${m.owner}' is not a known component`,
@@ -694,7 +692,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (t && componentIds.has(m.owner) && m.owner !== t.owner) {
-      error(
+      report(
         FINDING.MUTATION_NONOWNER,
         `mutations/${m.id}/owner`,
         `mutation '${m.id}' owner '${m.owner}' must equal the owner of type '${t.id}' ('${t.owner}')`,
@@ -708,7 +706,7 @@ export function validate(model: Model): Finding[] {
       const isCreation = m.from.includes(ABSENT_STATE);
 
       if (t.stateProperty === undefined) {
-        error(
+        report(
           FINDING.MUTATION_NO_STATE_PROPERTY,
           `mutations/${m.id}`,
           `mutation '${m.id}' targets type '${t.id}', which declares no stateProperty`,
@@ -723,7 +721,7 @@ export function validate(model: Model): Finding[] {
         for (const f of m.from) {
           if (f === ABSENT_STATE) continue;
           if (!states.has(f)) {
-            error(
+            report(
               FINDING.MUTATION_ILLEGAL_STATE,
               `mutations/${m.id}/from`,
               `mutation '${m.id}' from-state '${f}' is not a legal state of '${t.id}.${t.stateProperty}'`,
@@ -733,7 +731,7 @@ export function validate(model: Model): Finding[] {
           }
         }
         if (!states.has(m.to)) {
-          error(
+          report(
             FINDING.MUTATION_ILLEGAL_STATE,
             `mutations/${m.id}/to`,
             `mutation '${m.id}' to-state '${m.to}' is not a legal state of '${t.id}.${t.stateProperty}'`,
@@ -746,7 +744,7 @@ export function validate(model: Model): Finding[] {
       for (const w of m.writes) {
         const p = byName.get(w);
         if (!p) {
-          error(
+          report(
             FINDING.MUTATION_WRITE_UNKNOWN_PROPERTY,
             `mutations/${m.id}/writes`,
             `mutation '${m.id}' writes unknown property '${w}' on type '${t.id}'`,
@@ -754,7 +752,7 @@ export function validate(model: Model): Finding[] {
             `remove '${w}' from mutation '${m.id}' writes`,
           );
         } else if (p.immutable && !isCreation) {
-          error(
+          report(
             FINDING.MUTATION_IMMUTABLE_WRITE,
             `mutations/${m.id}/writes`,
             `mutation '${m.id}' writes immutable property '${w}' outside creation (from does not include '${ABSENT_STATE}')`,
@@ -769,7 +767,7 @@ export function validate(model: Model): Finding[] {
           .filter((p) => p.required && !m.writes.includes(p.name))
           .map((p) => p.name);
         if (missing.length) {
-          error(
+          report(
             FINDING.MUTATION_CREATION_MISSING_REQUIRED,
             `mutations/${m.id}/writes`,
             `creation mutation '${m.id}' must write every required property of '${t.id}'; missing: ${missing.join(', ')}`,
@@ -782,7 +780,7 @@ export function validate(model: Model): Finding[] {
 
     for (const rid of m.requirements) {
       if (!requirementIds.has(rid)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `mutations/${m.id}/requirements`,
           `mutation '${m.id}' references unknown requirement '${rid}'`,
@@ -793,7 +791,7 @@ export function validate(model: Model): Finding[] {
     }
     for (const sid of m.scenarios) {
       if (!scenarioById.has(sid)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `mutations/${m.id}/scenarios`,
           `mutation '${m.id}' references unknown scenario '${sid}'`,
@@ -803,7 +801,7 @@ export function validate(model: Model): Finding[] {
       }
     }
     if (m.requirements.length === 0) {
-      error(
+      report(
         FINDING.MUTATION_NO_REQUIREMENT,
         `mutations/${m.id}/requirements`,
         `mutation '${m.id}' has no requirement`,
@@ -812,7 +810,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (m.scenarios.length === 0) {
-      error(
+      report(
         FINDING.MUTATION_NO_SCENARIO,
         `mutations/${m.id}/scenarios`,
         `mutation '${m.id}' has no scenario`,
@@ -826,7 +824,7 @@ export function validate(model: Model): Finding[] {
         return s ? s.requirements.some((r) => m.requirements.includes(r)) : false;
       });
       if (!covered) {
-        error(
+        report(
           FINDING.MUTATION_TRACEABILITY_UNCOVERED,
           `mutations/${m.id}`,
           `mutation '${m.id}' has requirements and scenarios, but no scenario covers any of its requirements`,
@@ -841,7 +839,7 @@ export function validate(model: Model): Finding[] {
   for (const s of model.scenarios) {
     for (const rid of s.requirements) {
       if (!requirementIds.has(rid)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `scenarios/${s.id}/requirements`,
           `scenario '${s.id}' references unknown requirement '${rid}'`,
@@ -856,7 +854,7 @@ export function validate(model: Model): Finding[] {
   for (const w of model.workflows) {
     for (const d of w.dependsOn) {
       if (!workflowIds.has(d)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `workflows/${w.id}/dependsOn`,
           `workflow '${w.id}' depends on unknown workflow '${d}'`,
@@ -868,7 +866,7 @@ export function validate(model: Model): Finding[] {
     for (const im of w.imports) {
       const t = typeById.get(im.typeId);
       if (!t) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `workflows/${w.id}/imports`,
           `workflow '${w.id}' imports unknown type '${im.typeId}'`,
@@ -878,7 +876,7 @@ export function validate(model: Model): Finding[] {
       } else if (t.version !== im.version) {
         // An error, not a warning: a version bump must carry its pinned
         // consumers in the same change.
-        error(
+        report(
           FINDING.WORKFLOW_IMPORT_VERSION_MISMATCH,
           `workflows/${w.id}/imports/${im.typeId}`,
           `workflow '${w.id}' pins type '${im.typeId}' at version ${im.version}, but the type is at version ${t.version}`,
@@ -889,7 +887,7 @@ export function validate(model: Model): Finding[] {
     }
     for (const op of w.operations ?? []) {
       if (!operationIds.has(op)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `workflows/${w.id}/operations`,
           `workflow '${w.id}' references unknown operation '${op}'`,
@@ -900,7 +898,7 @@ export function validate(model: Model): Finding[] {
     }
     for (const mu of w.mutations ?? []) {
       if (!mutationById.has(mu)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `workflows/${w.id}/mutations`,
           `workflow '${w.id}' references unknown mutation '${mu}'`,
@@ -911,7 +909,7 @@ export function validate(model: Model): Finding[] {
     }
     for (const rid of w.requirements) {
       if (!requirementIds.has(rid)) {
-        error(
+        report(
           FINDING.DANGLING_REF,
           `workflows/${w.id}/requirements`,
           `workflow '${w.id}' references unknown requirement '${rid}'`,
@@ -922,7 +920,7 @@ export function validate(model: Model): Finding[] {
     }
   }
   for (const cycle of detectWorkflowCycles(model)) {
-    error(
+    report(
       FINDING.WORKFLOW_DEPENDENCY_CYCLE,
       `workflows: ${cycle.join(' -> ')}`,
       `workflow dependency cycle detected: ${cycle.join(' -> ')}`,
@@ -934,7 +932,7 @@ export function validate(model: Model): Finding[] {
   // --- edges: endpoints must resolve to real elements ---
   model.edges.forEach((e, i) => {
     if (!everyId.has(e.from)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `edges[${i}]/from`,
         `edge from '${e.from}' does not resolve to any element`,
@@ -943,7 +941,7 @@ export function validate(model: Model): Finding[] {
       );
     }
     if (!everyId.has(e.to)) {
-      error(
+      report(
         FINDING.DANGLING_REF,
         `edges[${i}]/to`,
         `edge to '${e.to}' does not resolve to any element`,

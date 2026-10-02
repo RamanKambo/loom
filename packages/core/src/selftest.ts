@@ -1,8 +1,8 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import type { Model, Finding, Kind } from './types.js';
-import { FINDING } from './codes.js';
+import type { Model, Finding, Kind, Change } from './types.js';
+import { FINDING, FINDING_RULES, type FindingCode } from './codes.js';
 import { validate } from './validate.js';
-import { diff } from './diff.js';
+import { diff, DIFF_RULES, type DiffRule } from './diff.js';
 import {
   project,
   projectToFiles,
@@ -85,13 +85,13 @@ const ORDER_REF = 'types/shipment/properties/orderId/binds';
 
 interface Contradiction {
   label: string;
-  code: string;
+  code: FindingCode;
   /** When set, the finding's path must contain this, pinning the offending element. */
   pathIncludes?: string;
   break: (m: Model) => void;
 }
 
-/** Each yields the expected error finding from validate(), carrying a fix. */
+/** Each yields the expected finding from validate(), at the severity FINDING_RULES gives its code, carrying a fix. */
 const CONTRADICTIONS: Contradiction[] = [
   {
     label: 'duplicate id',
@@ -222,6 +222,46 @@ const CONTRADICTIONS: Contradiction[] = [
     pathIncludes: `routines/${DISPATCH}/params/OrderId/binds`,
     break: (m) => {
       findParam(m, DISPATCH, 'OrderId').nullable = true;
+    },
+  },
+  {
+    label: 'table qualified by an unknown component',
+    code: FINDING.TABLE_COMPONENT_UNKNOWN,
+    pathIncludes: 'types/order/table',
+    break: (m) => {
+      findType(m, 'order').table = 'ghost.orders';
+    },
+  },
+  {
+    label: 'stateProperty names a non-enum property',
+    code: FINDING.TYPE_STATE_PROPERTY_INVALID,
+    pathIncludes: 'types/order/stateProperty',
+    break: (m) => {
+      findType(m, 'order').stateProperty = 'total';
+    },
+  },
+  {
+    label: 'mutation on a type without a stateProperty',
+    code: FINDING.MUTATION_NO_STATE_PROPERTY,
+    pathIncludes: 'mutations/order.create',
+    break: (m) => {
+      delete findType(m, 'order').stateProperty;
+    },
+  },
+  {
+    label: 'mutation with no requirement',
+    code: FINDING.MUTATION_NO_REQUIREMENT,
+    pathIncludes: 'mutations/order.pay/requirements',
+    break: (m) => {
+      findMutation(m, 'order.pay').requirements = [];
+    },
+  },
+  {
+    label: 'table-backed key over 900 bytes (a warning)',
+    code: FINDING.TYPE_KEY_WIDE,
+    pathIncludes: 'types/invoice/key',
+    break: (m) => {
+      findProperty(m, 'invoice', 'id').bounds = { maxLength: 451 };
     },
   },
   // (g) stale workflow import is an error
@@ -527,6 +567,14 @@ const BREAKING_DIFFS: DiffCase[] = [
     },
   },
   {
+    label: 'property optional -> required',
+    element: 'order',
+    reasonIncludes: "property 'note' became required",
+    after: (m) => {
+      findProperty(m, 'order', 'note').required = true;
+    },
+  },
+  {
     label: 'property became immutable',
     element: 'order',
     reasonIncludes: "property 'total' became immutable",
@@ -653,6 +701,14 @@ const BREAKING_DIFFS: DiffCase[] = [
     reasonIncludes: "operation kind changed 'command' -> 'async-command'",
     after: (m) => {
       findOperation(m, 'order.place').kind = 'async-command';
+    },
+  },
+  {
+    label: 'operation request type changed',
+    element: 'order.place',
+    reasonIncludes: "request type changed 'order' -> 'shipment'",
+    after: (m) => {
+      findOperation(m, 'order.place').request = 'shipment';
     },
   },
   // (j) HTTP path change is breaking
@@ -868,6 +924,13 @@ const COMPATIBLE_DIFFS: DiffCase[] = [
       findRoutine(m, PLACE).source = 'sql/ordering/sp_place_order.sql';
     },
   },
+  {
+    label: 'workflow added',
+    reasonIncludes: "workflow 'wf.refund' added",
+    after: (m) => {
+      m.workflows.push({ id: 'wf.refund', status: 'planned', dependsOn: [], imports: [], requirements: [] });
+    },
+  },
 ];
 
 /**
@@ -882,29 +945,61 @@ const COMPATIBLE_DIFFS: DiffCase[] = [
 export function selfTest(): void {
   const sample = sampleModel();
 
+  // 0. every finding code has its rule, and every rule names a real code
+  const codes: string[] = Object.values(FINDING);
+  const ruled = Object.keys(FINDING_RULES);
+  const undescribed = codes.filter((c) => !ruled.includes(c));
+  const stray = ruled.filter((c) => !codes.includes(c));
+  assert(
+    undescribed.length === 0 && stray.length === 0,
+    `FINDING and FINDING_RULES should list the same codes; no rule for: ${list(new Set(undescribed))}; no code for: ${list(new Set(stray))}`,
+  );
+  for (const [key, value] of Object.entries(FINDING)) assert(key === value, `FINDING.${key} should equal its own name, got '${value}'`);
+  for (const [c, r] of Object.entries(FINDING_RULES)) {
+    assert(r.rule.trim().length > 0, `FINDING_RULES.${c} should describe its rule`);
+    assert(r.severity === 'error' || r.severity === 'warning', `FINDING_RULES.${c} should be an error or a warning`);
+  }
+  for (const [id, r] of Object.entries(DIFF_RULES) as Array<[string, DiffRule]>) {
+    assert(r.change.trim().length > 0 && r.subject.trim().length > 0, `DIFF_RULES.${id} should describe its subject and change`);
+  }
+
   // 1. valid sample passes
   const baseErrors = errorsOf(validate(sample));
   assert(baseErrors.length === 0, `sample should have no error findings, got: ${baseErrors.map((f) => f.code).join(', ')}`);
 
-  // 2. validate-based contradictions
+  // 2. validate-based contradictions; every code that fires is recorded as proven
+  const provenCodes = new Set<string>();
   for (const c of CONTRADICTIONS) {
     const broken = deepClone(sample);
     c.break(broken);
-    const hit = errorsOf(validate(broken)).find(
-      (f) => f.code === c.code && (c.pathIncludes === undefined || f.path.includes(c.pathIncludes)),
+    const severity = FINDING_RULES[c.code].severity;
+    const hit = validate(broken).find(
+      (f) => f.code === c.code && f.severity === severity && (c.pathIncludes === undefined || f.path.includes(c.pathIncludes)),
     );
     assert(
       hit,
-      `contradiction '${c.label}' should yield ${c.code}${c.pathIncludes ? ` at '${c.pathIncludes}'` : ''}`,
+      `contradiction '${c.label}' should yield ${severity} ${c.code}${c.pathIncludes ? ` at '${c.pathIncludes}'` : ''}`,
     );
     assert(hit.fix && hit.fix.length > 0, `finding ${c.code} for '${c.label}' should carry a fix`);
+    provenCodes.add(c.code);
   }
 
-  // 3. diff classification
+  // 3. diff classification; every change must name a described rule of its own kind
+  const emittedRules = new Set<string>();
+  const diffed = (after: Model): Change[] => {
+    const changes = diff(sample, after);
+    for (const ch of changes) {
+      const rule = (DIFF_RULES as Readonly<Record<string, DiffRule>>)[ch.rule];
+      assert(rule, `change '${ch.reason}' names rule '${ch.rule}', which DIFF_RULES does not describe`);
+      assert(rule.kind === ch.kind, `change '${ch.reason}' is ${ch.kind} but its rule '${ch.rule}' is ${rule.kind}`);
+      emittedRules.add(ch.rule);
+    }
+    return changes;
+  };
   for (const d of BREAKING_DIFFS) {
     const after = deepClone(sample);
     d.after(after);
-    const hit = diff(sample, after).find(
+    const hit = diffed(after).find(
       (ch) => ch.kind === 'breaking' && ch.element === d.element && ch.reason.includes(d.reasonIncludes),
     );
     assert(hit, `diff '${d.label}' should yield a breaking change on '${d.element}': "${d.reasonIncludes}"`);
@@ -913,7 +1008,7 @@ export function selfTest(): void {
   for (const d of COMPATIBLE_DIFFS) {
     const after = deepClone(sample);
     d.after(after);
-    const changes = diff(sample, after);
+    const changes = diffed(after);
     const breaking = changes.filter((ch) => ch.kind === 'breaking');
     assert(breaking.length === 0, `diff '${d.label}' should be compatible, got: ${breaking.map((b) => b.reason).join('; ')}`);
     assert(
@@ -921,6 +1016,9 @@ export function selfTest(): void {
       `diff '${d.label}' should yield a compatible change: "${d.reasonIncludes}"`,
     );
   }
+  // ... and every described rule is one diff() really emits, proved by a case above.
+  const unexercised = Object.keys(DIFF_RULES).filter((id) => !emittedRules.has(id));
+  assert(unexercised.length === 0, `every DIFF_RULES entry needs a BREAKING_DIFFS or COMPATIBLE_DIFFS case; none for: ${unexercised.join(', ')}`);
 
   // 4. reachability: a binding alone makes a routine a consumer of the producer
   // type, and a property binding alone makes its type a consumer of the referenced type
@@ -951,7 +1049,9 @@ export function selfTest(): void {
   const refuse = (label: string, result: ReturnType<typeof mutate>): Set<string> => {
     assert(result.model === null, `mutate ${label} should be REFUSED`);
     mutateRefusals++;
-    return errorCodes(result.findings);
+    const refusedCodes = errorCodes(result.findings);
+    for (const c of refusedCodes) provenCodes.add(c);
+    return refusedCodes;
   };
   const accept = (label: string, result: ReturnType<typeof mutate>): Model => {
     const errs = errorsOf(result.findings);
@@ -1182,6 +1282,10 @@ export function selfTest(): void {
   );
   assert(fCodes.has(FINDING.PATCH_INVALID), `a disallowed field should be PATCH_INVALID, got: ${list(fCodes)}`);
 
+  // Every finding code is proven to fire, by a contradiction or a mutate refusal.
+  const unproven = codes.filter((c) => !provenCodes.has(c));
+  assert(unproven.length === 0, `every finding code needs a CONTRADICTIONS entry or a mutate refusal that raises it; none for: ${unproven.join(', ')}`);
+
   // 6. determinism of the export and of every projection
   const s1 = exportModel(sample);
   const s2 = exportModel(sampleModel());
@@ -1308,6 +1412,13 @@ export function selfTest(): void {
     assert(reference.includes(`## Component \`${c.id}\``), `reference.md should hold a section for component ${c.id}`);
   }
   assert(reference.includes('## Consumers index') && reference.includes('stateDiagram-v2'), 'reference.md should index consumers and embed the diagrams');
+  const unlisted = [
+    ...Object.values(FINDING).filter((c) => !reference.includes(`| \`${c}\` | ${FINDING_RULES[c].severity} |`)),
+    ...(Object.entries(DIFF_RULES) as Array<[string, DiffRule]>)
+      .filter(([id, r]) => !reference.includes(`| \`${id}\` | ${r.subject} | ${r.kind} |`))
+      .map(([id]) => id),
+  ];
+  assert(reference.includes('\n## Rules\n') && unlisted.length === 0, `reference.md should list every rule; missing: ${unlisted.join(', ')}`);
 
   // 11. json-schema projection compiles under Ajv (2020-12) and gates payloads
   const payloadsChecked = checkJsonSchemaProjection(sample);
@@ -1319,7 +1430,8 @@ export function selfTest(): void {
       `(${CONTRADICTIONS.length} validate, ${BREAKING_DIFFS.length} breaking diff, ${mutateRefusals} mutate refusal), ` +
       `${acceptedCount} correct changes accepted (${COMPATIBLE_DIFFS.length} compatible diff, ${mutateAccepts} mutate), ` +
       `${PROJECTION_TARGETS.length} projection targets deterministic and fail-closed, ` +
-      `${payloadsChecked} schema payloads checked, JSON and YAML round-trip lossless.`,
+      `${payloadsChecked} schema payloads checked, JSON and YAML round-trip lossless, ` +
+      `${codes.length} finding codes described and proven to fire, ${emittedRules.size} change rules described and exercised, all listed in reference.md.`,
   );
 }
 
