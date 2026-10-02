@@ -1,16 +1,13 @@
 import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { META_SCHEMA, type Kind, type Patch, type Property } from '@loom/core';
+import { SCHEMA_BUNDLE, type Kind, type Patch } from '@loom/core';
 import { LoomStore } from './loom-store';
 
-/**
- * Property kinds as the engine's meta-schema defines them at runtime. The
- * schema types its enum as string[], so the values are asserted to be Kinds.
- */
-const KINDS = META_SCHEMA.definitions.property.properties.kind.enum as readonly Kind[];
+/** Property kinds as the model contract defines them at runtime. */
+const KINDS: readonly Kind[] = SCHEMA_BUNDLE.$defs.Kind.enum;
 
 /**
- * Builds a changeProperty patch for the common edit and sends it through the
- * same LoomStore.apply() path as the batch editor; the engine decides.
+ * Builds an updateItem patch for the common property edit and sends it through
+ * the same LoomStore.apply() path as the batch editor; the engine decides.
  */
 @Component({
   selector: 'app-guided-edit',
@@ -107,12 +104,12 @@ export class GuidedEdit {
     const t = this.type();
     const p = this.property();
     if (!t || !p) return null;
-    const set: Partial<Property> = {};
+    const set: { kind?: Kind; nullable?: boolean; required?: boolean } = {};
     if (this.kind() !== p.kind) set.kind = this.kind();
     if (this.nullable() !== p.nullable) set.nullable = this.nullable();
     if (this.required() !== p.required) set.required = this.required();
     if (Object.keys(set).length === 0) return null;
-    return { op: 'changeProperty', typeId: t.id, propertyName: p.name, set };
+    return { op: 'updateItem', collection: 'types', id: t.id, field: 'properties', key: p.name, set };
   });
 
   protected pickType(id: string): void {

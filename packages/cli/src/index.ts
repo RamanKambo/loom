@@ -43,7 +43,7 @@ function printUsage(): void {
 }
 
 function printFinding(log: Log, f: Finding): void {
-  const impact = f.impact && f.impact.length ? ` [impact: ${f.impact.join(', ')}]` : '';
+  const impact = f.impact && f.impact.length ? ` [impact: ${f.impact.map((a) => a.ref.id).join(', ')}]` : '';
   log(`  ${f.severity.toUpperCase()} ${f.code} at ${f.path}: ${f.message}${impact}`);
   if (f.fix) log(`    fix: ${f.fix}`);
 }

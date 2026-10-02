@@ -70,6 +70,7 @@
       "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!(.*/)?\\.\\.(/|$))[^\\u0000-\\u001f]+$"
     },
     "Quantity": {
+      "x-loom-atomic": true,
       "type": "object",
       "additionalProperties": false,
       "required": ["value", "unit", "estimate"],
@@ -85,6 +86,7 @@
     },
     "SourceRef": {
       "description": "Identifies the document or artifact a claim comes from, and the revision or retrieval context that pins it.",
+      "x-loom-atomic": true,
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "ref"],
@@ -103,10 +105,11 @@
         "requirement", "criterion", "scenario", "constraint", "observation", "assumption", "unknown",
         "decision", "inventory", "retainedBehavior", "workload", "attachment", "mapping", "storage",
         "migration", "deploymentUnit", "host", "trustBoundary", "securityScheme", "consumerBinding",
-        "publishedContract"
+        "publishedContract", "systemProfile"
       ]
     },
     "RecordRef": {
+      "x-loom-atomic": true,
       "description": "Typed reference to a model record. A property is referenced as '<typeId>.<propertyName>'; an element of a composite-keyed collection, such as an edge, by its key values joined with '|', for example '<from>|<to>|<kind>'.",
       "type": "object",
       "additionalProperties": false,

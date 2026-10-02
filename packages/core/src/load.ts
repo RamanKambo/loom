@@ -1,78 +1,56 @@
-import { Ajv, type ValidateFunction } from 'ajv';
-import addFormatsModule from 'ajv-formats';
-import { META_SCHEMA } from './meta-schema.js';
+import type { Model, Finding } from './generated/types.js';
 import { LoomStructuralError } from './errors.js';
 import { FINDING, FINDING_RULES } from './codes.js';
-import type { Model, Finding } from './types.js';
+import { schemaErrors } from './schema-runtime.js';
 
-// ajv-formats ships only a CommonJS default export. Under NodeNext the default
-// import is the plugin function at runtime, but the type view can surface a
-// namespace with the function on `.default`; normalize so both forms call.
-type FormatsPlugin = (ajv: unknown, opts?: unknown) => unknown;
-const raw = addFormatsModule as unknown as FormatsPlugin | { default: FormatsPlugin };
-const addFormats: FormatsPlugin = typeof raw === 'function' ? raw : raw.default;
+/** The model format version this engine reads and writes. */
+export const MODEL_FORMAT = 1;
 
-let cachedValidator: ValidateFunction | null = null;
-
-function metaValidator(): ValidateFunction {
-  if (cachedValidator) return cachedValidator;
-  const ajv = new Ajv({ allErrors: true, strict: false });
-  addFormats(ajv);
-  const compiled = ajv.compile(META_SCHEMA as object);
-  cachedValidator = compiled;
-  return compiled;
-}
-
-interface AjvErrorLike {
-  instancePath?: string;
-  message?: string;
-  params?: Record<string, unknown>;
-}
-
-function describe(e: AjvErrorLike): { path: string; message: string } {
-  const path = e.instancePath && e.instancePath.length ? e.instancePath : '(root)';
-  const extra = e.params?.['additionalProperty'];
-  const detail = typeof extra === 'string' ? ` '${extra}'` : '';
-  return { path, message: `${e.message ?? 'invalid'}${detail}` };
+function formatFinding(version: unknown): Finding | null {
+  if (version === MODEL_FORMAT || typeof version !== 'number') return null;
+  return {
+    code: FINDING.MODEL_FORMAT_UNSUPPORTED,
+    severity: FINDING_RULES.MODEL_FORMAT_UNSUPPORTED.severity,
+    path: '/version',
+    message: `model format version ${version} is not supported; this engine reads format ${MODEL_FORMAT}`,
+    fix: `migrate the document with migrateModel() (loom migrate) from format ${version} to format ${MODEL_FORMAT}, review the result, then replace the file`,
+  };
 }
 
 /**
- * Structural meta-schema check as findings (never throws). validate() runs this
- * first, which keeps project() and exportModel() fail-closed even for a model
- * produced in memory (e.g. by a patch that set a field to an illegal value).
+ * Structural findings of a value against the model contract; never throws. A
+ * document of another format version gets only MODEL_FORMAT_UNSUPPORTED,
+ * because its members mean what that format defines and are not reinterpreted.
  */
 export function structuralFindings(value: unknown): Finding[] {
-  const validate = metaValidator();
-  if (validate(value)) return [];
-  return ((validate.errors ?? []) as AjvErrorLike[]).map((e) => {
-    const d = describe(e);
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    const format = formatFinding((value as { version?: unknown }).version);
+    if (format) return [format];
+  }
+  return schemaErrors('Model', value).map((e) => {
+    const path = e.pointer || '(root)';
     return {
       code: FINDING.STRUCTURAL_INVALID,
-      severity: FINDING_RULES[FINDING.STRUCTURAL_INVALID].severity,
-      path: d.path,
-      message: `${d.path}: ${d.message}`,
-      fix: `correct the value at ${d.path} to satisfy the model meta-schema`,
+      severity: FINDING_RULES.STRUCTURAL_INVALID.severity,
+      path,
+      message: `${path}: ${e.message}`,
+      fix: `correct the value at ${path} to satisfy the model contract (${e.keyword})`,
     };
   });
 }
 
 /**
- * Parse-and-structurally-validate an untrusted value into a Model. This is the
- * first gate: it runs the meta-schema so a malformed file is rejected with a
- * precise pointer before any semantic rule (validate()) sees it. It does NOT
- * check semantics — a structurally valid model may still have error findings.
+ * Parse-and-structurally-validate an untrusted value into a Model. It checks
+ * structure only: a structurally valid model may still carry semantic errors,
+ * which validate() reports.
  */
 export function loadModel(json: unknown): Model {
-  const validate = metaValidator();
-  if (!validate(json)) {
-    const errs = (validate.errors ?? []) as AjvErrorLike[];
-    const summary = errs
-      .map((e) => {
-        const d = describe(e);
-        return `${d.path}: ${d.message}`;
-      })
-      .join('; ');
-    throw new LoomStructuralError(`model failed structural validation: ${summary}`, errs);
+  const findings = structuralFindings(json);
+  if (findings.length) {
+    throw new LoomStructuralError(
+      `model failed structural validation: ${findings.map((f) => f.message).join('; ')}`,
+      findings,
+    );
   }
   return json as Model;
 }

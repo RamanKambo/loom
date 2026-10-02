@@ -1,5 +1,5 @@
-import type { Model, Routine, Kind } from '../types.js';
-import { resolveBinding } from '../refs.js';
+import type { Model, Routine, Kind } from '../generated/types.js';
+import { indexModel, resolveProperty, type ModelIndex } from '../records.js';
 import { HASH_NOTICE, toText } from './notice.js';
 
 /**
@@ -10,10 +10,17 @@ import { HASH_NOTICE, toText } from './notice.js';
  */
 const POWERSHELL_TYPES: Readonly<Record<Kind, readonly string[]>> = {
   string: ['System.String'],
-  integer: ['System.Int32', 'System.Int64'],
-  number: ['System.Double', 'System.Decimal', 'System.Single'],
-  boolean: ['System.Boolean', 'System.Management.Automation.SwitchParameter'],
   enum: ['System.String'],
+  uuid: ['System.Guid', 'System.String'],
+  integer: ['System.Int32', 'System.Int64'],
+  number: ['System.Double', 'System.Single'],
+  decimal: ['System.Decimal'],
+  boolean: ['System.Boolean', 'System.Management.Automation.SwitchParameter'],
+  date: ['System.DateTime'],
+  datetime: ['System.DateTime', 'System.DateTimeOffset'],
+  ref: ['System.Collections.Hashtable', 'System.Management.Automation.PSObject', 'System.Object'],
+  array: ['System.Object[]', 'System.String[]', 'System.Int32[]', 'System.Int64[]'],
+  union: ['System.Collections.Hashtable', 'System.Management.Automation.PSObject', 'System.Object'],
 };
 
 /** A PowerShell single-quoted literal; the typographic single quotes PowerShell also treats as quotes are doubled too. */
@@ -78,11 +85,27 @@ const HELPERS = [
   '}',
 ];
 
-function routineBlock(model: Model, r: Routine, source: string): string[] {
-  const typeIds = model.types.map((t) => t.id);
+function orderTest(r: Routine): string[] {
   const names = r.params.map((p) => p.name);
+  if (r.parameterPassing === 'positional') {
+    return [
+      `    It ${q(names.length ? `declares the parameters ${names.join(', ')} in this order` : 'declares no parameters')} {`,
+      `        (@($routine.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath }) -join ', ') | Should -Be ${q(names.join(', '))}`,
+      '    }',
+    ];
+  }
+  return [
+    `    It ${q(names.length ? `declares exactly the parameters ${names.join(', ')}, in any order` : 'declares no parameters')} {`,
+    '        $actual = @($routine.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })',
+    `        $actual | Should -HaveCount ${names.length}`,
+    ...(names.length ? [`        Compare-Object -ReferenceObject ${list(names)} -DifferenceObject $actual | Should -BeNullOrEmpty`] : []),
+    '    }',
+  ];
+}
+
+function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
   const lines: string[] = [
-    `Describe ${q(`Routine ${r.id} (${r.host}, version ${r.version})`)} {`,
+    `Describe ${q(`Routine ${r.id} (${r.host}, version ${r.version}, ${r.parameterPassing} parameters)`)} {`,
     '    BeforeAll {',
     `        $path = Join-Path -Path $RoutineRoot -ChildPath ${q(source)}`,
     '        $routine = Read-LoomScript -Path $path',
@@ -99,11 +122,8 @@ function routineBlock(model: Model, r: Routine, source: string): string[] {
     '        $routine.Errors | Should -HaveCount 0',
     '    }',
     '',
-    `    It ${q(names.length ? `declares the parameters ${names.join(', ')} in this order` : 'declares no parameters')} {`,
-    `        (@($routine.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath }) -join ', ') | Should -Be ${q(names.join(', '))}`,
-    '    }',
+    ...orderTest(r),
   ];
-
   for (const p of r.params) {
     const present = `        $byName.ContainsKey(${q(p.name)}) | Should -BeTrue -Because ${q(`the contract declares parameter ${p.name}`)}`;
     lines.push(
@@ -119,8 +139,7 @@ function routineBlock(model: Model, r: Routine, source: string): string[] {
       '    }',
     );
     if (p.kind === 'enum' && p.binds !== undefined) {
-      const ref = resolveBinding(p.binds, typeIds);
-      const bound = ref ? model.types.find((t) => t.id === ref.typeId)?.properties.find((x) => x.name === ref.property) : undefined;
+      const bound = resolveProperty(index, p.binds)?.property;
       if (bound && bound.kind === 'enum' && bound.enumValues) {
         lines.push(
           '',
@@ -139,13 +158,14 @@ function routineBlock(model: Model, r: Routine, source: string): string[] {
 }
 
 /**
- * One Pester 5 test file for runbook and function routines that declare a
+ * One Pester test file for runbook and function routines that declare a
  * source. Each script is parsed, never executed: the checks read the param
- * block (names and order, Mandatory, type constraint, ValidateSet for enum
- * params bound to an enum property). A runbook's output shape cannot be
- * checked statically, so no test covers it.
+ * block (names, and their order under positional passing; Mandatory; type
+ * constraint; ValidateSet for enum params bound to an enum property). A
+ * runbook's output shape cannot be checked statically, so no test covers it.
  */
 export function projectPesterContractTests(model: Model): string {
+  const index = indexModel(model);
   const lines: string[] = [
     HASH_NOTICE,
     '# Loom conformance checks for runbook and function routines (Pester 5; also runs under Pester 6).',
@@ -165,7 +185,7 @@ export function projectPesterContractTests(model: Model): string {
       lines.push(`# Routine ${r.id} (${r.host}) declares no source, so its contract is not checked.`);
       continue;
     }
-    lines.push(...routineBlock(model, r, r.source));
+    lines.push(...routineBlock(index, r, r.source));
   }
   return toText(lines);
 }

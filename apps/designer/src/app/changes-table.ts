@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import type { Change } from '@loom/core';
+import type { AffectedElement, Change } from '@loom/core';
 
 @Component({
   selector: 'app-changes-table',
@@ -9,16 +9,17 @@ import type { Change } from '@loom/core';
     } @else {
       <table class="grid">
         <thead>
-          <tr><th>Kind</th><th>Element</th><th>Path</th><th>Reason</th><th>Consumers</th></tr>
+          <tr><th>Kind</th><th>Dimension</th><th>Element</th><th>Path</th><th>Reason</th><th>Consumers</th></tr>
         </thead>
         <tbody>
           @for (c of changes(); track $index) {
             <tr [class]="'chg-' + c.kind">
               <td data-col="kind">{{ c.kind }}</td>
+              <td data-col="dimension">{{ c.dimension }}</td>
               <td data-col="element"><code>{{ c.element }}</code> <span class="muted">{{ c.elementKind }}</span></td>
               <td data-col="path"><code>{{ c.path }}</code></td>
               <td data-col="reason">{{ c.reason }}</td>
-              <td data-col="consumers">{{ c.consumers.join(', ') }}</td>
+              <td data-col="consumers">{{ ids(c.consumers) }}</td>
             </tr>
           }
         </tbody>
@@ -28,4 +29,8 @@ import type { Change } from '@loom/core';
 })
 export class ChangesTable {
   readonly changes = input.required<readonly Change[]>();
+
+  protected ids(list: readonly AffectedElement[]): string {
+    return list.map((a) => a.ref.id).join(', ');
+  }
 }

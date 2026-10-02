@@ -4,7 +4,7 @@
 -- from the contract (expected order_id, status in this order)"). Applied
 -- against the projected schema.sql; Loom itself never executes it.
 CREATE PROCEDURE [ordering].[sp_place_order]
-    @p_total FLOAT,
+    @p_total DECIMAL(12,2),
     @p_note NVARCHAR(280) = NULL
 AS
 BEGIN

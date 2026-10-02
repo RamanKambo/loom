@@ -4,8 +4,9 @@ Dispatches a paid order to fulfillment by creating a pending shipment.
 
 .DESCRIPTION
 Test fixture for the generated Routines.Contract.Tests.ps1 that VIOLATES the
-sample contract of routine fulfillment.rb_dispatch: OrderId is not Mandatory,
-and Notify is declared before InitialState. The generated tests must fail on it.
+sample contract of routine fulfillment.rb_dispatch: OrderId is not Mandatory.
+The routine takes named parameters, so its declaration order carries no
+meaning. The generated tests must fail on it.
 #>
 [CmdletBinding()]
 param(

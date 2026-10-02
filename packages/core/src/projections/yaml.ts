@@ -1,5 +1,5 @@
 import { stringify } from 'yaml';
-import type { Model } from '../types.js';
+import type { Model } from '../generated/types.js';
 import { HASH_NOTICE } from './notice.js';
 
 /**

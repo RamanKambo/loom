@@ -5,25 +5,62 @@
   "version": 1,
   "language": "json-schema",
   "description": "JSON Schema 2020-12 projection of every type.",
-  "artifacts": [{ "target": "json-schema", "instancing": "singleton" }],
+  "artifacts": [
+    {
+      "target": "json-schema",
+      "instancing": "singleton"
+    }
+  ],
   "supports": [
-    { "construct": "type.object", "description": "Object types with required members, nullability, bounds, enums, decimal precision, arrays, references and discriminated unions." }
+    {
+      "construct": "type.object",
+      "description": "Object types with required members, nullability, bounds, enums, decimal precision, arrays, references and discriminated unions."
+    }
   ],
   "unsupported": [
-    { "construct": "type.externalSchema", "reason": "A pinned external schema is referenced, not inlined.", "onUse": "draft" }
+    {
+      "construct": "type.externalSchema",
+      "reason": "A pinned external schema is referenced, not inlined.",
+      "onUse": "draft"
+    },
+    {
+      "construct": "type.decimalRange",
+      "reason": "A decimal travels as a string so no digit is lost to binary floating point; JSON Schema bounds such a value only by sign, precision and scale, not by an arbitrary minimum or maximum.",
+      "onUse": "draft"
+    }
   ],
   "tooling": [
-    { "tool": "ajv", "versionPolicy": { "major": 8 }, "required": true, "purpose": "Compiles the projected schema as an independent JSON Schema 2020-12 validator." }
+    {
+      "tool": "ajv",
+      "versionPolicy": {
+        "major": 8
+      },
+      "required": true,
+      "purpose": "Compiles the projected schema as an independent JSON Schema 2020-12 validator."
+    }
   ],
   "proofLimits": [
     "Compilation proves the schema is valid JSON Schema 2020-12; it does not prove that producers emit conforming payloads."
   ],
   "checks": [
     {
-      "id": "json-schema.compile", "revision": 1, "layer": "schema", "evidence": "parse",
+      "id": "json-schema.compile",
+      "revision": 1,
+      "layer": "schema",
+      "evidence": "parse",
       "claim": "The projected schema compiles under Ajv 2020-12 strict mode, accepts a generated conforming instance of every type and rejects an instance missing a required member.",
-      "tool": { "name": "ajv", "versionPolicy": { "major": 8 } }, "runner": "json-schema-compile",
-      "inputs": ["json-schema"], "environment": "process", "requiredByDefault": true,
+      "tool": {
+        "name": "ajv",
+        "versionPolicy": {
+          "major": 8
+        }
+      },
+      "runner": "json-schema-compile",
+      "inputs": [
+        "json-schema"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
       "limits": "Schema validity and generated samples only."
     }
   ]

@@ -12,7 +12,7 @@ import { TOOLS, executeTool } from './tools.js';
  */
 export function createLoomServer(): Server {
   const server = new Server(
-    { name: 'loom', version: '0.1.0' },
+    { name: 'loom', version: '1.0.0' },
     { capabilities: { tools: {} } },
   );
 

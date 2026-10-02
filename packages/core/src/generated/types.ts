@@ -37,7 +37,8 @@ export type RecordKind =
   | 'trustBoundary'
   | 'securityScheme'
   | 'consumerBinding'
-  | 'publishedContract';
+  | 'publishedContract'
+  | 'systemProfile';
 /**
  * Contract version of a versioned record. Distinct from the model format version, the configuration version and the record revision.
  */
@@ -813,7 +814,7 @@ export interface Substitute {
   /**
    * @minItems 1
    */
-  permits: [TaskClass, ...TaskClass[]];
+  permits: TaskClass[];
   limits: Text;
 }
 export interface EvidenceClaim {
@@ -829,7 +830,7 @@ export interface EvidenceRecord {
   /**
    * @minItems 1
    */
-  claims: [EvidenceClaim, ...EvidenceClaim[]];
+  claims: EvidenceClaim[];
   kind: EvidenceKind;
   check: {
     id: Id;
@@ -969,15 +970,15 @@ export interface CapabilityRegister {
     /**
      * @minItems 1
      */
-    code: [string, ...string[]];
+    code: string[];
     /**
      * @minItems 1
      */
-    contract: [string, ...string[]];
+    contract: string[];
     /**
      * @minItems 1
      */
-    verification: [string, ...string[]];
+    verification: string[];
   }[];
 }
 export interface Quantity {
@@ -1235,7 +1236,7 @@ export interface LogicalExpression {
   /**
    * @minItems 2
    */
-  args: [Expression, Expression, ...Expression[]];
+  args: Expression[];
 }
 export interface NegationExpression {
   op: 'not';
@@ -1247,7 +1248,7 @@ export interface MembershipExpression {
   /**
    * @minItems 1
    */
-  values: [Literal, ...Literal[]];
+  values: Literal[];
 }
 export interface NullTestExpression {
   op: 'isNull' | 'isNotNull';
@@ -1530,7 +1531,7 @@ export interface StorageWrite {
   /**
    * @minItems 1
    */
-  columns: [Name, ...Name[]];
+  columns: Name[];
 }
 export interface Mutation {
   id: Id;
@@ -1547,7 +1548,7 @@ export interface Mutation {
    *
    * @minItems 1
    */
-  from: ['$absent' | StateName, ...('$absent' | StateName)[]];
+  from: ('$absent' | StateName)[];
   to: StateName;
   /**
    * Declared write set. A state-changing mutation declares the state property here.
@@ -1743,7 +1744,7 @@ export interface Unknown {
     /**
      * @minItems 1
      */
-    refs: [RecordRef, ...RecordRef[]];
+    refs: RecordRef[];
     evidence?: Id[];
   };
 }
@@ -1795,7 +1796,7 @@ export interface InventoryItem {
   /**
    * @minItems 1
    */
-  source: [SourceRef, ...SourceRef[]];
+  source: SourceRef[];
   disposition: 'retained' | 'adapted' | 'replaced' | 'excluded' | 'candidate';
   /**
    * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -1829,7 +1830,7 @@ export interface RetainedBehavior {
   /**
    * @minItems 1
    */
-  evidence: [EvidenceKind, ...EvidenceKind[]];
+  evidence: EvidenceKind[];
   status: 'retained' | 'changed' | 'dropped';
   /**
    * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -1841,7 +1842,7 @@ export interface Workload {
   /**
    * @minItems 1
    */
-  actors: [Text, ...Text[]];
+  actors: Text[];
   operations: {
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -1881,7 +1882,7 @@ export interface Attachment {
   /**
    * @minItems 1
    */
-  explains: [RecordRef, ...RecordRef[]];
+  explains: RecordRef[];
   /**
    * Canonical hash of each explained record at the time the rationale was last reviewed.
    */
@@ -1951,24 +1952,24 @@ export interface Storage {
   /**
    * @minItems 1
    */
-  columns: [StorageColumn, ...StorageColumn[]];
+  columns: StorageColumn[];
   /**
    * @minItems 1
    */
-  primaryKey: [Name, ...Name[]];
+  primaryKey: Name[];
   unique?: {
     name: Name;
     /**
      * @minItems 1
      */
-    columns: [Name, ...Name[]];
+    columns: Name[];
   }[];
   foreignKeys?: {
     name: Name;
     /**
      * @minItems 1
      */
-    columns: [Name, ...Name[]];
+    columns: Name[];
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
@@ -1976,7 +1977,7 @@ export interface Storage {
     /**
      * @minItems 1
      */
-    referencedColumns: [Name, ...Name[]];
+    referencedColumns: Name[];
     onDelete?: 'no-action' | 'cascade' | 'set-null';
   }[];
   checks?: {
@@ -1988,7 +1989,7 @@ export interface Storage {
     /**
      * @minItems 1
      */
-    columns: [Name, ...Name[]];
+    columns: Name[];
     unique: boolean;
   }[];
   notApplicable?: NotApplicable[];
@@ -2058,7 +2059,7 @@ export interface Migration {
   /**
    * @minItems 1
    */
-  evidence: [EvidenceKind, ...EvidenceKind[]];
+  evidence: EvidenceKind[];
 }
 /**
  * Which contract versions the readers or writers support while the migration is in flight.
@@ -2074,7 +2075,7 @@ export interface DeploymentUnit {
    *
    * Items: Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
-  components: [string, ...string[]];
+  components: string[];
   /**
    * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
@@ -2141,7 +2142,7 @@ export interface Host {
     /**
      * @minItems 1
      */
-    triggers: [Trigger, ...Trigger[]];
+    triggers: Trigger[];
     maxTimeout?: Duration;
     maxConcurrency?: number;
     scaling: 'none' | 'manual' | 'automatic';
@@ -2252,10 +2253,7 @@ export interface PatchUpdateComponents {
   /**
    * @minItems 1
    */
-  unset?: [
-    'owner' | 'kind' | 'implementations' | 'notApplicable',
-    ...('owner' | 'kind' | 'implementations' | 'notApplicable')[]
-  ];
+  unset?: ('owner' | 'kind' | 'implementations' | 'notApplicable')[];
 }
 export interface PatchRenameComponents {
   op: 'rename';
@@ -2434,30 +2432,17 @@ export interface PatchUpdateTypes {
   /**
    * @minItems 1
    */
-  unset?: [
-    (
-      | 'description'
-      | 'visibility'
-      | 'stateProperty'
-      | 'key'
-      | 'invariants'
-      | 'externalSchema'
-      | 'retention'
-      | 'supported'
-      | 'notApplicable'
-    ),
-    ...(
-      | 'description'
-      | 'visibility'
-      | 'stateProperty'
-      | 'key'
-      | 'invariants'
-      | 'externalSchema'
-      | 'retention'
-      | 'supported'
-      | 'notApplicable'
-    )[]
-  ];
+  unset?: (
+    | 'description'
+    | 'visibility'
+    | 'stateProperty'
+    | 'key'
+    | 'invariants'
+    | 'externalSchema'
+    | 'retention'
+    | 'supported'
+    | 'notApplicable'
+  )[];
 }
 export interface PatchRenameTypes {
   op: 'rename';
@@ -2571,48 +2556,26 @@ export interface PatchUpdateItemTypesProperties {
   /**
    * @minItems 1
    */
-  unset?: [
-    (
-      | 'description'
-      | 'units'
-      | 'enumValues'
-      | 'unknownEnumPolicy'
-      | 'bounds'
-      | 'decimal'
-      | 'ref'
-      | 'variants'
-      | 'discriminator'
-      | 'items'
-      | 'binds'
-      | 'visibility'
-      | 'classification'
-      | 'writers'
-      | 'default'
-      | 'retention'
-      | 'invariants'
-      | 'notApplicable'
-    ),
-    ...(
-      | 'description'
-      | 'units'
-      | 'enumValues'
-      | 'unknownEnumPolicy'
-      | 'bounds'
-      | 'decimal'
-      | 'ref'
-      | 'variants'
-      | 'discriminator'
-      | 'items'
-      | 'binds'
-      | 'visibility'
-      | 'classification'
-      | 'writers'
-      | 'default'
-      | 'retention'
-      | 'invariants'
-      | 'notApplicable'
-    )[]
-  ];
+  unset?: (
+    | 'description'
+    | 'units'
+    | 'enumValues'
+    | 'unknownEnumPolicy'
+    | 'bounds'
+    | 'decimal'
+    | 'ref'
+    | 'variants'
+    | 'discriminator'
+    | 'items'
+    | 'binds'
+    | 'visibility'
+    | 'classification'
+    | 'writers'
+    | 'default'
+    | 'retention'
+    | 'invariants'
+    | 'notApplicable'
+  )[];
 }
 export interface PatchAddItemTypesSupported {
   op: 'addItem';
@@ -2687,7 +2650,7 @@ export interface PatchUpdateItemTypesSupported {
   /**
    * @minItems 1
    */
-  unset?: ['rollout', ...'rollout'[]];
+  unset?: 'rollout'[];
 }
 export interface PatchAddItemTypesNotApplicable {
   op: 'addItem';
@@ -2806,48 +2769,26 @@ export interface PatchUpdateOperations {
   /**
    * @minItems 1
    */
-  unset?: [
-    (
-      | 'description'
-      | 'request'
-      | 'response'
-      | 'result'
-      | 'errors'
-      | 'bindings'
-      | 'invokes'
-      | 'criteria'
-      | 'scenarios'
-      | 'enforcement'
-      | 'preconditions'
-      | 'postconditions'
-      | 'idempotency'
-      | 'concurrency'
-      | 'transaction'
-      | 'async'
-      | 'supported'
-      | 'notApplicable'
-    ),
-    ...(
-      | 'description'
-      | 'request'
-      | 'response'
-      | 'result'
-      | 'errors'
-      | 'bindings'
-      | 'invokes'
-      | 'criteria'
-      | 'scenarios'
-      | 'enforcement'
-      | 'preconditions'
-      | 'postconditions'
-      | 'idempotency'
-      | 'concurrency'
-      | 'transaction'
-      | 'async'
-      | 'supported'
-      | 'notApplicable'
-    )[]
-  ];
+  unset?: (
+    | 'description'
+    | 'request'
+    | 'response'
+    | 'result'
+    | 'errors'
+    | 'bindings'
+    | 'invokes'
+    | 'criteria'
+    | 'scenarios'
+    | 'enforcement'
+    | 'preconditions'
+    | 'postconditions'
+    | 'idempotency'
+    | 'concurrency'
+    | 'transaction'
+    | 'async'
+    | 'supported'
+    | 'notApplicable'
+  )[];
 }
 export interface PatchRenameOperations {
   op: 'rename';
@@ -2922,7 +2863,7 @@ export interface PatchUpdateItemOperationsErrors {
   /**
    * @minItems 1
    */
-  unset?: ['status' | 'type', ...('status' | 'type')[]];
+  unset?: ('status' | 'type')[];
 }
 export interface PatchAddItemOperationsInvokes {
   op: 'addItem';
@@ -3051,7 +2992,7 @@ export interface PatchUpdateItemOperationsSupported {
   /**
    * @minItems 1
    */
-  unset?: ['rollout', ...'rollout'[]];
+  unset?: 'rollout'[];
 }
 export interface PatchAddItemOperationsNotApplicable {
   op: 'addItem';
@@ -3157,10 +3098,7 @@ export interface PatchUpdateRoutines {
   /**
    * @minItems 1
    */
-  unset?: [
-    'source' | 'writes' | 'transactionScope' | 'supported' | 'notApplicable',
-    ...('source' | 'writes' | 'transactionScope' | 'supported' | 'notApplicable')[]
-  ];
+  unset?: ('source' | 'writes' | 'transactionScope' | 'supported' | 'notApplicable')[];
 }
 export interface PatchRenameRoutines {
   op: 'rename';
@@ -3235,7 +3173,7 @@ export interface PatchUpdateItemRoutinesParams {
   /**
    * @minItems 1
    */
-  unset?: ['enumValues' | 'bounds' | 'decimal' | 'binds', ...('enumValues' | 'bounds' | 'decimal' | 'binds')[]];
+  unset?: ('enumValues' | 'bounds' | 'decimal' | 'binds')[];
 }
 export interface PatchAddItemRoutinesResultSet {
   op: 'addItem';
@@ -3300,7 +3238,7 @@ export interface PatchUpdateItemRoutinesResultSet {
   /**
    * @minItems 1
    */
-  unset?: ['enumValues' | 'bounds' | 'decimal' | 'binds', ...('enumValues' | 'bounds' | 'decimal' | 'binds')[]];
+  unset?: ('enumValues' | 'bounds' | 'decimal' | 'binds')[];
 }
 export interface PatchAddItemRoutinesWrites {
   op: 'addItem';
@@ -3358,7 +3296,7 @@ export interface PatchUpdateItemRoutinesWrites {
     /**
      * @minItems 1
      */
-    columns?: [Name, ...Name[]];
+    columns?: Name[];
   };
 }
 export interface PatchAddItemRoutinesSupported {
@@ -3434,7 +3372,7 @@ export interface PatchUpdateItemRoutinesSupported {
   /**
    * @minItems 1
    */
-  unset?: ['rollout', ...'rollout'[]];
+  unset?: 'rollout'[];
 }
 export interface PatchAddItemRoutinesNotApplicable {
   op: 'addItem';
@@ -3522,7 +3460,7 @@ export interface PatchUpdateMutations {
      *
      * @minItems 1
      */
-    from?: ['$absent' | StateName, ...('$absent' | StateName)[]];
+    from?: ('$absent' | StateName)[];
     to?: StateName;
     /**
      * Declared write set. A state-changing mutation declares the state property here.
@@ -3546,7 +3484,7 @@ export interface PatchUpdateMutations {
   /**
    * @minItems 1
    */
-  unset?: ['criteria', ...'criteria'[]];
+  unset?: 'criteria'[];
 }
 export interface PatchRenameMutations {
   op: 'rename';
@@ -3615,7 +3553,7 @@ export interface PatchUpdateWorkflows {
   /**
    * @minItems 1
    */
-  unset?: ['operations' | 'mutations', ...('operations' | 'mutations')[]];
+  unset?: ('operations' | 'mutations')[];
 }
 export interface PatchRenameWorkflows {
   op: 'rename';
@@ -3731,7 +3669,7 @@ export interface PatchUpdateEdges {
   /**
    * @minItems 1
    */
-  unset?: ['rationale' | 'readiness' | 'cycle', ...('rationale' | 'readiness' | 'cycle')[]];
+  unset?: ('rationale' | 'readiness' | 'cycle')[];
 }
 export interface PatchAddRequirements {
   op: 'add';
@@ -3780,7 +3718,7 @@ export interface PatchUpdateRequirements {
   /**
    * @minItems 1
    */
-  unset?: ['notApplicable', ...'notApplicable'[]];
+  unset?: 'notApplicable'[];
 }
 export interface PatchRenameRequirements {
   op: 'rename';
@@ -3953,10 +3891,7 @@ export interface PatchUpdateScenarios {
   /**
    * @minItems 1
    */
-  unset?: [
-    'given' | 'when' | 'operations' | 'retainedBehaviors',
-    ...('given' | 'when' | 'operations' | 'retainedBehaviors')[]
-  ];
+  unset?: ('given' | 'when' | 'operations' | 'retainedBehaviors')[];
 }
 export interface PatchRenameScenarios {
   op: 'rename';
@@ -4011,7 +3946,7 @@ export interface PatchUpdateConstraints {
   /**
    * @minItems 1
    */
-  unset?: ['exceptionPolicy', ...'exceptionPolicy'[]];
+  unset?: 'exceptionPolicy'[];
 }
 export interface PatchRenameConstraints {
   op: 'rename';
@@ -4064,7 +3999,7 @@ export interface PatchUpdateObservations {
   /**
    * @minItems 1
    */
-  unset?: ['vantage' | 'environment' | 'evidence', ...('vantage' | 'environment' | 'evidence')[]];
+  unset?: ('vantage' | 'environment' | 'evidence')[];
 }
 export interface PatchRenameObservations {
   op: 'rename';
@@ -4118,7 +4053,7 @@ export interface PatchUpdateAssumptions {
   /**
    * @minItems 1
    */
-  unset?: ['expires' | 'resolvedBy', ...('expires' | 'resolvedBy')[]];
+  unset?: ('expires' | 'resolvedBy')[];
 }
 export interface PatchRenameAssumptions {
   op: 'rename';
@@ -4183,14 +4118,14 @@ export interface PatchUpdateUnknowns {
       /**
        * @minItems 1
        */
-      refs: [RecordRef, ...RecordRef[]];
+      refs: RecordRef[];
       evidence?: Id[];
     };
   };
   /**
    * @minItems 1
    */
-  unset?: ['concerns' | 'closure', ...('concerns' | 'closure')[]];
+  unset?: ('concerns' | 'closure')[];
 }
 export interface PatchRenameUnknowns {
   op: 'rename';
@@ -4261,10 +4196,7 @@ export interface PatchUpdateDecisions {
   /**
    * @minItems 1
    */
-  unset?: [
-    'constraints' | 'chosen' | 'tradeoffs' | 'rationale' | 'supersededBy' | 'attachments',
-    ...('constraints' | 'chosen' | 'tradeoffs' | 'rationale' | 'supersededBy' | 'attachments')[]
-  ];
+  unset?: ('constraints' | 'chosen' | 'tradeoffs' | 'rationale' | 'supersededBy' | 'attachments')[];
 }
 export interface PatchRenameDecisions {
   op: 'rename';
@@ -4335,7 +4267,7 @@ export interface PatchUpdateItemDecisionsAlternatives {
   /**
    * @minItems 1
    */
-  unset?: ['rejectedBecause', ...'rejectedBecause'[]];
+  unset?: 'rejectedBecause'[];
 }
 export interface PatchAddInventory {
   op: 'add';
@@ -4378,7 +4310,7 @@ export interface PatchUpdateInventory {
     /**
      * @minItems 1
      */
-    source?: [SourceRef, ...SourceRef[]];
+    source?: SourceRef[];
     disposition?: 'retained' | 'adapted' | 'replaced' | 'excluded' | 'candidate';
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -4397,10 +4329,7 @@ export interface PatchUpdateInventory {
   /**
    * @minItems 1
    */
-  unset?: [
-    'replacedBy' | 'components' | 'executableBaseline',
-    ...('replacedBy' | 'components' | 'executableBaseline')[]
-  ];
+  unset?: ('replacedBy' | 'components' | 'executableBaseline')[];
 }
 export interface PatchRenameInventory {
   op: 'rename';
@@ -4457,7 +4386,7 @@ export interface PatchUpdateRetainedBehaviors {
     /**
      * @minItems 1
      */
-    evidence?: [EvidenceKind, ...EvidenceKind[]];
+    evidence?: EvidenceKind[];
     status?: 'retained' | 'changed' | 'dropped';
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -4467,7 +4396,7 @@ export interface PatchUpdateRetainedBehaviors {
   /**
    * @minItems 1
    */
-  unset?: ['criteria' | 'decision', ...('criteria' | 'decision')[]];
+  unset?: ('criteria' | 'decision')[];
 }
 export interface PatchRenameRetainedBehaviors {
   op: 'rename';
@@ -4511,7 +4440,7 @@ export interface PatchUpdateWorkloads {
     /**
      * @minItems 1
      */
-    actors?: [Text, ...Text[]];
+    actors?: Text[];
     operations?: {
       /**
        * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
@@ -4543,10 +4472,7 @@ export interface PatchUpdateWorkloads {
   /**
    * @minItems 1
    */
-  unset?: [
-    'latency' | 'availability' | 'dataLifecycle' | 'failureExpectations',
-    ...('latency' | 'availability' | 'dataLifecycle' | 'failureExpectations')[]
-  ];
+  unset?: ('latency' | 'availability' | 'dataLifecycle' | 'failureExpectations')[];
 }
 export interface PatchRenameWorkloads {
   op: 'rename';
@@ -4593,7 +4519,7 @@ export interface PatchUpdateAttachments {
     /**
      * @minItems 1
      */
-    explains?: [RecordRef, ...RecordRef[]];
+    explains?: RecordRef[];
     /**
      * Canonical hash of each explained record at the time the rationale was last reviewed.
      */
@@ -4664,7 +4590,7 @@ export interface PatchUpdateMappings {
   /**
    * @minItems 1
    */
-  unset?: ['unmapped', ...'unmapped'[]];
+  unset?: 'unmapped'[];
 }
 export interface PatchRenameMappings {
   op: 'rename';
@@ -4750,10 +4676,7 @@ export interface PatchUpdateItemMappingsFields {
   /**
    * @minItems 1
    */
-  unset?: [
-    'from' | 'conversion' | 'value' | 'validation' | 'exposure',
-    ...('from' | 'conversion' | 'value' | 'validation' | 'exposure')[]
-  ];
+  unset?: ('from' | 'conversion' | 'value' | 'validation' | 'exposure')[];
 }
 export interface PatchAddItemMappingsUnmapped {
   op: 'addItem';
@@ -4860,24 +4783,24 @@ export interface PatchUpdateStorage {
     /**
      * @minItems 1
      */
-    columns?: [StorageColumn, ...StorageColumn[]];
+    columns?: StorageColumn[];
     /**
      * @minItems 1
      */
-    primaryKey?: [Name, ...Name[]];
+    primaryKey?: Name[];
     unique?: {
       name: Name;
       /**
        * @minItems 1
        */
-      columns: [Name, ...Name[]];
+      columns: Name[];
     }[];
     foreignKeys?: {
       name: Name;
       /**
        * @minItems 1
        */
-      columns: [Name, ...Name[]];
+      columns: Name[];
       /**
        * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
        */
@@ -4885,7 +4808,7 @@ export interface PatchUpdateStorage {
       /**
        * @minItems 1
        */
-      referencedColumns: [Name, ...Name[]];
+      referencedColumns: Name[];
       onDelete?: 'no-action' | 'cascade' | 'set-null';
     }[];
     checks?: {
@@ -4897,7 +4820,7 @@ export interface PatchUpdateStorage {
       /**
        * @minItems 1
        */
-      columns: [Name, ...Name[]];
+      columns: Name[];
       unique: boolean;
     }[];
     notApplicable?: NotApplicable[];
@@ -4905,10 +4828,7 @@ export interface PatchUpdateStorage {
   /**
    * @minItems 1
    */
-  unset?: [
-    'unique' | 'foreignKeys' | 'checks' | 'indexes' | 'notApplicable',
-    ...('unique' | 'foreignKeys' | 'checks' | 'indexes' | 'notApplicable')[]
-  ];
+  unset?: ('unique' | 'foreignKeys' | 'checks' | 'indexes' | 'notApplicable')[];
 }
 export interface PatchRenameStorage {
   op: 'rename';
@@ -4988,7 +4908,7 @@ export interface PatchUpdateItemStorageColumns {
   /**
    * @minItems 1
    */
-  unset?: ['property' | 'collation' | 'default' | 'identity', ...('property' | 'collation' | 'default' | 'identity')[]];
+  unset?: ('property' | 'collation' | 'default' | 'identity')[];
 }
 export interface PatchAddItemStorageUnique {
   op: 'addItem';
@@ -5006,7 +4926,7 @@ export interface StorageUniqueItem {
   /**
    * @minItems 1
    */
-  columns: [Name, ...Name[]];
+  columns: Name[];
 }
 export interface PatchReplaceItemStorageUnique {
   op: 'replaceItem';
@@ -5053,7 +4973,7 @@ export interface PatchUpdateItemStorageUnique {
     /**
      * @minItems 1
      */
-    columns?: [Name, ...Name[]];
+    columns?: Name[];
   };
 }
 export interface PatchAddItemStorageForeignKeys {
@@ -5072,7 +4992,7 @@ export interface StorageForeignKeysItem {
   /**
    * @minItems 1
    */
-  columns: [Name, ...Name[]];
+  columns: Name[];
   /**
    * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
@@ -5080,7 +5000,7 @@ export interface StorageForeignKeysItem {
   /**
    * @minItems 1
    */
-  referencedColumns: [Name, ...Name[]];
+  referencedColumns: Name[];
   onDelete?: 'no-action' | 'cascade' | 'set-null';
 }
 export interface PatchReplaceItemStorageForeignKeys {
@@ -5128,7 +5048,7 @@ export interface PatchUpdateItemStorageForeignKeys {
     /**
      * @minItems 1
      */
-    columns?: [Name, ...Name[]];
+    columns?: Name[];
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
@@ -5136,13 +5056,13 @@ export interface PatchUpdateItemStorageForeignKeys {
     /**
      * @minItems 1
      */
-    referencedColumns?: [Name, ...Name[]];
+    referencedColumns?: Name[];
     onDelete?: 'no-action' | 'cascade' | 'set-null';
   };
   /**
    * @minItems 1
    */
-  unset?: ['onDelete', ...'onDelete'[]];
+  unset?: 'onDelete'[];
 }
 export interface PatchAddItemStorageChecks {
   op: 'addItem';
@@ -5220,7 +5140,7 @@ export interface StorageIndexesItem {
   /**
    * @minItems 1
    */
-  columns: [Name, ...Name[]];
+  columns: Name[];
   unique: boolean;
 }
 export interface PatchReplaceItemStorageIndexes {
@@ -5268,7 +5188,7 @@ export interface PatchUpdateItemStorageIndexes {
     /**
      * @minItems 1
      */
-    columns?: [Name, ...Name[]];
+    columns?: Name[];
     unique?: boolean;
   };
 }
@@ -5364,15 +5284,12 @@ export interface PatchUpdateMigrations {
     /**
      * @minItems 1
      */
-    evidence?: [EvidenceKind, ...EvidenceKind[]];
+    evidence?: EvidenceKind[];
   };
   /**
    * @minItems 1
    */
-  unset?: [
-    'script' | 'backfill' | 'transformation' | 'deploymentOrder',
-    ...('script' | 'backfill' | 'transformation' | 'deploymentOrder')[]
-  ];
+  unset?: ('script' | 'backfill' | 'transformation' | 'deploymentOrder')[];
 }
 export interface PatchRenameMigrations {
   op: 'rename';
@@ -5418,7 +5335,7 @@ export interface PatchUpdateDeploymentUnits {
      *
      * Items: Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
-    components?: [string, ...string[]];
+    components?: string[];
     /**
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
@@ -5465,32 +5382,18 @@ export interface PatchUpdateDeploymentUnits {
   /**
    * @minItems 1
    */
-  unset?: [
-    (
-      | 'instances'
-      | 'timeout'
-      | 'concurrency'
-      | 'identity'
-      | 'ingress'
-      | 'egress'
-      | 'configuration'
-      | 'isolation'
-      | 'decision'
-      | 'notApplicable'
-    ),
-    ...(
-      | 'instances'
-      | 'timeout'
-      | 'concurrency'
-      | 'identity'
-      | 'ingress'
-      | 'egress'
-      | 'configuration'
-      | 'isolation'
-      | 'decision'
-      | 'notApplicable'
-    )[]
-  ];
+  unset?: (
+    | 'instances'
+    | 'timeout'
+    | 'concurrency'
+    | 'identity'
+    | 'ingress'
+    | 'egress'
+    | 'configuration'
+    | 'isolation'
+    | 'decision'
+    | 'notApplicable'
+  )[];
 }
 export interface PatchRenameDeploymentUnits {
   op: 'rename';
@@ -5565,7 +5468,7 @@ export interface PatchUpdateItemDeploymentUnitsConfiguration {
   /**
    * @minItems 1
    */
-  unset?: ['description', ...'description'[]];
+  unset?: 'description'[];
 }
 export interface PatchAddItemDeploymentUnitsNotApplicable {
   op: 'addItem';
@@ -5658,7 +5561,7 @@ export interface PatchUpdateHosts {
       /**
        * @minItems 1
        */
-      triggers: [Trigger, ...Trigger[]];
+      triggers: Trigger[];
       maxTimeout?: Duration;
       maxConcurrency?: number;
       scaling: 'none' | 'manual' | 'automatic';
@@ -5670,7 +5573,7 @@ export interface PatchUpdateHosts {
   /**
    * @minItems 1
    */
-  unset?: ['inventory', ...'inventory'[]];
+  unset?: 'inventory'[];
 }
 export interface PatchRenameHosts {
   op: 'rename';
@@ -5769,10 +5672,7 @@ export interface PatchUpdateSecuritySchemes {
   /**
    * @minItems 1
    */
-  unset?: [
-    'scheme' | 'bearerFormat' | 'in' | 'name' | 'openIdConnectUrl' | 'flows' | 'description',
-    ...('scheme' | 'bearerFormat' | 'in' | 'name' | 'openIdConnectUrl' | 'flows' | 'description')[]
-  ];
+  unset?: ('scheme' | 'bearerFormat' | 'in' | 'name' | 'openIdConnectUrl' | 'flows' | 'description')[];
 }
 export interface PatchRenameSecuritySchemes {
   op: 'rename';
@@ -5823,7 +5723,7 @@ export interface PatchUpdateConsumerBindings {
   /**
    * @minItems 1
    */
-  unset?: ['version', ...'version'[]];
+  unset?: 'version'[];
 }
 export interface PatchRenameConsumerBindings {
   op: 'rename';
@@ -5995,7 +5895,7 @@ export interface ProfileDefinition {
   /**
    * @minItems 1
    */
-  proofLimits: [Text, ...Text[]];
+  proofLimits: Text[];
   checks: CheckDefinition[];
   concerns?: ConcernDefinition[];
 }
@@ -6044,11 +5944,11 @@ export interface Icd {
   /**
    * @minItems 1
    */
-  owns: [Text, ...Text[]];
+  owns: Text[];
   /**
    * @minItems 1
    */
-  boundary: [Text, ...Text[]];
+  boundary: Text[];
   provides: IcdInterface[];
   consumes: {
     component: string;
@@ -6066,7 +5966,7 @@ export interface AffectedElement {
    *
    * @minItems 1
    */
-  path: [string, ...string[]];
+  path: string[];
   edgeKinds?: ('semantic' | 'structural' | 'runtime' | 'build' | 'integration' | 'reference')[];
 }
 /**
@@ -6209,7 +6109,7 @@ export interface MutateInput {
   /**
    * @minItems 1
    */
-  patches?: [Patch, ...Patch[]];
+  patches?: Patch[];
   acknowledgeBreaking?: string[];
   expectedRevision?: Hash;
   dryRun?: boolean;
@@ -6300,7 +6200,7 @@ export interface PlanChangeInput {
   /**
    * @minItems 1
    */
-  patches?: [Patch, ...Patch[]];
+  patches?: Patch[];
   acknowledgeBreaking?: string[];
 }
 export interface Prerequisite {
@@ -6337,7 +6237,7 @@ export interface EvidenceObligation {
   /**
    * @minItems 1
    */
-  kinds: [EvidenceKind, ...EvidenceKind[]];
+  kinds: EvidenceKind[];
   required: boolean;
   /**
    * 'absent' (no evidence), 'failing' (evidence that failed), 'passing' (current trusted PASS) and the other states are distinct; coverage never conflates them.
@@ -6592,7 +6492,7 @@ export interface LoomConfig {
     /**
      * @minItems 1
      */
-    [k: string]: [RelativePath, ...RelativePath[]] | undefined;
+    [k: string]: RelativePath[] | undefined;
   };
   /**
    * Generated artifact instance to one repository-relative target directory. An unmapped enabled artifact goes to Docs/Loom/.

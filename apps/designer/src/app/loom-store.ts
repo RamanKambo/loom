@@ -12,6 +12,7 @@ import {
   projectToFiles,
   sampleModel,
   validate,
+  type AffectedElement,
   type Change,
   type Finding,
   type Model,
@@ -24,7 +25,7 @@ export interface MutationOutcome {
   accepted: boolean;
   findings: Finding[];
   changes: Change[];
-  impact: string[];
+  impact: AffectedElement[];
 }
 
 export interface Failure {

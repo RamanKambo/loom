@@ -1,8 +1,8 @@
-import type { Finding } from './types.js';
+import type { Finding } from './generated/types.js';
 
 /**
- * Thrown by loadModel/importModel when a value fails the structural meta-schema,
- * before any semantic rule runs. `errors` carries the raw Ajv error objects.
+ * Thrown by loadModel/importModel when a value fails the structural contract,
+ * before any semantic rule runs. `errors` carries the structural findings.
  */
 export class LoomStructuralError extends Error {
   readonly errors: unknown[];
@@ -15,8 +15,9 @@ export class LoomStructuralError extends Error {
 
 /**
  * Thrown by project() and exportModel() when the model carries error-severity
- * findings. These operations are fail-closed: an invalid model never serializes
- * or projects, so a bad mutation cannot leak into a downstream artifact.
+ * findings, or when a projection meets a construct its profile cannot express.
+ * These operations are fail-closed: an invalid model never serializes or
+ * projects, so a bad mutation cannot leak into a downstream artifact.
  */
 export class LoomInvalidModelError extends Error {
   readonly findings: Finding[];

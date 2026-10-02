@@ -1,221 +1,193 @@
-import type { Severity } from './types.js';
+import type { FindingCode, Severity } from './generated/types.js';
+import { SCHEMA_BUNDLE } from './generated/schemas.js';
 
-/**
- * Stable finding codes for every rule the engine enforces: structural, semantic
- * (validate), and the mutation gate (mutate). Callers match on these, never on
- * message text, so a code is never renamed once published.
- */
-export const FINDING = {
-  STRUCTURAL_INVALID: 'STRUCTURAL_INVALID',
-  DUPLICATE_ID: 'DUPLICATE_ID',
-  DANGLING_REF: 'DANGLING_REF',
-  TABLE_COMPONENT_UNKNOWN: 'TABLE_COMPONENT_UNKNOWN',
-  TYPE_STATE_PROPERTY_INVALID: 'TYPE_STATE_PROPERTY_INVALID',
-  TYPE_TABLE_NONOWNER: 'TYPE_TABLE_NONOWNER',
-  TYPE_TABLE_DUPLICATE: 'TYPE_TABLE_DUPLICATE',
-  TYPE_TABLE_WITHOUT_KEY: 'TYPE_TABLE_WITHOUT_KEY',
-  TYPE_KEY_INVALID: 'TYPE_KEY_INVALID',
-  TYPE_KEY_WIDE: 'TYPE_KEY_WIDE',
-  BOUNDS_KIND_MISMATCH: 'BOUNDS_KIND_MISMATCH',
-  ENUM_WITHOUT_VALUES: 'ENUM_WITHOUT_VALUES',
-  ENUM_PARAM_UNBOUND: 'ENUM_PARAM_UNBOUND',
-  MUTATION_NONOWNER: 'MUTATION_NONOWNER',
-  MUTATION_NO_STATE_PROPERTY: 'MUTATION_NO_STATE_PROPERTY',
-  MUTATION_ILLEGAL_STATE: 'MUTATION_ILLEGAL_STATE',
-  MUTATION_WRITE_UNKNOWN_PROPERTY: 'MUTATION_WRITE_UNKNOWN_PROPERTY',
-  MUTATION_IMMUTABLE_WRITE: 'MUTATION_IMMUTABLE_WRITE',
-  MUTATION_CREATION_MISSING_REQUIRED: 'MUTATION_CREATION_MISSING_REQUIRED',
-  MUTATION_NO_REQUIREMENT: 'MUTATION_NO_REQUIREMENT',
-  MUTATION_NO_SCENARIO: 'MUTATION_NO_SCENARIO',
-  MUTATION_TRACEABILITY_UNCOVERED: 'MUTATION_TRACEABILITY_UNCOVERED',
-  ROUTINE_NONOWNER_TABLE_WRITE: 'ROUTINE_NONOWNER_TABLE_WRITE',
-  ROUTINE_MUTATION_OWNER_MISMATCH: 'ROUTINE_MUTATION_OWNER_MISMATCH',
-  ROUTINE_EMPTY_RESULTSET: 'ROUTINE_EMPTY_RESULTSET',
-  ROUTINE_DUPLICATE_COLUMN: 'ROUTINE_DUPLICATE_COLUMN',
-  ROUTINE_WRITE_SET_INCOMPLETE: 'ROUTINE_WRITE_SET_INCOMPLETE',
-  ROUTINE_WRITES_UNKNOWN_COLUMN: 'ROUTINE_WRITES_UNKNOWN_COLUMN',
-  ROUTINE_SOURCE_NOT_RELATIVE: 'ROUTINE_SOURCE_NOT_RELATIVE',
-  BINDING_KIND_MISMATCH: 'BINDING_KIND_MISMATCH',
-  BINDING_NULLABILITY_MISMATCH: 'BINDING_NULLABILITY_MISMATCH',
-  BINDING_NOT_KEY: 'BINDING_NOT_KEY',
-  BINDING_SQL_TYPE_MISMATCH: 'BINDING_SQL_TYPE_MISMATCH',
-  WORKFLOW_DEPENDENCY_CYCLE: 'WORKFLOW_DEPENDENCY_CYCLE',
-  WORKFLOW_IMPORT_VERSION_MISMATCH: 'WORKFLOW_IMPORT_VERSION_MISMATCH',
-  BREAKING_CHANGE_WITHOUT_VERSION_BUMP: 'BREAKING_CHANGE_WITHOUT_VERSION_BUMP',
-  BREAKING_CHANGE_UNACKNOWLEDGED: 'BREAKING_CHANGE_UNACKNOWLEDGED',
-  PATCH_TARGET_NOT_FOUND: 'PATCH_TARGET_NOT_FOUND',
-  PATCH_INVALID: 'PATCH_INVALID',
-} as const;
-
-export type FindingCode = (typeof FINDING)[keyof typeof FINDING];
+export type { FindingCode } from './generated/types.js';
 
 export interface FindingRule {
-  /** The severity every finding with this code carries; validate() and mutate() read it from here. */
   severity: Severity;
-  /** The rule in one line, as the `reference` projection lists it. */
+  /** The rule in one line, as the reference projection and loom.describe list it. */
   rule: string;
 }
 
-/**
- * The rule behind each finding code: the single home of its severity and its
- * one-line description. Keyed by FindingCode, so a code without a rule, or a
- * rule for no code, does not compile; selfTest() checks the same at run time.
- */
-export const FINDING_RULES: Readonly<Record<FindingCode, FindingRule>> = {
-  STRUCTURAL_INVALID: {
-    severity: 'error',
-    rule: 'The model does not match the structural meta-schema (meta-schema.ts, via Ajv): a missing, extra or mistyped field. It runs first; the semantic rules run only on a model that passes it.',
-  },
-  DUPLICATE_ID: {
-    severity: 'error',
-    rule: 'An id is declared more than once; ids are unique across components, types, operations, routines, mutations, workflows, requirements and scenarios.',
-  },
-  DANGLING_REF: {
-    severity: 'error',
-    rule: "A reference names no existing element: an owner; an operation's request, response or result type; a routine's mutation; a mutation's type, requirement or scenario; a workflow's dependency, import, operation, mutation or requirement; a scenario's requirement; an edge endpoint; or the type or property a binding names.",
-  },
-  TABLE_COMPONENT_UNKNOWN: {
-    severity: 'error',
-    rule: "A schema-qualified table '<component>.<table>' (a type's table or a routine's writesTables entry) names an unknown component; an unqualified table belongs to the declaring element's owner.",
-  },
-  TYPE_STATE_PROPERTY_INVALID: {
-    severity: 'error',
-    rule: "A type's stateProperty does not name an enum property with at least one enumValue.",
-  },
-  TYPE_TABLE_NONOWNER: {
-    severity: 'error',
-    rule: "A type's table is qualified by a component other than the type's owner.",
-  },
-  TYPE_TABLE_DUPLICATE: {
-    severity: 'error',
-    rule: 'Two types bind the same table.',
-  },
-  TYPE_TABLE_WITHOUT_KEY: {
-    severity: 'error',
-    rule: 'A table-backed type declares no key.',
-  },
-  TYPE_KEY_INVALID: {
-    severity: 'error',
-    rule: 'A key lists a property twice, names a property the type lacks, or names one that is optional or nullable. A table-backed key must also be a valid SQL Server primary key: every string key property needs a maxLength of at most 4,000, because an NVARCHAR(MAX) column cannot be an index key column, and the key holds at most 32 columns.',
-  },
-  TYPE_KEY_WIDE: {
-    severity: 'warning',
-    rule: 'A table-backed key declares more than 900 bytes. SQL Server accepts it but rejects writes whose key data exceeds 900 bytes (Microsoft Learn, Maximum capacity specifications for SQL Server, Database Engine objects).',
-  },
-  BOUNDS_KIND_MISMATCH: {
-    severity: 'error',
-    rule: 'A property carries a bound its kind does not take: minLength and maxLength apply only to strings, min and max only to integers and numbers.',
-  },
-  ENUM_WITHOUT_VALUES: {
-    severity: 'error',
-    rule: 'An enum property lists no enumValues.',
-  },
-  ENUM_PARAM_UNBOUND: {
-    severity: 'error',
-    rule: 'A routine param or result column of kind enum binds no enum property, so its values are unknown.',
-  },
-  MUTATION_NONOWNER: {
-    severity: 'error',
-    rule: "A mutation's owner is not the owner of its type.",
-  },
-  MUTATION_NO_STATE_PROPERTY: {
-    severity: 'error',
-    rule: 'A mutation targets a type that declares no stateProperty.',
-  },
-  MUTATION_ILLEGAL_STATE: {
-    severity: 'error',
-    rule: "A mutation's from or to state is not a value of its type's stateProperty enum; '$absent' in from marks a creation.",
-  },
-  MUTATION_WRITE_UNKNOWN_PROPERTY: {
-    severity: 'error',
-    rule: 'A mutation writes a property its type lacks.',
-  },
-  MUTATION_IMMUTABLE_WRITE: {
-    severity: 'error',
-    rule: "A mutation writes an immutable property outside creation (its from does not include '$absent').",
-  },
-  MUTATION_CREATION_MISSING_REQUIRED: {
-    severity: 'error',
-    rule: "A creation mutation (from includes '$absent') does not write every required property.",
-  },
-  MUTATION_NO_REQUIREMENT: {
-    severity: 'error',
-    rule: 'A mutation traces to no requirement.',
-  },
-  MUTATION_NO_SCENARIO: {
-    severity: 'error',
-    rule: 'A mutation traces to no scenario.',
-  },
-  MUTATION_TRACEABILITY_UNCOVERED: {
-    severity: 'error',
-    rule: "No scenario of a mutation covers one of the mutation's requirements.",
-  },
-  ROUTINE_NONOWNER_TABLE_WRITE: {
-    severity: 'error',
-    rule: 'A routine lists in writesTables a table owned by another component.',
-  },
-  ROUTINE_MUTATION_OWNER_MISMATCH: {
-    severity: 'error',
-    rule: 'A routine performs a mutation owned by another component.',
-  },
-  ROUTINE_EMPTY_RESULTSET: {
-    severity: 'error',
-    rule: 'A routine declares an empty result set.',
-  },
-  ROUTINE_DUPLICATE_COLUMN: {
-    severity: 'error',
-    rule: "A routine's result set names a column twice.",
-  },
-  ROUTINE_WRITE_SET_INCOMPLETE: {
-    severity: 'error',
-    rule: 'A routine performs a mutation on a table-backed type without listing that table in writesTables.',
-  },
-  ROUTINE_WRITES_UNKNOWN_COLUMN: {
-    severity: 'error',
-    rule: "A routine's writesColumns entry '<table>.<column>' names no known table, a table outside its writesTables, a table no type is bound to, or a column the bound type lacks.",
-  },
-  ROUTINE_SOURCE_NOT_RELATIVE: {
-    severity: 'error',
-    rule: "A routine's source is not repository-relative: it starts with a slash or backslash, or carries a drive letter.",
-  },
-  BINDING_KIND_MISMATCH: {
-    severity: 'error',
-    rule: "A routine param, a result column or a property's binds differs in kind from the property it binds; kinds must match exactly.",
-  },
-  BINDING_NULLABILITY_MISMATCH: {
-    severity: 'error',
-    rule: 'A routine param or result column differs in nullability from the property it binds. A property may be nullable while the key it binds is not: that is an optional reference.',
-  },
-  BINDING_NOT_KEY: {
-    severity: 'error',
-    rule: "A property's binds names something other than the whole key of a type, possibly its own: a non-key property, a composite key or a type with no key. A property is one column, so it may reference only a single-property key.",
-  },
-  BINDING_SQL_TYPE_MISMATCH: {
-    severity: 'error',
-    rule: "A property's binds between two table-backed types projects to a different SQL column type or length than the key it references; a foreign key column must match the data type and size of that key (Microsoft Learn, Modify Foreign Key Relationships, Limitations and Restrictions).",
-  },
-  WORKFLOW_DEPENDENCY_CYCLE: {
-    severity: 'error',
-    rule: 'Workflow dependsOn links form a cycle; the dependency graph must be acyclic.',
-  },
-  WORKFLOW_IMPORT_VERSION_MISMATCH: {
-    severity: 'error',
-    rule: "A workflow pins an imported type at a version other than the type's current one. It is an error, so a version bump must carry its pinned workflows in the same change.",
-  },
-  BREAKING_CHANGE_WITHOUT_VERSION_BUMP: {
-    severity: 'error',
-    rule: 'mutate(): a type, operation or routine with a breaking change does not carry a higher version.',
-  },
-  BREAKING_CHANGE_UNACKNOWLEDGED: {
-    severity: 'error',
-    rule: 'mutate(): an element with a breaking change is not listed in acknowledgeBreaking.',
-  },
-  PATCH_TARGET_NOT_FOUND: {
-    severity: 'error',
-    rule: 'mutate(): a patch names a type, property, operation, routine, mutation, workflow, workflow import or record that does not exist; the whole batch is refused.',
-  },
-  PATCH_INVALID: {
-    severity: 'error',
-    rule: "mutate(): a patch is malformed (not an object, an unknown op, a 'set' that is not an object or names a field the op may not set, an unknown version target or collection) or the batch is empty; the whole batch is refused.",
-  },
+/** Every finding code by name, taken from the contract's FindingCode enum so the two cannot drift. */
+export const FINDING = Object.fromEntries(SCHEMA_BUNDLE.$defs.FindingCode.enum.map((c) => [c, c])) as {
+  readonly [K in FindingCode]: K;
 };
+
+/**
+ * The single home of each code's severity and one-line rule. `satisfies` makes
+ * the table exhaustive over the contract's code vocabulary: a code added to the
+ * schema without a rule here fails compilation.
+ */
+export const FINDING_RULES = {
+  STRUCTURAL_INVALID: { severity: 'error', rule: 'The document satisfies the JSON Schema 2020-12 model contract; unknown members are rejected.' },
+  MODEL_FORMAT_UNSUPPORTED: { severity: 'error', rule: 'The model format version is one this engine supports; another version is migrated explicitly, never reinterpreted.' },
+  PATCH_INVALID: { severity: 'error', rule: 'A patch matches exactly one patch variant of the contract, field for field.' },
+  PATCH_AMBIGUOUS: { severity: 'error', rule: "A request carries exactly one of 'patch' or 'patches'." },
+  PATCH_TARGET_NOT_FOUND: { severity: 'error', rule: 'A patch names a record or item that exists.' },
+  DUPLICATE_ID: { severity: 'error', rule: 'Record ids, including acceptance-criterion ids, are unique across the model.' },
+  DUPLICATE_KEY: { severity: 'error', rule: 'Every keyed collection holds each key once.' },
+  DANGLING_REF: { severity: 'error', rule: 'Every reference resolves to a declared record.' },
+  REFERENCE_KIND_MISMATCH: { severity: 'error', rule: 'A reference names a record of the kind the field expects.' },
+  BOUNDS_KIND_MISMATCH: { severity: 'error', rule: 'Length and pattern bounds belong to strings, numeric bounds to numbers, item bounds to arrays.' },
+  BOUNDS_INVERTED: { severity: 'error', rule: 'A lower bound does not exceed its upper bound.' },
+  ENUM_WITHOUT_VALUES: { severity: 'error', rule: 'An enum declares at least one value.' },
+  ENUM_DUPLICATE_VALUE: { severity: 'error', rule: 'An enum lists each value once.' },
+  DECIMAL_SHAPE_INVALID: { severity: 'error', rule: 'A decimal declares its precision and a scale no greater than the precision; only a decimal declares one.' },
+  VALUE_SHAPE_INCOMPLETE: { severity: 'error', rule: 'A value shape declares exactly the members its kind needs: a ref its type, an array its items, a union its variants and discriminator.' },
+  DEFAULT_KIND_MISMATCH: { severity: 'error', rule: "A default's policy and literal value agree with the property's kind, values and nullability." },
+  TYPE_STATE_PROPERTY_INVALID: { severity: 'error', rule: 'A stateProperty names an enum property that declares the states.' },
+  TYPE_KEY_INVALID: { severity: 'error', rule: 'A key names distinct, required, non-nullable properties of its type.' },
+  REPRESENTATION_EXPOSES_PRIVATE: { severity: 'error', rule: 'A private or internal property reaches a public representation only through an accepted mapping exposure.' },
+  REPRESENTATION_TRUST_VIOLATION: { severity: 'error', rule: 'A server-owned value is never accepted from a caller.' },
+  OPERATION_REPRESENTATION_MISMATCH: { severity: 'error', rule: 'An operation exchanges request, response, domain or event representations, never a storage representation.' },
+  MAPPING_FIELD_UNKNOWN: { severity: 'error', rule: 'A mapping names properties that exist on its source and destination types.' },
+  MAPPING_KIND_MISMATCH: { severity: 'error', rule: 'A copied or renamed field keeps its kind; a changed kind is a declared conversion.' },
+  MAPPING_LOSSY_UNDECLARED: { severity: 'error', rule: 'A conversion that narrows precision, length or range declares itself lossy with its rounding.' },
+  MAPPING_INCOMPLETE: { severity: 'error', rule: 'Every required destination property is mapped or explicitly unmapped with a reason.' },
+  MAPPING_NULLABILITY_NARROWED: { severity: 'error', rule: 'A nullable or optional source never feeds a required non-nullable destination without a default.' },
+  STORAGE_NONOWNER: { severity: 'error', rule: 'A storage record is owned by the component that owns its type.' },
+  STORAGE_TABLE_DUPLICATE: { severity: 'error', rule: 'Each schema-qualified table is declared by one storage record.' },
+  STORAGE_KEY_INVALID: { severity: 'error', rule: "A primary key names existing, distinct, non-nullable, indexable columns, at most 32, mapping the type's key." },
+  STORAGE_KEY_WIDE: { severity: 'warning', rule: 'A primary key wider than 900 bytes accepts the declaration but fails writes whose key data exceeds 900 bytes.' },
+  STORAGE_COLUMN_UNKNOWN_PROPERTY: { severity: 'error', rule: "A column maps a property of the storage record's type." },
+  STORAGE_COLUMN_TYPE_MISMATCH: { severity: 'error', rule: "A column's SQL type belongs to the type family of its property's kind." },
+  STORAGE_COLUMN_LOSSY: { severity: 'error', rule: "A column's physical type holds every value of its property without rounding, truncation or floating-point conversion." },
+  STORAGE_COLUMN_NULLABILITY_MISMATCH: { severity: 'error', rule: 'A column is nullable exactly when its property is nullable or optional.' },
+  STORAGE_PROPERTY_UNMAPPED: { severity: 'error', rule: 'Every required property of a stored type maps to a column.' },
+  STORAGE_FOREIGN_KEY_INVALID: { severity: 'error', rule: "A foreign key's columns exist and match the referenced table's key columns in count and exact type." },
+  STORAGE_TYPE_UNSUPPORTED: { severity: 'error', rule: 'A column declares a complete physical type the selected platform supports.' },
+  BINDING_NOT_KEY: { severity: 'error', rule: 'A property binds the single-property key of the referenced type.' },
+  BINDING_KIND_MISMATCH: { severity: 'error', rule: 'A binding has the kind and decimal shape of the property it binds.' },
+  BINDING_NULLABILITY_MISMATCH: { severity: 'error', rule: 'A routine param or result column has the nullability of the property it binds.' },
+  BINDING_SQL_TYPE_MISMATCH: { severity: 'error', rule: 'A stored reference and the stored key it binds have the same SQL type and length.' },
+  HTTP_BINDING_INCOMPLETE: { severity: 'error', rule: 'An HTTP binding declares a method and a path; every parameter carries a property or a kind.' },
+  HTTP_ROUTE_INVALID: { severity: 'error', rule: 'A route is a well-formed path template whose path parameters are required.' },
+  HTTP_ROUTE_DUPLICATE: { severity: 'error', rule: 'No two HTTP bindings share a method and an equivalent templated path.' },
+  HTTP_PATH_PARAMETER_UNDECLARED: { severity: 'error', rule: 'Every template variable of a route is declared as a path parameter.' },
+  HTTP_PARAMETER_NOT_IN_PATH: { severity: 'error', rule: 'A path parameter names a variable of its route template.' },
+  HTTP_PARAMETER_UNKNOWN_PROPERTY: { severity: 'error', rule: 'A parameter carries a property of the operation request type.' },
+  HTTP_BODY_NOT_ALLOWED: { severity: 'error', rule: 'A GET, HEAD or DELETE binding carries every request property in parameters, never in a body.' },
+  HTTP_RESPONSE_INVALID: { severity: 'error', rule: 'Success responses are 2xx, accepted responses are 202 on asynchronous operations, and error responses are 4xx or 5xx.' },
+  OPERATION_SECURITY_UNDECLARED: { severity: 'error', rule: 'An HTTP-bound operation names the security scheme that carries its permission.' },
+  OPERATION_INVOCATION_INVALID: { severity: 'error', rule: "An operation invokes only its own component's mutations, never itself, and a query invokes no mutation." },
+  OPERATION_ENFORCEMENT_MISSING: { severity: 'error', rule: 'A state-changing operation names the components that enforce its authorization, validation and persistence.' },
+  ROUTINE_NONOWNER_STORAGE_WRITE: { severity: 'error', rule: "A routine writes only its own component's storage." },
+  ROUTINE_MUTATION_OWNER_MISMATCH: { severity: 'error', rule: "A routine performs only its own component's mutations." },
+  ROUTINE_EMPTY_RESULTSET: { severity: 'error', rule: 'A routine declares at least one result column.' },
+  ROUTINE_WRITE_SET_INCOMPLETE: { severity: 'error', rule: 'A routine declares every storage column the mutations it performs write.' },
+  ROUTINE_WRITES_UNKNOWN_COLUMN: { severity: 'error', rule: 'A routine writes only columns its storage declares.' },
+  ROUTINE_TRANSACTION_SCOPE_INVALID: { severity: 'error', rule: 'A transaction scope names declared storage.' },
+  ROUTINE_WRITE_OUTSIDE_TRANSACTION: { severity: 'error', rule: 'A routine with a declared transaction scope writes only storage inside it.' },
+  ENUM_PARAM_UNBOUND: { severity: 'error', rule: 'An enum param or result column binds the enum property whose values it carries.' },
+  MUTATION_NONOWNER: { severity: 'error', rule: "A mutation is owned by its type's owner, and writes only properties its component may write." },
+  MUTATION_NO_STATE_PROPERTY: { severity: 'error', rule: 'A mutation targets a type with a stateProperty.' },
+  MUTATION_ILLEGAL_STATE: { severity: 'error', rule: "A mutation's from- and to-states are legal states of its type." },
+  MUTATION_WRITE_UNKNOWN_PROPERTY: { severity: 'error', rule: 'A mutation writes only properties of its type.' },
+  MUTATION_IMMUTABLE_WRITE: { severity: 'error', rule: 'An update never writes an immutable property, including an immutable state property.' },
+  MUTATION_CREATION_MISSING_REQUIRED: { severity: 'error', rule: 'A creation writes every required property of its type.' },
+  MUTATION_MIXED_ORIGIN: { severity: 'error', rule: "A creation starts only from '$absent'; '$absent' never appears beside an existing state." },
+  MUTATION_STATE_WRITE_UNDECLARED: { severity: 'error', rule: 'A state-changing mutation declares the state property in its writes.' },
+  MUTATION_NO_REQUIREMENT: { severity: 'error', rule: 'A mutation traces to at least one requirement.' },
+  MUTATION_NO_SCENARIO: { severity: 'error', rule: 'A mutation is exercised by at least one scenario.' },
+  PREDICATE_PROPERTY_UNKNOWN: { severity: 'error', rule: 'An expression predicate references only properties of the type it constrains.' },
+  PREDICATE_TYPE_MISMATCH: { severity: 'error', rule: 'An expression predicate compares values of compatible kinds and orders only ordered kinds.' },
+  PREDICATE_UNVERIFIED: { severity: 'info', rule: 'A prose predicate is a claim that needs scenario evidence; it is never evaluated.' },
+  INVARIANT_ENFORCER_MISSING: { severity: 'error', rule: 'Every invariant names at least one accountable enforcement owner.' },
+  INVARIANT_ENFORCEMENT_CONFLICT: { severity: 'error', rule: 'An invariant enforced at several layers records a distinct purpose for each.' },
+  WORKFLOW_DEPENDENCY_CYCLE: { severity: 'error', rule: 'Workflow dependencies are acyclic.' },
+  WORKFLOW_IMPORT_VERSION_MISMATCH: { severity: 'error', rule: 'A workflow pins the current version of each type it imports.' },
+  EDGE_BUILD_CYCLE: { severity: 'error', rule: 'Build and structural dependency edges are acyclic.' },
+  EDGE_RUNTIME_CYCLE_UNDEFINED: { severity: 'error', rule: 'A runtime interaction cycle declares its defined behavior on at least one of its edges.' },
+  REQUIREMENT_WITHOUT_CRITERIA: { severity: 'error', rule: 'An active requirement states at least one acceptance criterion.' },
+  CRITERION_UNCOVERED: { severity: 'error', rule: 'A required criterion verified by scenario is covered by at least one scenario that names it.' },
+  CRITERION_SELF_ORACLE: { severity: 'error', rule: 'A business outcome is never verified only by a check generated from the declaration it checks.' },
+  SOURCE_REFERENCE_MISSING: { severity: 'error', rule: 'A sourced claim names its source with a revision or retrieval context.' },
+  CLAIM_ACCEPTANCE_UNVERIFIED: { severity: 'warning', rule: "A claim marked accepted is backed by a trusted acceptance record; the stored word grants nothing." },
+  CONCERN_UNRESOLVED: { severity: 'error', rule: 'Every applicable design concern is declared, covered by an unknown, or justified as not applicable.' },
+  DECISION_UNJUSTIFIED: { severity: 'error', rule: 'A decision compares alternatives with their consequences against the requirements, workload and constraints it rests on.' },
+  DECISION_ASSUMPTION_INVALIDATED: { severity: 'error', rule: 'A decision resting on an invalidated assumption is flagged for review with its affected work.' },
+  DECISION_INPUT_CHANGED: { severity: 'warning', rule: 'A decision whose inputs changed since it was accepted is flagged for review.' },
+  RETAINED_BEHAVIOR_UNCOVERED: { severity: 'error', rule: 'A retained behavior is covered by a scenario and an evidence obligation.' },
+  BASELINE_EXECUTION_UNKNOWN: { severity: 'info', rule: 'A retained or adapted component without a captured executable baseline is an explicit unknown.' },
+  RATIONALE_REVIEW_REQUIRED: { severity: 'warning', rule: 'Authored rationale whose explained records changed since review needs review.' },
+  ASSUMPTION_EXPIRED: { severity: 'warning', rule: 'An open assumption past its expiry needs validation.' },
+  UNKNOWN_OPEN: { severity: 'info', rule: 'An open unknown blocks the task classes it names.' },
+  INVENTORY_REPLACEMENT_UNDECLARED: { severity: 'error', rule: 'A replaced inventory item names its replacement.' },
+  HOST_CAPABILITY_MISMATCH: { severity: 'error', rule: "A deployment unit's trigger, timeout, concurrency and identity fit its host's declared capabilities." },
+  COHOSTING_UNJUSTIFIED: { severity: 'error', rule: 'Several components share a deployment unit only under a decision that records the consequences.' },
+  COMPONENT_UNDEPLOYED: { severity: 'warning', rule: 'In a deployed system every component except a library or an external one has a deployment unit.' },
+  PORTABILITY_VIOLATION: { severity: 'error', rule: 'The portable model holds no machine path, credential or live secret.' },
+  VERSION_SUPPORT_INVALID: { severity: 'error', rule: 'A supported earlier version is below the current version and listed once.' },
+  VERSION_BINDING_UNSUPPORTED: { severity: 'error', rule: 'A consumer binds a current or explicitly supported contract version.' },
+  VERSION_RETIREMENT_BLOCKED: { severity: 'error', rule: 'A supported version is not retired while an active required consumer binds it, unless its retirement policy permits.' },
+  PUBLISHED_CONTRACT_UNRESOLVED: { severity: 'info', rule: 'A pinned published contract is resolved and verified before dependent work is ready.' },
+  PUBLISHED_CONTRACT_DIGEST_MISMATCH: { severity: 'error', rule: "A resolved published contract matches its pinned digest." },
+  PUBLISHED_CONTRACT_INCOMPATIBLE: { severity: 'error', rule: 'A resolved published contract has a supported schema version and the pinned publisher, contract and version.' },
+  PUBLISHED_CONTRACT_REFERENCE_UNKNOWN: { severity: 'error', rule: 'A reference into a published contract names a record the bundle contains.' },
+  MIGRATION_MISSING: { severity: 'error', rule: 'A storage or contract version change carries a migration record.' },
+  MIGRATION_DEPENDENCY_CYCLE: { severity: 'error', rule: 'Migration dependencies are acyclic.' },
+  MIGRATION_VERSION_INVALID: { severity: 'error', rule: "A migration moves its contract from a lower to a higher version that matches the contract's current version." },
+  BREAKING_CHANGE_WITHOUT_VERSION_BUMP: { severity: 'error', rule: 'A breaking change to a versioned contract raises its version in the same change.' },
+  BREAKING_CHANGE_UNACKNOWLEDGED: { severity: 'error', rule: 'A breaking or unclassified change names its element in acknowledgeBreaking; acknowledgement is never acceptance.' },
+  CHANGE_REQUIRES_REVIEW: { severity: 'warning', rule: 'A change no comparison rule classifies requires review; it is never assumed compatible.' },
+  CHANGE_UNACCEPTED: { severity: 'error', rule: 'A change to the accepted baseline is pre-authorized by policy or covered by a trusted acceptance.' },
+  CHANGE_PROHIBITED: { severity: 'error', rule: 'A change the policy prohibits is refused whatever is acknowledged.' },
+  FROZEN_COMPONENT_CHANGED: { severity: 'error', rule: "A frozen component's accepted contract changes only through an accepted delta." },
+  BASELINE_MISSING: { severity: 'info', rule: 'No accepted baseline applies; acceptance and compatibility with an accepted state are not established.' },
+  BASELINE_UNTRUSTED: { severity: 'error', rule: 'A baseline is read from the trusted ref or carries a trusted acceptance.' },
+  BASELINE_HASH_MISMATCH: { severity: 'error', rule: "A baseline's recorded hashes match the content it pins." },
+  ACCEPTANCE_MISSING: { severity: 'info', rule: 'No trusted acceptance record covers the evaluated revision.' },
+  ACCEPTANCE_UNTRUSTED: { severity: 'error', rule: 'An acceptance record is trusted only at the trusted ref or under a key the trusted policy lists.' },
+  POLICY_UNRESOLVED: { severity: 'error', rule: 'The configured policy reference resolves at the trusted ref.' },
+  POLICY_UNTRUSTED: { severity: 'error', rule: 'Policy is read from the trusted ref, never from the candidate.' },
+  POLICY_WEAKENED: { severity: 'error', rule: 'Candidate configuration only strengthens the trusted policy.' },
+  SEALED_FLAG_UNBACKED: { severity: 'warning', rule: 'state.json sealed is a derived view; a sealed flag without a trusted acceptance has no authority.' },
+  STALE_BASE_REVISION: { severity: 'error', rule: 'A persistent write applies to the revision it was prepared against.' },
+  EVIDENCE_MISSING: { severity: 'error', rule: 'Every required evidence obligation has evidence.' },
+  EVIDENCE_FAILED: { severity: 'error', rule: 'Required evidence passed.' },
+  EVIDENCE_UNKNOWN: { severity: 'error', rule: 'A required check whose result is UNKNOWN never qualifies.' },
+  EVIDENCE_STALE: { severity: 'error', rule: 'Evidence whose inputs changed no longer applies.' },
+  EVIDENCE_UNTRUSTED: { severity: 'error', rule: 'Evidence is trusted only from a run signed by a key the trusted policy lists.' },
+  EVIDENCE_SUBSTITUTE_NOT_PERMITTED: { severity: 'error', rule: 'A substituted boundary satisfies only the task classes its substitute permits.' },
+  EVIDENCE_NOT_APPLICABLE_UNJUSTIFIED: { severity: 'error', rule: 'A NOT_APPLICABLE result carries its justification.' },
+  EVIDENCE_REVISION_SET_INCONSISTENT: { severity: 'error', rule: 'Evidence of an assembled system comes from one coordinated revision set.' },
+  EVIDENCE_STORE_UNAVAILABLE: { severity: 'error', rule: 'Durable evidence that cannot be read is reported, never assumed.' },
+  READINESS_PREREQUISITE_UNMET: { severity: 'error', rule: 'A task proceeds only when its prerequisites are satisfied.' },
+  READINESS_MATURITY_INSUFFICIENT: { severity: 'error', rule: 'A dependency has the maturity the dependent task requires.' },
+  READINESS_BLOCKED_BY_UNKNOWN: { severity: 'error', rule: 'An open unknown blocks the task classes it names.' },
+  READINESS_BLOCKED_BY_ASSUMPTION: { severity: 'error', rule: 'An unvalidated assumption blocks the task classes that depend on it.' },
+  READINESS_SUBSTITUTE_APPLIED: { severity: 'info', rule: 'A permitted substitute stands in for a dependency within its limits.' },
+  READINESS_INPUT_MISSING: { severity: 'info', rule: 'Readiness is not evaluated without a task.' },
+  WORKSPACE_UNPLANNED: { severity: 'info', rule: 'An unplanned workspace is ready only for discovery.' },
+  QUALIFICATION_NOT_ESTABLISHED: { severity: 'info', rule: 'No external qualification ran for this result.' },
+  VALIDATION_FINDINGS: { severity: 'error', rule: 'Readiness and acceptance require a valid model.' },
+  PROFILE_UNSUPPORTED_CONSTRUCT: { severity: 'error', rule: 'A construct the selected profile cannot express is refused, or rendered only as an explicit draft.' },
+  PROJECTION_DRAFT: { severity: 'warning', rule: 'A draft artifact is incomplete and can neither qualify nor publish a contract.' },
+  PROJECTION_COVERAGE_LOSS: { severity: 'error', rule: 'Every in-scope record survives projection.' },
+  PROJECTION_INVALID: { severity: 'error', rule: "A projected artifact passes its format's independent validator." },
+  SCOPE_OVERLAP: { severity: 'error', rule: 'No path is claimed by two models.' },
+  SCOPE_COMPONENT_UNKNOWN: { severity: 'error', rule: 'Every scope component id exists in the model.' },
+  SCOPE_ROOT_INVALID: { severity: 'error', rule: 'A scope root is repository-relative and stays inside the declared workspace.' },
+  SCOPE_ROOT_MISSING: { severity: 'error', rule: 'A declared scope root exists; a missing root makes coverage incomplete.' },
+  SCOPE_COMPONENT_ROOT_OVERLAP: { severity: 'error', rule: 'Within a model each governed path has one owning component.' },
+  SCOPE_UNRESOLVED: { severity: 'error', rule: 'Ownership is unresolved when a candidate descriptor or a required checkout cannot be inspected.' },
+  SCOPE_NO_OWNER: { severity: 'info', rule: 'A path no model claims, after complete inspection, is ungoverned.' },
+  INIT_NOT_REPOSITORY_ROOT: { severity: 'error', rule: 'Initialization runs at a repository root.' },
+  INIT_ALREADY_INITIALIZED: { severity: 'error', rule: 'Initialization never replaces an existing .loom.' },
+  INIT_REPAIR_REQUIRED: { severity: 'error', rule: 'An incomplete .loom is repaired by its owner; authority files are never invented.' },
+  CONFIG_INVALID: { severity: 'error', rule: 'loom.json satisfies the configuration contract.' },
+  CONFIG_MODEL_MISSING: { severity: 'error', rule: 'The configured model document exists.' },
+  CONFIG_PROFILE_UNKNOWN: { severity: 'error', rule: 'The projection profile names a defined profile.' },
+  CONFIG_PROFILE_NOT_PERMITTED: { severity: 'error', rule: "Profile 'none' with empty gates is permitted only for an unplanned workspace." },
+  OUTPUT_COLLISION: { severity: 'error', rule: 'No two artifacts resolve to one file.' },
+  OUTPUT_OUTSIDE_WORKSPACE: { severity: 'error', rule: 'An output target stays inside the declared workspace.' },
+  OUTPUT_PROTECTED_TARGET: { severity: 'error', rule: "An output never overwrites an authority file, source code or another model's artifact." },
+  OUTPUT_DRIFT: { severity: 'error', rule: 'An installed artifact equals a fresh projection of its inputs.' },
+  OUTPUT_MISSING: { severity: 'error', rule: 'Every enabled artifact is installed.' },
+  MANIFEST_MISSING: { severity: 'error', rule: 'Installed artifacts are listed in the output manifest.' },
+  MANIFEST_STALE: { severity: 'error', rule: 'The output manifest matches the installed bundle.' },
+  INSTALL_INCOMPLETE: { severity: 'error', rule: 'An interrupted installation remains visibly incomplete until recovered.' },
+  VALIDATION_ONLY_MODE: { severity: 'info', rule: 'No workspace descriptor applies, so only model validity is evaluated.' },
+  CLIENT_CAPABILITY_UNSUPPORTED: { severity: 'error', rule: 'A protocol feature the negotiated client does not support yields an explicit compatibility result.' },
+} as const satisfies Record<FindingCode, FindingRule>;

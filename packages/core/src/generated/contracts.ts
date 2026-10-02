@@ -572,6 +572,11 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "construct": "type.externalSchema",
         "reason": "A pinned external schema is referenced, not inlined.",
         "onUse": "draft"
+      },
+      {
+        "construct": "type.decimalRange",
+        "reason": "A decimal travels as a string so no digit is lost to binary floating point; JSON Schema bounds such a value only by sign, precision and scale, not by an arbitrary minimum or maximum.",
+        "onUse": "draft"
       }
     ],
     "tooling": [
@@ -660,6 +665,16 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "construct": "http.cookieParameters",
         "reason": "Cookie parameters are not represented.",
         "onUse": "fail"
+      },
+      {
+        "construct": "type.decimalRange",
+        "reason": "A decimal travels as a string so no digit is lost to binary floating point; JSON Schema bounds such a value only by sign, precision and scale, not by an arbitrary minimum or maximum.",
+        "onUse": "draft"
+      },
+      {
+        "construct": "type.externalSchema",
+        "reason": "A pinned external schema is referenced, not inlined.",
+        "onUse": "draft"
       }
     ],
     "tooling": [

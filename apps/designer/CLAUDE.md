@@ -19,7 +19,7 @@ model changes only to the model `mutate()` returned, so a refused edit never rea
   through `LoomStore.apply()`, the same path as the batch editor.
 - Lists the engine publishes are read from it, not hard-coded: projection targets from
   `PROJECTION_TARGETS`, download file names from `PROJECTION_FILES`, property kinds from
-  `META_SCHEMA`. A hard-coded copy goes stale when the core adds a target or kind.
+  `SCHEMA_BUNDLE.$defs.Kind`. A hard-coded copy goes stale when the core adds a target or kind.
 - Keep `prebundle.exclude: ["@loom/core"]` in the `serve` options of `angular.json`. The dev server
   otherwise keeps serving its cached pre-bundle of the linked core after the core is rebuilt, and
   the page fails on any export the cache predates; the production build and the tests do not show it.

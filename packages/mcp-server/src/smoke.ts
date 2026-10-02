@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
 
-  const client = new Client({ name: 'loom-smoke', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client({ name: 'loom-smoke', version: '1.0.0' }, { capabilities: {} });
   await client.connect(clientTransport);
 
   const list = await client.listTools();
@@ -57,13 +57,15 @@ async function main(): Promise<void> {
   // loom.mutate over the protocol: a breaking patch is refused, the complete
   // acknowledged batch is accepted.
   const model = sampleModel();
-  const noteToBoolean = {
-    op: 'changeProperty',
-    typeId: 'order',
-    propertyName: 'note',
-    set: { kind: 'boolean', bounds: null },
+  const dropSettled = {
+    op: 'updateItem',
+    collection: 'types',
+    id: 'invoice',
+    field: 'properties',
+    key: 'state',
+    set: { enumValues: ['draft', 'issued'] },
   };
-  const refused = await callJson(client, 'loom.mutate', { model, patch: noteToBoolean });
+  const refused = await callJson(client, 'loom.mutate', { model, patch: dropSettled });
   const refusedCodes = codesOf(refused);
   console.log(`loom.mutate single breaking patch -> refused=${String(refused['refused'])} errors: ${refusedCodes.join(', ')}`);
   if (refused['refused'] !== true || !refusedCodes.includes('BREAKING_CHANGE_WITHOUT_VERSION_BUMP')) {
@@ -71,24 +73,18 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const routine = model.routines.find((r) => r.id === 'ordering.sp_place_order');
-  const params = (routine?.params ?? []).map((p) => (p.name === 'p_note' ? { ...p, kind: 'boolean' } : p));
   const accepted = await callJson(client, 'loom.mutate', {
     model,
     patches: [
-      { op: 'setVersion', target: 'type', id: 'order', version: 2 },
-      noteToBoolean,
-      { op: 'changeWorkflowImport', workflowId: 'wf.checkout', typeId: 'order', version: 2 },
-      { op: 'changeWorkflowImport', workflowId: 'wf.reporting', typeId: 'order', version: 2 },
-      { op: 'changeRoutine', routineId: 'ordering.sp_place_order', set: { params, version: 2 } },
+      dropSettled,
+      { op: 'update', collection: 'types', id: 'invoice', set: { version: 2 } },
+      { op: 'updateItem', collection: 'workflows', id: 'wf.reporting', field: 'imports', key: 'invoice', set: { version: 2 } },
     ],
-    acknowledgeBreaking: ['order', 'ordering.sp_place_order'],
+    acknowledgeBreaking: ['invoice'],
   });
   const changes = (accepted['changes'] ?? []) as Array<{ kind: string; element: string }>;
-  const breakingElements = changes.filter((c) => c.kind === 'breaking').map((c) => c.element);
-  console.log(
-    `loom.mutate acknowledged batch -> refused=${String(accepted['refused'])} breaking elements: ${breakingElements.join(', ')}`,
-  );
+  const breakingElements = [...new Set(changes.filter((c) => c.kind === 'breaking').map((c) => c.element))];
+  console.log(`loom.mutate acknowledged batch -> refused=${String(accepted['refused'])} breaking elements: ${breakingElements.join(', ')}`);
   if (accepted['refused'] !== false || codesOf(accepted).length !== 0) {
     console.error(`loom.mutate should accept the complete batch, got errors: ${codesOf(accepted).join(', ')}`);
     process.exit(1);

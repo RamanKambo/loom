@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import type { Authority, Binding, Property, TypeImport } from '@loom/core';
+import { predicateText, type Authority, type Binding, type Predicate, type Property, type StorageWrite, type Workflow } from '@loom/core';
 import { LoomStore } from './loom-store';
 
 /** Navigator key for the model-wide workflow list; workflows have no owning component. */
@@ -36,7 +36,7 @@ const WORKFLOWS = '$workflows';
               <section class="card" [attr.data-type]="t.id">
                 <h4>
                   <code>{{ t.id }}</code> v{{ t.version }}
-                  @if (t.table) { <span class="tag">table {{ t.table }}</span> }
+                  <span class="tag">{{ t.representation }}</span>
                   @if (t.key?.length) { <span class="tag">key {{ t.key!.join(', ') }}</span> }
                   @if (t.stateProperty) { <span class="tag">state {{ t.stateProperty }}</span> }
                 </h4>
@@ -102,7 +102,7 @@ const WORKFLOWS = '$workflows';
                 </h4>
                 <p class="muted">
                   performs {{ r.performsMutations.join(', ') || 'nothing' }}
-                  @if (r.writesTables?.length) { · writes {{ r.writesTables!.join(', ') }} }
+                  @if (r.writes?.length) { · writes {{ writes(r.writes!) }} }
                 </p>
                 <table class="grid">
                   <caption>Params</caption>
@@ -153,7 +153,7 @@ const WORKFLOWS = '$workflows';
                       <td>{{ x.type }}</td>
                       <td>{{ x.from.join(' | ') }} → {{ x.to }}</td>
                       <td>{{ x.writes.join(', ') }}</td>
-                      <td>{{ x.guard }}</td>
+                      <td>{{ guard(x.guard) }}</td>
                       <td>{{ x.effect }}</td>
                     </tr>
                   }
@@ -243,7 +243,15 @@ export class ModelBrowser {
     return (bs ?? []).map((b) => [b.transport, b.method, b.path].filter(Boolean).join(' ')).join('; ');
   }
 
-  protected imports(list: readonly TypeImport[]): string {
+  protected writes(list: readonly StorageWrite[]): string {
+    return list.map((w) => `${w.storage} (${w.columns.join(', ')})`).join('; ');
+  }
+
+  protected guard(p: Predicate): string {
+    return predicateText(p);
+  }
+
+  protected imports(list: readonly Workflow['imports'][number][]): string {
     return list.map((i) => `${i.typeId}@v${i.version}`).join(', ');
   }
 }

@@ -1,57 +1,63 @@
-export type {
-  Kind,
-  Bounds,
-  Property,
-  Component,
-  TypeDef,
-  OperationKind,
-  Authority,
-  Binding,
-  Operation,
-  RoutineHost,
-  RoutineParam,
-  ResultColumn,
-  Routine,
-  Mutation,
-  WorkflowStatus,
-  TypeImport,
-  Workflow,
-  EdgeKind,
-  Edge,
-  Requirement,
-  Scenario,
-  Model,
-  Severity,
-  Finding,
-  ChangeKind,
-  ElementKind,
-  Change,
-  ProjectionTarget,
-} from './types.js';
-export { ABSENT_STATE } from './types.js';
+export type * from './generated/types.js';
+export { SCHEMA_BUNDLE, SCHEMA_BUNDLE_ID } from './generated/schemas.js';
+export { CONTRACT_DIGEST, SCHEMA_VOCABULARY } from './generated/digest.js';
+export { COLLECTIONS, FIELD_PATHS, REFERENCE_FIELDS, KEYED_ARRAYS, ORDERED_ARRAYS, PATCH_VARIANTS } from './generated/registry.js';
+export { PROFILES, PROJECTION_PROFILES, ICDS } from './generated/contracts.js';
 
 export { FINDING, FINDING_RULES } from './codes.js';
-export type { FindingCode, FindingRule } from './codes.js';
+export type { FindingRule } from './codes.js';
 export { LoomStructuralError, LoomInvalidModelError } from './errors.js';
-export { loadModel, structuralFindings } from './load.js';
-export { validate } from './validate.js';
-export { diff, DIFF_RULES } from './diff.js';
-export type { DiffRule, DiffRuleId } from './diff.js';
+export { MODEL_FORMAT, loadModel, structuralFindings } from './load.js';
+export { validatorFor, schemaErrors } from './schema-runtime.js';
+export type { SchemaError } from './schema-runtime.js';
+export { migrateModel, MODEL_MIGRATIONS } from './migrate.js';
+export type { MigrationStep, MigrationResult } from './migrate.js';
+export { validate, isValid, RULES } from './validate.js';
+export type { Rule, RuleContext } from './rules/context.js';
+export { diff, needsAcknowledgement, reachablePolicyKeys, DIFF_RULES, FIELD_POLICY } from './diff.js';
+export type { DiffRule, DiffRuleId, FieldPolicy, Delta, DiffOptions } from './diff.js';
+export { mutate, checkPatch } from './mutate.js';
+export type { MutateOptions, MutateResult } from './mutate.js';
+export { project, projectToFiles, renderTarget, renderAll, PROJECTION_TARGETS, PROJECTION_FILES, JSON_SCHEMA_ID, SOURCE_NOTICE } from './project.js';
+export type { ProjectOptions, RenderedTarget } from './project.js';
+export { exportModel, exportYaml, importModel } from './exportModel.js';
 export {
-  project,
-  projectToFiles,
-  JSON_SCHEMA_ID,
-  PROJECTION_TARGETS,
-  PROJECTION_FILES,
-  SOURCE_NOTICE,
-} from './project.js';
-export { exportModel, importModel } from './exportModel.js';
-export { mutate } from './mutate.js';
-export type { Patch, MutateOptions, MutateResult, CollectionName, Settable } from './mutate.js';
-export { selfTest } from './selftest.js';
+  envelope,
+  defaultStates,
+  validationState,
+  revisionsOf,
+  validateTool,
+  mutateTool,
+  diffTool,
+  projectTool,
+  projectAllTool,
+  exportTool,
+  importTool,
+  checkRevision,
+} from './envelope.js';
+export type { EnvelopeParts, MutateToolInput } from './envelope.js';
+export { canonicalStringify, canonicalJson, deepEqual, deepClone } from './canonical.js';
+export { sha256Hex } from './sha256.js';
+export { canonicalHash, textHash, modelRevision, recordHash } from './hash.js';
+export {
+  ABSENT_STATE,
+  KEY_SEPARATOR,
+  KIND_OF_COLLECTION,
+  COLLECTION_OF_KIND,
+  VERSIONED_KINDS,
+  indexModel,
+  findRecord,
+  resolveProperty,
+  recordKey,
+  keyOf,
+  keyFieldsAt,
+  columnOf,
+} from './records.js';
+export type { ModelIndex, CollectionName, PropertyRef } from './records.js';
+export { DependencyGraph, dependencyGraph, changeImpact } from './graph.js';
+export { collectReferences, resolveReference, renameReferences, splitQualified } from './refs.js';
+export type { Reference, Resolution } from './refs.js';
+export { sqlTypeText, SQL_KIND_FAMILY } from './sql-types.js';
+export { predicateText, expressionText } from './projections/context.js';
 export { sampleModel } from './sample.js';
-export { canonicalStringify, deepEqual, deepClone } from './canonical.js';
-export { reverseReachable, allElementIds } from './reachability.js';
-export { resolveBinding, tableOwner, qualifyTable } from './refs.js';
-export type { BindingRef, TableOwner } from './refs.js';
-export { META_SCHEMA, META_SCHEMA_ID } from './meta-schema.js';
+export { selfTest } from './selftest/index.js';

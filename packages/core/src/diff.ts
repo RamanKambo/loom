@@ -1,477 +1,264 @@
-import type {
-  Model,
-  Change,
-  ChangeKind,
-  ElementKind,
-  TypeDef,
-  Property,
-  Bounds,
-  Routine,
-  Operation,
-  Binding,
-  Authority,
-} from './types.js';
-import { makeConsumerResolver } from './reachability.js';
-import { qualifyTable } from './refs.js';
+import type { Change, Model, RecordRef, AffectedElement } from './generated/types.js';
+import { SCHEMA_BUNDLE } from './generated/schemas.js';
+import { canonicalJson, deepEqual } from './canonical.js';
+import { KIND_OF_COLLECTION, keyOf, type CollectionName } from './records.js';
+import { DependencyGraph, dependencyGraph } from './graph.js';
+import { DIFF_RULES, FIELD_POLICY, type Delta, type DiffRuleId, type FieldPolicy } from './field-policy.js';
 
-export interface DiffRule {
-  /** Breaking changes need a version bump and an acknowledgment in mutate(). */
-  kind: ChangeKind;
-  /** What the rule applies to. */
-  subject: string;
-  /** The change, in one line, as the `reference` projection lists it. */
-  change: string;
+export { DIFF_RULES, FIELD_POLICY } from './field-policy.js';
+export type { DiffRule, DiffRuleId, FieldPolicy, Delta } from './field-policy.js';
+
+type SchemaNode = Record<string, unknown>;
+const DEFS = SCHEMA_BUNDLE.$defs as unknown as Record<string, SchemaNode>;
+
+/** Value objects compared and replaced as a whole. */
+const isAtomic = (def: string): boolean => DEFS[def]?.['x-loom-atomic'] === true;
+const defOf = (node: SchemaNode): string | undefined => (typeof node['$ref'] === 'string' ? (node['$ref'] as string).slice('#/$defs/'.length) : undefined);
+const keyFields = (node: SchemaNode): string[] | undefined => {
+  const k = node['x-loom-key'];
+  return k === undefined ? undefined : Array.isArray(k) ? (k as string[]) : [k as string];
+};
+
+/** How a schema node is compared. */
+type Shape =
+  | { kind: 'leaf' }
+  | { kind: 'object'; def: string; props: Record<string, SchemaNode> }
+  | { kind: 'keyed'; key: string[]; ordered: boolean; item: SchemaNode }
+  | { kind: 'paired'; item: SchemaNode }
+  | { kind: 'set' }
+  | { kind: 'sequence' };
+
+function shapeOf(node: SchemaNode, stack: readonly string[]): { shape: Shape; def?: string } {
+  const def = defOf(node);
+  if (def) {
+    const target = DEFS[def] as SchemaNode;
+    if (isAtomic(def) || stack.includes(def) || !target['properties']) return { shape: { kind: 'leaf' } };
+    return { shape: { kind: 'object', def, props: target['properties'] as Record<string, SchemaNode> }, def };
+  }
+  if (node['type'] === 'array') {
+    const item = node['items'] as SchemaNode;
+    const key = keyFields(node);
+    if (key) return { shape: { kind: 'keyed', key, ordered: node['x-loom-ordered'] === true, item } };
+    const itemDef = defOf(item);
+    if (itemDef && !isAtomic(itemDef) && (DEFS[itemDef] as SchemaNode)['properties']) return { shape: { kind: 'paired', item } };
+    return { shape: { kind: node['x-loom-ordered'] === true ? 'sequence' : 'set' } };
+  }
+  if (node['type'] === 'object' && node['properties'] && node['additionalProperties'] === false) {
+    return { shape: { kind: 'object', def: '', props: node['properties'] as Record<string, SchemaNode> } };
+  }
+  return { shape: { kind: 'leaf' } };
 }
 
-/**
- * Every rule diff() classifies a change by: the single home of its kind and
- * its one-line description. Each recorded Change names its rule id, and the
- * recorder accepts only an id of the matching kind, so the classification
- * cannot drift from this table; selfTest() proves every rule is emitted.
- */
-export const DIFF_RULES = {
-  OWNER_CHANGED: {
-    kind: 'breaking',
-    subject: 'type, operation or routine',
-    change: 'The owner changed; the owner holds the write authority, so moving a contract breaks its writers.',
-  },
-  STATE_PROPERTY_CHANGED: { kind: 'breaking', subject: 'type', change: 'The stateProperty changed, was added or was removed.' },
-  TABLE_CHANGED: {
-    kind: 'breaking',
-    subject: 'type',
-    change: 'The table changed, was added or was removed; tables compare schema-qualified, so qualifying an own-component table is no change.',
-  },
-  KEY_CHANGED: { kind: 'breaking', subject: 'type', change: 'The key changed: a property added, removed or reordered.' },
-  PROPERTY_REMOVED: { kind: 'breaking', subject: 'type property', change: 'The property was removed.' },
-  PROPERTY_KIND_CHANGED: { kind: 'breaking', subject: 'type property', change: 'The kind changed.' },
-  PROPERTY_NULLABILITY_CHANGED: { kind: 'breaking', subject: 'type property', change: 'The nullability changed, in either direction.' },
-  PROPERTY_BECAME_REQUIRED: { kind: 'breaking', subject: 'type property', change: 'The property became required.' },
-  PROPERTY_BECAME_OPTIONAL: {
-    kind: 'breaking',
-    subject: 'type property',
-    change: 'The property became optional; readers may now see it absent.',
-  },
-  PROPERTY_BECAME_IMMUTABLE: { kind: 'breaking', subject: 'type property', change: 'The property became immutable.' },
-  PROPERTY_BECAME_MUTABLE: { kind: 'compatible', subject: 'type property', change: 'The property became mutable.' },
-  ENUM_VALUE_REMOVED: { kind: 'breaking', subject: 'type property', change: 'An enum value was removed.' },
-  ENUM_VALUE_ADDED: { kind: 'compatible', subject: 'type property', change: 'An enum value was added.' },
-  BOUND_TIGHTENED: {
-    kind: 'breaking',
-    subject: 'type property',
-    change: 'A bound tightened: added, min or minLength raised, or max or maxLength lowered.',
-  },
-  BOUND_LOOSENED: {
-    kind: 'compatible',
-    subject: 'type property',
-    change: 'A bound loosened: removed, min or minLength lowered, or max or maxLength raised.',
-  },
-  REQUIRED_PROPERTY_ADDED: { kind: 'breaking', subject: 'type property', change: 'A required property was added.' },
-  OPTIONAL_PROPERTY_ADDED: { kind: 'compatible', subject: 'type property', change: 'An optional property was added.' },
-  BINDS_CHANGED: {
-    kind: 'breaking',
-    subject: 'type property, routine param or result column',
-    change: 'Its binds was added, changed or removed: an added reference constrains writers, and a changed or removed one breaks the consumers that rely on it.',
-  },
-  HOST_CHANGED: { kind: 'breaking', subject: 'routine', change: 'The host changed.' },
-  SOURCE_CHANGED: { kind: 'compatible', subject: 'routine', change: 'The source file moved, was added or was removed.' },
-  PARAM_REMOVED: { kind: 'breaking', subject: 'routine param', change: 'The param was removed.' },
-  PARAM_RETYPED: { kind: 'breaking', subject: 'routine param', change: 'The kind changed.' },
-  PARAM_NULLABILITY_CHANGED: { kind: 'breaking', subject: 'routine param', change: 'The nullability changed, in either direction.' },
-  PARAM_BECAME_REQUIRED: { kind: 'breaking', subject: 'routine param', change: 'The param went from optional to required.' },
-  PARAM_BECAME_OPTIONAL: { kind: 'compatible', subject: 'routine param', change: 'The param went from required to optional.' },
-  REQUIRED_PARAM_ADDED: { kind: 'breaking', subject: 'routine param', change: 'A required param was added.' },
-  OPTIONAL_PARAM_ADDED: { kind: 'compatible', subject: 'routine param', change: 'An optional param was added.' },
-  COLUMN_REMOVED: { kind: 'breaking', subject: 'routine result column', change: 'The column was removed.' },
-  COLUMN_REORDERED: { kind: 'breaking', subject: 'routine result column', change: 'The column moved to another position.' },
-  COLUMN_RETYPED: { kind: 'breaking', subject: 'routine result column', change: 'The kind changed.' },
-  COLUMN_NULLABILITY_CHANGED: {
-    kind: 'breaking',
-    subject: 'routine result column',
-    change: 'The nullability changed, in either direction.',
-  },
-  COLUMN_ADDED: {
-    kind: 'compatible',
-    subject: 'routine result column',
-    change: 'A column was added; one inserted before existing columns also reorders them.',
-  },
-  OPERATION_KIND_CHANGED: { kind: 'breaking', subject: 'operation', change: 'The operation kind changed.' },
-  OPERATION_TYPE_CHANGED: {
-    kind: 'breaking',
-    subject: 'operation',
-    change: 'The request, response or result type changed, was added or was removed.',
-  },
-  OPERATION_BINDING_CHANGED: {
-    kind: 'breaking',
-    subject: 'operation',
-    change: 'A binding changed: its position now holds a different binding of the same transport, such as a new HTTP method or path.',
-  },
-  OPERATION_BINDING_REMOVED: { kind: 'breaking', subject: 'operation', change: 'A binding was removed.' },
-  OPERATION_BINDING_ADDED: { kind: 'compatible', subject: 'operation', change: 'A binding was added.' },
-  PERMISSION_CHANGED: { kind: 'breaking', subject: 'operation or routine', change: 'The authority permission changed.' },
-  SCOPE_CHANGED: { kind: 'breaking', subject: 'operation or routine', change: 'An authority scope was added or changed.' },
-  SCOPE_REMOVED: { kind: 'compatible', subject: 'operation or routine', change: 'The authority scope was removed.' },
-  RECORD_REMOVED: {
-    kind: 'breaking',
-    subject: 'type, operation, routine, mutation or workflow',
-    change: 'The record was removed.',
-  },
-  RECORD_ADDED: {
-    kind: 'compatible',
-    subject: 'type, operation, routine, mutation or workflow',
-    change: 'The record was added.',
-  },
-} as const satisfies Record<string, DiffRule>;
+interface WalkSink {
+  delta(key: string, event: Delta['event'], before: unknown, after: unknown, path: string, item: ItemContext): void;
+  /** Every policy key the walk reaches, with the registry path that reaches it; used for coverage. */
+  reach?(key: string, registryPath: string): void;
+}
 
-export type DiffRuleId = keyof typeof DIFF_RULES;
+interface ItemContext {
+  before: unknown;
+  after: unknown;
+  field: string | undefined;
+}
 
-/** The rule ids whose kind is K, so a call site cannot record a rule under the other kind. */
-type RuleOfKind<K extends ChangeKind> = {
-  [R in DiffRuleId]: (typeof DIFF_RULES)[R]['kind'] extends K ? R : never;
-}[DiffRuleId];
-
-type Consumers = (targets: string[]) => string[];
-
-/** Records the changes of one element; only breaking changes carry consumers. */
-class ElementChanges {
-  constructor(
-    private readonly out: Change[],
-    private readonly elementKind: ElementKind,
-    private readonly element: string,
-    private readonly consumers: string[],
-  ) {}
-
-  breaking(rule: RuleOfKind<'breaking'>, path: string, reason: string): void {
-    this.add(rule, path, reason);
+function walk(
+  node: SchemaNode,
+  owner: string,
+  inline: string,
+  before: unknown,
+  after: unknown,
+  path: string,
+  registryPath: string,
+  item: ItemContext,
+  stack: readonly string[],
+  sink: WalkSink,
+): void {
+  const { shape, def } = shapeOf(node, stack);
+  const key = `${owner}.${inline}`;
+  if (shape.kind === 'object') {
+    const nextOwner = def ?? owner;
+    const nextStack = def ? [...stack, def] : stack;
+    for (const [prop, sub] of Object.entries(shape.props)) {
+      const b = (before as Record<string, unknown> | undefined)?.[prop];
+      const a = (after as Record<string, unknown> | undefined)?.[prop];
+      const nextInline = def ? prop : `${inline}.${prop}`;
+      walk(sub, nextOwner, nextInline, b, a, `${path}/${prop}`, `${registryPath}.${prop}`, item, nextStack, sink);
+    }
+    return;
   }
-
-  compatible(rule: RuleOfKind<'compatible'>, path: string, reason: string): void {
-    this.add(rule, path, reason);
+  sink.reach?.(shape.kind === 'leaf' ? key : `${key}[]`, shape.kind === 'leaf' ? registryPath : `${registryPath}[]`);
+  if (shape.kind === 'leaf') {
+    if (!deepEqual(before, after)) sink.delta(key, 'changed', before, after, path, item);
+    return;
   }
-
-  private add(rule: DiffRuleId, path: string, reason: string): void {
-    const kind = DIFF_RULES[rule].kind;
-    this.out.push({
-      path,
-      kind,
-      rule,
-      reason,
-      consumers: kind === 'breaking' ? [...this.consumers] : [],
-      element: this.element,
-      elementKind: this.elementKind,
+  const bArr = Array.isArray(before) ? before : [];
+  const aArr = Array.isArray(after) ? after : [];
+  const arrKey = `${key}[]`;
+  if (shape.kind === 'sequence') {
+    if (!deepEqual(bArr, aArr)) sink.delta(arrKey, 'changed', before, after, path, item);
+    return;
+  }
+  if (shape.kind === 'set') {
+    const bSet = new Map(bArr.map((v) => [canonicalJson(v), v]));
+    const aSet = new Map(aArr.map((v) => [canonicalJson(v), v]));
+    for (const [k, v] of bSet) if (!aSet.has(k)) sink.delta(arrKey, 'removed', v, undefined, path, item);
+    for (const [k, v] of aSet) if (!bSet.has(k)) sink.delta(arrKey, 'added', undefined, v, path, item);
+    return;
+  }
+  const field = inline.split('.').pop();
+  if (shape.kind === 'paired') {
+    const n = Math.max(bArr.length, aArr.length);
+    for (let i = 0; i < n; i++) {
+      const b = bArr[i];
+      const a = aArr[i];
+      const p = `${path}/${i}`;
+      if (b === undefined) sink.delta(arrKey, 'added', undefined, a, p, item);
+      else if (a === undefined) sink.delta(arrKey, 'removed', b, undefined, p, item);
+      else walk(shape.item, owner, `${inline}[]`, b, a, p, `${registryPath}[]`, item, stack, sink);
+    }
+    if (n === 0) walk(shape.item, owner, `${inline}[]`, undefined, undefined, `${path}/0`, `${registryPath}[]`, item, stack, { delta: () => undefined, reach: sink.reach });
+    return;
+  }
+  const bMap = new Map(bArr.map((v) => [keyOf(v, shape.key), v]));
+  const aMap = new Map(aArr.map((v) => [keyOf(v, shape.key), v]));
+  for (const [k, v] of bMap) if (!aMap.has(k)) sink.delta(arrKey, 'removed', v, undefined, `${path}/${k}`, item);
+  for (const [k, v] of aMap) if (!bMap.has(k)) sink.delta(arrKey, 'added', undefined, v, `${path}/${k}`, item);
+  if (shape.ordered) {
+    const common = [...aMap.keys()].filter((k) => bMap.has(k));
+    const beforeOrder = [...bMap.keys()].filter((k) => aMap.has(k));
+    common.forEach((k, i) => {
+      if (beforeOrder[i] !== k) sink.delta(arrKey, 'moved', beforeOrder.indexOf(k), i, `${path}/${k}`, item);
     });
   }
+  const recurse = (b: unknown, a: unknown, p: string, s: WalkSink): void =>
+    walk(shape.item, owner, `${inline}[]`, b, a, p, `${registryPath}[]`, { before: b, after: a, field }, stack, s);
+  for (const [k, b] of bMap) {
+    const a = aMap.get(k);
+    if (a !== undefined) recurse(b, a, `${path}/${k}`, sink);
+  }
+  if (sink.reach) recurse(undefined, undefined, `${path}/*`, { delta: () => undefined, reach: sink.reach });
 }
 
-const nullability = (nullable: boolean): string => (nullable ? 'nullable' : 'non-nullable');
-
 /**
- * Compare two models and classify each change as breaking or compatible. Every
- * Change names the element it belongs to, so mutate() can demand a version bump
- * and an acknowledgment per broken contract. Breaking changes carry the
- * consumers that would be affected, by reverse-reachability over the before-model.
+ * Every policy key the comparison walk reaches from the model root, with a
+ * registry path that reaches it. The self-test asserts each has a FIELD_POLICY
+ * entry and that every generated FIELD_PATHS entry is reached.
  */
-export function diff(before: Model, after: Model): Change[] {
-  const out: Change[] = [];
-  const consumersOf = makeConsumerResolver(before);
-  const recorder = (kind: ElementKind, id: string): ElementChanges =>
-    new ElementChanges(out, kind, id, consumersOf([id]));
-
-  const afterTypes = new Map(after.types.map((t) => [t.id, t]));
-  for (const b of before.types) {
-    const a = afterTypes.get(b.id);
-    if (a) diffType(b, a, recorder('type', b.id));
+export function reachablePolicyKeys(): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  const model = DEFS['Model'] as SchemaNode;
+  const props = model['properties'] as Record<string, SchemaNode>;
+  const reach = (key: string, registryPath: string): void => {
+    const list = out.get(key) ?? [];
+    if (!list.includes(registryPath)) list.push(registryPath);
+    out.set(key, list);
+  };
+  const sink: WalkSink = { delta: () => undefined, reach };
+  for (const [prop, node] of Object.entries(props)) {
+    if (node['type'] === 'array') {
+      reach(`Model.${prop}[]`, `${prop}[]`);
+      walk(node['items'] as SchemaNode, 'Model', `${prop}[]`, undefined, undefined, prop, `${prop}[]`, { before: undefined, after: undefined, field: undefined }, [], sink);
+    } else walk(node, 'Model', prop, undefined, undefined, prop, prop, { before: undefined, after: undefined, field: undefined }, [], sink);
   }
-  const afterRoutines = new Map(after.routines.map((r) => [r.id, r]));
-  for (const b of before.routines) {
-    const a = afterRoutines.get(b.id);
-    if (a) diffRoutine(b, a, recorder('routine', b.id));
-  }
-  const afterOperations = new Map(after.operations.map((o) => [o.id, o]));
-  for (const b of before.operations) {
-    const a = afterOperations.get(b.id);
-    if (a) diffOperation(b, a, recorder('operation', b.id));
-  }
-  diffWholeRecords(before, after, out, consumersOf);
   return out;
 }
 
-function diffOwner(path: string, b: string, a: string, ch: ElementChanges): void {
-  if (b !== a) ch.breaking('OWNER_CHANGED', `${path}/owner`, `owner changed '${b}' -> '${a}'`);
+export interface DiffOptions {
+  /** Dependency graphs of both models, when the caller already built them. */
+  graphs?: { before: DependencyGraph; after: DependencyGraph };
+  /** The comparison policy; FIELD_POLICY unless a caller qualifies the differ against another table. */
+  policy?: Readonly<Record<string, FieldPolicy>>;
 }
 
-function diffType(b: TypeDef, a: TypeDef, ch: ElementChanges): void {
-  diffOwner(`types/${b.id}`, b.owner, a.owner, ch);
-  if ((b.stateProperty ?? '') !== (a.stateProperty ?? '')) {
-    ch.breaking(
-      'STATE_PROPERTY_CHANGED',
-      `types/${b.id}/stateProperty`,
-      `stateProperty changed '${b.stateProperty ?? '(none)'}' -> '${a.stateProperty ?? '(none)'}'`,
-    );
-  }
-  const bTable = b.table === undefined ? '' : qualifyTable(b.table, b.owner);
-  const aTable = a.table === undefined ? '' : qualifyTable(a.table, a.owner);
-  if (bTable !== aTable) {
-    ch.breaking('TABLE_CHANGED', `types/${b.id}/table`, `table changed '${bTable || '(none)'}' -> '${aTable || '(none)'}'`);
-  }
-  const bKey = (b.key ?? []).join(', ');
-  const aKey = (a.key ?? []).join(', ');
-  if (bKey !== aKey) ch.breaking('KEY_CHANGED', `types/${b.id}/key`, `key changed [${bKey}] -> [${aKey}]`);
-
-  const afterProps = new Map(a.properties.map((p) => [p.name, p]));
-  const beforeNames = new Set(b.properties.map((p) => p.name));
-  for (const bp of b.properties) {
-    const path = `types/${b.id}/properties/${bp.name}`;
-    const ap = afterProps.get(bp.name);
-    if (!ap) {
-      ch.breaking('PROPERTY_REMOVED', path, `property '${bp.name}' removed`);
-      continue;
-    }
-    diffProperty(bp, ap, path, ch);
-  }
-  for (const ap of a.properties) {
-    if (beforeNames.has(ap.name)) continue;
-    const path = `types/${b.id}/properties/${ap.name}`;
-    if (ap.required) ch.breaking('REQUIRED_PROPERTY_ADDED', path, `new required property '${ap.name}' added`);
-    else ch.compatible('OPTIONAL_PROPERTY_ADDED', path, `optional property '${ap.name}' added`);
-  }
-}
-
-function diffProperty(bp: Property, ap: Property, path: string, ch: ElementChanges): void {
-  const n = bp.name;
-  if (bp.kind !== ap.kind) {
-    ch.breaking('PROPERTY_KIND_CHANGED', path, `property '${n}' kind changed '${bp.kind}' -> '${ap.kind}'`);
-  }
-  if (bp.nullable !== ap.nullable) {
-    ch.breaking(
-      'PROPERTY_NULLABILITY_CHANGED',
-      path,
-      `property '${n}' nullability changed ${nullability(bp.nullable)} -> ${nullability(ap.nullable)}`,
-    );
-  }
-  if (!bp.required && ap.required) ch.breaking('PROPERTY_BECAME_REQUIRED', path, `property '${n}' became required`);
-  if (bp.required && !ap.required) {
-    ch.breaking('PROPERTY_BECAME_OPTIONAL', path, `property '${n}' became optional; readers may now see it absent`);
-  }
-  if (!bp.immutable && ap.immutable) ch.breaking('PROPERTY_BECAME_IMMUTABLE', path, `property '${n}' became immutable`);
-  if (bp.immutable && !ap.immutable) ch.compatible('PROPERTY_BECAME_MUTABLE', path, `property '${n}' became mutable`);
-
-  if (bp.enumValues && ap.enumValues) {
-    const afterSet = new Set(ap.enumValues);
-    for (const v of bp.enumValues) {
-      if (!afterSet.has(v)) ch.breaking('ENUM_VALUE_REMOVED', `${path}/enumValues`, `enum value '${v}' removed from '${n}'`);
-    }
-    const beforeSet = new Set(bp.enumValues);
-    for (const v of ap.enumValues) {
-      if (!beforeSet.has(v)) ch.compatible('ENUM_VALUE_ADDED', `${path}/enumValues`, `enum value '${v}' added to '${n}'`);
-    }
-  }
-  diffBounds(n, bp.bounds, ap.bounds, `${path}/bounds`, ch);
-  diffBinds('property', n, bp.binds, ap.binds, path, ch);
-}
-
-const BOUND_KEYS = ['min', 'max', 'minLength', 'maxLength'] as const;
-
-/** A lower bound (min, minLength) tightens when raised; an upper bound when lowered. Adding a bound tightens. */
-function diffBounds(
-  name: string,
-  b: Bounds | undefined,
-  a: Bounds | undefined,
-  path: string,
-  ch: ElementChanges,
-): void {
-  for (const key of BOUND_KEYS) {
-    const bv = b?.[key];
-    const av = a?.[key];
-    if (bv === av) continue;
-    const isLower = key === 'min' || key === 'minLength';
-    let tightened: boolean;
-    if (bv === undefined) tightened = true;
-    else if (av === undefined) tightened = false;
-    else tightened = isLower ? av > bv : av < bv;
-    const reason = `property '${name}' bound ${key} ${tightened ? 'tightened' : 'loosened'} ${bv ?? '(none)'} -> ${av ?? '(none)'}`;
-    if (tightened) ch.breaking('BOUND_TIGHTENED', `${path}/${key}`, reason);
-    else ch.compatible('BOUND_LOOSENED', `${path}/${key}`, reason);
-  }
-}
-
-function diffBinds(
-  role: string,
-  name: string,
-  b: string | undefined,
-  a: string | undefined,
-  path: string,
-  ch: ElementChanges,
-): void {
-  if ((b ?? '') !== (a ?? '')) {
-    ch.breaking('BINDS_CHANGED', path, `${role} '${name}' binds changed '${b ?? '(none)'}' -> '${a ?? '(none)'}'`);
-  }
-}
-
-function diffRoutine(b: Routine, a: Routine, ch: ElementChanges): void {
-  const id = b.id;
-  diffOwner(`routines/${id}`, b.owner, a.owner, ch);
-  if (b.host !== a.host) ch.breaking('HOST_CHANGED', `routines/${id}/host`, `host changed '${b.host}' -> '${a.host}'`);
-  if ((b.source ?? '') !== (a.source ?? '')) {
-    ch.compatible(
-      'SOURCE_CHANGED',
-      `routines/${id}/source`,
-      `source changed '${b.source ?? '(none)'}' -> '${a.source ?? '(none)'}'`,
-    );
-  }
-
-  const afterParams = new Map(a.params.map((p) => [p.name, p]));
-  const beforeParamNames = new Set(b.params.map((p) => p.name));
-  for (const bp of b.params) {
-    const path = `routines/${id}/params/${bp.name}`;
-    const ap = afterParams.get(bp.name);
-    if (!ap) {
-      ch.breaking('PARAM_REMOVED', path, `param '${bp.name}' removed`);
-      continue;
-    }
-    if (bp.kind !== ap.kind) ch.breaking('PARAM_RETYPED', path, `param '${bp.name}' retyped '${bp.kind}' -> '${ap.kind}'`);
-    if (bp.nullable !== ap.nullable) {
-      ch.breaking(
-        'PARAM_NULLABILITY_CHANGED',
-        path,
-        `param '${bp.name}' nullability changed ${nullability(bp.nullable)} -> ${nullability(ap.nullable)}`,
-      );
-    }
-    if (!bp.required && ap.required) ch.breaking('PARAM_BECAME_REQUIRED', path, `param '${bp.name}' became required`);
-    if (bp.required && !ap.required) ch.compatible('PARAM_BECAME_OPTIONAL', path, `param '${bp.name}' became optional`);
-    diffBinds('param', bp.name, bp.binds, ap.binds, path, ch);
-  }
-  for (const ap of a.params) {
-    if (beforeParamNames.has(ap.name)) continue;
-    const path = `routines/${id}/params/${ap.name}`;
-    if (ap.required) ch.breaking('REQUIRED_PARAM_ADDED', path, `required param '${ap.name}' added`);
-    else ch.compatible('OPTIONAL_PARAM_ADDED', path, `optional param '${ap.name}' added`);
-  }
-
-  const afterIndex = new Map(a.resultSet.map((c, i) => [c.name, { col: c, index: i }]));
-  b.resultSet.forEach((bc, i) => {
-    const path = `routines/${id}/resultSet/${bc.name}`;
-    const found = afterIndex.get(bc.name);
-    if (!found) {
-      ch.breaking('COLUMN_REMOVED', path, `result column '${bc.name}' removed`);
-      return;
-    }
-    if (found.index !== i) {
-      ch.breaking('COLUMN_REORDERED', path, `result column '${bc.name}' reordered (position ${i} -> ${found.index})`);
-    }
-    if (found.col.kind !== bc.kind) {
-      ch.breaking('COLUMN_RETYPED', path, `result column '${bc.name}' retyped '${bc.kind}' -> '${found.col.kind}'`);
-    }
-    if (found.col.nullable !== bc.nullable) {
-      ch.breaking(
-        'COLUMN_NULLABILITY_CHANGED',
-        path,
-        `result column '${bc.name}' nullability changed ${nullability(bc.nullable)} -> ${nullability(found.col.nullable)}`,
-      );
-    }
-    diffBinds('result column', bc.name, bc.binds, found.col.binds, path, ch);
-  });
-  const beforeColumnNames = new Set(b.resultSet.map((c) => c.name));
-  for (const ac of a.resultSet) {
-    if (!beforeColumnNames.has(ac.name)) {
-      ch.compatible('COLUMN_ADDED', `routines/${id}/resultSet/${ac.name}`, `result column '${ac.name}' added`);
-    }
-  }
-
-  diffAuthority(`routines/${id}`, b.authority, a.authority, ch);
-}
-
-function bindingLabel(x: Binding): string {
-  return [x.transport, x.method, x.path].filter((s) => s !== undefined && s !== '').join(' ');
+function describe(rule: DiffRuleId, d: Pick<Delta, 'event' | 'before' | 'after' | 'path'>): string {
+  const base = DIFF_RULES[rule].change;
+  const show = (v: unknown): string => (v === undefined ? '(absent)' : typeof v === 'string' ? `'${v}'` : canonicalJson(v));
+  if (d.event === 'changed') return `${base} ${show(d.before)} -> ${show(d.after)}.`;
+  if (d.event === 'moved') return `${base} Position ${String(d.before)} -> ${String(d.after)}.`;
+  return base;
 }
 
 /**
- * Bindings carry no id, so they are compared by their (transport, method, path)
- * label. A before-binding with no identical after-binding is breaking: reported
- * as "changed" when the same position now holds a new binding of the same
- * transport, otherwise as "removed".
+ * Every semantic delta between two models, classified by rule, kind and
+ * compatibility dimension. A delta without a policy entry is 'requiresReview'
+ * under CHANGE_REQUIRES_REVIEW: never empty, never assumed compatible. A
+ * nonSemantic policy suppresses the delta with its stated reason.
  */
-function diffBindings(b: Operation, a: Operation, ch: ElementChanges): void {
-  const bb = b.bindings ?? [];
-  const ab = a.bindings ?? [];
-  const beforeLabels = new Set(bb.map(bindingLabel));
-  const afterLabels = new Set(ab.map(bindingLabel));
-  const pairedAfter = new Set<number>();
-  bb.forEach((x, i) => {
-    const label = bindingLabel(x);
-    if (afterLabels.has(label)) return;
-    const path = `operations/${b.id}/bindings/${i}`;
-    const counterpart = ab[i];
-    if (
-      counterpart !== undefined &&
-      counterpart.transport === x.transport &&
-      !beforeLabels.has(bindingLabel(counterpart))
-    ) {
-      pairedAfter.add(i);
-      ch.breaking('OPERATION_BINDING_CHANGED', path, `binding changed '${label}' -> '${bindingLabel(counterpart)}'`);
-    } else {
-      ch.breaking('OPERATION_BINDING_REMOVED', path, `binding '${label}' removed`);
+export function diff(before: Model, after: Model, options: DiffOptions = {}): Change[] {
+  const changes: Change[] = [];
+  const graphs = options.graphs ?? { before: dependencyGraph(before), after: dependencyGraph(after) };
+  const consumerCache = new Map<string, AffectedElement[]>();
+  const consumersOf = (ref: RecordRef): AffectedElement[] => {
+    const k = `${ref.kind}:${ref.id}`;
+    const cached = consumerCache.get(k);
+    if (cached) return cached;
+    const b = graphs.before.consumersOf([ref]);
+    const a = graphs.after.consumersOf([ref]);
+    const out: AffectedElement[] = [];
+    for (const [key, c] of b) out.push({ ref: c.ref, reason: a.has(key) ? 'depends-on' : 'former-consumer', path: c.path, edgeKinds: c.edgeKinds });
+    for (const [key, c] of a) if (!b.has(key)) out.push({ ref: c.ref, reason: 'new-consumer', path: c.path, edgeKinds: c.edgeKinds });
+    out.sort((x, y) => x.ref.kind.localeCompare(y.ref.kind) || x.ref.id.localeCompare(y.ref.id));
+    consumerCache.set(k, out);
+    return out;
+  };
+
+  const record = (element: RecordRef, recordBefore: unknown, recordAfter: unknown) => (key: string, event: Delta['event'], b: unknown, a: unknown, path: string, item: ItemContext): void => {
+    const d: Delta = {
+      key,
+      event,
+      before: b,
+      after: a,
+      path,
+      element,
+      recordBefore,
+      recordAfter,
+      itemBefore: item.before,
+      itemAfter: item.after,
+      itemField: item.field,
+      modelBefore: before,
+      modelAfter: after,
+    };
+    const policy = (options.policy ?? FIELD_POLICY)[key];
+    if (policy && 'nonSemantic' in policy) return;
+    if (!policy) {
+      changes.push({ path, kind: 'requiresReview', dimension: 'none', rule: 'CHANGE_REQUIRES_REVIEW', reason: `No comparison rule classifies ${key} (${event}); the change requires review.`, element: element.id, elementKind: element.kind, consumers: consumersOf(element), before: b, after: a });
+      return;
     }
-  });
-  ab.forEach((x, i) => {
-    if (beforeLabels.has(bindingLabel(x)) || pairedAfter.has(i)) return;
-    ch.compatible('OPERATION_BINDING_ADDED', `operations/${b.id}/bindings/${i}`, `binding '${bindingLabel(x)}' added`);
-  });
+    const v = policy.classify(d);
+    if (v.kind === 'nonSemantic') return;
+    const change: Change = { path, kind: v.kind, dimension: v.dimension, rule: v.rule, reason: describe(v.rule, d), element: element.id, elementKind: element.kind, consumers: consumersOf(element) };
+    if (b !== undefined) change.before = b;
+    if (a !== undefined) change.after = a;
+    changes.push(change);
+  };
+
+  const modelDef = DEFS['Model'] as SchemaNode;
+  for (const [prop, node] of Object.entries(modelDef['properties'] as Record<string, SchemaNode>)) {
+    const b = (before as unknown as Record<string, unknown>)[prop];
+    const a = (after as unknown as Record<string, unknown>)[prop];
+    if (node['type'] !== 'array') {
+      const element: RecordRef = { kind: 'systemProfile', id: 'system' };
+      walk(node, 'Model', prop, b, a, prop, prop, { before: undefined, after: undefined, field: undefined }, [], { delta: record(element, b, a) });
+      continue;
+    }
+    const kind = KIND_OF_COLLECTION[prop as CollectionName];
+    const key = keyFields(node) ?? ['id'];
+    const bMap = new Map(((b as unknown[]) ?? []).map((r) => [keyOf(r, key), r]));
+    const aMap = new Map(((a as unknown[]) ?? []).map((r) => [keyOf(r, key), r]));
+    for (const [id, r] of bMap) {
+      if (!aMap.has(id)) record({ kind, id }, r, undefined)(`Model.${prop}[]`, 'removed', r, undefined, `${prop}/${id}`, { before: undefined, after: undefined, field: undefined });
+    }
+    for (const [id, r] of aMap) {
+      if (!bMap.has(id)) record({ kind, id }, undefined, r)(`Model.${prop}[]`, 'added', undefined, r, `${prop}/${id}`, { before: undefined, after: undefined, field: undefined });
+    }
+    for (const [id, rb] of bMap) {
+      const ra = aMap.get(id);
+      if (ra === undefined) continue;
+      walk(node['items'] as SchemaNode, 'Model', `${prop}[]`, rb, ra, `${prop}/${id}`, `${prop}[]`, { before: undefined, after: undefined, field: undefined }, [], { delta: record({ kind, id }, rb, ra) });
+    }
+  }
+  return changes;
 }
 
-function diffOperation(b: Operation, a: Operation, ch: ElementChanges): void {
-  diffOwner(`operations/${b.id}`, b.owner, a.owner, ch);
-  if (b.kind !== a.kind) {
-    ch.breaking('OPERATION_KIND_CHANGED', `operations/${b.id}/kind`, `operation kind changed '${b.kind}' -> '${a.kind}'`);
-  }
-  for (const field of ['request', 'response', 'result'] as const) {
-    if (b[field] !== a[field]) {
-      ch.breaking(
-        'OPERATION_TYPE_CHANGED',
-        `operations/${b.id}/${field}`,
-        `${field} type changed '${b[field] ?? '(none)'}' -> '${a[field] ?? '(none)'}'`,
-      );
-    }
-  }
-  diffBindings(b, a, ch);
-  diffAuthority(`operations/${b.id}`, b.authority, a.authority, ch);
-}
-
-function diffAuthority(path: string, b: Authority, a: Authority, ch: ElementChanges): void {
-  if (b.permission !== a.permission) {
-    ch.breaking(
-      'PERMISSION_CHANGED',
-      `${path}/authority`,
-      `authority permission changed '${b.permission}' -> '${a.permission}'`,
-    );
-  }
-  const bScope = b.scope ?? '';
-  const aScope = a.scope ?? '';
-  if (bScope === aScope) return;
-  if (aScope === '') {
-    ch.compatible('SCOPE_REMOVED', `${path}/authority`, `authority scope removed (was '${bScope}')`);
-  } else {
-    ch.breaking('SCOPE_CHANGED', `${path}/authority`, `authority scope changed '${bScope || '(none)'}' -> '${aScope}'`);
-  }
-}
-
-function diffWholeRecords(before: Model, after: Model, out: Change[], consumersOf: Consumers): void {
-  const collections: Array<[ElementKind, string, string[], string[]]> = [
-    ['type', 'types', before.types.map((x) => x.id), after.types.map((x) => x.id)],
-    ['operation', 'operations', before.operations.map((x) => x.id), after.operations.map((x) => x.id)],
-    ['routine', 'routines', before.routines.map((x) => x.id), after.routines.map((x) => x.id)],
-    ['mutation', 'mutations', before.mutations.map((x) => x.id), after.mutations.map((x) => x.id)],
-    ['workflow', 'workflows', before.workflows.map((x) => x.id), after.workflows.map((x) => x.id)],
-  ];
-  for (const [kind, collection, beforeIds, afterIds] of collections) {
-    const afterSet = new Set(afterIds);
-    const beforeSet = new Set(beforeIds);
-    for (const id of beforeIds) {
-      if (afterSet.has(id)) continue;
-      new ElementChanges(out, kind, id, consumersOf([id])).breaking('RECORD_REMOVED', `${collection}/${id}`, `${kind} '${id}' removed`);
-    }
-    for (const id of afterIds) {
-      if (beforeSet.has(id)) continue;
-      new ElementChanges(out, kind, id, []).compatible('RECORD_ADDED', `${collection}/${id}`, `${kind} '${id}' added`);
-    }
-  }
-}
+/** True when a change needs acknowledgement: breaking, or unclassified. */
+export const needsAcknowledgement = (c: Change): boolean => c.kind === 'breaking' || c.kind === 'requiresReview';

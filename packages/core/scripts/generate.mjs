@@ -430,7 +430,7 @@ async function qualifyTypeGenerator() {
   const out = await compile(
     { ...VOCABULARY_FIXTURE, type: 'object', additionalProperties: false, properties: { fixture: { $ref: '#/$defs/Fixture' } } },
     'VocabularyRoot',
-    { bannerComment: '', additionalProperties: false, unreachableDefinitions: true, strictIndexSignatures: true, format: true, style: { singleQuote: true } },
+    { bannerComment: '', additionalProperties: false, unreachableDefinitions: true, strictIndexSignatures: true, ignoreMinAndMaxItems: true, format: true, style: { singleQuote: true } },
   );
   const missing = VOCABULARY_EXPECTED.filter((re) => !re.test(out));
   if (missing.length) fail(`json-schema-to-typescript maps typed keywords differently than qualified: ${missing.map(String).join(', ')}\n${out}`);
@@ -501,6 +501,7 @@ async function generate() {
     unreachableDefinitions: true,
     declareExternallyReferenced: true,
     strictIndexSignatures: true,
+    ignoreMinAndMaxItems: true,
     format: true,
     style: { singleQuote: true, printWidth: 120 },
   });

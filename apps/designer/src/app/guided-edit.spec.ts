@@ -43,7 +43,7 @@ describe('GuidedEdit', () => {
     choose(form, 'kind', 'integer');
     await fixture.whenStable();
 
-    const built = { op: 'changeProperty', typeId: 'order', propertyName: 'id', set: { kind: 'integer' } };
+    const built = { op: 'updateItem', collection: 'types', id: 'order', field: 'properties', key: 'id', set: { kind: 'integer' } };
     expect(JSON.parse(form.querySelector('[data-testid="guided-patch"]')!.textContent!)).toEqual(built);
 
     form.querySelector<HTMLButtonElement>('[data-testid="guided-apply"]')!.click();

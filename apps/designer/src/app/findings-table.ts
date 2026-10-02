@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import type { Finding } from '@loom/core';
+import type { AffectedElement, Finding } from '@loom/core';
 
 @Component({
   selector: 'app-findings-table',
@@ -19,7 +19,7 @@ import type { Finding } from '@loom/core';
               <td data-col="path"><code>{{ f.path }}</code></td>
               <td data-col="message">{{ f.message }}</td>
               <td data-col="fix">{{ f.fix ?? '' }}</td>
-              <td data-col="impact">{{ (f.impact ?? []).join(', ') }}</td>
+              <td data-col="impact">{{ ids(f.impact ?? []) }}</td>
             </tr>
           }
         </tbody>
@@ -29,4 +29,8 @@ import type { Finding } from '@loom/core';
 })
 export class FindingsTable {
   readonly findings = input.required<readonly Finding[]>();
+
+  protected ids(list: readonly AffectedElement[]): string {
+    return list.map((a) => a.ref.id).join(', ');
+  }
 }

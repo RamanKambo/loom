@@ -2,9 +2,9 @@
  * Deterministic JSON helpers. Pure and isomorphic: no fs, no Node globals.
  *
  * Object keys are sorted recursively; array order is preserved because array
- * order is load-bearing in the model (e.g. a reordered routine resultSet is a
- * breaking change). `undefined` members are dropped so optional-field presence
- * never perturbs the canonical string.
+ * order is load-bearing in the model (a reordered result set is a breaking
+ * change). `undefined` members are dropped so optional-field presence never
+ * perturbs the canonical form.
  */
 
 function sortDeep(value: unknown): unknown {
@@ -24,17 +24,26 @@ function sortDeep(value: unknown): unknown {
   return value;
 }
 
-/** Canonical, stable, pretty JSON. Same input value -> identical string. */
+/** Canonical, stable, pretty JSON (two-space indent). Same input value -> identical string. */
 export function canonicalStringify(value: unknown): string {
   return JSON.stringify(sortDeep(value), null, 2);
 }
 
+/**
+ * Canonical JSON without insignificant whitespace: the form every content hash
+ * is taken over. The generator computes the contract digest with the same
+ * algorithm, so a hash computed here and one computed there agree.
+ */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(sortDeep(value));
+}
+
 /** Structural equality that is key-order independent but array-order sensitive. */
 export function deepEqual(a: unknown, b: unknown): boolean {
-  return canonicalStringify(a) === canonicalStringify(b);
+  return canonicalJson(a) === canonicalJson(b);
 }
 
 /** Deep clone of plain JSON data (the model is pure data, so this is sufficient). */
 export function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }

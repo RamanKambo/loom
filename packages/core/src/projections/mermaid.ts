@@ -1,9 +1,9 @@
-import type { Model } from '../types.js';
-import { ABSENT_STATE } from '../types.js';
+import type { Model } from '../generated/types.js';
+import { ABSENT_STATE } from '../records.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
 
 /** Mermaid label text: a double quote would end the label, so it becomes an entity. */
-function label(s: string): string {
+export function label(s: string): string {
   return s.replace(/"/g, '#quot;').replace(/\r?\n/g, ' ');
 }
 

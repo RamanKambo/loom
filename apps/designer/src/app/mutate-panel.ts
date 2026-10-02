@@ -1,13 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import type { Patch } from '@loom/core';
+import type { AffectedElement, Patch } from '@loom/core';
 import { ChangesTable } from './changes-table';
 import { FindingsTable } from './findings-table';
 import { GuidedEdit } from './guided-edit';
 import { LoomStore } from './loom-store';
 
 const PLACEHOLDER = `[
-  { "op": "setVersion", "target": "type", "id": "order", "version": 2 },
-  { "op": "changeProperty", "typeId": "order", "propertyName": "note", "set": { "kind": "boolean" } }
+  { "op": "update", "collection": "types", "id": "invoice", "set": { "version": 2 } },
+  { "op": "updateItem", "collection": "types", "id": "invoice", "field": "properties", "key": "state", "set": { "enumValues": ["draft", "issued"] } }
 ]`;
 
 @Component({
@@ -51,7 +51,7 @@ const PLACEHOLDER = `[
             {{ r.accepted ? 'The model was replaced; Undo restores the previous one.' : 'The model is unchanged.' }}
           </p>
           @if (r.impact.length) {
-            <p>Impact: {{ r.impact.join(', ') }}</p>
+            <p>Impact: {{ impactText(r.impact) }}</p>
           }
           @if (!r.accepted || r.findings.length) {
             <h4>Findings</h4>
@@ -95,6 +95,10 @@ export class MutatePanel {
     }
     this.parseError.set(null);
     this.store.apply(parsed as Patch | Patch[], this.ackList());
+  }
+
+  protected impactText(impact: readonly AffectedElement[]): string {
+    return impact.map((a) => `${a.ref.kind} ${a.ref.id} (${a.reason})`).join(', ');
   }
 
   protected addToEditor(patch: Patch): void {
