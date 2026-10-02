@@ -1,32 +1,59 @@
 # Loom open items
 
 Unresolved questions about Loom, each with what would close it. A decision lands in the code, the
-README or a commit message, and its item is then deleted.
+README or a commit message, and its item is then deleted. Identifiers are never reused.
 
-## OI-1 Should Loom keep a dormant local SQL Server that it wakes only for database checks?
+## OI-2 Should Loom model the phases that move a live table safely through a breaking change?
 
-`contract-tests.sql` proves that real procedures and tables match the model only when it runs
-against a SQL Server (see the README, Conformance checks). On AMC-D-PF3XTNPM, SQL Server 2022
-Express LocalDB 16.0.1000.6 was installed on 2026-10-02 for that check; it takes about 281 MB on
-disk and runs no Windows service.
+A breaking change to a table-backed type is accepted when the model's end state is consistent, as
+`order.id` changing from string to integer is in the README Walkthrough. A database that already
+holds rows cannot make that jump in one statement, and old and new consumers run side by side while
+the change rolls out. The usual safe sequence has five phases:
 
-**Constraint:** the engine never executes SQL or calls a live service. Any start, stop or
-purge scripting belongs in the CLI or a separate script, never in `packages/core`, and the database
-holds nothing that outlives one check.
+| Phase | `order.id` example |
+| --- | --- |
+| Expand | Add `id_v2 BIGINT NULL` beside the existing `id`; current readers are unaffected. |
+| Backfill | Convert existing rows into `id_v2`; rows that cannot convert are reported. |
+| Validate | Prove every row converted and every constraint holds. |
+| Switch | Deploy `ordering.sp_place_order` v2 and `fulfillment.rb_dispatch` v2 against `id_v2`. |
+| Contract | Drop the old column, make `id_v2` the `NOT NULL` key, and rename it to `id`. |
 
-| Option | One check | Idle footprint | Open points |
-| --- | --- | --- | --- |
-| A. Keep LocalDB | `SqlLocalDB start`, create a throwaway database, run the checks, drop it, `SqlLocalDB stop` | Disk only: LocalDB uses no services and starts on demand (Microsoft Learn, *SQL Server Express LocalDB instance APIs*) | Whether an idle instance stops by itself is unknown. Express edition limits apply (Microsoft Learn, *SQL Server Express LocalDB*, Install LocalDB). |
-| B. Developer edition, dormant | Enable and start the service, drop and recreate the database, run the checks, then stop and disable the service | Disk only while disabled | Whether scripts can change the service's startup type and start it without elevation is unknown. Larger install. Which checks it enables that LocalDB cannot is unknown. |
-| C. Install per check | Install LocalDB, run the checks, uninstall | None | Slowest; needs the installer media and elevation every time. |
+Loom would add a migration record per breaking change to a table-backed property. Rules would
+refuse the change without one, enforce phase order (switch never before validate), and schedule
+each consumer's version bump into the switch phase. A projection would emit the per-phase DDL
+skeleton and checks.
 
-**What would close:** a measured comparison on the office laptop. It covers disk use, memory while
-running and while stopped, start time, and the privilege each step needs. It also lists any check
-or tool that options A and B enable beyond the other. The owner then decides, with the reason in the
-commit.
+**What would close:** the owner's decision; if accepted, a design for the migration record and its
+rules in `packages/core/src/types.ts` and `meta-schema.ts`.
 
-**Blocked by:** the owner's decision; option B also needs a scripted enable, start, stop and disable
-test.
+**Cost of leaving open:** a breaking column change passes Loom and then fails, or loses data, on the
+first database that holds rows.
 
-**Cost of leaving open:** LocalDB stays installed on AMC-D-PF3XTNPM, and the SQL contract checks
-are proven only on that machine.
+## OI-3 Should Loom track which requirements and contracts are proven, and by what?
+
+Every mutation already traces to a requirement and a scenario (`MUTATION_TRACEABILITY_UNCOVERED`).
+Nothing records whether a scenario or a routine contract has actually been proven. An evidence record
+would name what it proves, the check that proves it, such as a generated SQL or Pester contract test,
+and the version it proved. A rule would require evidence for every scenario and routine contract, and
+evidence would turn stale when the element it proves changes version. The observed status (passed,
+failed, unknown) comes from pipeline runs, so it belongs in a generated artifact; the deterministic
+model holds only the required evidence.
+
+**What would close:** the owner's decision; if accepted, the evidence record shape and where pipeline
+results are read from.
+
+**Cost of leaving open:** after a change, nobody can list what is still unproven. The `order.id`
+change made the conforming runbook fail its contract test, and only a manual test run showed it.
+
+## OI-4 Should Loom record a maturity level for each delivery slice?
+
+A delivery slice is a workflow with its operations, mutations and routines. Workflows carry only
+`planned` or `active` today. Levels such as planned, specified, built, verified and released would
+come with rules: a slice is verified only when all of its evidence passed (needs OI-3), and released
+only when every slice it depends on is released.
+
+**What would close:** the owner's decision after OI-3, because the verified level depends on
+evidence records.
+
+**Cost of leaving open:** the model cannot say which parts of the system are ready, and a slice can be
+promoted ahead of the slices it depends on.
