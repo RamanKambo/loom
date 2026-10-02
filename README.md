@@ -347,6 +347,11 @@ core first: the designer links `@loom/core` from `packages/core`. Because `@loom
 `"sideEffects": false`, the designer's production build leaves out the core modules it does not
 import, such as the self-test.
 
+## Open items
+
+Proposed extensions that are not yet decided are open items in [`Docs/ToDo.md`](./Docs/ToDo.md),
+each with what would close it.
+
 ## License
 
 MIT. Direct runtime dependencies are MIT or ISC: `ajv`, `ajv-formats`,
