@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Workspace documents under .loom/ and the workspace adapter's typed results. The core receives these as validated values and never reads them from disk.",
+  "$defs": {
+    "ArtifactInstanceName": {
+      "description": "Generated file name, or '<file>#<componentId>' for one instance of a per-component artifact.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(#[A-Za-z0-9][A-Za-z0-9._-]*)?$"
+    },
+    "LoomConfig": {
+      "description": "Content of .loom/loom.json: governed path set, output routing and policy bindings.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configVersion", "model", "scope", "outputs", "gates"],
+      "properties": {
+        "configVersion": { "const": 1 },
+        "model": { "description": "Model document path, relative to .loom/.", "$ref": "common.schema.json#/$defs/RelativePath" },
+        "projectionProfile": { "description": "Projection profile id; 'none' enables no artifacts and is permitted only for an unplanned workspace.", "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "scope": {
+          "description": "Governed path set: component id to one or more repository-relative directory roots.",
+          "type": "object",
+          "propertyNames": { "$ref": "common.schema.json#/$defs/Id" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "common.schema.json#/$defs/RelativePath" }
+          }
+        },
+        "outputs": {
+          "description": "Generated artifact instance to one repository-relative target directory. An unmapped enabled artifact goes to Docs/Loom/.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/ArtifactInstanceName" },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/RelativePath" }
+        },
+        "gates": {
+          "description": "Gate bindings. These can only strengthen the trusted policy named by policyRef; they never weaken it.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "policyRef": { "$ref": "common.schema.json#/$defs/Id" },
+            "implementationRequires": { "enum": ["none", "proposed-contract", "accepted-contract"] },
+            "releaseRequires": { "type": "array", "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } }
+          }
+        }
+      }
+    },
+    "WorkflowState": {
+      "description": "Content of .loom/state.json: transient workflow state. 'sealed' is a derived view of acceptance for the current revision and carries no authority.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stateVersion", "phase", "sealed"],
+      "properties": {
+        "stateVersion": { "const": 1 },
+        "phase": { "enum": ["unplanned", "discovery", "specification", "implementation", "integration", "release", "operations"] },
+        "sealed": { "type": "boolean" },
+        "revision": { "description": "Model revision the state was last written against.", "$ref": "common.schema.json#/$defs/Hash" },
+        "tasks": {
+          "type": "array",
+          "x-loom-key": "workPackage",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["workPackage", "status"],
+            "properties": {
+              "workPackage": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["planned", "in-progress", "blocked", "done"] },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["ref", "hash"],
+                  "properties": {
+                    "ref": { "$ref": "common.schema.json#/$defs/RecordRef" },
+                    "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+                  }
+                }
+              },
+              "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+            }
+          }
+        }
+      }
+    },
+    "ManifestArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instance", "target", "file", "path", "required", "draft", "hash"],
+      "properties": {
+        "instance": { "$ref": "#/$defs/ArtifactInstanceName" },
+        "target": { "$ref": "tools.schema.json#/$defs/ProjectionTarget" },
+        "file": { "type": "string" },
+        "component": { "$ref": "common.schema.json#/$defs/Id" },
+        "path": { "description": "Repository-relative installed file path.", "$ref": "common.schema.json#/$defs/RelativePath" },
+        "required": { "type": "boolean" },
+        "draft": { "type": "boolean" },
+        "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+      }
+    },
+    "OutputManifest": {
+      "description": "Content of .loom/manifest.json: deterministic record of every installed generated artifact. Projection selection and output routing are recorded separately.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestVersion", "model", "config", "profile", "generator", "artifacts"],
+      "properties": {
+        "manifestVersion": { "const": 1 },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hash"],
+          "properties": { "hash": { "$ref": "common.schema.json#/$defs/Hash" } }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hash"],
+          "properties": { "hash": { "$ref": "common.schema.json#/$defs/Hash" } }
+        },
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "enables"],
+          "properties": {
+            "id": { "type": "string" },
+            "version": { "type": "integer", "minimum": 1 },
+            "enables": { "type": "array", "items": { "$ref": "tools.schema.json#/$defs/ProjectionTarget" } }
+          }
+        },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "contractDigest"],
+          "properties": {
+            "version": { "type": "string" },
+            "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/ManifestArtifact" }, "x-loom-key": "instance" }
+      }
+    },
+    "InstallJournal": {
+      "description": "Recoverable record of one bundle installation. Each file is replaced atomically; the bundle as a whole is complete only when every entry is installed and the manifest matches.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journalVersion", "bundle", "state", "entries"],
+      "properties": {
+        "journalVersion": { "const": 1 },
+        "bundle": { "description": "Hash of the manifest being installed.", "$ref": "common.schema.json#/$defs/Hash" },
+        "state": { "enum": ["staged", "installing", "complete", "failed"] },
+        "entries": {
+          "type": "array",
+          "x-loom-key": "path",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "hash", "status"],
+            "properties": {
+              "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" },
+              "previousHash": { "anyOf": [{ "$ref": "common.schema.json#/$defs/Hash" }, { "type": "null" }] },
+              "status": { "enum": ["pending", "installed", "failed"] }
+            }
+          }
+        }
+      }
+    },
+    "PublishedContract": {
+      "description": "A published contract bundle: the records an independent system exposes, pinned by publisher, contract id, version and digest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleVersion", "publisher", "contract", "version", "schemaVersion", "profiles", "digest", "content"],
+      "properties": {
+        "bundleVersion": { "const": 1 },
+        "publisher": { "$ref": "common.schema.json#/$defs/Alias" },
+        "contract": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "schemaVersion": { "description": "Model format version of the content.", "const": 1 },
+        "profiles": { "type": "array", "items": { "type": "string" } },
+        "digest": { "description": "Hash of the canonical JSON of 'content'.", "$ref": "common.schema.json#/$defs/Hash" },
+        "content": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["types", "operations", "routines", "securitySchemes"],
+          "properties": {
+            "types": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/TypeDef" }, "x-loom-key": "id" },
+            "operations": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Operation" }, "x-loom-key": "id" },
+            "routines": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Routine" }, "x-loom-key": "id" },
+            "securitySchemes": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/SecurityScheme" }, "x-loom-key": "id" }
+          }
+        },
+        "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "OwnershipResult": {
+      "description": "Owner of one path. 'ungoverned' only after complete negative resolution; incomplete inspection is 'unresolved'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "status", "candidates"],
+      "properties": {
+        "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+        "status": { "enum": ["owned", "ungoverned", "overlap", "unresolved"] },
+        "owner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["descriptor", "component", "root"],
+          "properties": {
+            "descriptor": { "description": "Workspace-relative path of the owning .loom directory.", "$ref": "common.schema.json#/$defs/RelativePath" },
+            "component": { "$ref": "common.schema.json#/$defs/Id" },
+            "root": { "$ref": "common.schema.json#/$defs/RelativePath" }
+          }
+        },
+        "candidates": {
+          "description": "Every descriptor inspected for this path, claiming or not.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["descriptor", "claims"],
+            "properties": {
+              "descriptor": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "claims": { "type": "boolean" },
+              "component": { "$ref": "common.schema.json#/$defs/Id" },
+              "readable": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "WorkspaceCoverage": {
+      "description": "Result of a declared full walk. Incomplete coverage never establishes global disjointness or release readiness.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary", "complete", "descriptors", "excluded", "missing", "unreadable"],
+      "properties": {
+        "boundary": { "type": "string" },
+        "complete": { "type": "boolean" },
+        "descriptors": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RelativePath" } },
+        "excluded": { "type": "array", "items": { "type": "string" } },
+        "missing": { "description": "Declared submodules without a checkout.", "type": "array", "items": { "type": "string" } },
+        "unreadable": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

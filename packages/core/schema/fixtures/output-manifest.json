@@ -1,0 +1,19 @@
+{
+  "definition": "OutputManifest",
+  "valid": [
+    {
+      "manifestVersion": 1,
+      "model": { "hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666" },
+      "config": { "hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777" },
+      "profile": { "id": "contracts", "version": 1, "enables": ["sql", "reference"] },
+      "generator": { "version": "1.0.0", "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" },
+      "artifacts": [
+        { "instance": "schema.sql#ordering", "target": "sql", "file": "schema.sql", "component": "ordering", "path": "ordering/sql/schema.sql", "required": true, "draft": false, "hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888" },
+        { "instance": "reference.md", "target": "reference", "file": "reference.md", "path": "Docs/Loom/reference.md", "required": true, "draft": false, "hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "an installed path outside the workspace is rejected", "keyword": "pattern", "path": "/artifacts/0/path", "instance": { "manifestVersion": 1, "model": { "hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666" }, "config": { "hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777" }, "profile": { "id": "contracts", "version": 1, "enables": [] }, "generator": { "version": "1.0.0", "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }, "artifacts": [{ "instance": "reference.md", "target": "reference", "file": "reference.md", "path": "../reference.md", "required": true, "draft": false, "hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999" }] } }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "definition": "PublishedContract",
+  "valid": [
+    {
+      "bundleVersion": 1,
+      "publisher": "team-payments",
+      "contract": "payments-api",
+      "version": 2,
+      "schemaVersion": 1,
+      "profiles": ["openapi"],
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "content": {
+        "types": [{ "id": "payment", "version": 2, "owner": "payments", "representation": "response", "properties": [{ "name": "id", "kind": "uuid", "required": true, "nullable": false, "immutable": true, "origin": "system" }] }],
+        "operations": [],
+        "routines": [],
+        "securitySchemes": []
+      }
+    }
+  ],
+  "invalid": [
+    { "because": "a bundle without a digest is rejected", "keyword": "required", "path": "", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-api", "version": 2, "schemaVersion": 1, "profiles": [], "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [] } } }
+  ]
+}

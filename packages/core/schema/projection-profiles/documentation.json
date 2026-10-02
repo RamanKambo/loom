@@ -1,0 +1,8 @@
+{
+  "projectionProfileVersion": 1,
+  "id": "documentation",
+  "version": 1,
+  "description": "Generated documentation views and the canonical YAML export, without conformance artifacts.",
+  "enables": ["yaml", "workflow", "reference", "icd", "architecture", "registers", "readiness-report", "coverage-matrix", "evidence-index"],
+  "planned": true
+}

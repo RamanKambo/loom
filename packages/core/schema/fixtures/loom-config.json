@@ -1,0 +1,22 @@
+{
+  "definition": "LoomConfig",
+  "valid": [
+    { "configVersion": 1, "model": "model.json", "projectionProfile": "none", "scope": { "workspace": ["."] }, "outputs": {}, "gates": {} },
+    {
+      "configVersion": 1,
+      "model": "model.json",
+      "projectionProfile": "contracts",
+      "scope": { "sql": ["GMJobsOperator/GMJobsSQL/Schema", "GMJobsOperator/GMJobsSQL/Scripts"], "api": ["GlobalMail-Azure-Infrastructure/Modules/APIManagement"] },
+      "outputs": { "openapi.json": "GlobalMail-Azure-Infrastructure/Contracts/JobControlApi/", "contract-tests.sql#sql": "GMJobsOperator/GMJobsSQL/tests/contract/", "reference.md": "Docs/Loom/" },
+      "gates": { "policyRef": "engineering", "implementationRequires": "accepted-contract", "releaseRequires": ["integration", "e2e"] }
+    }
+  ],
+  "invalid": [
+    { "because": "an unknown field is rejected", "keyword": "additionalProperties", "path": "", "instance": { "configVersion": 1, "model": "model.json", "scope": {}, "outputs": {}, "gates": {}, "extra": 1 } },
+    { "because": "gates are required", "keyword": "required", "path": "", "instance": { "configVersion": 1, "model": "model.json", "scope": {}, "outputs": {} } },
+    { "because": "an absolute scope root is rejected", "keyword": "pattern", "path": "/scope/sql/0", "instance": { "configVersion": 1, "model": "model.json", "scope": { "sql": ["C:/repo/sql"] }, "outputs": {}, "gates": {} } },
+    { "because": "a scope root escaping the workspace is rejected", "keyword": "pattern", "path": "/scope/sql/0", "instance": { "configVersion": 1, "model": "model.json", "scope": { "sql": ["../sibling"] }, "outputs": {}, "gates": {} } },
+    { "because": "release gates name evidence kinds, never shell text or a success marker", "keyword": "enum", "path": "/gates/releaseRequires/0", "instance": { "configVersion": 1, "model": "model.json", "scope": {}, "outputs": {}, "gates": { "releaseRequires": ["npm test && echo ok"] } } },
+    { "because": "a configuration version other than 1 is rejected", "keyword": "const", "path": "/configVersion", "instance": { "configVersion": 2, "model": "model.json", "scope": {}, "outputs": {}, "gates": {} } }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "profileVersion": 1,
+  "id": "powershell-pester6",
+  "kind": "language",
+  "version": 1,
+  "language": "powershell",
+  "description": "PowerShell runbook and function contracts verified by the same generated tests under Pester major version 6, for an estate that selects Pester 6.",
+  "artifacts": [{ "target": "pester-contract-tests", "instancing": "per-component" }],
+  "supports": [
+    { "construct": "routine.runbook", "description": "Script parameter names, types, mandatory flags, nullability, enum validation sets and parameter order under positional passing." },
+    { "construct": "routine.function", "description": "Function parameter contract inside a script module." },
+    { "construct": "routine.resultSet", "description": "Output object property names." }
+  ],
+  "unsupported": [
+    { "construct": "routine.pipelineInput", "reason": "Pipeline-bound parameters are not represented.", "onUse": "fail" },
+    { "construct": "routine.dynamicParameters", "reason": "Dynamic parameters cannot be resolved from the AST.", "onUse": "fail" }
+  ],
+  "tooling": [
+    { "tool": "pwsh", "versionPolicy": { "minimum": "7.4" }, "required": true, "purpose": "Runs the parser and Pester." },
+    { "tool": "pester", "versionPolicy": { "major": 6 }, "required": true, "purpose": "Executes the generated contract tests." }
+  ],
+  "proofLimits": [
+    "The generated tests inspect the script AST; they do not execute the routine's business logic.",
+    "A pass under Pester 6 does not qualify Pester 5, and the reverse."
+  ],
+  "checks": [
+    {
+      "id": "powershell-pester6.conformance", "revision": 1, "layer": "conformance", "evidence": "conformance",
+      "claim": "The generated Pester tests pass against the conforming runbook fixture and fail against the violating fixture under Pester major version 6.",
+      "tool": { "name": "pester", "versionPolicy": { "major": 6 } }, "runner": "pester-conformance",
+      "inputs": ["pester-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Parameter and output-shape contract only.",
+      "negativeControl": { "fixture": "examples/violating/fulfillment/rb_dispatch.ps1", "reason": "Failed" }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "@loom/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Loom pure engine core: load, validate, mutate, diff, project and export a Loom model. No fs, no network, no Node-only APIs so the same core can later run in a browser.",
   "license": "MIT",
   "type": "module",
@@ -14,7 +14,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "dependencies": {
     "ajv": "^8.20.0",

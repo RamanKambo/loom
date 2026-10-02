@@ -1,0 +1,25 @@
+{
+  "definition": "Policy",
+  "valid": [
+    {
+      "policyVersion": 1,
+      "id": "engineering",
+      "revision": 1,
+      "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [{ "id": "ci-runner", "spki": "MCowBQYDK2VwAyEA", "runner": "ci" }] },
+      "changeClasses": [
+        { "id": "documentation", "description": "Edits with no semantic effect.", "match": { "kinds": ["nonSemantic"] }, "approval": "pre-authorized" },
+        { "id": "compatible-internal", "description": "Compatible changes to internal shapes.", "match": { "kinds": ["compatible"], "dimensions": ["shape-provider", "storage"] }, "approval": "pre-authorized" },
+        { "id": "security", "description": "Any security consequence.", "match": { "dimensions": ["security"] }, "approval": "acceptance-required" }
+      ],
+      "readiness": { "implementation": { "requires": "accepted-contract" }, "integration": { "evidence": ["conformance"] }, "release": { "evidence": ["integration", "e2e"] } },
+      "substitutes": [{ "kind": "test-double", "permits": ["implementation"], "limits": "Never satisfies a real database or service integration obligation." }],
+      "qualification": { "required": ["sql.behavior"], "optional": ["sql.operations"] },
+      "environments": [{ "id": "localdb-fixture", "kind": "disposable-fixture", "designated": true, "description": "Per-run LocalDB database created and dropped by the qualification runner." }],
+      "freeze": { "onAcceptance": true, "defectFixRequalify": ["conformance"] }
+    }
+  ],
+  "invalid": [
+    { "because": "a trusted ref must be a fully qualified Git ref", "keyword": "pattern", "path": "/trust/ref", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [] } },
+    { "because": "an approval mode outside the vocabulary is rejected", "keyword": "enum", "path": "/changeClasses/0/approval", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [{ "id": "c", "description": "x", "match": {}, "approval": "agent-approved" }], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [] } }
+  ]
+}

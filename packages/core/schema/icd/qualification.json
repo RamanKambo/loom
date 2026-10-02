@@ -1,0 +1,22 @@
+{
+  "icdVersion": 1,
+  "id": "qualification",
+  "responsibility": "Runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records.",
+  "owns": [
+    "The built-in runner for every check definition and the required/optional probe policy.",
+    "Isolated per-run temporary directories and disposable fixture databases.",
+    "Tool discovery, version recording and evidence signing with the runner key named by policy."
+  ],
+  "boundary": [
+    "Never installs a tool and never executes command text drawn from a model, a source file or configuration.",
+    "Executes only in an environment the policy designates.",
+    "A missing or unreadable tool yields UNKNOWN, never PASS."
+  ],
+  "provides": [
+    { "name": "runChecks", "kind": "function", "input": "profile.schema.json#/$defs/CheckDefinition", "output": "assurance.schema.json#/$defs/RunRecord", "refusals": ["unmet-prerequisite", "policy-failure"], "effects": "executes", "concurrency": "Each run uses its own temporary directory and fixture database; parallel runs never share state." },
+    { "name": "verifyRevisionSet", "kind": "function", "input": "assurance.schema.json#/$defs/RunRecord", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["policy-failure"], "effects": "reads", "concurrency": "Read-only comparison of every component's evidence against one coordinated revision set." }
+  ],
+  "consumes": [
+    { "component": "adopting-implementation", "interface": "implementationArtifacts" }
+  ]
+}

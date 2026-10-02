@@ -1,0 +1,42 @@
+{
+  "profileVersion": 1,
+  "id": "csharp",
+  "kind": "language",
+  "version": 1,
+  "language": "csharp",
+  "description": "xUnit conformance tests that check an implementation's real public types and its System.Text.Json serialization against the declared types.",
+  "artifacts": [{ "target": "csharp-contract-tests", "instancing": "per-component" }],
+  "supports": [
+    { "construct": "type.publicShape", "description": "Public type and property presence, CLR type of each property, nullability annotation and read-only (immutable) properties." },
+    { "construct": "type.serialization", "description": "JSON member names, required members, enum string values and round-trip of a contract-conforming payload through System.Text.Json." },
+    { "construct": "type.decimal", "description": "Exact decimal values survive serialization without floating-point conversion." }
+  ],
+  "unsupported": [
+    { "construct": "type.union", "reason": "Polymorphic serialization is not generated.", "onUse": "fail" },
+    { "construct": "routine.any", "reason": "Routines are qualified by the SQL and PowerShell profiles.", "onUse": "fail" }
+  ],
+  "tooling": [
+    { "tool": "dotnet", "versionPolicy": { "minimum": "8.0" }, "required": true, "purpose": "Builds and runs the generated xUnit project against the implementation assembly." }
+  ],
+  "proofLimits": [
+    "The tests check public shape and serialization only; business behavior is never generated or asserted.",
+    "A pass against a fixture assembly does not qualify a different implementation assembly."
+  ],
+  "checks": [
+    {
+      "id": "csharp.build", "revision": 1, "layer": "build", "evidence": "build",
+      "claim": "The generated xUnit project builds against the implementation assembly.",
+      "tool": { "name": "dotnet", "versionPolicy": { "minimum": "8.0" } }, "runner": "csharp-build",
+      "inputs": ["csharp-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Compilation only."
+    },
+    {
+      "id": "csharp.conformance", "revision": 1, "layer": "conformance", "evidence": "conformance",
+      "claim": "The generated xUnit tests pass against the conforming implementation fixture and fail against the violating fixture.",
+      "tool": { "name": "dotnet", "versionPolicy": { "minimum": "8.0" } }, "runner": "csharp-conformance",
+      "inputs": ["csharp-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Public shape and serialization subset only.",
+      "negativeControl": { "fixture": "examples/violating/csharp", "reason": "Failed" }
+    }
+  ]
+}

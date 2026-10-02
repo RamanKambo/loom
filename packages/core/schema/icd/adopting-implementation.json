@@ -1,0 +1,14 @@
+{
+  "icdVersion": 1,
+  "id": "adopting-implementation",
+  "responsibility": "Implements business behavior, persistence, transport and infrastructure provisioning against the accepted contracts, and supplies the artifacts that qualification checks.",
+  "owns": ["Business logic, authored migration scripts, provisioning, credentials and live resource identifiers."],
+  "boundary": [
+    "Generated DDL and conformance fixtures are not automatically authorized production migrations.",
+    "Provisioning scripts, credentials and live identifiers stay outside the portable model."
+  ],
+  "provides": [
+    { "name": "implementationArtifacts", "kind": "file", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "Checked at an exact source revision recorded in the evidence." }
+  ],
+  "consumes": []
+}

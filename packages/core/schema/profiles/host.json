@@ -1,0 +1,22 @@
+{
+  "profileVersion": 1,
+  "id": "host",
+  "kind": "host",
+  "version": 1,
+  "description": "Stack-neutral hosting concerns of deployment units, assessed against declared host capabilities.",
+  "artifacts": [],
+  "supports": [
+    { "construct": "host.capability", "description": "Trigger, timeout, concurrency, scaling, statefulness and identity capabilities of a host." },
+    { "construct": "deployment.cohosting", "description": "Several components in one deployment unit, bound to an accepted decision." }
+  ],
+  "unsupported": [],
+  "tooling": [],
+  "proofLimits": ["Capability fit is checked against declared host facts; the live platform is not probed."],
+  "checks": [],
+  "concerns": [
+    { "id": "deploymentUnit.timeout", "record": "deploymentUnit", "field": "timeout", "description": "Execution time limit of the unit.", "when": { "systemKinds": ["application", "service", "distributed-system"] } },
+    { "id": "deploymentUnit.concurrency", "record": "deploymentUnit", "field": "concurrency", "description": "Concurrency model of the unit.", "when": { "systemKinds": ["application", "service", "distributed-system"] } },
+    { "id": "deploymentUnit.identity", "record": "deploymentUnit", "field": "identity", "description": "Identity the unit runs as.", "when": { "systemKinds": ["service", "distributed-system"] } },
+    { "id": "deploymentUnit.instances", "record": "deploymentUnit", "field": "instances", "description": "Instance count bounds.", "when": { "systemKinds": ["service", "distributed-system"] } }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "icdVersion": 1,
+  "id": "workspace",
+  "responsibility": "Owns the .loom directory and every file the CLI and the MCP server read or write: initialization, discovery and path ownership, output routing and installation, trusted baselines, workflow state, expected-revision writes, the durable evidence store and published-contract resolution.",
+  "owns": [
+    "Path identity: separator normalization, filesystem case rules, symlink and junction resolution, containment by path segment.",
+    "Disjointness of governed path sets across every discoverable descriptor.",
+    "Atomic per-file installation with a bundle manifest and a recoverable journal.",
+    "Reading policy, baselines and acceptance records from the trusted Git ref."
+  ],
+  "boundary": [
+    "No semantic rule of its own: every decision is delegated to the core.",
+    "Never stages, commits or updates a gitlink.",
+    "Never trusts candidate-supplied policy or acceptance."
+  ],
+  "provides": [
+    { "name": "init", "kind": "function", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "policy-failure"], "effects": "writes", "concurrency": "Stages scaffolding then installs it; refuses when .loom exists." },
+    { "name": "discover", "kind": "function", "input": "none", "output": "workspace.schema.json#/$defs/WorkspaceCoverage", "refusals": ["unresolved-context"], "effects": "reads", "concurrency": "Read-only walk of the declared boundary." },
+    { "name": "resolveOwner", "kind": "function", "input": "none", "output": "workspace.schema.json#/$defs/OwnershipResult", "refusals": ["unresolved-context"], "effects": "reads", "concurrency": "Read-only; a cached result is used only while its invalidation identity matches." },
+    { "name": "loadWorkspace", "kind": "function", "input": "none", "output": "workspace.schema.json#/$defs/LoomConfig", "refusals": ["invalid-input", "unresolved-context"], "effects": "reads", "concurrency": "Read-only." },
+    { "name": "installOutputs", "kind": "function", "input": "tools.schema.json#/$defs/ProjectData", "output": "workspace.schema.json#/$defs/OutputManifest", "refusals": ["policy-failure"], "effects": "writes", "concurrency": "Per-file atomic replacement; an interrupted bundle stays visibly incomplete in the journal and the manifest." },
+    { "name": "readTrustedBaseline", "kind": "function", "input": "none", "output": "assurance.schema.json#/$defs/Baseline", "refusals": ["unresolved-context", "policy-failure"], "effects": "reads", "concurrency": "Reads committed content of the trusted ref only." },
+    { "name": "readPolicy", "kind": "function", "input": "none", "output": "assurance.schema.json#/$defs/Policy", "refusals": ["unresolved-context", "policy-failure"], "effects": "reads", "concurrency": "Reads committed content of the trusted ref only." },
+    { "name": "writeModel", "kind": "function", "input": "tools.schema.json#/$defs/MutateInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "stale-base", "policy-failure"], "effects": "writes", "concurrency": "Compare-and-swap on the expected base revision under an exclusive lock file; a stale base is refused and nothing is written." },
+    { "name": "evidenceStore", "kind": "record", "input": "assurance.schema.json#/$defs/EvidenceRecord", "output": "assurance.schema.json#/$defs/EvidenceRecord", "refusals": ["unresolved-context"], "effects": "writes", "concurrency": "Append-only; records are content-addressed and never rewritten." },
+    { "name": "resolvePublishedContracts", "kind": "function", "input": "none", "output": "workspace.schema.json#/$defs/PublishedContract", "refusals": ["unresolved-context"], "effects": "reads", "concurrency": "Reads explicitly pinned bundles only; never a network import." }
+  ],
+  "consumes": [
+    { "component": "core", "interface": "validate" },
+    { "component": "core", "interface": "compareBaseline" },
+    { "component": "core", "interface": "evaluateEvidence" },
+    { "component": "core", "interface": "checkRevision" },
+    { "component": "workflow-integration", "interface": "acceptanceRecords" },
+    { "component": "workflow-integration", "interface": "workflowState" }
+  ]
+}

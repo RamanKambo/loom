@@ -1,0 +1,27 @@
+{
+  "icdVersion": 1,
+  "id": "designer",
+  "responsibility": "Edits and visualizes contracts, knowledge records, unknowns, impact paths, compatibility, baselines, readiness and evidence through the same core the agents use.",
+  "owns": ["Schema-driven editing controls, the local undo history and the local import comparison point."],
+  "boundary": [
+    "No business validation of its own and no independently authoritative seal or acceptance state.",
+    "The local undo and import comparison point is never an accepted engineering baseline.",
+    "Persistent saves apply the shared expected-revision rule."
+  ],
+  "provides": [],
+  "consumes": [
+    { "component": "core", "interface": "validate" },
+    { "component": "core", "interface": "mutate" },
+    { "component": "core", "interface": "diff" },
+    { "component": "core", "interface": "project" },
+    { "component": "core", "interface": "export" },
+    { "component": "core", "interface": "import" },
+    { "component": "core", "interface": "describe" },
+    { "component": "core", "interface": "checkReadiness" },
+    { "component": "core", "interface": "planChange" },
+    { "component": "core", "interface": "compareBaseline" },
+    { "component": "core", "interface": "evaluateEvidence" },
+    { "component": "core", "interface": "checkRevision" },
+    { "component": "schema", "interface": "contractBundle" }
+  ]
+}

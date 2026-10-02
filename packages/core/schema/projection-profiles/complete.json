@@ -1,0 +1,8 @@
+{
+  "projectionProfileVersion": 1,
+  "id": "complete",
+  "version": 1,
+  "description": "Every projection target.",
+  "enables": ["json-schema", "openapi", "sql", "sql-contract-tests", "pester-contract-tests", "csharp-contract-tests", "typescript-contract-tests", "yaml", "workflow", "reference", "icd", "architecture", "registers", "readiness-report", "coverage-matrix", "evidence-index"],
+  "planned": true
+}

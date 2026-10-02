@@ -1,0 +1,538 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Baselines, acceptance, policy, evidence and qualification records. Adapters establish provenance; the core evaluates the verified records it is given.",
+  "$defs": {
+    "Baseline": {
+      "description": "Content of .loom/baselines/<id>.json: an accepted baseline. Model format, config version, contract versions, source revisions and generator version are recorded separately.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineVersion", "id", "model", "config", "policy", "generator", "contracts", "components", "artifacts", "sources", "commitments", "acceptance"],
+      "properties": {
+        "baselineVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "predecessor": { "$ref": "common.schema.json#/$defs/Id" },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hash", "formatVersion", "snapshot"],
+          "properties": {
+            "hash": { "$ref": "common.schema.json#/$defs/Hash" },
+            "formatVersion": { "type": "integer", "minimum": 1 },
+            "snapshot": { "description": "Canonical copy of the accepted model, relative to .loom/.", "$ref": "common.schema.json#/$defs/RelativePath" }
+          }
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hash", "configVersion"],
+          "properties": {
+            "hash": { "$ref": "common.schema.json#/$defs/Hash" },
+            "configVersion": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref", "revision", "hash"],
+          "properties": {
+            "ref": { "$ref": "common.schema.json#/$defs/Id" },
+            "revision": { "type": "integer", "minimum": 1 },
+            "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version"],
+          "properties": {
+            "id": { "type": "string" },
+            "version": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "contractDigest"],
+          "properties": {
+            "version": { "type": "string" },
+            "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "contracts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ref", "version", "hash"],
+            "properties": {
+              "ref": { "$ref": "common.schema.json#/$defs/RecordRef" },
+              "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        },
+        "components": {
+          "type": "array",
+          "x-loom-key": "id",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "hash", "frozen"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/Id" },
+              "hash": { "description": "Canonical hash of every record the component owns.", "$ref": "common.schema.json#/$defs/Hash" },
+              "frozen": { "type": "boolean" }
+            }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["instance", "hash"],
+            "properties": {
+              "instance": { "$ref": "workspace.schema.json#/$defs/ArtifactInstanceName" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        },
+        "sources": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/SourceRevision" } },
+        "commitments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["contract", "policy"],
+            "properties": {
+              "contract": { "$ref": "common.schema.json#/$defs/RecordRef" },
+              "policy": { "enum": ["exact", "no-breaking", "additive-only"] }
+            }
+          }
+        },
+        "acceptance": { "$ref": "common.schema.json#/$defs/Id" }
+      }
+    },
+    "Acceptance": {
+      "description": "Content of .loom/acceptance/<id>.json. Trusted only when present at the policy's trusted ref or signed by a key the trusted policy lists.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptanceVersion", "id", "subject", "decision", "authority", "policy", "scope", "changeClasses", "at"],
+      "properties": {
+        "acceptanceVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["baseline", "change"] },
+            "baseline": { "$ref": "common.schema.json#/$defs/Id" },
+            "base": { "$ref": "common.schema.json#/$defs/Hash" },
+            "candidate": { "$ref": "common.schema.json#/$defs/Hash" },
+            "changes": { "description": "Hash of the canonical change list accepted.", "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "decision": { "enum": ["accepted", "rejected"] },
+        "authority": { "$ref": "common.schema.json#/$defs/Alias" },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref", "revision"],
+          "properties": {
+            "ref": { "$ref": "common.schema.json#/$defs/Id" },
+            "revision": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "scope": { "description": "Records the acceptance covers; empty means the whole subject.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "changeClasses": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+        "at": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "PublicKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "spki"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "spki": { "description": "Base64 DER SubjectPublicKeyInfo of an Ed25519 public key.", "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" },
+        "authority": { "$ref": "common.schema.json#/$defs/Alias" },
+        "runner": { "$ref": "common.schema.json#/$defs/Id" }
+      }
+    },
+    "ChangeClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "match", "approval"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "match": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kinds": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/ChangeKind" } },
+            "dimensions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Dimension" } },
+            "elementKinds": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordKind" } },
+            "rules": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } }
+          }
+        },
+        "approval": { "enum": ["pre-authorized", "acceptance-required", "prohibited"] }
+      }
+    },
+    "Policy": {
+      "description": "A gate policy, read only from the trusted ref named in it. Candidate content cannot authorize itself or weaken a required check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyVersion", "id", "revision", "trust", "changeClasses", "readiness", "substitutes", "qualification", "environments"],
+      "properties": {
+        "policyVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "trust": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ref", "acceptanceVia", "acceptanceKeys", "evidenceKeys"],
+          "properties": {
+            "ref": { "description": "Git ref whose committed content is trusted: policies, baselines and acceptance records.", "type": "string", "pattern": "^refs/[A-Za-z0-9._/-]+$" },
+            "acceptanceVia": { "enum": ["trusted-ref", "signature", "either"] },
+            "acceptanceKeys": { "type": "array", "items": { "$ref": "#/$defs/PublicKey" }, "x-loom-key": "id" },
+            "evidenceKeys": { "type": "array", "items": { "$ref": "#/$defs/PublicKey" }, "x-loom-key": "id" }
+          }
+        },
+        "changeClasses": { "type": "array", "items": { "$ref": "#/$defs/ChangeClass" }, "x-loom-key": "id" },
+        "readiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["implementation", "integration", "release"],
+          "properties": {
+            "implementation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requires"],
+              "properties": { "requires": { "enum": ["none", "proposed-contract", "accepted-contract"] } }
+            },
+            "integration": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["evidence"],
+              "properties": { "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } } }
+            },
+            "release": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["evidence"],
+              "properties": { "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } } }
+            }
+          }
+        },
+        "substitutes": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Substitute" }, "x-loom-key": "kind" },
+        "qualification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "optional"],
+          "properties": {
+            "required": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+            "optional": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+          }
+        },
+        "environments": {
+          "type": "array",
+          "x-loom-key": "id",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "designated", "description"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/$defs/Id" },
+              "kind": { "enum": ["disposable-fixture", "ci", "test", "staging", "production"] },
+              "designated": { "description": "Owned by the qualification pipeline and permitted to execute checks.", "type": "boolean" },
+              "description": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        },
+        "freeze": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["onAcceptance", "defectFixRequalify"],
+          "properties": {
+            "onAcceptance": { "description": "Freeze every component of an accepted baseline.", "type": "boolean" },
+            "defectFixRequalify": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } }
+          }
+        }
+      }
+    },
+    "EvidenceClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": { "enum": ["criterion", "retainedBehavior", "migration", "check", "contract", "release"] },
+        "ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "EvidenceRecord": {
+      "description": "Content of .loom/evidence/<id>.json. Agent-authored text claiming a pass is not evidence; a record is trusted only when signed by a runner key the trusted policy lists.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceVersion", "id", "claims", "kind", "check", "artifacts", "sources", "environment", "tool", "result", "run", "boundaries", "limits", "inputs"],
+      "properties": {
+        "evidenceVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "claims": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/EvidenceClaim" } },
+        "kind": { "$ref": "common.schema.json#/$defs/EvidenceKind" },
+        "check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "revision", "definitionHash"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/Id" },
+            "revision": { "type": "integer", "minimum": 1 },
+            "definitionHash": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hash"],
+            "properties": {
+              "instance": { "$ref": "workspace.schema.json#/$defs/ArtifactInstanceName" },
+              "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        },
+        "sources": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/SourceRevision" } },
+        "environment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "kind"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/Id" },
+            "kind": { "enum": ["process", "disposable-fixture", "ci", "test", "staging", "production"] },
+            "configuration": { "description": "Hash of the configuration identity; never a secret value.", "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "tool": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "result": { "$ref": "common.schema.json#/$defs/CheckResult" },
+        "reason": { "type": "string" },
+        "run": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "runner", "startedAt", "finishedAt"],
+          "properties": {
+            "id": { "$ref": "common.schema.json#/$defs/Id" },
+            "runner": { "$ref": "common.schema.json#/$defs/Id" },
+            "startedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
+            "finishedAt": { "$ref": "common.schema.json#/$defs/Timestamp" }
+          }
+        },
+        "boundaries": {
+          "description": "Actual versus substituted boundaries the check exercised.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["boundary", "actual"],
+            "properties": {
+              "boundary": { "type": "string", "minLength": 1 },
+              "actual": { "enum": ["real", "substitute"] },
+              "substitute": { "$ref": "common.schema.json#/$defs/SubstituteKind" }
+            }
+          }
+        },
+        "limits": { "type": "string", "minLength": 1 },
+        "inputs": {
+          "description": "Every input the result depends on; a changed hash invalidates the record.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ref", "hash"],
+            "properties": {
+              "ref": { "type": "string", "minLength": 1 },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        },
+        "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "RunRecord": {
+      "description": "One coordinated qualification run over an exact revision set.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runVersion", "id", "runner", "startedAt", "finishedAt", "revisionSet", "checks", "aggregate"],
+      "properties": {
+        "runVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "runner": { "$ref": "common.schema.json#/$defs/Id" },
+        "startedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "finishedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "revisionSet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contractDigest", "sources", "profiles"],
+          "properties": {
+            "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" },
+            "sources": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/SourceRevision" } },
+            "model": { "$ref": "common.schema.json#/$defs/Hash" },
+            "config": { "$ref": "common.schema.json#/$defs/Hash" },
+            "bundle": { "$ref": "common.schema.json#/$defs/Hash" },
+            "profiles": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "version", "hash"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "version": { "type": "integer", "minimum": 1 },
+                  "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+                }
+              }
+            }
+          }
+        },
+        "checks": {
+          "type": "array",
+          "x-loom-key": "check",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check", "required", "result"],
+            "properties": {
+              "check": { "$ref": "common.schema.json#/$defs/Id" },
+              "required": { "type": "boolean" },
+              "result": { "$ref": "common.schema.json#/$defs/CheckResult" },
+              "evidence": { "$ref": "common.schema.json#/$defs/Id" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "aggregate": {
+          "description": "PASS only when every required check passed or is justified NOT_APPLICABLE; any required UNKNOWN makes it UNKNOWN; any required FAIL makes it FAIL.",
+          "$ref": "common.schema.json#/$defs/CheckResult"
+        },
+        "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "MetricsReport": {
+      "description": "Outcome and maintenance-cost measurements of one engine revision against an explicit recorded baseline. No universal accuracy percentage is claimed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metricsVersion", "engine", "seededErrors", "legitimateChanges", "staleEvidence", "unnecessaryBlocking", "qualificationCoverage", "contextSize", "manualDuplication"],
+      "properties": {
+        "metricsVersion": { "const": 1 },
+        "engine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "contractDigest"],
+          "properties": {
+            "version": { "type": "string" },
+            "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "seededErrors": { "$ref": "#/$defs/MetricCount" },
+        "legitimateChanges": { "$ref": "#/$defs/MetricCount" },
+        "staleEvidence": { "$ref": "#/$defs/MetricCount" },
+        "unnecessaryBlocking": { "$ref": "#/$defs/MetricCount" },
+        "qualificationCoverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "passed", "failed", "unknown", "notApplicable"],
+          "properties": {
+            "required": { "type": "integer", "minimum": 0 },
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 },
+            "unknown": { "type": "integer", "minimum": 0 },
+            "notApplicable": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "contextSize": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "records", "bytes", "truncated"],
+            "properties": {
+              "target": { "type": "string" },
+              "records": { "type": "integer", "minimum": 0 },
+              "bytes": { "type": "integer", "minimum": 0 },
+              "truncated": { "type": "boolean" }
+            }
+          }
+        },
+        "manualDuplication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["handMaintainedStructuralDeclarations", "files"],
+          "properties": {
+            "handMaintainedStructuralDeclarations": { "type": "integer", "minimum": 0 },
+            "files": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "comparison": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metric", "baseline", "current"],
+            "properties": {
+              "metric": { "type": "string" },
+              "baseline": { "type": "number" },
+              "current": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "MetricCount": {
+      "description": "Cases measured, cases with the intended outcome, and the ids of cases without it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "intended", "missed"],
+      "properties": {
+        "cases": { "type": "integer", "minimum": 0 },
+        "intended": { "type": "integer", "minimum": 0 },
+        "missed": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "CapabilityRegister": {
+      "description": "Executable register mapping each capability to its owning code, its contract and the verification cases that exercise it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registerVersion", "capabilities"],
+      "properties": {
+        "registerVersion": { "const": 1 },
+        "capabilities": {
+          "type": "array",
+          "x-loom-key": "id",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "description", "code", "contract", "verification"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
+              "description": { "$ref": "common.schema.json#/$defs/Text" },
+              "code": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+#[A-Za-z_$][A-Za-z0-9_$.]*$" } },
+              "contract": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+(#/[A-Za-z0-9$_/.-]*)?$" } },
+              "verification": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

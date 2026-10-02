@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Profile definitions (language, interface, behavior and host), projection profiles, fixed native-tool check definitions and component interface control documents. Instances live in ../profiles and ../icd and are validated by the generator.",
+  "$defs": {
+    "ToolName": {
+      "enum": ["node", "tsc", "dotnet", "pwsh", "pester", "sqlcmd", "sqllocaldb", "dacfx", "scriptdom", "swagger-parser", "oasdiff", "ajv", "mermaid", "git"]
+    },
+    "VersionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum": { "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}$" },
+        "major": { "type": "integer", "minimum": 0 },
+        "exact": { "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}$" }
+      }
+    },
+    "CheckDefinition": {
+      "description": "A fixed native-tool invocation contract. 'runner' names a built-in qualification runner; no command text is ever taken from a model, a source file or a configuration value.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "layer", "evidence", "claim", "tool", "runner", "inputs", "environment", "requiredByDefault", "limits"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "layer": {
+          "enum": ["declared-contract", "parse", "build", "catalog", "behavior", "migration", "operations", "conformance", "schema", "compatibility", "drift", "unit"]
+        },
+        "evidence": { "$ref": "common.schema.json#/$defs/EvidenceKind" },
+        "claim": { "description": "The precise claim a PASS establishes.", "$ref": "common.schema.json#/$defs/Text" },
+        "tool": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "versionPolicy"],
+          "properties": {
+            "name": { "$ref": "#/$defs/ToolName" },
+            "versionPolicy": { "$ref": "#/$defs/VersionPolicy" }
+          }
+        },
+        "runner": { "$ref": "common.schema.json#/$defs/Id" },
+        "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "environment": { "enum": ["process", "disposable-fixture", "designated"] },
+        "requiredByDefault": { "type": "boolean" },
+        "limits": { "description": "What a PASS does not establish.", "$ref": "common.schema.json#/$defs/Text" },
+        "negativeControl": {
+          "description": "A designated fixture the check must reject, and the reason it must give.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fixture", "reason"],
+          "properties": {
+            "fixture": { "type": "string", "minLength": 1 },
+            "reason": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "Construct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["construct", "description"],
+      "properties": {
+        "construct": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "UnsupportedConstruct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["construct", "reason", "onUse"],
+      "properties": {
+        "construct": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$" },
+        "reason": { "$ref": "common.schema.json#/$defs/Text" },
+        "onUse": { "description": "'fail' refuses publication; 'draft' permits only an explicitly incomplete draft.", "enum": ["fail", "draft"] }
+      }
+    },
+    "ConcernDefinition": {
+      "description": "An applicable design concern. It is satisfied by a declared value at 'field', an unknown record naming it, or a not-applicable justification on the record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "record", "field", "description", "when"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/ConcernId" },
+        "record": { "$ref": "common.schema.json#/$defs/RecordKind" },
+        "field": { "type": "string", "pattern": "^[A-Za-z]+(\\.[A-Za-z]+)*$" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "when": {
+          "description": "All stated conditions must hold for the concern to apply.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "systemKinds": { "type": "array", "items": { "enum": ["library", "cli", "powershell-tool", "application", "service", "distributed-system"] } },
+            "anyTraits": { "type": "array", "items": { "type": "string" } },
+            "operationKinds": { "type": "array", "items": { "enum": ["query", "command", "async-command"] } },
+            "transports": { "type": "array", "items": { "enum": ["http", "message", "cli", "library", "sql"] } },
+            "mutating": { "type": "boolean" },
+            "storageMapped": { "type": "boolean" },
+            "optional": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "ProfileDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileVersion", "id", "kind", "version", "description", "artifacts", "supports", "unsupported", "tooling", "proofLimits", "checks"],
+      "properties": {
+        "profileVersion": { "const": 1 },
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "kind": { "enum": ["language", "interface", "documentation", "behavior", "host"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "language": { "enum": ["sql", "powershell", "csharp", "typescript", "openapi", "json-schema", "mermaid"] },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "instancing"],
+            "properties": {
+              "target": { "$ref": "tools.schema.json#/$defs/ProjectionTarget" },
+              "instancing": { "enum": ["singleton", "per-component"] }
+            }
+          }
+        },
+        "supports": { "type": "array", "items": { "$ref": "#/$defs/Construct" }, "x-loom-key": "construct" },
+        "unsupported": { "type": "array", "items": { "$ref": "#/$defs/UnsupportedConstruct" }, "x-loom-key": "construct" },
+        "tooling": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tool", "versionPolicy", "required", "purpose"],
+            "properties": {
+              "tool": { "$ref": "#/$defs/ToolName" },
+              "versionPolicy": { "$ref": "#/$defs/VersionPolicy" },
+              "required": { "type": "boolean" },
+              "purpose": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        },
+        "proofLimits": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "checks": { "type": "array", "items": { "$ref": "#/$defs/CheckDefinition" }, "x-loom-key": "id" },
+        "concerns": { "type": "array", "items": { "$ref": "#/$defs/ConcernDefinition" }, "x-loom-key": "id" }
+      }
+    },
+    "ProjectionProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectionProfileVersion", "id", "version", "description", "enables", "planned"],
+      "properties": {
+        "projectionProfileVersion": { "const": 1 },
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "version": { "type": "integer", "minimum": 1 },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "enables": { "type": "array", "uniqueItems": true, "items": { "$ref": "tools.schema.json#/$defs/ProjectionTarget" } },
+        "planned": { "description": "False only for the profile permitted in an unplanned workspace.", "type": "boolean" }
+      }
+    },
+    "IcdInterface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "input", "output", "refusals", "effects", "concurrency"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9.:_ -]*$" },
+        "kind": { "enum": ["function", "command", "tool", "file", "record"] },
+        "input": { "description": "Schema pointer of the input contract.", "type": "string", "pattern": "^[a-z]+\\.schema\\.json#/\\$defs/[A-Za-z]+$|^none$" },
+        "output": { "description": "Schema pointer of the output contract.", "type": "string", "pattern": "^[a-z]+\\.schema\\.json#/\\$defs/[A-Za-z]+$|^none$" },
+        "refusals": { "type": "array", "items": { "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"] } },
+        "effects": { "enum": ["none", "reads", "writes", "executes"] },
+        "concurrency": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Icd": {
+      "description": "Interface control document of one delivered component: its responsibility, what it owns, its boundary, what it provides and what it consumes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["icdVersion", "id", "responsibility", "owns", "boundary", "provides", "consumes"],
+      "properties": {
+        "icdVersion": { "const": 1 },
+        "id": { "enum": ["core", "schema", "workspace", "qualification", "cli", "mcp", "designer", "workflow-integration", "adopting-implementation"] },
+        "responsibility": { "$ref": "common.schema.json#/$defs/Text" },
+        "owns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "boundary": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "provides": { "type": "array", "items": { "$ref": "#/$defs/IcdInterface" }, "x-loom-key": "name" },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "interface"],
+            "properties": {
+              "component": { "type": "string" },
+              "interface": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

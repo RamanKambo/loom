@@ -1,0 +1,34 @@
+{
+  "icdVersion": 1,
+  "id": "core",
+  "responsibility": "Evaluates supplied records by rule: structural and semantic validation, comparison by compatibility dimension, dependency impact, readiness, evidence applicability and invalidation, and deterministic projection.",
+  "owns": [
+    "Semantic rules and their finding codes, severities and repairs.",
+    "Comparison rules and the field policy that classifies every model field.",
+    "Readiness, evidence and baseline evaluation over supplied, already-verified records.",
+    "Projection renderers and their coverage manifests."
+  ],
+  "boundary": [
+    "No filesystem, network, process execution, clock or credential access.",
+    "No acceptance authority: acceptance and provenance arrive as verified inputs.",
+    "Text inside records is data and is never executed or followed as an instruction."
+  ],
+  "provides": [
+    { "name": "validate", "kind": "function", "input": "tools.schema.json#/$defs/ValidateInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input"], "effects": "none", "concurrency": "Pure and reentrant; identical inputs give identical results." },
+    { "name": "mutate", "kind": "function", "input": "tools.schema.json#/$defs/MutateInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "policy-failure"], "effects": "none", "concurrency": "Pure calculation on a clone; the input model is never modified." },
+    { "name": "diff", "kind": "function", "input": "tools.schema.json#/$defs/DiffInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input"], "effects": "none", "concurrency": "Pure and reentrant." },
+    { "name": "project", "kind": "function", "input": "tools.schema.json#/$defs/ProjectInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "policy-failure"], "effects": "none", "concurrency": "Pure and deterministic: no timestamps, random values or machine paths." },
+    { "name": "export", "kind": "function", "input": "tools.schema.json#/$defs/ExportInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input"], "effects": "none", "concurrency": "Pure; canonical key order." },
+    { "name": "import", "kind": "function", "input": "tools.schema.json#/$defs/ImportInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input"], "effects": "none", "concurrency": "Pure." },
+    { "name": "describe", "kind": "function", "input": "tools.schema.json#/$defs/DescribeInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": [], "effects": "none", "concurrency": "Pure; content is fixed by the contract digest." },
+    { "name": "context", "kind": "function", "input": "tools.schema.json#/$defs/ContextInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context"], "effects": "none", "concurrency": "Pure; a continuation token is derived from the model revision and the target." },
+    { "name": "checkReadiness", "kind": "function", "input": "tools.schema.json#/$defs/CheckReadinessInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context"], "effects": "none", "concurrency": "Pure; identical normalized inputs give identical readiness in every adapter." },
+    { "name": "planChange", "kind": "function", "input": "tools.schema.json#/$defs/PlanChangeInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "stale-base", "policy-failure"], "effects": "none", "concurrency": "Pure preview; never persists." },
+    { "name": "compareBaseline", "kind": "function", "input": "assurance.schema.json#/$defs/Baseline", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["policy-failure", "unresolved-context"], "effects": "none", "concurrency": "Pure; the adapter supplies the verified baseline, policy and acceptance records." },
+    { "name": "evaluateEvidence", "kind": "function", "input": "assurance.schema.json#/$defs/EvidenceRecord", "output": "result.schema.json#/$defs/QualificationState", "refusals": ["unresolved-context"], "effects": "none", "concurrency": "Pure; provenance verification results arrive as input." },
+    { "name": "checkRevision", "kind": "function", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["stale-base"], "effects": "none", "concurrency": "Pure comparison of an expected revision with the current canonical hash." }
+  ],
+  "consumes": [
+    { "component": "schema", "interface": "contractBundle" }
+  ]
+}

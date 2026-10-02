@@ -1,0 +1,26 @@
+{
+  "definition": "EvidenceRecord",
+  "valid": [
+    {
+      "evidenceVersion": 1,
+      "id": "ev.sql-behavior.0001",
+      "claims": [{ "kind": "check", "ref": "sql.behavior" }, { "kind": "criterion", "ref": "req.place-order.accepted" }],
+      "kind": "behavior",
+      "check": { "id": "sql.behavior", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" },
+      "artifacts": [{ "instance": "contract-tests.sql#ordering", "hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444" }],
+      "sources": [{ "repository": ".", "revision": "a9ce204" }],
+      "environment": { "id": "localdb-fixture", "kind": "disposable-fixture" },
+      "tool": { "name": "sqlcmd", "version": "15.0.4298.1" },
+      "result": "PASS",
+      "run": { "id": "run.0001", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" },
+      "boundaries": [{ "boundary": "SQL Server engine", "actual": "real" }],
+      "limits": "Declared procedure contract subset in a disposable fixture.",
+      "inputs": [{ "ref": "storage:ordering.orders", "hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555" }],
+      "signature": { "keyId": "ci-runner", "algorithm": "ed25519", "value": "AAAA" }
+    }
+  ],
+  "invalid": [
+    { "because": "a result outside PASS, FAIL, UNKNOWN and NOT_APPLICABLE is rejected", "keyword": "enum", "path": "/result", "instance": { "evidenceVersion": 1, "id": "e", "claims": [{ "kind": "check", "ref": "x" }], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "process" }, "tool": { "name": "node", "version": "24" }, "result": "SKIPPED", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } },
+    { "because": "evidence without a claim is rejected", "keyword": "minItems", "path": "/claims", "instance": { "evidenceVersion": 1, "id": "e", "claims": [], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "process" }, "tool": { "name": "node", "version": "24" }, "result": "PASS", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } }
+  ]
+}

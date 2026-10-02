@@ -1,0 +1,15 @@
+{
+  "definition": "Patch",
+  "valid": [
+    { "op": "update", "collection": "mutations", "id": "order.pay", "set": { "guard": { "form": "prose", "text": "Payment captured." } } },
+    { "op": "addItem", "collection": "types", "id": "order", "field": "properties", "item": { "name": "currency", "kind": "string", "required": false, "nullable": true, "immutable": false, "origin": "client" } },
+    { "op": "updateItem", "collection": "types", "id": "order", "field": "properties", "key": "note", "set": { "bounds": { "maxLength": 280 } } },
+    { "op": "moveItem", "collection": "routines", "id": "ordering.sp_place_order", "field": "params", "key": "p_note", "index": 0 },
+    { "op": "remove", "collection": "edges", "id": "order.pay|order|structural" },
+    { "op": "rename", "collection": "types", "id": "order", "to": "purchase-order" }
+  ],
+  "invalid": [
+    { "because": "a misspelled patch field is rejected", "keyword": "oneOf", "path": "", "instance": { "op": "update", "collection": "mutations", "id": "order.pay", "set": { "gaurd": { "form": "prose", "text": "x" } } } },
+    { "because": "an unknown operation is rejected", "keyword": "oneOf", "path": "", "instance": { "op": "changeMutation", "mutationId": "order.pay" } }
+  ]
+}

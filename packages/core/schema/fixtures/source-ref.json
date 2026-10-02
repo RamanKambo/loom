@@ -1,0 +1,10 @@
+{
+  "definition": "SourceRef",
+  "valid": [
+    { "kind": "document", "ref": "Docs/requirements.md", "revision": "a9ce204" },
+    { "kind": "vendor-documentation", "ref": "https://learn.microsoft.com/sql/tools/sql-database-projects", "retrieved": "2026-10-03T00:00:00Z" }
+  ],
+  "invalid": [
+    { "because": "a source names neither a revision nor a retrieval context", "keyword": "anyOf", "path": "", "instance": { "kind": "document", "ref": "Docs/requirements.md" } }
+  ]
+}

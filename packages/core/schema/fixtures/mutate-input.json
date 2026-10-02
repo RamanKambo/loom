@@ -1,0 +1,12 @@
+{
+  "definition": "MutateInput",
+  "valid": [
+    { "workspace": true, "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "patch": { "op": "remove", "collection": "scenarios", "id": "scn.pay" }, "dryRun": true },
+    { "workspace": true, "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "patches": [{ "op": "remove", "collection": "scenarios", "id": "scn.pay" }] }
+  ],
+  "invalid": [
+    { "because": "a request with both patch and patches is ambiguous", "keyword": "oneOf", "path": "", "instance": { "workspace": true, "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "patch": { "op": "clearSystemProfile" }, "patches": [{ "op": "clearSystemProfile" }] } },
+    { "because": "a persistent workspace mutation requires the expected base revision", "keyword": "oneOf", "path": "", "instance": { "workspace": true, "patch": { "op": "clearSystemProfile" } } },
+    { "because": "an unknown request member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "workspace": true, "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "patch": { "op": "clearSystemProfile" }, "force": true } }
+  ]
+}

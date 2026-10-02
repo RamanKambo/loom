@@ -1,0 +1,42 @@
+{
+  "profileVersion": 1,
+  "id": "typescript",
+  "kind": "language",
+  "version": 1,
+  "language": "typescript",
+  "description": "node:test conformance tests that check an implementation's exported types at compile time and its serialization at run time.",
+  "artifacts": [{ "target": "typescript-contract-tests", "instancing": "per-component" }],
+  "supports": [
+    { "construct": "type.exportedShape", "description": "Compile-time equality of the exported type's keys, optionality and readonly members with the declared type." },
+    { "construct": "type.serialization", "description": "Round-trip of contract-conforming payloads through the module's parse and serialize functions, and rejection of payloads missing a required member." }
+  ],
+  "unsupported": [
+    { "construct": "type.union", "reason": "Discriminated unions are not generated.", "onUse": "fail" },
+    { "construct": "routine.any", "reason": "Routines are qualified by the SQL and PowerShell profiles.", "onUse": "fail" }
+  ],
+  "tooling": [
+    { "tool": "tsc", "versionPolicy": { "minimum": "5.4" }, "required": true, "purpose": "Compiles the generated tests against the implementation's declarations." },
+    { "tool": "node", "versionPolicy": { "minimum": "22.0" }, "required": true, "purpose": "Runs the generated tests with the node:test runner." }
+  ],
+  "proofLimits": [
+    "The tests check exported shape and serialization only; business behavior is never generated or asserted.",
+    "Type equality is checked by the compiler; values outside the generated samples are not exercised."
+  ],
+  "checks": [
+    {
+      "id": "typescript.build", "revision": 1, "layer": "build", "evidence": "build",
+      "claim": "The generated tests compile against the implementation module's declarations.",
+      "tool": { "name": "tsc", "versionPolicy": { "minimum": "5.4" } }, "runner": "typescript-build",
+      "inputs": ["typescript-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Compilation only."
+    },
+    {
+      "id": "typescript.conformance", "revision": 1, "layer": "conformance", "evidence": "conformance",
+      "claim": "The generated node:test tests pass against the conforming implementation fixture and fail against the violating fixture.",
+      "tool": { "name": "node", "versionPolicy": { "minimum": "22.0" } }, "runner": "typescript-conformance",
+      "inputs": ["typescript-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Exported shape and serialization subset only.",
+      "negativeControl": { "fixture": "examples/violating/typescript", "reason": "fail" }
+    }
+  ]
+}

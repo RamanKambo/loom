@@ -1,0 +1,38 @@
+{
+  "icdVersion": 1,
+  "id": "cli",
+  "responsibility": "Exposes the core, workspace and qualification services as commands whose results are the shared result envelope and whose exit status reflects refusal and finding severity.",
+  "owns": ["Command parsing, the exit-status convention and human-readable rendering of result envelopes."],
+  "boundary": [
+    "No rule of its own; every decision comes from the core or an adapter.",
+    "An explicit model path selects a document; it never exempts the candidate from configured scope, baseline or qualification policy."
+  ],
+  "provides": [
+    { "name": "commands", "kind": "command", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"], "effects": "writes", "concurrency": "Persistent writes go through the workspace adapter's expected-revision check." }
+  ],
+  "consumes": [
+    { "component": "core", "interface": "validate" },
+    { "component": "core", "interface": "mutate" },
+    { "component": "core", "interface": "diff" },
+    { "component": "core", "interface": "project" },
+    { "component": "core", "interface": "export" },
+    { "component": "core", "interface": "import" },
+    { "component": "core", "interface": "describe" },
+    { "component": "core", "interface": "context" },
+    { "component": "core", "interface": "checkReadiness" },
+    { "component": "core", "interface": "planChange" },
+    { "component": "core", "interface": "compareBaseline" },
+    { "component": "workspace", "interface": "init" },
+    { "component": "workspace", "interface": "discover" },
+    { "component": "workspace", "interface": "resolveOwner" },
+    { "component": "workspace", "interface": "loadWorkspace" },
+    { "component": "workspace", "interface": "installOutputs" },
+    { "component": "workspace", "interface": "readTrustedBaseline" },
+    { "component": "workspace", "interface": "readPolicy" },
+    { "component": "workspace", "interface": "writeModel" },
+    { "component": "workspace", "interface": "evidenceStore" },
+    { "component": "workspace", "interface": "resolvePublishedContracts" },
+    { "component": "qualification", "interface": "runChecks" },
+    { "component": "qualification", "interface": "verifyRevisionSet" }
+  ]
+}

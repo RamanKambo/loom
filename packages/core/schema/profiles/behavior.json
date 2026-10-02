@@ -1,0 +1,36 @@
+{
+  "profileVersion": 1,
+  "id": "behavior",
+  "kind": "behavior",
+  "version": 1,
+  "description": "Applicable behavioral concerns of operations, properties and types, conditioned on the declared system profile.",
+  "artifacts": [],
+  "supports": [
+    { "construct": "predicate.prose", "description": "Prose predicates, reported as claims that need scenario evidence." },
+    { "construct": "predicate.expression", "description": "loom-predicate-1 expressions: comparison, and, or, not, membership and null tests over the owning type's properties and literals." }
+  ],
+  "unsupported": [
+    { "construct": "predicate.functions", "reason": "Function calls, arithmetic and cross-record navigation are outside loom-predicate-1.", "onUse": "fail" }
+  ],
+  "tooling": [],
+  "proofLimits": ["An expression predicate is type-checked, never evaluated against live data; a prose predicate is never evaluated."],
+  "checks": [],
+  "concerns": [
+    { "id": "operation.idempotency", "record": "operation", "field": "idempotency", "description": "Behavior when the same state-changing request arrives again.", "when": { "operationKinds": ["command", "async-command"], "anyTraits": ["retrying", "asynchronous", "public-api"] } },
+    { "id": "operation.concurrency", "record": "operation", "field": "concurrency", "description": "Control of concurrent modification of the same state.", "when": { "operationKinds": ["command", "async-command"], "mutating": true } },
+    { "id": "operation.errors", "record": "operation", "field": "errors", "description": "Externally visible failures.", "when": { "transports": ["http"] } },
+    { "id": "operation.enforcement", "record": "operation", "field": "enforcement", "description": "Components accountable for authorization, validation and persistence.", "when": { "systemKinds": ["application", "service", "distributed-system"], "operationKinds": ["command", "async-command"] } },
+    { "id": "operation.transaction", "record": "operation", "field": "transaction", "description": "Transaction boundary of the state change.", "when": { "mutating": true, "anyTraits": ["multi-component", "persistent-storage"] } },
+    { "id": "operation.async.accepted", "record": "operation", "field": "async.accepted", "description": "Acceptance response distinct from completion.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.completion", "record": "operation", "field": "async.completion", "description": "How the eventual result is obtained.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.jobIdentity", "record": "operation", "field": "async.jobIdentity", "description": "Identity of the accepted work.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.timeout", "record": "operation", "field": "async.timeout", "description": "Timeout and the behavior when a timeout follows a commit.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.cancellation", "record": "operation", "field": "async.cancellation", "description": "Whether and how accepted work can be cancelled.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.retry", "record": "operation", "field": "async.retry", "description": "Which party owns retries.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "operation.async.deduplication", "record": "operation", "field": "async.deduplication", "description": "Deduplication window and key for repeated delivery.", "when": { "operationKinds": ["async-command"], "anyTraits": ["retrying", "event-driven"] } },
+    { "id": "operation.async.partialFailure", "record": "operation", "field": "async.partialFailure", "description": "Recovery from partial failure.", "when": { "operationKinds": ["async-command"] } },
+    { "id": "property.default", "record": "property", "field": "default", "description": "What an optional stored value defaults to and what an absent value in an existing record reads as.", "when": { "optional": true, "storageMapped": true } },
+    { "id": "property.classification", "record": "property", "field": "classification", "description": "Data classification of the value.", "when": { "anyTraits": ["sensitive-data"] } },
+    { "id": "type.retention", "record": "type", "field": "retention", "description": "Retention and deletion behavior of stored records.", "when": { "storageMapped": true, "anyTraits": ["sensitive-data"] } }
+  ]
+}

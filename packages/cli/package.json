@@ -1,6 +1,6 @@
 {
   "name": "@loom/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Loom CLI: run the engine self-test, check a model file, and project deterministic artifacts to disk.",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,7 @@
   ],
   "dependencies": {
     "@apidevtools/swagger-parser": "^13.1.0",
-    "@loom/core": "0.1.0",
+    "@loom/core": "1.0.0",
     "jsdom": "^30.1.1",
     "mermaid": "^12.1.0"
   },

@@ -1,0 +1,14 @@
+{
+  "definition": "CapabilityRegister",
+  "valid": [
+    {
+      "registerVersion": 1,
+      "capabilities": [
+        { "id": "workspace.init.scaffold", "description": "Initialization scaffolds the four .loom files without staging them.", "code": ["packages/workspace/src/init.ts#initWorkspace"], "contract": ["workspace.schema.json#/$defs/LoomConfig"], "verification": ["workspace.init.scaffold-files"] }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a capability without a verification case is rejected", "keyword": "minItems", "path": "/capabilities/0/verification", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": [] }] } }
+  ]
+}

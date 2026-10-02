@@ -1,0 +1,17 @@
+{
+  "icdVersion": 1,
+  "id": "schema",
+  "responsibility": "Holds the single authored definition of every record, patch, result, workspace, assurance and profile shape, and everything generated from it.",
+  "owns": [
+    "The JSON Schema 2020-12 sources and the qualified keyword vocabulary.",
+    "The generated TypeScript declarations, embedded runtime schemas, registries, patch schema and contract digest."
+  ],
+  "boundary": [
+    "No hand-maintained second copy of any shape.",
+    "Semantic rules stay in the core; the schema expresses only structure."
+  ],
+  "provides": [
+    { "name": "contractBundle", "kind": "file", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "Immutable for one contract digest." }
+  ],
+  "consumes": []
+}

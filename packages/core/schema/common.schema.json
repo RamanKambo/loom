@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Shared value definitions. Definition names are unique across every file in this directory because the generator merges all $defs into one namespace.",
+  "$defs": {
+    "Id": {
+      "description": "Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "QualifiedId": {
+      "description": "A record id, optionally prefixed by a published-contract id and a colon to reference a record inside a pinned published contract.",
+      "type": "string",
+      "pattern": "^([A-Za-z0-9][A-Za-z0-9._-]*:)?[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 257
+    },
+    "Name": {
+      "description": "Member name (property, parameter, column, alternative). The character set is the intersection of SQL, PowerShell, C# and TypeScript identifiers.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "maxLength": 128
+    },
+    "Alias": {
+      "description": "Accountable owner or authority, named by team or role alias, never by a person.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "maxLength": 128
+    },
+    "Text": {
+      "description": "Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "Literal": {
+      "type": ["string", "number", "boolean", "null"]
+    },
+    "ContractVersion": {
+      "description": "Contract version of a versioned record. Distinct from the model format version, the configuration version and the record revision.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "Revision": {
+      "description": "Revision of an authored knowledge record; incremented when its meaning changes.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "Hash": {
+      "description": "SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "CalendarDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "Duration": {
+      "description": "ISO 8601 duration, for example PT30S or P7D.",
+      "type": "string",
+      "pattern": "^P(?!$)(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$"
+    },
+    "RelativePath": {
+      "description": "Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!(.*/)?\\.\\.(/|$))[^\\u0000-\\u001f]+$"
+    },
+    "Quantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit", "estimate"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "unit": { "$ref": "#/$defs/Text" },
+        "estimate": { "description": "True when the value is an estimate rather than a measurement.", "type": "boolean" }
+      }
+    },
+    "Basis": {
+      "description": "Epistemic status of a claim. 'accepted' is honoured only when a trusted acceptance record covers the claim; the stored word alone grants nothing.",
+      "enum": ["sourced", "observed", "assumed", "proposed", "accepted"]
+    },
+    "SourceRef": {
+      "description": "Identifies the document or artifact a claim comes from, and the revision or retrieval context that pins it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "anyOf": [{ "required": ["revision"] }, { "required": ["retrieved"] }],
+      "properties": {
+        "kind": { "enum": ["document", "artifact", "code", "standard", "vendor-documentation", "conversation", "measurement"] },
+        "ref": { "$ref": "#/$defs/Text" },
+        "revision": { "$ref": "#/$defs/Text" },
+        "retrieved": { "$ref": "#/$defs/Timestamp" },
+        "locator": { "description": "Section, line or anchor inside the source.", "$ref": "#/$defs/Text" }
+      }
+    },
+    "RecordKind": {
+      "enum": [
+        "component", "type", "property", "operation", "routine", "mutation", "workflow", "edge",
+        "requirement", "criterion", "scenario", "constraint", "observation", "assumption", "unknown",
+        "decision", "inventory", "retainedBehavior", "workload", "attachment", "mapping", "storage",
+        "migration", "deploymentUnit", "host", "trustBoundary", "securityScheme", "consumerBinding",
+        "publishedContract"
+      ]
+    },
+    "RecordRef": {
+      "description": "Typed reference to a model record. A property is referenced as '<typeId>.<propertyName>'; an element of a composite-keyed collection, such as an edge, by its key values joined with '|', for example '<from>|<to>|<kind>'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/RecordKind" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "TaskClass": {
+      "description": "Class of work whose prerequisites differ.",
+      "enum": ["discovery", "specification", "implementation", "integration", "release", "operations"]
+    },
+    "Maturity": {
+      "description": "Contract maturity, distinct from task phase and from deployment state.",
+      "enum": ["proposed", "accepted", "implemented", "qualified"]
+    },
+    "EvidenceKind": {
+      "enum": [
+        "validation", "drift", "parse", "build", "unit", "conformance", "catalog", "behavior",
+        "integration", "e2e", "migration", "operational", "review"
+      ]
+    },
+    "CheckResult": {
+      "description": "Result of one executed check. NOT_APPLICABLE requires a recorded justification.",
+      "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]
+    },
+    "Dimension": {
+      "description": "Compatibility dimension a change is assessed in.",
+      "enum": ["shape-provider", "shape-consumer", "behavior", "security", "storage", "deployment", "intent", "none"]
+    },
+    "SubstituteKind": {
+      "enum": ["mock", "test-double", "stub", "fixture", "emulator"]
+    },
+    "ConcernId": {
+      "description": "Identifier of an applicable design concern from the behavior profile, for example 'operation.idempotency'.",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z]*(\\.[a-z][A-Za-z]*)+$"
+    },
+    "NotApplicable": {
+      "description": "Justified exclusion of an applicable concern for one record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concern", "reason"],
+      "properties": {
+        "concern": { "$ref": "#/$defs/ConcernId" },
+        "reason": { "$ref": "#/$defs/Text" }
+      }
+    },
+    "Signature": {
+      "description": "Detached Ed25519 signature over the canonical JSON of the enclosing record with its 'signature' member removed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyId", "algorithm", "value"],
+      "properties": {
+        "keyId": { "$ref": "#/$defs/Id" },
+        "algorithm": { "const": "ed25519" },
+        "value": { "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" }
+      }
+    }
+  }
+}

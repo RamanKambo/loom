@@ -1,0 +1,45 @@
+{
+  "profileVersion": 1,
+  "id": "openapi",
+  "kind": "interface",
+  "version": 1,
+  "language": "openapi",
+  "description": "OpenAPI 3.1 projection of HTTP-bound operations.",
+  "artifacts": [{ "target": "openapi", "instancing": "singleton" }],
+  "supports": [
+    { "construct": "http.parameters", "description": "Path, query and header parameters with their schemas and required flags." },
+    { "construct": "http.body", "description": "JSON request and response bodies with declared media types." },
+    { "construct": "http.responses", "description": "Success, accepted and error responses with status codes." },
+    { "construct": "http.security", "description": "Security schemes (http bearer and basic, apiKey, oauth2 client-credentials and authorization-code, OpenID Connect, mutual TLS) and per-operation security requirements." },
+    { "construct": "http.async", "description": "Accepted (202) responses distinct from the eventual result, with the status operation." }
+  ],
+  "unsupported": [
+    { "construct": "http.multipart", "reason": "Multipart and form bodies are not represented.", "onUse": "fail" },
+    { "construct": "http.callbacks", "reason": "Callbacks and webhooks are not represented.", "onUse": "fail" },
+    { "construct": "http.cookieParameters", "reason": "Cookie parameters are not represented.", "onUse": "fail" }
+  ],
+  "tooling": [
+    { "tool": "swagger-parser", "versionPolicy": { "major": 13 }, "required": true, "purpose": "Validates the document against the OpenAPI specification." },
+    { "tool": "oasdiff", "versionPolicy": { "minimum": "1.10.0" }, "required": true, "purpose": "Detects breaking changes against the accepted baseline's document." }
+  ],
+  "proofLimits": [
+    "Specification validity does not establish that a running service conforms.",
+    "oasdiff classifies document differences; ownership, behavioral and policy consequences come from the model comparison."
+  ],
+  "checks": [
+    {
+      "id": "openapi.validate", "revision": 1, "layer": "schema", "evidence": "parse",
+      "claim": "The generated OpenAPI document validates against the OpenAPI 3.1 specification, every templated path declares its path parameters and every operation id is unique.",
+      "tool": { "name": "swagger-parser", "versionPolicy": { "major": 13 } }, "runner": "openapi-validate",
+      "inputs": ["openapi"], "environment": "process", "requiredByDefault": true,
+      "limits": "Document validity only."
+    },
+    {
+      "id": "openapi.compatibility", "revision": 1, "layer": "compatibility", "evidence": "conformance",
+      "claim": "oasdiff reports no breaking change between the accepted baseline's document and the candidate's that the model comparison did not also report.",
+      "tool": { "name": "oasdiff", "versionPolicy": { "minimum": "1.10.0" } }, "runner": "openapi-compatibility",
+      "inputs": ["openapi"], "environment": "process", "requiredByDefault": true,
+      "limits": "Document-level compatibility only; consumer behavior is not exercised."
+    }
+  ]
+}

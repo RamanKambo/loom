@@ -1,0 +1,43 @@
+{
+  "profileVersion": 1,
+  "id": "powershell",
+  "kind": "language",
+  "version": 1,
+  "language": "powershell",
+  "description": "PowerShell runbook and function contracts verified by generated Pester tests under Pester major version 5.",
+  "artifacts": [{ "target": "pester-contract-tests", "instancing": "per-component" }],
+  "supports": [
+    { "construct": "routine.runbook", "description": "Script parameter names, types, mandatory flags, nullability, enum validation sets and parameter order under positional passing." },
+    { "construct": "routine.function", "description": "Function parameter contract inside a script module." },
+    { "construct": "routine.resultSet", "description": "Output object property names." }
+  ],
+  "unsupported": [
+    { "construct": "routine.pipelineInput", "reason": "Pipeline-bound parameters are not represented.", "onUse": "fail" },
+    { "construct": "routine.dynamicParameters", "reason": "Dynamic parameters cannot be resolved from the AST.", "onUse": "fail" }
+  ],
+  "tooling": [
+    { "tool": "pwsh", "versionPolicy": { "minimum": "7.4" }, "required": true, "purpose": "Runs the parser and Pester." },
+    { "tool": "pester", "versionPolicy": { "major": 5, "minimum": "5.7.0" }, "required": true, "purpose": "Executes the generated contract tests." }
+  ],
+  "proofLimits": [
+    "The generated tests inspect the script AST; they do not execute the routine's business logic.",
+    "A pass under the recorded Pester version does not qualify an absent version."
+  ],
+  "checks": [
+    {
+      "id": "powershell.parse", "revision": 1, "layer": "parse", "evidence": "parse",
+      "claim": "The generated Pester file parses without error.",
+      "tool": { "name": "pwsh", "versionPolicy": { "minimum": "7.4" } }, "runner": "powershell-parse",
+      "inputs": ["pester-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Syntax only."
+    },
+    {
+      "id": "powershell.conformance", "revision": 1, "layer": "conformance", "evidence": "conformance",
+      "claim": "The generated Pester tests pass against the conforming runbook fixture and fail against the violating fixture under Pester major version 5.",
+      "tool": { "name": "pester", "versionPolicy": { "major": 5, "minimum": "5.7.0" } }, "runner": "pester-conformance",
+      "inputs": ["pester-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "limits": "Parameter and output-shape contract only.",
+      "negativeControl": { "fixture": "examples/violating/fulfillment/rb_dispatch.ps1", "reason": "Failed" }
+    }
+  ]
+}

@@ -1,0 +1,1436 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "The Loom model document. Annotations: x-loom-kind names the record kind of a top-level collection; x-loom-key names the field(s) that identify an element of a keyed array; x-loom-ordered marks an array whose order is part of the contract; x-loom-ref names the record kind a string field references ('any' for an edge endpoint); x-loom-atomic marks a value compared and replaced as a whole.",
+  "$defs": {
+    "Model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version", "components", "types", "operations", "routines", "mutations", "workflows", "edges",
+        "requirements", "scenarios", "constraints", "observations", "assumptions", "unknowns", "decisions",
+        "inventory", "retainedBehaviors", "workloads", "attachments", "mappings", "storage", "migrations",
+        "deploymentUnits", "hosts", "trustBoundaries", "securitySchemes", "consumerBindings", "publishedContracts"
+      ],
+      "properties": {
+        "version": { "description": "Model format version. Distinct from every contract version inside the model.", "const": 1 },
+        "systemProfile": { "$ref": "#/$defs/SystemProfile" },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/Component" }, "x-loom-kind": "component", "x-loom-key": "id" },
+        "types": { "type": "array", "items": { "$ref": "#/$defs/TypeDef" }, "x-loom-kind": "type", "x-loom-key": "id" },
+        "operations": { "type": "array", "items": { "$ref": "#/$defs/Operation" }, "x-loom-kind": "operation", "x-loom-key": "id" },
+        "routines": { "type": "array", "items": { "$ref": "#/$defs/Routine" }, "x-loom-kind": "routine", "x-loom-key": "id" },
+        "mutations": { "type": "array", "items": { "$ref": "#/$defs/Mutation" }, "x-loom-kind": "mutation", "x-loom-key": "id" },
+        "workflows": { "type": "array", "items": { "$ref": "#/$defs/Workflow" }, "x-loom-kind": "workflow", "x-loom-key": "id" },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/Edge" }, "x-loom-kind": "edge", "x-loom-key": ["from", "to", "kind"] },
+        "requirements": { "type": "array", "items": { "$ref": "#/$defs/Requirement" }, "x-loom-kind": "requirement", "x-loom-key": "id" },
+        "scenarios": { "type": "array", "items": { "$ref": "#/$defs/Scenario" }, "x-loom-kind": "scenario", "x-loom-key": "id" },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/Constraint" }, "x-loom-kind": "constraint", "x-loom-key": "id" },
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/Observation" }, "x-loom-kind": "observation", "x-loom-key": "id" },
+        "assumptions": { "type": "array", "items": { "$ref": "#/$defs/Assumption" }, "x-loom-kind": "assumption", "x-loom-key": "id" },
+        "unknowns": { "type": "array", "items": { "$ref": "#/$defs/Unknown" }, "x-loom-kind": "unknown", "x-loom-key": "id" },
+        "decisions": { "type": "array", "items": { "$ref": "#/$defs/Decision" }, "x-loom-kind": "decision", "x-loom-key": "id" },
+        "inventory": { "type": "array", "items": { "$ref": "#/$defs/InventoryItem" }, "x-loom-kind": "inventory", "x-loom-key": "id" },
+        "retainedBehaviors": { "type": "array", "items": { "$ref": "#/$defs/RetainedBehavior" }, "x-loom-kind": "retainedBehavior", "x-loom-key": "id" },
+        "workloads": { "type": "array", "items": { "$ref": "#/$defs/Workload" }, "x-loom-kind": "workload", "x-loom-key": "id" },
+        "attachments": { "type": "array", "items": { "$ref": "#/$defs/Attachment" }, "x-loom-kind": "attachment", "x-loom-key": "id" },
+        "mappings": { "type": "array", "items": { "$ref": "#/$defs/Mapping" }, "x-loom-kind": "mapping", "x-loom-key": "id" },
+        "storage": { "type": "array", "items": { "$ref": "#/$defs/Storage" }, "x-loom-kind": "storage", "x-loom-key": "id" },
+        "migrations": { "type": "array", "items": { "$ref": "#/$defs/Migration" }, "x-loom-kind": "migration", "x-loom-key": "id" },
+        "deploymentUnits": { "type": "array", "items": { "$ref": "#/$defs/DeploymentUnit" }, "x-loom-kind": "deploymentUnit", "x-loom-key": "id" },
+        "hosts": { "type": "array", "items": { "$ref": "#/$defs/Host" }, "x-loom-kind": "host", "x-loom-key": "id" },
+        "trustBoundaries": { "type": "array", "items": { "$ref": "#/$defs/TrustBoundary" }, "x-loom-kind": "trustBoundary", "x-loom-key": "id" },
+        "securitySchemes": { "type": "array", "items": { "$ref": "#/$defs/SecurityScheme" }, "x-loom-kind": "securityScheme", "x-loom-key": "id" },
+        "consumerBindings": { "type": "array", "items": { "$ref": "#/$defs/ConsumerBinding" }, "x-loom-kind": "consumerBinding", "x-loom-key": "id" },
+        "publishedContracts": { "type": "array", "items": { "$ref": "#/$defs/PublishedContractRef" }, "x-loom-kind": "publishedContract", "x-loom-key": "id" }
+      }
+    },
+    "SystemProfile": {
+      "description": "Declared system kind and traits. Completeness rules apply only the concerns these make applicable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "traits"],
+      "properties": {
+        "kind": { "enum": ["library", "cli", "powershell-tool", "application", "service", "distributed-system"] },
+        "traits": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "asynchronous", "retrying", "multi-component", "persistent-storage", "public-api", "external-consumers",
+              "multi-tenant", "scheduled", "event-driven", "sensitive-data", "user-interface", "brownfield"
+            ]
+          }
+        }
+      }
+    },
+    "Component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "responsibilities"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "purpose": { "$ref": "common.schema.json#/$defs/Text" },
+        "responsibilities": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "owner": { "$ref": "common.schema.json#/$defs/Alias" },
+        "kind": { "enum": ["service", "library", "cli", "database", "gateway", "worker", "user-interface", "job", "external"] },
+        "implementations": {
+          "description": "Implementation languages of the component. A per-component conformance artifact is generated only for a component that declares the artifact's language.",
+          "type": "array",
+          "x-loom-key": "language",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["language", "module"],
+            "properties": {
+              "language": { "enum": ["sql", "powershell", "csharp", "typescript"] },
+              "module": { "description": "Logical namespace, module or schema the conformance tests bind to; never a checkout path.", "type": "string", "pattern": "^[A-Za-z_@][A-Za-z0-9_.@/-]*$", "maxLength": 200 }
+            }
+          }
+        },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "Kind": {
+      "description": "Logical value kind. 'number' is binary floating point; 'decimal' is exact with declared precision and scale.",
+      "enum": ["string", "integer", "number", "decimal", "boolean", "enum", "date", "datetime", "uuid", "ref", "array", "union"]
+    },
+    "Bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "minItems": { "type": "integer", "minimum": 0 },
+        "maxItems": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string", "minLength": 1 }
+      }
+    },
+    "DecimalShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["precision", "scale"],
+      "properties": {
+        "precision": { "type": "integer", "minimum": 1, "maximum": 38 },
+        "scale": { "type": "integer", "minimum": 0, "maximum": 38 }
+      }
+    },
+    "EnumValue": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^\\S(.*\\S)?$"
+    },
+    "UnknownEnumPolicy": {
+      "description": "How a consumer treats an enum value it does not know. 'reject' makes an added value breaking for output consumers.",
+      "enum": ["reject", "preserve", "fallback"]
+    },
+    "ItemShape": {
+      "description": "Value shape of an array element.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/Kind" },
+        "enumValues": { "type": "array", "items": { "$ref": "#/$defs/EnumValue" } },
+        "unknownEnumPolicy": { "$ref": "#/$defs/UnknownEnumPolicy" },
+        "bounds": { "$ref": "#/$defs/Bounds" },
+        "decimal": { "$ref": "#/$defs/DecimalShape" },
+        "ref": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "variants": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" } },
+        "discriminator": { "$ref": "common.schema.json#/$defs/Name" },
+        "items": { "$ref": "#/$defs/ItemShape" }
+      }
+    },
+    "Default": {
+      "description": "Defaulting semantics: when a value is supplied by the system and what an absent value reads as.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "appliesOn"],
+      "properties": {
+        "policy": { "enum": ["none", "literal", "server-assigned", "derived"] },
+        "value": { "$ref": "common.schema.json#/$defs/Literal" },
+        "appliesOn": { "enum": ["create", "read", "create-and-read"] },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Enforcer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "layer", "purpose"],
+      "properties": {
+        "component": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "layer": { "enum": ["transport", "domain", "persistence", "orchestration", "infrastructure"] },
+        "purpose": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Predicate": {
+      "description": "A prose predicate is a claim that needs scenario evidence and is never evaluated. An expression predicate uses the restricted, versioned loom-predicate-1 profile and is type-checked against the owning type.",
+      "x-loom-atomic": true,
+      "oneOf": [{ "$ref": "#/$defs/ProsePredicate" }, { "$ref": "#/$defs/ExpressionPredicate" }]
+    },
+    "ProsePredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "text"],
+      "properties": {
+        "form": { "const": "prose" },
+        "text": { "$ref": "common.schema.json#/$defs/Text" },
+        "enforcedBy": { "type": "array", "items": { "$ref": "#/$defs/Enforcer" } }
+      }
+    },
+    "ExpressionPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "profile", "expression"],
+      "properties": {
+        "form": { "const": "expression" },
+        "profile": { "const": "loom-predicate-1" },
+        "expression": { "$ref": "#/$defs/Expression" },
+        "text": { "$ref": "common.schema.json#/$defs/Text" },
+        "enforcedBy": { "type": "array", "items": { "$ref": "#/$defs/Enforcer" } }
+      }
+    },
+    "Expression": {
+      "oneOf": [
+        { "$ref": "#/$defs/ComparisonExpression" },
+        { "$ref": "#/$defs/LogicalExpression" },
+        { "$ref": "#/$defs/NegationExpression" },
+        { "$ref": "#/$defs/MembershipExpression" },
+        { "$ref": "#/$defs/NullTestExpression" }
+      ]
+    },
+    "ComparisonExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "left", "right"],
+      "properties": {
+        "op": { "enum": ["eq", "ne", "lt", "le", "gt", "ge"] },
+        "left": { "$ref": "#/$defs/Operand" },
+        "right": { "$ref": "#/$defs/Operand" }
+      }
+    },
+    "LogicalExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "args"],
+      "properties": {
+        "op": { "enum": ["and", "or"] },
+        "args": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/Expression" } }
+      }
+    },
+    "NegationExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "arg"],
+      "properties": {
+        "op": { "const": "not" },
+        "arg": { "$ref": "#/$defs/Expression" }
+      }
+    },
+    "MembershipExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "operand", "values"],
+      "properties": {
+        "op": { "const": "in" },
+        "operand": { "$ref": "#/$defs/Operand" },
+        "values": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Literal" } }
+      }
+    },
+    "NullTestExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "operand"],
+      "properties": {
+        "op": { "enum": ["isNull", "isNotNull"] },
+        "operand": { "$ref": "#/$defs/Operand" }
+      }
+    },
+    "Operand": {
+      "oneOf": [{ "$ref": "#/$defs/PropertyOperand" }, { "$ref": "#/$defs/LiteralOperand" }]
+    },
+    "PropertyOperand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property"],
+      "properties": { "property": { "$ref": "common.schema.json#/$defs/Name" } }
+    },
+    "LiteralOperand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["literal"],
+      "properties": { "literal": { "$ref": "common.schema.json#/$defs/Literal" } }
+    },
+    "Property": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "required", "nullable", "immutable", "origin"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/Name" },
+        "kind": { "$ref": "#/$defs/Kind" },
+        "required": { "description": "Presence: a required property is always present.", "type": "boolean" },
+        "nullable": { "description": "Whether a present value may be null; independent of presence.", "type": "boolean" },
+        "immutable": { "type": "boolean" },
+        "origin": {
+          "description": "Who supplies the value. 'system' values are server-owned and never accepted from a caller.",
+          "enum": ["client", "system", "derived", "external"]
+        },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "units": { "$ref": "common.schema.json#/$defs/Text" },
+        "enumValues": { "type": "array", "items": { "$ref": "#/$defs/EnumValue" } },
+        "unknownEnumPolicy": { "$ref": "#/$defs/UnknownEnumPolicy" },
+        "bounds": { "$ref": "#/$defs/Bounds" },
+        "decimal": { "$ref": "#/$defs/DecimalShape" },
+        "ref": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "variants": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" } },
+        "discriminator": { "$ref": "common.schema.json#/$defs/Name" },
+        "items": { "$ref": "#/$defs/ItemShape" },
+        "binds": {
+          "description": "Foreign-key reference '<typeId>.<propertyName>' to another type's key property.",
+          "type": "string",
+          "minLength": 3,
+          "x-loom-ref": "property"
+        },
+        "visibility": { "enum": ["public", "internal", "private"] },
+        "classification": { "enum": ["public", "internal", "confidential", "personal", "secret"] },
+        "writers": {
+          "description": "Components permitted to write the value. Absent means the owning component only.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" }
+        },
+        "default": { "$ref": "#/$defs/Default" },
+        "retention": { "$ref": "common.schema.json#/$defs/Text" },
+        "invariants": { "type": "array", "items": { "$ref": "#/$defs/Predicate" } },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "SupportedVersion": {
+      "description": "An earlier accepted contract version that remains supported. Its shape is the one held by the referenced accepted baseline.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "baseline", "status", "retirement"],
+      "properties": {
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "baseline": { "$ref": "common.schema.json#/$defs/Id" },
+        "status": { "enum": ["supported", "deprecated"] },
+        "retirement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["condition"],
+          "properties": {
+            "condition": { "enum": ["no-active-required-consumers", "decision"] },
+            "decision": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "decision" }
+          }
+        },
+        "rollout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["order"],
+          "properties": {
+            "order": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" }, "x-loom-ordered": true },
+            "migrations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "migration" } }
+          }
+        }
+      }
+    },
+    "TypeDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "owner", "representation", "properties"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "representation": {
+          "description": "Which representation the type is. Domain, wire, persisted and event representations are related only through declared mappings.",
+          "enum": ["domain", "request", "response", "storage", "event"]
+        },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "visibility": { "enum": ["public", "internal", "private"] },
+        "stateProperty": { "$ref": "common.schema.json#/$defs/Name" },
+        "key": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/Property" }, "x-loom-key": "name", "x-loom-ordered": true },
+        "invariants": { "type": "array", "items": { "$ref": "#/$defs/Predicate" } },
+        "externalSchema": {
+          "description": "Pinned reference to a standard schema supplying the rich shape.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "digest"],
+          "properties": {
+            "source": { "$ref": "common.schema.json#/$defs/SourceRef" },
+            "digest": { "$ref": "common.schema.json#/$defs/Hash" }
+          }
+        },
+        "retention": { "$ref": "common.schema.json#/$defs/Text" },
+        "supported": { "type": "array", "items": { "$ref": "#/$defs/SupportedVersion" }, "x-loom-key": "version" },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "SecurityScheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "type": { "enum": ["http", "apiKey", "oauth2", "openIdConnect", "mutualTLS"] },
+        "scheme": { "enum": ["bearer", "basic"] },
+        "bearerFormat": { "$ref": "common.schema.json#/$defs/Text" },
+        "in": { "enum": ["header", "query", "cookie"] },
+        "name": { "$ref": "common.schema.json#/$defs/Text" },
+        "openIdConnectUrl": { "type": "string", "format": "uri" },
+        "flows": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clientCredentials": { "$ref": "#/$defs/OAuthFlow" },
+            "authorizationCode": { "$ref": "#/$defs/OAuthFlow" }
+          }
+        },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "OAuthFlow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokenUrl", "scopes"],
+      "properties": {
+        "authorizationUrl": { "type": "string", "format": "uri" },
+        "tokenUrl": { "type": "string", "format": "uri" },
+        "scopes": {
+          "type": "object",
+          "propertyNames": { "pattern": "^\\S+$" },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/Text" }
+        }
+      }
+    },
+    "Authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["permission"],
+      "properties": {
+        "permission": { "type": "string", "pattern": "^\\S+$", "maxLength": 128 },
+        "scope": { "type": "string", "pattern": "^\\S+$", "maxLength": 128 },
+        "scheme": {
+          "description": "Security scheme that carries the permission. Required for an HTTP-bound operation; an authority without a scheme is not an OpenAPI security declaration.",
+          "$ref": "common.schema.json#/$defs/Id",
+          "x-loom-ref": "securityScheme"
+        }
+      }
+    },
+    "HttpParameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "in", "required"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$", "maxLength": 128 },
+        "in": { "enum": ["path", "query", "header"] },
+        "property": { "description": "Request-type property the parameter carries.", "$ref": "common.schema.json#/$defs/Name" },
+        "kind": { "$ref": "#/$defs/Kind" },
+        "enumValues": { "type": "array", "items": { "$ref": "#/$defs/EnumValue" } },
+        "required": { "type": "boolean" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "HttpResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "kind", "description"],
+      "properties": {
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "kind": { "enum": ["success", "accepted", "error"] },
+        "type": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "mediaType": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport"],
+      "properties": {
+        "transport": { "enum": ["http", "message", "cli", "library", "sql"] },
+        "method": { "enum": ["GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS"] },
+        "path": { "type": "string", "pattern": "^/", "maxLength": 512 },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/HttpParameter" }, "x-loom-key": ["in", "name"] },
+        "requestMediaType": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" },
+        "responses": { "type": "array", "items": { "$ref": "#/$defs/HttpResponse" }, "x-loom-key": "status" },
+        "channel": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "OperationError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "retryable", "description"],
+      "properties": {
+        "code": { "$ref": "common.schema.json#/$defs/Name" },
+        "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+        "type": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "retryable": { "type": "boolean" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["mutation", "routine", "operation"] },
+        "id": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "invocation" }
+      }
+    },
+    "Enforcement": {
+      "description": "Component accountable for each enforcement concern of an operation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorization", "validation"],
+      "properties": {
+        "authorization": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "validation": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "persistence": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "transport": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "orchestration": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" }
+      }
+    },
+    "Idempotency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "repeatedRequest"],
+      "properties": {
+        "kind": { "enum": ["naturally-idempotent", "idempotency-key", "not-idempotent"] },
+        "key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["in", "name"],
+          "properties": {
+            "in": { "enum": ["header", "body"] },
+            "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$" }
+          }
+        },
+        "window": { "$ref": "common.schema.json#/$defs/Duration" },
+        "repeatedRequest": { "description": "Externally visible behavior when the same request arrives again.", "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Concurrency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control", "onConflict"],
+      "properties": {
+        "control": { "enum": ["none", "optimistic", "pessimistic", "serialized"] },
+        "token": { "$ref": "common.schema.json#/$defs/Name" },
+        "onConflict": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary"],
+      "properties": {
+        "boundary": { "enum": ["none", "single-routine", "distributed", "saga", "outbox"] },
+        "routine": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "routine" },
+        "compensation": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "AsyncContract": {
+      "description": "Acceptance versus completion of asynchronous work. Each omitted applicable member must be covered by an unknown or a not-applicable justification.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "type": "integer", "minimum": 200, "maximum": 299 },
+            "type": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" }
+          }
+        },
+        "completion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["result", "via"],
+          "properties": {
+            "result": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+            "via": { "enum": ["polling", "event", "callback"] },
+            "statusOperation": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" },
+            "event": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "jobIdentity": { "$ref": "common.schema.json#/$defs/Name" },
+        "timeout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["after", "ambiguity"],
+          "properties": {
+            "after": { "$ref": "common.schema.json#/$defs/Duration" },
+            "ambiguity": { "description": "Expected behavior when a timeout is observed after the work committed.", "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "cancellation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["supported"],
+          "properties": {
+            "supported": { "type": "boolean" },
+            "operation": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" },
+            "semantics": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["owner"],
+          "properties": {
+            "owner": { "enum": ["caller", "provider", "none"] },
+            "policy": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "deduplication": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["window", "key"],
+          "properties": {
+            "window": { "$ref": "common.schema.json#/$defs/Duration" },
+            "key": { "$ref": "common.schema.json#/$defs/Name" }
+          }
+        },
+        "partialFailure": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "owner", "kind", "authority"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "kind": { "enum": ["query", "command", "async-command"] },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "request": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "response": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "result": { "description": "Eventual result type of asynchronous work.", "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "errors": { "type": "array", "items": { "$ref": "#/$defs/OperationError" }, "x-loom-key": "code" },
+        "authority": { "$ref": "#/$defs/Authority" },
+        "bindings": { "type": "array", "items": { "$ref": "#/$defs/Binding" } },
+        "invokes": { "type": "array", "items": { "$ref": "#/$defs/Invocation" }, "x-loom-key": ["kind", "id"] },
+        "criteria": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "criterion" } },
+        "scenarios": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "scenario" } },
+        "enforcement": { "$ref": "#/$defs/Enforcement" },
+        "preconditions": { "type": "array", "items": { "$ref": "#/$defs/Predicate" } },
+        "postconditions": { "type": "array", "items": { "$ref": "#/$defs/Predicate" } },
+        "idempotency": { "$ref": "#/$defs/Idempotency" },
+        "concurrency": { "$ref": "#/$defs/Concurrency" },
+        "transaction": { "$ref": "#/$defs/Transaction" },
+        "async": { "$ref": "#/$defs/AsyncContract" },
+        "supported": { "type": "array", "items": { "$ref": "#/$defs/SupportedVersion" }, "x-loom-key": "version" },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "RoutineParam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "required", "nullable"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/Name" },
+        "kind": { "$ref": "#/$defs/Kind" },
+        "enumValues": { "type": "array", "items": { "$ref": "#/$defs/EnumValue" } },
+        "bounds": { "$ref": "#/$defs/Bounds" },
+        "decimal": { "$ref": "#/$defs/DecimalShape" },
+        "required": { "type": "boolean" },
+        "nullable": { "type": "boolean" },
+        "binds": { "type": "string", "minLength": 3, "x-loom-ref": "property" }
+      }
+    },
+    "ResultColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "nullable"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/Name" },
+        "kind": { "$ref": "#/$defs/Kind" },
+        "enumValues": { "type": "array", "items": { "$ref": "#/$defs/EnumValue" } },
+        "bounds": { "$ref": "#/$defs/Bounds" },
+        "decimal": { "$ref": "#/$defs/DecimalShape" },
+        "nullable": { "type": "boolean" },
+        "binds": { "type": "string", "minLength": 3, "x-loom-ref": "property" }
+      }
+    },
+    "StorageWrite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage", "columns"],
+      "properties": {
+        "storage": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "storage" },
+        "columns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" } }
+      }
+    },
+    "Routine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "owner", "host", "parameterPassing", "params", "resultSet", "performsMutations", "authority"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "host": { "enum": ["sql-procedure", "runbook", "function"] },
+        "source": { "$ref": "common.schema.json#/$defs/RelativePath" },
+        "parameterPassing": {
+          "description": "Calling convention. Under 'positional' the parameter order is part of the contract and the generated conformance tests enforce it; under 'named' it is not.",
+          "enum": ["positional", "named"]
+        },
+        "params": { "type": "array", "items": { "$ref": "#/$defs/RoutineParam" }, "x-loom-key": "name", "x-loom-ordered": true },
+        "resultSet": { "type": "array", "items": { "$ref": "#/$defs/ResultColumn" }, "x-loom-key": "name", "x-loom-ordered": true },
+        "performsMutations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "mutation" } },
+        "writes": { "type": "array", "items": { "$ref": "#/$defs/StorageWrite" }, "x-loom-key": "storage" },
+        "transactionScope": {
+          "description": "Storage records that one transaction of this routine spans.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "storage" }
+        },
+        "authority": { "$ref": "#/$defs/Authority" },
+        "supported": { "type": "array", "items": { "$ref": "#/$defs/SupportedVersion" }, "x-loom-key": "version" },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "StateName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^$\\s](.*\\S)?$"
+    },
+    "Mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "owner", "from", "to", "writes", "guard", "effect", "requirements", "scenarios"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "type": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "type" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "from": {
+          "description": "Origin states. A creation has exactly ['$absent']; '$absent' never appears beside an existing state.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "anyOf": [{ "const": "$absent" }, { "$ref": "#/$defs/StateName" }] }
+        },
+        "to": { "$ref": "#/$defs/StateName" },
+        "writes": {
+          "description": "Declared write set. A state-changing mutation declares the state property here.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/Name" }
+        },
+        "guard": { "$ref": "#/$defs/Predicate" },
+        "effect": { "$ref": "common.schema.json#/$defs/Text" },
+        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "requirement" } },
+        "criteria": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "criterion" } },
+        "scenarios": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "scenario" } }
+      }
+    },
+    "Workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "dependsOn", "imports", "requirements"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "status": { "enum": ["planned", "active"] },
+        "dependsOn": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "workflow" } },
+        "imports": {
+          "type": "array",
+          "x-loom-key": "typeId",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["typeId", "version"],
+            "properties": {
+              "typeId": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+              "version": { "$ref": "common.schema.json#/$defs/ContractVersion" }
+            }
+          }
+        },
+        "operations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" } },
+        "mutations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "mutation" } },
+        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "requirement" } }
+      }
+    },
+    "Substitute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "permits", "limits"],
+      "properties": {
+        "kind": { "$ref": "common.schema.json#/$defs/SubstituteKind" },
+        "permits": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/TaskClass" } },
+        "limits": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "ReadinessDependency": {
+      "description": "What the dependent side requires of the target before a task may proceed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "maturity"],
+      "properties": {
+        "claim": { "enum": ["contract", "implementation", "evidence"] },
+        "revision": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "compatibleRange": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min"],
+          "properties": {
+            "min": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+            "max": { "$ref": "common.schema.json#/$defs/ContractVersion" }
+          }
+        },
+        "maturity": { "$ref": "common.schema.json#/$defs/Maturity" },
+        "substitutes": { "type": "array", "items": { "$ref": "#/$defs/Substitute" }, "x-loom-key": "kind" },
+        "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } },
+        "invalidatedBy": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Dimension" } }
+      }
+    },
+    "Edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "kind"],
+      "properties": {
+        "from": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "any" },
+        "to": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "any" },
+        "kind": { "enum": ["semantic", "structural", "runtime", "build", "integration"] },
+        "rationale": { "$ref": "common.schema.json#/$defs/Text" },
+        "readiness": { "$ref": "#/$defs/ReadinessDependency" },
+        "cycle": {
+          "description": "Defined behavior of a runtime interaction cycle this edge closes.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["behavior"],
+          "properties": { "behavior": { "$ref": "common.schema.json#/$defs/Text" } }
+        }
+      }
+    },
+    "Criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "verification", "evidence", "required"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "statement": { "$ref": "common.schema.json#/$defs/Text" },
+        "verification": {
+          "description": "'scenario' needs an independently authored scenario; 'check' needs a contract check; 'review' needs a review obligation. A generated check never serves as the sole oracle of a business outcome.",
+          "enum": ["scenario", "check", "review"]
+        },
+        "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } },
+        "required": { "type": "boolean" }
+      }
+    },
+    "Requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "outcome", "owner", "scope", "source", "basis", "priority", "status", "criteria"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "revision": { "$ref": "common.schema.json#/$defs/Revision" },
+        "outcome": { "$ref": "common.schema.json#/$defs/Text" },
+        "owner": { "$ref": "common.schema.json#/$defs/Alias" },
+        "scope": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" } },
+        "source": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/SourceRef" } },
+        "basis": { "$ref": "common.schema.json#/$defs/Basis" },
+        "priority": { "enum": ["must", "should", "could"] },
+        "status": { "enum": ["proposed", "active", "retired"] },
+        "criteria": { "type": "array", "items": { "$ref": "#/$defs/Criterion" }, "x-loom-key": "id" },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "Scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "requirements", "criteria", "kind", "expected"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "requirement" } },
+        "criteria": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "criterion" } },
+        "kind": { "enum": ["success", "failure", "retained", "duplicate-delivery", "timeout", "concurrency"] },
+        "given": { "$ref": "common.schema.json#/$defs/Text" },
+        "when": { "$ref": "common.schema.json#/$defs/Text" },
+        "expected": { "description": "Independently authored expected outcome; never derived from the declaration it checks.", "$ref": "common.schema.json#/$defs/Text" },
+        "operations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" } },
+        "retainedBehaviors": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "retainedBehavior" } }
+      }
+    },
+    "Constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule", "appliesTo", "source", "basis", "hard", "verification"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "rule": { "$ref": "common.schema.json#/$defs/Text" },
+        "appliesTo": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "source": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/SourceRef" } },
+        "basis": { "$ref": "common.schema.json#/$defs/Basis" },
+        "hard": { "description": "True for a non-negotiable constraint; false for a negotiable one.", "type": "boolean" },
+        "verification": { "enum": ["test", "review", "static-check", "probe"] },
+        "exceptionPolicy": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "about", "source", "observedAt", "limits"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "claim": { "$ref": "common.schema.json#/$defs/Text" },
+        "about": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "source": { "$ref": "common.schema.json#/$defs/SourceRef" },
+        "vantage": { "$ref": "common.schema.json#/$defs/Text" },
+        "environment": { "$ref": "common.schema.json#/$defs/Id" },
+        "observedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
+        "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+        "limits": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "claim", "rationale", "affects", "consequenceIfFalse", "owner", "validation", "status"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "claim": { "$ref": "common.schema.json#/$defs/Text" },
+        "rationale": { "$ref": "common.schema.json#/$defs/Text" },
+        "affects": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "consequenceIfFalse": { "$ref": "common.schema.json#/$defs/Text" },
+        "owner": { "$ref": "common.schema.json#/$defs/Alias" },
+        "validation": { "$ref": "common.schema.json#/$defs/Text" },
+        "expires": { "$ref": "common.schema.json#/$defs/CalendarDate" },
+        "status": { "enum": ["open", "validated", "invalidated"] },
+        "resolvedBy": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } }
+      }
+    },
+    "Unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question", "affects", "blocks", "owner", "resolution", "status"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "question": { "$ref": "common.schema.json#/$defs/Text" },
+        "affects": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "concerns": {
+          "description": "Applicable concerns this unknown stands in for until resolved.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["record", "concern"],
+            "properties": {
+              "record": { "$ref": "common.schema.json#/$defs/RecordRef" },
+              "concern": { "$ref": "common.schema.json#/$defs/ConcernId" }
+            }
+          }
+        },
+        "blocks": { "description": "Task classes this unknown blocks while open.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/TaskClass" } },
+        "owner": { "$ref": "common.schema.json#/$defs/Alias" },
+        "resolution": { "description": "Method that would resolve the question.", "$ref": "common.schema.json#/$defs/Text" },
+        "status": { "enum": ["open", "resolved"] },
+        "closure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["note", "refs"],
+          "properties": {
+            "note": { "$ref": "common.schema.json#/$defs/Text" },
+            "refs": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+            "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+          }
+        }
+      }
+    },
+    "Alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "consequences"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Name" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "consequences": { "$ref": "common.schema.json#/$defs/Text" },
+        "rejectedBecause": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "Decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revision", "question", "alternatives", "criteria", "basedOn", "affects", "authority", "status"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "revision": { "$ref": "common.schema.json#/$defs/Revision" },
+        "question": { "$ref": "common.schema.json#/$defs/Text" },
+        "alternatives": { "type": "array", "items": { "$ref": "#/$defs/Alternative" }, "x-loom-key": "id" },
+        "criteria": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "constraints": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "constraint" } },
+        "basedOn": {
+          "description": "Requirements, workloads, inventory items, assumptions and observations the choice rests on.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/RecordRef" }
+        },
+        "chosen": { "$ref": "common.schema.json#/$defs/Name" },
+        "tradeoffs": { "$ref": "common.schema.json#/$defs/Text" },
+        "rationale": { "$ref": "common.schema.json#/$defs/Text" },
+        "affects": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "authority": { "$ref": "common.schema.json#/$defs/Alias" },
+        "status": { "enum": ["proposed", "accepted", "superseded"] },
+        "supersededBy": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "decision" },
+        "attachments": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "attachment" } }
+      }
+    },
+    "InventoryItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "product", "version", "role", "capabilities", "limits", "compatibility", "license", "support", "source", "disposition"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "product": { "$ref": "common.schema.json#/$defs/Text" },
+        "version": { "$ref": "common.schema.json#/$defs/Text" },
+        "role": { "$ref": "common.schema.json#/$defs/Text" },
+        "capabilities": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "limits": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "compatibility": { "$ref": "common.schema.json#/$defs/Text" },
+        "license": { "$ref": "common.schema.json#/$defs/Text" },
+        "support": { "enum": ["supported", "community", "end-of-life", "unknown"] },
+        "source": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/SourceRef" } },
+        "disposition": { "enum": ["retained", "adapted", "replaced", "excluded", "candidate"] },
+        "replacedBy": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "inventory" },
+        "components": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" } },
+        "executableBaseline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "status": { "enum": ["captured", "unavailable", "not-applicable"] },
+            "evidence": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+            "reason": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        }
+      }
+    },
+    "RetainedBehavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "from", "scenarios", "evidence", "status"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "from": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "inventory" },
+        "criteria": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "criterion" } },
+        "scenarios": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "scenario" } },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } },
+        "status": { "enum": ["retained", "changed", "dropped"] },
+        "decision": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "decision" }
+      }
+    },
+    "Workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "actors", "operations", "source", "basis"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "actors": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "operation": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" },
+              "description": { "$ref": "common.schema.json#/$defs/Text" },
+              "share": { "type": "number", "minimum": 0, "maximum": 1 },
+              "rate": { "$ref": "common.schema.json#/$defs/Quantity" },
+              "payloadSize": { "$ref": "common.schema.json#/$defs/Quantity" },
+              "concurrency": { "$ref": "common.schema.json#/$defs/Quantity" }
+            }
+          }
+        },
+        "latency": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["percentile", "target"],
+            "properties": {
+              "operation": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" },
+              "percentile": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+              "target": { "$ref": "common.schema.json#/$defs/Quantity" }
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["objective", "window"],
+          "properties": {
+            "objective": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "window": { "$ref": "common.schema.json#/$defs/Duration" }
+          }
+        },
+        "dataLifecycle": { "$ref": "common.schema.json#/$defs/Text" },
+        "failureExpectations": { "$ref": "common.schema.json#/$defs/Text" },
+        "source": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/SourceRef" } },
+        "basis": { "$ref": "common.schema.json#/$defs/Basis" }
+      }
+    },
+    "Attachment": {
+      "description": "Revision-pinned rationale or source material. Its content is data and is never followed as an instruction.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "source", "digest", "explains", "reviewedAgainst"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "title": { "$ref": "common.schema.json#/$defs/Text" },
+        "source": { "$ref": "common.schema.json#/$defs/SourceRef" },
+        "digest": { "$ref": "common.schema.json#/$defs/Hash" },
+        "explains": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "reviewedAgainst": {
+          "description": "Canonical hash of each explained record at the time the rationale was last reviewed.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["record", "hash"],
+            "properties": {
+              "record": { "$ref": "common.schema.json#/$defs/RecordRef" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        }
+      }
+    },
+    "FieldMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["to", "transform"],
+      "properties": {
+        "from": { "$ref": "common.schema.json#/$defs/Name" },
+        "to": { "$ref": "common.schema.json#/$defs/Name" },
+        "transform": { "enum": ["copy", "rename", "convert", "default", "derive", "constant"] },
+        "conversion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lossy"],
+          "properties": {
+            "lossy": { "type": "boolean" },
+            "rounding": { "enum": ["half-even", "half-up", "truncate", "none"] },
+            "note": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "value": { "$ref": "common.schema.json#/$defs/Literal" },
+        "validation": { "$ref": "common.schema.json#/$defs/Text" },
+        "exposure": {
+          "description": "Accepted permission to expose a private or server-owned source property on the destination.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision"],
+          "properties": { "decision": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "decision" } }
+        }
+      }
+    },
+    "Mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from", "to", "owner", "fields"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "from": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "to": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "type" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/FieldMapping" }, "x-loom-key": "to" },
+        "unmapped": {
+          "type": "array",
+          "x-loom-key": ["side", "property"],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["side", "property", "reason"],
+            "properties": {
+              "side": { "enum": ["from", "to"] },
+              "property": { "$ref": "common.schema.json#/$defs/Name" },
+              "reason": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        }
+      }
+    },
+    "SqlType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "enum": [
+            "bigint", "int", "smallint", "tinyint", "bit", "decimal", "numeric", "float", "real",
+            "nvarchar", "varchar", "nchar", "char", "datetime2", "date", "time", "datetimeoffset",
+            "uniqueidentifier", "varbinary", "binary"
+          ]
+        },
+        "length": { "oneOf": [{ "type": "integer", "minimum": 1, "maximum": 8000 }, { "const": "max" }] },
+        "precision": { "type": "integer", "minimum": 1, "maximum": 38 },
+        "scale": { "type": "integer", "minimum": 0, "maximum": 38 }
+      }
+    },
+    "StorageColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sqlType", "nullable"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/Name" },
+        "property": { "description": "Mapped property of the stored type; absent for a technical column.", "$ref": "common.schema.json#/$defs/Name" },
+        "sqlType": { "$ref": "#/$defs/SqlType" },
+        "nullable": { "type": "boolean" },
+        "collation": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" },
+        "default": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "literal": { "$ref": "common.schema.json#/$defs/Literal" },
+            "function": { "enum": ["sysutcdatetime", "newid", "newsequentialid"] }
+          }
+        },
+        "identity": { "type": "boolean" }
+      }
+    },
+    "Storage": {
+      "description": "Physical relational mapping of one type. Logical ownership stays on the type and the owning component.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "owner", "platform", "schema", "table", "columns", "primaryKey"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "type": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "type" },
+        "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "platform": { "enum": ["sqlserver-2019", "sqlserver-2022", "azure-sql-database"] },
+        "schema": { "$ref": "common.schema.json#/$defs/Name" },
+        "table": { "$ref": "common.schema.json#/$defs/Name" },
+        "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/StorageColumn" }, "x-loom-key": "name", "x-loom-ordered": true },
+        "primaryKey": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
+        "unique": {
+          "type": "array",
+          "x-loom-key": "name",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "columns"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/Name" },
+              "columns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true }
+            }
+          }
+        },
+        "foreignKeys": {
+          "type": "array",
+          "x-loom-key": "name",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "columns", "references", "referencedColumns"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/Name" },
+              "columns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
+              "references": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "storage" },
+              "referencedColumns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
+              "onDelete": { "enum": ["no-action", "cascade", "set-null"] }
+            }
+          }
+        },
+        "checks": {
+          "type": "array",
+          "x-loom-key": "name",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "predicate"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/Name" },
+              "predicate": { "$ref": "#/$defs/Predicate" }
+            }
+          }
+        },
+        "indexes": {
+          "type": "array",
+          "x-loom-key": "name",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "columns", "unique"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/Name" },
+              "columns": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
+              "unique": { "type": "boolean" }
+            }
+          }
+        },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "Migration": {
+      "description": "Declared migration contract. Its script is authored by the adopting implementation; Loom never generates an authorized production migration.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "contract", "fromVersion", "toVersion", "dependsOn", "readers", "writers", "transaction", "locking", "recovery", "evidence"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "contract": { "$ref": "common.schema.json#/$defs/RecordRef" },
+        "fromVersion": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "toVersion": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "dependsOn": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "migration" } },
+        "script": { "$ref": "common.schema.json#/$defs/RelativePath" },
+        "readers": { "$ref": "#/$defs/VersionSupport" },
+        "writers": { "$ref": "#/$defs/VersionSupport" },
+        "backfill": { "$ref": "common.schema.json#/$defs/Text" },
+        "transformation": { "$ref": "common.schema.json#/$defs/Text" },
+        "transaction": { "enum": ["single", "batched", "online"] },
+        "locking": { "$ref": "common.schema.json#/$defs/Text" },
+        "recovery": { "enum": ["rollback", "roll-forward", "restore"] },
+        "deploymentOrder": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" }, "x-loom-ordered": true },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/EvidenceKind" } }
+      }
+    },
+    "VersionSupport": {
+      "description": "Which contract versions the readers or writers support while the migration is in flight.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["old", "new"],
+      "properties": {
+        "old": { "type": "boolean" },
+        "new": { "type": "boolean" }
+      }
+    },
+    "DeploymentUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "components", "host", "trustBoundary", "invocation", "lifetime"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "components": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" } },
+        "host": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "host" },
+        "trustBoundary": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "trustBoundary" },
+        "instances": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min"],
+          "properties": {
+            "min": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "invocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trigger"],
+          "properties": {
+            "trigger": { "$ref": "#/$defs/Trigger" },
+            "schedule": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "lifetime": { "enum": ["request", "long-running", "job", "process", "in-process"] },
+        "timeout": { "$ref": "common.schema.json#/$defs/Duration" },
+        "concurrency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model"],
+          "properties": {
+            "model": { "enum": ["single", "bounded", "unbounded"] },
+            "max": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "identity": {
+          "description": "Logical identity name; never a credential or a live resource identifier.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["workload-identity", "service-account", "caller", "none"] },
+            "name": { "$ref": "common.schema.json#/$defs/Name" }
+          }
+        },
+        "ingress": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "egress": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "configuration": {
+          "type": "array",
+          "x-loom-key": "name",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "kind"],
+            "properties": {
+              "name": { "$ref": "common.schema.json#/$defs/Name" },
+              "kind": { "enum": ["setting", "secret-reference", "connection-reference"] },
+              "description": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        },
+        "isolation": { "$ref": "common.schema.json#/$defs/Text" },
+        "decision": { "description": "Accepted decision that justifies co-hosting several components in this unit.", "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "decision" },
+        "notApplicable": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/NotApplicable" }, "x-loom-key": "concern" }
+      }
+    },
+    "Trigger": {
+      "enum": ["http", "queue", "event", "schedule", "manual", "library-call", "cli"]
+    },
+    "Host": {
+      "description": "Stack-neutral host capability profile. A capability is assessed from these declared facts, never from the host's name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "capabilities", "limits"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "kind": { "enum": ["container", "function", "web-app", "virtual-machine", "scheduled-job", "gateway", "library", "cli", "database-engine"] },
+        "inventory": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "inventory" },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["triggers", "scaling", "state"],
+          "properties": {
+            "triggers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Trigger" } },
+            "maxTimeout": { "$ref": "common.schema.json#/$defs/Duration" },
+            "maxConcurrency": { "type": "integer", "minimum": 1 },
+            "scaling": { "enum": ["none", "manual", "automatic"] },
+            "state": { "enum": ["stateless", "stateful"] },
+            "identities": { "type": "array", "items": { "enum": ["workload-identity", "service-account", "caller", "none"] } }
+          }
+        },
+        "limits": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } }
+      }
+    },
+    "TrustBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "description"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "kind": { "enum": ["network", "identity", "tenant", "process"] },
+        "description": { "$ref": "common.schema.json#/$defs/Text" }
+      }
+    },
+    "ConsumerBinding": {
+      "description": "A consumer's binding to an exact contract version or to a declared compatibility policy.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "consumer", "contract", "compatibility", "required", "status"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "consumer": { "$ref": "common.schema.json#/$defs/RecordRef" },
+        "contract": { "$ref": "common.schema.json#/$defs/RecordRef" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "compatibility": { "enum": ["exact", "compatible"] },
+        "required": { "type": "boolean" },
+        "status": { "enum": ["active", "migrating", "retired"] }
+      }
+    },
+    "PublishedContractRef": {
+      "description": "Pinned external contract published by an independent system. Its records are referenced as '<id>:<recordId>'; its code roots are never claimed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "publisher", "contract", "version", "digest", "schemaVersion", "consumers"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "publisher": { "$ref": "common.schema.json#/$defs/Alias" },
+        "contract": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "digest": { "$ref": "common.schema.json#/$defs/Hash" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "consumers": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" } }
+      }
+    }
+  }
+}

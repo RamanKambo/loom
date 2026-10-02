@@ -1,0 +1,32 @@
+{
+  "icdVersion": 1,
+  "id": "mcp",
+  "responsibility": "Exposes the shared core and workspace services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews.",
+  "owns": ["Tool registration, schema-conforming structured content with a text fallback, and protocol compatibility results."],
+  "boundary": [
+    "Writes only JSON-RPC to stdout.",
+    "No alternative mutation, readiness or acceptance policy.",
+    "Record text and retrieved documents are returned as data and never grant tool authority."
+  ],
+  "provides": [
+    { "name": "tools", "kind": "tool", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"], "effects": "writes", "concurrency": "A persistent mutation requires the expected base revision; two agents editing one prior revision cannot both succeed." }
+  ],
+  "consumes": [
+    { "component": "core", "interface": "validate" },
+    { "component": "core", "interface": "mutate" },
+    { "component": "core", "interface": "diff" },
+    { "component": "core", "interface": "project" },
+    { "component": "core", "interface": "export" },
+    { "component": "core", "interface": "import" },
+    { "component": "core", "interface": "describe" },
+    { "component": "core", "interface": "context" },
+    { "component": "core", "interface": "checkReadiness" },
+    { "component": "core", "interface": "planChange" },
+    { "component": "schema", "interface": "contractBundle" },
+    { "component": "workspace", "interface": "loadWorkspace" },
+    { "component": "workspace", "interface": "writeModel" },
+    { "component": "workspace", "interface": "readTrustedBaseline" },
+    { "component": "workspace", "interface": "readPolicy" },
+    { "component": "workspace", "interface": "evidenceStore" }
+  ]
+}

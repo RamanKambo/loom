@@ -1,0 +1,8 @@
+{
+  "projectionProfileVersion": 1,
+  "id": "none",
+  "version": 1,
+  "description": "Enables no artifact. Permitted only for an unplanned workspace.",
+  "enables": [],
+  "planned": false
+}

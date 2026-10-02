@@ -1,0 +1,39 @@
+{
+  "definition": "ResultEnvelope",
+  "valid": [
+    {
+      "resultVersion": 1,
+      "tool": "loom.validate",
+      "outcome": "ok",
+      "revisions": { "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "resultVersion": 1, "modelFormat": 1, "model": "sha256:2222222222222222222222222222222222222222222222222222222222222222" },
+      "states": {
+        "validation": { "state": "valid", "reasons": [] },
+        "readiness": { "state": "notEvaluated", "reasons": [{ "code": "READINESS_INPUT_MISSING", "message": "No task was supplied.", "refs": [] }] },
+        "qualification": { "state": "notEvaluated", "reasons": [{ "code": "QUALIFICATION_NOT_ESTABLISHED", "message": "No external validator ran.", "refs": [] }] },
+        "acceptance": { "state": "notEvaluated", "reasons": [] }
+      },
+      "findings": [],
+      "completeness": { "complete": true, "truncated": false, "omitted": [] }
+    },
+    {
+      "resultVersion": 1,
+      "tool": "loom.mutate",
+      "outcome": "refused",
+      "refusal": { "cause": "stale-base", "message": "The model changed since the expected revision." },
+      "revisions": { "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "resultVersion": 1 },
+      "states": {
+        "validation": { "state": "notEvaluated", "reasons": [] },
+        "readiness": { "state": "notEvaluated", "reasons": [] },
+        "qualification": { "state": "notEvaluated", "reasons": [] },
+        "acceptance": { "state": "notEvaluated", "reasons": [] }
+      },
+      "findings": [{ "code": "STALE_BASE_REVISION", "severity": "error", "path": "(root)", "message": "expected revision does not match", "fix": "re-read the model and re-apply the patch" }],
+      "completeness": { "complete": true, "truncated": false, "omitted": [] }
+    }
+  ],
+  "invalid": [
+    { "because": "states cannot collapse into one valid flag", "keyword": "additionalProperties", "path": "", "instance": { "resultVersion": 1, "tool": "loom.validate", "outcome": "ok", "valid": true, "revisions": { "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "resultVersion": 1 }, "states": { "validation": { "state": "valid", "reasons": [] }, "readiness": { "state": "notEvaluated", "reasons": [] }, "qualification": { "state": "notEvaluated", "reasons": [] }, "acceptance": { "state": "notEvaluated", "reasons": [] } }, "findings": [], "completeness": { "complete": true, "truncated": false, "omitted": [] } } },
+    { "because": "a refusal cause outside the vocabulary is rejected", "keyword": "enum", "path": "/refusal/cause", "instance": { "resultVersion": 1, "tool": "loom.mutate", "outcome": "refused", "refusal": { "cause": "error", "message": "x" }, "revisions": { "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "resultVersion": 1 }, "states": { "validation": { "state": "valid", "reasons": [] }, "readiness": { "state": "notEvaluated", "reasons": [] }, "qualification": { "state": "notEvaluated", "reasons": [] }, "acceptance": { "state": "notEvaluated", "reasons": [] } }, "findings": [], "completeness": { "complete": true, "truncated": false, "omitted": [] } } },
+    { "because": "a readiness state outside the vocabulary is rejected", "keyword": "enum", "path": "/states/readiness/state", "instance": { "resultVersion": 1, "tool": "loom.validate", "outcome": "ok", "revisions": { "contractDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "resultVersion": 1 }, "states": { "validation": { "state": "valid", "reasons": [] }, "readiness": { "state": "yes", "reasons": [] }, "qualification": { "state": "notEvaluated", "reasons": [] }, "acceptance": { "state": "notEvaluated", "reasons": [] } }, "findings": [], "completeness": { "complete": true, "truncated": false, "omitted": [] } } }
+  ]
+}

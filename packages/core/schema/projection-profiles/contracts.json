@@ -1,0 +1,8 @@
+{
+  "projectionProfileVersion": 1,
+  "id": "contracts",
+  "version": 1,
+  "description": "Interface and conformance contracts for every language profile, with the reference and interface control views.",
+  "enables": ["json-schema", "openapi", "sql", "sql-contract-tests", "pester-contract-tests", "csharp-contract-tests", "typescript-contract-tests", "reference", "icd"],
+  "planned": true
+}

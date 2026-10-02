@@ -1,0 +1,18 @@
+{
+  "icdVersion": 1,
+  "id": "workflow-integration",
+  "responsibility": "Selects and dispatches work packages, obtains acceptance under the configured policy, and persists workflow state and acceptance records for the workspace adapter to verify.",
+  "owns": ["Task selection and dispatch, acceptance capture, and the content of state.json and acceptance records."],
+  "boundary": [
+    "Cannot declare validity, readiness or qualification independently of the required checks.",
+    "A tool recommendation is never recorded as acceptance; acceptance names its authorized decision maker or delegated policy."
+  ],
+  "provides": [
+    { "name": "acceptanceRecords", "kind": "file", "input": "none", "output": "assurance.schema.json#/$defs/Acceptance", "refusals": [], "effects": "writes", "concurrency": "One record per accepted subject; trusted only once present at the trusted ref or signed by a listed key." },
+    { "name": "workflowState", "kind": "file", "input": "none", "output": "workspace.schema.json#/$defs/WorkflowState", "refusals": [], "effects": "writes", "concurrency": "Transient execution state; never an authority for a decision or for acceptance." }
+  ],
+  "consumes": [
+    { "component": "cli", "interface": "commands" },
+    { "component": "mcp", "interface": "tools" }
+  ]
+}
