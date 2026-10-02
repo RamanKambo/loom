@@ -49,10 +49,14 @@ export function projectReference(model: Model): string {
       L.push(`- Table: ${t.table === undefined ? '(none)' : code(t.table)}`);
       L.push(`- Key: ${codes(t.key ?? [])}`);
       if (t.stateProperty !== undefined) L.push(`- State property: ${code(t.stateProperty)}`);
-      L.push('', '| Property | Kind | Required | Nullable | Immutable | Origin |', '| --- | --- | --- | --- | --- | --- |');
+      L.push(
+        '',
+        '| Property | Kind | Required | Nullable | Immutable | Origin | Binds |',
+        '| --- | --- | --- | --- | --- | --- | --- |',
+      );
       for (const p of t.properties) {
         L.push(
-          `| ${code(p.name)} | ${cell(kindText(p))} | ${yesNo(p.required)} | ${yesNo(p.nullable)} | ${yesNo(p.immutable)} | ${cell(p.origin)} |`,
+          `| ${code(p.name)} | ${cell(kindText(p))} | ${yesNo(p.required)} | ${yesNo(p.nullable)} | ${yesNo(p.immutable)} | ${cell(p.origin)} | ${p.binds ? code(p.binds) : ''} |`,
         );
       }
       L.push('');

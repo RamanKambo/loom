@@ -62,6 +62,7 @@ export const META_SCHEMA = {
         origin: { type: 'string' },
         enumValues: { type: 'array', items: { type: 'string' } },
         bounds: { $ref: '#/definitions/bounds' },
+        binds: { type: 'string', minLength: 1 },
       },
     },
     component: {

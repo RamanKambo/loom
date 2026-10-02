@@ -23,6 +23,13 @@ export interface Property {
   origin: string;
   enumValues?: string[];
   bounds?: Bounds;
+  /**
+   * The key this property references, 'typeId.propertyName' (a foreign key):
+   * the whole single-property key of a type, possibly its own; kind must match
+   * it exactly and, when both types are table-backed, so must the projected SQL
+   * column type.
+   */
+  binds?: string;
 }
 
 export interface Component {

@@ -44,7 +44,7 @@ const WORKFLOWS = '$workflows';
                   <thead>
                     <tr>
                       <th>Name</th><th>Kind</th><th>Required</th><th>Nullable</th><th>Immutable</th><th>Origin</th>
-                      <th>Constraints</th>
+                      <th>Constraints</th><th>Binds</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -57,6 +57,7 @@ const WORKFLOWS = '$workflows';
                         <td data-col="immutable">{{ yesNo(p.immutable) }}</td>
                         <td data-col="origin">{{ p.origin }}</td>
                         <td data-col="constraints">{{ constraints(p) }}</td>
+                        <td data-col="binds"><code>{{ p.binds ?? '' }}</code></td>
                       </tr>
                     }
                   </tbody>

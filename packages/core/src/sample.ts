@@ -4,16 +4,20 @@ import type { Model } from './types.js';
  * A small but complete, valid model used by selfTest and the CLI self-test.
  * Returns a fresh object each call so callers can mutate it freely. It is
  * deliberately cross-cutting so every rule has something to bite on:
- * table-backed types, a sql-procedure and a runbook whose params and result
- * columns bind producer properties (the runbook reads an ordering-owned
- * property across a component boundary), operations with HTTP bindings,
- * workflows that pin type versions, and typed edges.
+ * table-backed types, a property that references another type's key across a
+ * component boundary ('shipment.orderId' binds 'order.id', a foreign key), a
+ * sql-procedure and a runbook whose params and result columns bind producer
+ * properties (the runbook reads an ordering-owned property across a component
+ * boundary), operations with HTTP bindings, workflows that pin type versions,
+ * and typed edges.
  *
  * The selfTest scenarios depend on these facts: 'order.note' is a string bound
  * only by 'ordering.sp_place_order' param 'p_note'; 'fulfillment.rb_dispatch'
- * reaches type 'order' only through its param 'OrderId' binding 'order.id';
- * 'wf.checkout' and 'wf.reporting' pin 'order' at version 1. The runbook's
- * contract matches the fixture examples/conforming/fulfillment/rb_dispatch.ps1.
+ * reaches type 'order' only through its param 'OrderId' binding 'order.id' and
+ * through type 'shipment', which reaches it only through 'shipment.orderId';
+ * 'wf.checkout' and 'wf.reporting' pin 'order' at version 1 and 'wf.fulfil'
+ * pins 'shipment' at version 1. The runbook's contract matches the fixture
+ * examples/conforming/fulfillment/rb_dispatch.ps1.
  */
 export function sampleModel(): Model {
   return {
@@ -104,6 +108,7 @@ export function sampleModel(): Model {
             immutable: true,
             origin: 'ordering',
             bounds: { maxLength: 64 },
+            binds: 'order.id',
           },
         ],
       },

@@ -105,7 +105,7 @@ class PatchError extends Error {
 const notFound = (message: string): PatchError => new PatchError(FINDING.PATCH_TARGET_NOT_FOUND, message);
 const invalid = (message: string): PatchError => new PatchError(FINDING.PATCH_INVALID, message);
 
-const PROPERTY_FIELDS = ['name', 'kind', 'required', 'nullable', 'immutable', 'origin', 'enumValues', 'bounds'];
+const PROPERTY_FIELDS = ['name', 'kind', 'required', 'nullable', 'immutable', 'origin', 'enumValues', 'bounds', 'binds'];
 const MUTATION_FIELDS = ['type', 'owner', 'from', 'to', 'writes', 'guard', 'effect', 'requirements', 'scenarios'];
 const TYPE_FIELDS = ['version', 'table', 'key', 'stateProperty'];
 const OPERATION_FIELDS = ['version', 'kind', 'bindings', 'request', 'response', 'result'];

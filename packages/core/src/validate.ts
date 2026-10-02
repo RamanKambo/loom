@@ -1,4 +1,4 @@
-import type { Model, Finding, Scenario, Kind, TypeDef } from './types.js';
+import type { Model, Finding, Scenario, Kind, TypeDef, Bounds, Property } from './types.js';
 import { ABSENT_STATE } from './types.js';
 import { FINDING } from './codes.js';
 import { makeConsumerResolver, allElementIds } from './reachability.js';
@@ -6,12 +6,41 @@ import { resolveBinding, tableOwner, qualifyTable } from './refs.js';
 import { structuralFindings } from './load.js';
 import {
   keyColumnBytes,
+  sqlColumnType,
   NVARCHAR_MAX_LENGTH,
   PRIMARY_KEY_MAX_BYTES,
   PRIMARY_KEY_MAX_COLUMNS,
 } from './sql-types.js';
 
 export { FINDING } from './codes.js';
+
+/** The bounds a property of `kind` may not carry: length bounds belong to strings, numeric bounds to integers and numbers. */
+function misplacedBounds(kind: Kind, b: Bounds | undefined): string[] {
+  if (!b) return [];
+  const out: string[] = [];
+  if (kind !== 'string') {
+    if (b.minLength !== undefined) out.push('minLength');
+    if (b.maxLength !== undefined) out.push('maxLength');
+  }
+  if (kind !== 'integer' && kind !== 'number') {
+    if (b.min !== undefined) out.push('min');
+    if (b.max !== undefined) out.push('max');
+  }
+  return out;
+}
+
+/**
+ * The edit that makes a referencing property project to the same SQL column
+ * type as the key it references; with equal kinds only string lengths and
+ * enum value lengths can differ.
+ */
+function sqlTypeFix(p: Property, key: Property, keyRef: string, keyType: string): string {
+  const length = /^NVARCHAR\((\d+)\)$/.exec(keyType)?.[1];
+  if (p.kind === 'string' && length !== undefined) return `set property '${p.name}' maxLength to ${length}`;
+  if (p.kind === 'string') return `set the same maxLength, at most ${NVARCHAR_MAX_LENGTH}, on property '${p.name}' and on '${keyRef}'`;
+  if (p.kind === 'enum') return `set property '${p.name}' enumValues to those of '${keyRef}' (${(key.enumValues ?? []).join(', ')})`;
+  return `make property '${p.name}' project to ${keyType}`;
+}
 
 function detectWorkflowCycles(model: Model): string[][] {
   const ids = new Set(model.workflows.map((w) => w.id));
@@ -130,17 +159,7 @@ export function validate(model: Model): Finding[] {
           `list the allowed values of '${t.id}.${p.name}' in its enumValues`,
         );
       }
-      const b = p.bounds;
-      if (!b) continue;
-      const misplaced: string[] = [];
-      if (p.kind !== 'string') {
-        if (b.minLength !== undefined) misplaced.push('minLength');
-        if (b.maxLength !== undefined) misplaced.push('maxLength');
-      }
-      if (p.kind !== 'integer' && p.kind !== 'number') {
-        if (b.min !== undefined) misplaced.push('min');
-        if (b.max !== undefined) misplaced.push('max');
-      }
+      const misplaced = misplacedBounds(p.kind, p.bounds);
       if (misplaced.length) {
         error(
           FINDING.BOUNDS_KIND_MISMATCH,
@@ -301,6 +320,87 @@ export function validate(model: Model): Finding[] {
       );
     } else {
       typeByTable.set(qualified, t);
+    }
+  }
+
+  // --- property bindings: a property references the whole single-property key
+  // of a type, possibly its own (a foreign key). The kind must match exactly;
+  // when both types are table-backed, so must the projected SQL column type,
+  // because SQL Server refuses a foreign key whose columns differ in data type
+  // (Msg 1778) or in length (Msg 1753). A nullable property is an optional reference.
+  for (const t of model.types) {
+    for (const p of t.properties) {
+      if (p.binds === undefined) continue;
+      const path = `types/${t.id}/properties/${p.name}/binds`;
+      const label = `property '${t.id}.${p.name}'`;
+      const consumerStep = `bump type '${t.id}' version and list '${t.id}' in acknowledgeBreaking`;
+      const ref = resolveBinding(p.binds, typeIds);
+      const target = ref ? typeById.get(ref.typeId) : undefined;
+      if (!ref || !target) {
+        error(
+          FINDING.DANGLING_REF,
+          path,
+          `${label} binds '${p.binds}', which names no known type`,
+          [t.id],
+          `bind property '${p.name}' to the key of an existing type ('typeId.propertyName')`,
+        );
+        continue;
+      }
+      const key = target.key ?? [];
+      const keyName = key.length === 1 ? key[0] : undefined;
+      const rebind =
+        keyName !== undefined
+          ? `bind property '${p.name}' to '${target.id}.${keyName}', the key of '${target.id}'`
+          : `remove binds from property '${p.name}', or give type '${target.id}' a single-property key and bind that`;
+      const keyProperty = target.properties.find((x) => x.name === ref.property);
+      if (!keyProperty) {
+        error(
+          FINDING.DANGLING_REF,
+          path,
+          `${label} binds '${p.binds}', but type '${target.id}' has no property '${ref.property}'`,
+          [t.id],
+          rebind,
+        );
+        continue;
+      }
+      if (keyName !== keyProperty.name) {
+        let why: string;
+        if (key.length === 0) why = `type '${target.id}' declares no key`;
+        else if (key.length > 1) why = `the key of '${target.id}' is composite (${key.join(', ')})`;
+        else why = `'${keyProperty.name}' is not the key of '${target.id}' (key: ${keyName ?? ''})`;
+        error(
+          FINDING.BINDING_NOT_KEY,
+          path,
+          `${label} binds '${p.binds}', but ${why}; a property is one column, so it may reference only a single-property key`,
+          [t.id],
+          rebind,
+        );
+        continue;
+      }
+      if (keyProperty.kind !== p.kind) {
+        const drop = misplacedBounds(keyProperty.kind, p.bounds);
+        const alsoDrop = drop.length ? ` and remove ${drop.join(', ')} from its bounds` : '';
+        error(
+          FINDING.BINDING_KIND_MISMATCH,
+          path,
+          `${label} is '${p.kind}' but binds '${p.binds}', which is '${keyProperty.kind}'`,
+          [t.id],
+          `set property '${p.name}' kind to '${keyProperty.kind}'${alsoDrop}, then ${consumerStep}`,
+        );
+        continue;
+      }
+      if (t.table === undefined || target.table === undefined) continue;
+      const column = sqlColumnType(p);
+      const keyColumn = sqlColumnType(keyProperty);
+      if (column !== keyColumn) {
+        error(
+          FINDING.BINDING_SQL_TYPE_MISMATCH,
+          path,
+          `${label} projects to ${column} but binds '${p.binds}', which projects to ${keyColumn}; a foreign key's columns must have the same SQL type and length`,
+          [t.id],
+          `${sqlTypeFix(p, keyProperty, p.binds, keyColumn)}, then ${consumerStep}`,
+        );
+      }
     }
   }
 

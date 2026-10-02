@@ -31,7 +31,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: 'loom.validate',
     description:
-      'Validate a Loom model: structural meta-schema then every semantic rule (ownership, state legality, immutability, creation completeness, table ownership, routine write-set completeness, consumer bindings, workflow version pins and cycles, traceability). The model is valid iff there is no error finding; each finding carries a one-line fix.',
+      'Validate a Loom model: structural meta-schema then every semantic rule (ownership, state legality, immutability, creation completeness, table ownership and keys, routine write-set completeness, consumer bindings, property references to a single-property key with a matching kind and SQL column type, workflow version pins and cycles, traceability). The model is valid iff there is no error finding; each finding carries a one-line fix.',
     inputSchema: { type: 'object', properties: { model: modelProp }, required: ['model'] },
   },
   {

@@ -80,6 +80,8 @@ function findColumn(m: Model, routineId: string, name: string): Model['routines'
 
 const PLACE = 'ordering.sp_place_order';
 const DISPATCH = 'fulfillment.rb_dispatch';
+/** The sample's one referencing property: 'shipment.orderId' binds 'order.id'. */
+const ORDER_REF = 'types/shipment/properties/orderId/binds';
 
 interface Contradiction {
   label: string;
@@ -385,6 +387,56 @@ const CONTRADICTIONS: Contradiction[] = [
     pathIncludes: `routines/${PLACE}/resultSet/status/binds`,
     break: (m) => {
       delete findColumn(m, PLACE, 'status').binds;
+    },
+  },
+  {
+    label: 'property binding to an unknown type',
+    code: FINDING.DANGLING_REF,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      findProperty(m, 'shipment', 'orderId').binds = 'parcel.id';
+    },
+  },
+  {
+    label: 'property binding to an unknown property',
+    code: FINDING.DANGLING_REF,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      findProperty(m, 'shipment', 'orderId').binds = 'order.ghost';
+    },
+  },
+  {
+    label: 'property binding to a non-key property',
+    code: FINDING.BINDING_NOT_KEY,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      findProperty(m, 'shipment', 'orderId').binds = 'order.note';
+    },
+  },
+  {
+    label: 'property binding to a composite key',
+    code: FINDING.BINDING_NOT_KEY,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      findType(m, 'order').key = ['id', 'status'];
+    },
+  },
+  {
+    label: 'property binding kind mismatch',
+    code: FINDING.BINDING_KIND_MISMATCH,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      const p = findProperty(m, 'shipment', 'orderId');
+      p.kind = 'integer';
+      delete p.bounds;
+    },
+  },
+  {
+    label: 'property binding SQL length mismatch',
+    code: FINDING.BINDING_SQL_TYPE_MISMATCH,
+    pathIncludes: ORDER_REF,
+    break: (m) => {
+      findProperty(m, 'shipment', 'orderId').bounds = { maxLength: 128 };
     },
   },
 ];
@@ -704,6 +756,30 @@ const BREAKING_DIFFS: DiffCase[] = [
       delete findType(m, 'order').stateProperty;
     },
   },
+  {
+    label: 'property binds added',
+    element: 'order',
+    reasonIncludes: "property 'note' binds changed '(none)' -> 'invoice.id'",
+    after: (m) => {
+      findProperty(m, 'order', 'note').binds = 'invoice.id';
+    },
+  },
+  {
+    label: 'property binds changed',
+    element: 'shipment',
+    reasonIncludes: "property 'orderId' binds changed 'order.id' -> 'invoice.id'",
+    after: (m) => {
+      findProperty(m, 'shipment', 'orderId').binds = 'invoice.id';
+    },
+  },
+  {
+    label: 'property binds removed',
+    element: 'shipment',
+    reasonIncludes: "property 'orderId' binds changed 'order.id' -> '(none)'",
+    after: (m) => {
+      delete findProperty(m, 'shipment', 'orderId').binds;
+    },
+  },
 ];
 
 /** Each must yield no breaking Change and a compatible Change with the given reason. */
@@ -846,16 +922,27 @@ export function selfTest(): void {
     );
   }
 
-  // 4. reachability: a binding alone makes a routine a consumer of the producer type
+  // 4. reachability: a binding alone makes a routine a consumer of the producer
+  // type, and a property binding alone makes its type a consumer of the referenced type
   assert(
-    reverseReachable(sample, ['order']).includes(DISPATCH),
+    reverseReachable(sample, ['order']).includes('shipment'),
+    "'shipment' should consume 'order' through its 'shipment.orderId' binding",
+  );
+  const unreferenced = deepClone(sample);
+  delete findProperty(unreferenced, 'shipment', 'orderId').binds;
+  assert(
+    !reverseReachable(unreferenced, ['order']).includes('shipment'),
+    "'shipment' should reach 'order' only through 'shipment.orderId'",
+  );
+  assert(
+    reverseReachable(unreferenced, ['order']).includes(DISPATCH),
     `'${DISPATCH}' should consume 'order' through its 'order.id' binding`,
   );
-  const unbound = deepClone(sample);
+  const unbound = deepClone(unreferenced);
   delete findParam(unbound, DISPATCH, 'OrderId').binds;
   assert(
     !reverseReachable(unbound, ['order']).includes(DISPATCH),
-    `'${DISPATCH}' should reach 'order' only through its binding`,
+    `'${DISPATCH}' should reach 'order' only through its binding and through 'shipment'`,
   );
 
   // 5. mutate: the breaking-change gate
@@ -958,6 +1045,92 @@ export function selfTest(): void {
       { op: 'changeOperation', operationId: 'order.place', set: { bindings: v2Binding, version: 2 } },
       { acknowledgeBreaking: ['order.place'] },
     ),
+  );
+
+  // (w) the README Walkthrough: order.id from string to integer reaches both
+  // bound routines and shipment.orderId, the property that references order.id.
+  const w1 = mutate(sample, { op: 'changeProperty', typeId: 'order', propertyName: 'id', set: { kind: 'integer' } });
+  refuse('(w1) order.id to integer as a single patch', w1);
+  const staleBindings = w1.findings.filter((f) => f.code === FINDING.BINDING_KIND_MISMATCH).map((f) => f.path).sort();
+  const expectedStale = [`routines/${DISPATCH}/params/OrderId/binds`, `routines/${PLACE}/resultSet/order_id/binds`, ORDER_REF].sort();
+  assert(
+    canonicalStringify(staleBindings) === canonicalStringify(expectedStale),
+    `(w1) BINDING_KIND_MISMATCH should name ${expectedStale.join(', ')}, got: ${staleBindings.join(', ')}`,
+  );
+  const w1Ref = w1.findings.find((f) => f.code === FINDING.BINDING_KIND_MISMATCH && f.path === ORDER_REF);
+  assert(
+    w1Ref?.fix?.includes("set property 'orderId' kind to 'integer'") && w1Ref.fix.includes("list 'shipment' in acknowledgeBreaking"),
+    '(w1) the shipment.orderId finding should tell the consumer to retype, bump and acknowledge shipment',
+  );
+  assert(w1.impact.includes('shipment'), "(w1) the impact of changing 'order' should include 'shipment'");
+
+  const walkthroughOrder: Patch[] = [
+    bumpOrder,
+    { op: 'changeProperty', typeId: 'order', propertyName: 'id', set: { kind: 'integer', bounds: null } },
+    {
+      op: 'changeRoutine',
+      routineId: PLACE,
+      set: {
+        version: 2,
+        resultSet: [
+          { name: 'order_id', kind: 'integer', nullable: false, binds: 'order.id' },
+          { name: 'status', kind: 'enum', nullable: false, binds: 'order.status' },
+        ],
+      },
+    },
+    {
+      op: 'changeRoutine',
+      routineId: DISPATCH,
+      set: {
+        version: 2,
+        params: [
+          { name: 'OrderId', kind: 'integer', required: true, nullable: false, binds: 'order.id' },
+          { name: 'InitialState', kind: 'enum', required: false, nullable: false, binds: 'shipment.state' },
+          { name: 'Notify', kind: 'boolean', required: false, nullable: false },
+        ],
+      },
+    },
+    ...repinImports,
+  ];
+  const shipmentRetype: Patch[] = [
+    { op: 'changeProperty', typeId: 'shipment', propertyName: 'orderId', set: { kind: 'integer', bounds: null } },
+    { op: 'setVersion', target: 'type', id: 'shipment', version: 2 },
+  ];
+  const repinShipment: Patch = { op: 'changeWorkflowImport', workflowId: 'wf.fulfil', typeId: 'shipment', version: 2 };
+  const walkthroughAck = ['order', PLACE, DISPATCH, 'shipment'];
+
+  // (w2) the batch that fixes only the routines leaves the referencing property stale
+  const w2 = mutate(sample, walkthroughOrder, { acknowledgeBreaking: ['order', PLACE, DISPATCH] });
+  const w2Codes = refuse('(w2) Walkthrough batch without the shipment changes', w2);
+  const w2Errors = errorsOf(w2.findings);
+  assert(
+    w2Errors.length === 1 && w2Errors[0]?.code === FINDING.BINDING_KIND_MISMATCH && w2Errors[0]?.path === ORDER_REF,
+    `(w2) the only error should be BINDING_KIND_MISMATCH at ${ORDER_REF}, got: ${list(w2Codes)}`,
+  );
+
+  // (w3) bumping shipment without its pinned workflow is refused by the existing pin rule
+  const w3 = mutate(sample, [...walkthroughOrder, ...shipmentRetype], { acknowledgeBreaking: walkthroughAck });
+  refuse('(w3) Walkthrough batch with a stale wf.fulfil pin', w3);
+  const w3Errors = errorsOf(w3.findings);
+  assert(
+    w3Errors.length === 1 &&
+      w3Errors[0]?.code === FINDING.WORKFLOW_IMPORT_VERSION_MISMATCH &&
+      w3Errors[0]?.path === 'workflows/wf.fulfil/imports/shipment',
+    `(w3) the only error should be the stale wf.fulfil pin of shipment, got: ${w3Errors.map((f) => `${f.code} ${f.path}`).join('; ')}`,
+  );
+
+  // (w4) the complete Walkthrough batch is ACCEPTED, one breaking change per acknowledged element
+  const w4 = mutate(sample, [...walkthroughOrder, ...shipmentRetype, repinShipment], { acknowledgeBreaking: walkthroughAck });
+  const w4Model = accept('(w4) complete Walkthrough batch', w4);
+  const w4Broken = w4.changes.filter((ch) => ch.kind === 'breaking');
+  assert(
+    canonicalStringify(w4Broken.map((ch) => ch.element).sort()) === canonicalStringify([...walkthroughAck].sort()),
+    `(w4) the breaking changes should be one per acknowledged element, got: ${w4Broken.map((ch) => ch.element).join(', ')}`,
+  );
+  const w4Sql = project(w4Model, 'sql') as string;
+  assert(
+    w4Sql.includes('[orderId] BIGINT NOT NULL') && w4Sql.includes('FOREIGN KEY ([orderId]) REFERENCES [ordering].[orders] ([id])'),
+    '(w4) the accepted model should project shipments.orderId as BIGINT with its foreign key',
   );
 
   // increment-1 cascade: a newly-required property breaks the creation mutation
@@ -1074,6 +1247,10 @@ export function selfTest(): void {
     'schema.sql should map kinds, lengths and nullability',
   );
   assert(sql.includes('CREATE TABLE [billing].[invoices] ('), 'an unqualified table should land in its owner schema');
+  const foreignKey =
+    'ALTER TABLE [fulfillment].[shipments] ADD CONSTRAINT [FK_shipments_orderId] FOREIGN KEY ([orderId]) REFERENCES [ordering].[orders] ([id]);';
+  assert(sql.includes(foreignKey), 'schema.sql should add the shipments.orderId foreign key');
+  assert(sql.indexOf(foreignKey) > sql.lastIndexOf('CREATE TABLE '), 'schema.sql should add foreign keys after every CREATE TABLE');
 
   const contract = files['contract-tests.sql'] ?? '';
   const procedures = sample.routines.filter((r) => r.host === 'sql-procedure');
@@ -1086,6 +1263,18 @@ export function selfTest(): void {
   }
   assert((contract.match(/THROW 50001,/g) ?? []).length === procedures.length, 'one existence THROW per procedure');
   assert((contract.match(/THROW 50011,/g) ?? []).length === sample.types.filter((t) => t.table).length, 'one table block per typed table');
+  // Every sample type is table-backed, so every property binding is a foreign key.
+  const referencing = sample.types.flatMap((t) => t.properties.filter((p) => p.binds !== undefined)).length;
+  assert(
+    referencing > 0 && (contract.match(/THROW 50015,/g) ?? []).length === referencing,
+    'one foreign-key check per referencing property',
+  );
+  assert(
+    contract.includes(
+      "THROW 50015, N'Loom contract: table [fulfillment].[shipments] column [orderId] has no enabled single-column foreign key referencing [ordering].[orders] ([id])', 1;",
+    ),
+    'contract-tests.sql should THROW when the shipments.orderId foreign key is missing',
+  );
   assert(contract.includes("(VALUES (1, N'@p_total'), (2, N'@p_note'))"), 'the parameter contract should list names in order');
   const contractCode = contract
     .split('\n')

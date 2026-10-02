@@ -8,6 +8,7 @@ import {
   type Finding,
   type Kind,
   type Patch,
+  type Property,
   type ResultColumn,
   type RoutineParam,
 } from '@loom/core';
@@ -60,11 +61,16 @@ describe('LoomStore', () => {
     expect(bump.path).toBe(`types/${TYPE}/version`);
     expect(bump.fix).toContain(`'${TYPE}'`);
 
-    // One mismatch per stale consumer binding, derived from the model.
-    const expectedPaths = before.routines.flatMap((r) => [
-      ...r.params.filter((p) => p.binds === BINDING).map((p) => `routines/${r.id}/params/${p.name}/binds`),
-      ...r.resultSet.filter((c) => c.binds === BINDING).map((c) => `routines/${r.id}/resultSet/${c.name}/binds`),
-    ]);
+    // One mismatch per stale consumer binding and per referencing property, derived from the model.
+    const expectedPaths = [
+      ...before.routines.flatMap((r) => [
+        ...r.params.filter((p) => p.binds === BINDING).map((p) => `routines/${r.id}/params/${p.name}/binds`),
+        ...r.resultSet.filter((c) => c.binds === BINDING).map((c) => `routines/${r.id}/resultSet/${c.name}/binds`),
+      ]),
+      ...before.types.flatMap((t) =>
+        t.properties.filter((p) => p.binds === BINDING).map((p) => `types/${t.id}/properties/${p.name}/binds`),
+      ),
+    ];
     expect(expectedPaths.length).toBeGreaterThan(0);
     const mismatchPaths = outcome.findings.filter((f) => f.code === FINDING.BINDING_KIND_MISMATCH).map((f) => f.path);
     expect(mismatchPaths.sort()).toEqual(expectedPaths.sort());
@@ -77,19 +83,25 @@ describe('LoomStore', () => {
     const routines = before.routines.filter(
       (r) => r.params.some((p) => p.binds === BINDING) || r.resultSet.some((c) => c.binds === BINDING),
     );
-    const workflows = before.workflows.filter((w) => w.imports.some((i) => i.typeId === TYPE));
+    // Types whose properties reference the changed key are consumers too; each is retyped and bumped.
+    const referencing = before.types.filter((t) => t.id !== TYPE && t.properties.some((p) => p.binds === BINDING));
+    const bumped = new Map([[TYPE, version], ...referencing.map((t): [string, number] => [t.id, t.version + 1])]);
+    const workflows = before.workflows.filter((w) => w.imports.some((i) => bumped.has(i.typeId)));
     expect(routines.length).toBeGreaterThan(0);
+    expect(referencing.length).toBeGreaterThan(0);
     expect(workflows.length).toBeGreaterThan(0);
 
     // Length bounds apply only to strings; the engine refuses them on an integer (BOUNDS_KIND_MISMATCH).
+    const integerBounds = (p: Property): Property['bounds'] | null => {
+      const { minLength: _minLength, maxLength: _maxLength, ...numericBounds } = p.bounds ?? {};
+      return Object.keys(numericBounds).length > 0 ? numericBounds : null;
+    };
     const property = type.properties.find((p) => p.name === PROPERTY)!;
-    const { minLength: _minLength, maxLength: _maxLength, ...numericBounds } = property.bounds ?? {};
-    const bounds = Object.keys(numericBounds).length > 0 ? numericBounds : null;
 
     const retypeParam = (p: RoutineParam): RoutineParam => (p.binds === BINDING ? { ...p, kind: NEW_KIND } : p);
     const retypeColumn = (c: ResultColumn): ResultColumn => (c.binds === BINDING ? { ...c, kind: NEW_KIND } : c);
     const batch: Patch[] = [
-      { op: 'changeProperty', typeId: TYPE, propertyName: PROPERTY, set: { kind: NEW_KIND, bounds } },
+      { op: 'changeProperty', typeId: TYPE, propertyName: PROPERTY, set: { kind: NEW_KIND, bounds: integerBounds(property) } },
       { op: 'setVersion', target: 'type', id: TYPE, version },
       ...routines.map(
         (r): Patch => ({
@@ -98,9 +110,26 @@ describe('LoomStore', () => {
           set: { version: r.version + 1, params: r.params.map(retypeParam), resultSet: r.resultSet.map(retypeColumn) },
         }),
       ),
-      ...workflows.map((w): Patch => ({ op: 'changeWorkflowImport', workflowId: w.id, typeId: TYPE, version })),
+      ...referencing.flatMap((t): Patch[] => [
+        ...t.properties
+          .filter((p) => p.binds === BINDING)
+          .map(
+            (p): Patch => ({
+              op: 'changeProperty',
+              typeId: t.id,
+              propertyName: p.name,
+              set: { kind: NEW_KIND, bounds: integerBounds(p) },
+            }),
+          ),
+        { op: 'setVersion', target: 'type', id: t.id, version: bumped.get(t.id)! },
+      ]),
+      ...workflows.flatMap((w) =>
+        w.imports
+          .filter((i) => bumped.has(i.typeId))
+          .map((i): Patch => ({ op: 'changeWorkflowImport', workflowId: w.id, typeId: i.typeId, version: bumped.get(i.typeId)! })),
+      ),
     ];
-    const acknowledged = [TYPE, ...routines.map((r) => r.id)];
+    const acknowledged = [TYPE, ...routines.map((r) => r.id), ...referencing.map((t) => t.id)];
 
     const outcome = store.apply(batch, acknowledged);
 
@@ -121,9 +150,14 @@ describe('LoomStore', () => {
       expect(bound.length).toBeGreaterThan(0);
       expect(bound.every((x) => x.kind === NEW_KIND)).toBe(true);
     }
+    for (const t of referencing) {
+      const at = after.types.find((x) => x.id === t.id)!;
+      expect(at.version).toBe(bumped.get(t.id));
+      expect(at.properties.filter((p) => p.binds === BINDING).every((p) => p.kind === NEW_KIND)).toBe(true);
+    }
     for (const w of workflows) {
       const aw = after.workflows.find((x) => x.id === w.id)!;
-      expect(aw.imports.find((i) => i.typeId === TYPE)!.version).toBe(version);
+      for (const i of aw.imports.filter((x) => bumped.has(x.typeId))) expect(i.version).toBe(bumped.get(i.typeId));
     }
 
     const brokenElements = new Set(outcome.changes.filter((c) => c.kind === 'breaking').map((c) => c.element));

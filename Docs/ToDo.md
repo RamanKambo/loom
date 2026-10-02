@@ -12,11 +12,11 @@ the change rolls out. The usual safe sequence has five phases:
 
 | Phase | `order.id` example |
 | --- | --- |
-| Expand | Add `id_v2 BIGINT NULL` beside the existing `id`; current readers are unaffected. |
-| Backfill | Convert existing rows into `id_v2`; rows that cannot convert are reported. |
-| Validate | Prove every row converted and every constraint holds. |
-| Switch | Deploy `ordering.sp_place_order` v2 and `fulfillment.rb_dispatch` v2 against `id_v2`. |
-| Contract | Drop the old column, make `id_v2` the `NOT NULL` key, and rename it to `id`. |
+| Expand | Add `id_v2 BIGINT NULL` beside the existing `id`, and `orderId_v2 BIGINT NULL` beside `fulfillment.shipments.orderId`; current readers are unaffected. |
+| Backfill | Convert existing rows into `id_v2` and `orderId_v2`; rows that cannot convert are reported. |
+| Validate | Prove every row converted and every constraint holds, including that each `orderId_v2` matches an `id_v2`. |
+| Switch | Deploy `ordering.sp_place_order` v2 and `fulfillment.rb_dispatch` v2 against `id_v2` and `orderId_v2`. |
+| Contract | Drop `FK_shipments_orderId` first, because SQL Server refuses to drop a key a foreign key references; drop the old columns, make `id_v2` the `NOT NULL` key, rename both new columns to their old names, and re-create the foreign key. |
 
 Loom would add a migration record per breaking change to a table-backed property. Rules would
 refuse the change without one, enforce phase order (switch never before validate), and schedule

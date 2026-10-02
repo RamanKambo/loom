@@ -149,6 +149,8 @@ function diffProperty(bp: Property, ap: Property, path: string, ch: ElementChang
     }
   }
   diffBounds(n, bp.bounds, ap.bounds, `${path}/bounds`, ch);
+  // An added reference constrains writers; a changed or removed one breaks the readers that join on it.
+  diffBinds('property', n, bp.binds, ap.binds, path, ch);
 }
 
 const BOUND_KEYS = ['min', 'max', 'minLength', 'maxLength'] as const;

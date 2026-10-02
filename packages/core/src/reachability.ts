@@ -35,14 +35,23 @@ export function forwardAdjacency(model: Model): Map<string, Set<string>> {
     s.add(to);
   };
 
-  for (const t of model.types) link(t.id, t.owner);
+  const typeIds = model.types.map((t) => t.id);
+  for (const t of model.types) {
+    link(t.id, t.owner);
+    // A property that references another type's key makes the declaring type
+    // a consumer of the referenced type (a foreign key across types).
+    for (const p of t.properties) {
+      if (p.binds === undefined) continue;
+      const ref = resolveBinding(p.binds, typeIds);
+      if (ref && ref.typeId !== t.id) link(t.id, ref.typeId);
+    }
+  }
   for (const o of model.operations) {
     link(o.id, o.owner);
     if (o.request) link(o.id, o.request);
     if (o.response) link(o.id, o.response);
     if (o.result) link(o.id, o.result);
   }
-  const typeIds = model.types.map((t) => t.id);
   for (const r of model.routines) {
     link(r.id, r.owner);
     for (const m of r.performsMutations) link(r.id, m);

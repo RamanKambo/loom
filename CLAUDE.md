@@ -39,9 +39,10 @@ scripts: @package.json
   - `project` and `projectToFiles` dispatch to the emitters in `packages/core/src/projections`.
     `exportModel` writes canonical JSON. Both fail closed on any error finding.
 - Consumers declare what they expect. A routine param or result column `binds` a
-  `typeId.propertyName`, resolved by the longest known id prefix in `packages/core/src/refs.ts`; ids
-  may contain dots and property names may not. A table name is `<component>.<table>`, and the prefix
-  owns the table.
+  `typeId.propertyName`, and so does a property that references another type's key (a foreign key,
+  which makes its type a consumer in `packages/core/src/reachability.ts`). Each resolves by the
+  longest known id prefix in `packages/core/src/refs.ts`; ids may contain dots and property names
+  may not. A table name is `<component>.<table>`, and the prefix owns the table.
 - Single homes:
 
   | Fact | Home |
@@ -78,7 +79,8 @@ scripts: @package.json
 - **The MCP server writes only JSON-RPC to stdout.** Any other output corrupts the protocol, so
   status goes to stderr.
 - **Keep the fixtures' roles.** `examples/conforming` must pass and `examples/violating` must fail
-  both the generated Pester file (probe (b), `fulfillment/rb_dispatch.ps1`) and the generated
-  `contract-tests.sql` run against a real database (probe (f), `ordering/sp_place_order.sql`); the
+  both the generated Pester file (probe (b), on `examples/conforming/fulfillment/rb_dispatch.ps1`
+  and its violating copy) and the generated `contract-tests.sql` run against a real database
+  (probe (f), on `examples/conforming/ordering/sp_place_order.sql` and its violating copy). The
   violating SQL fixture must break exactly the one contract named by its header comment and the
   `EXPECTED_VIOLATION_CODE` in `packages/cli/src/probes.ts`.

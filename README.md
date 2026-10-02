@@ -51,8 +51,9 @@ npm run smoke:mcp    # in-memory MCP smoke test (enumerate + call tools)
 The engine self-test (`packages/core/src/selftest.ts`) passes the sample model, then breaks it
 on purpose: every validate rule and every breaking-diff rule has a deliberate contradiction that
 must yield its finding code, at its path, with a fix. It also proves the mutation gate (refused
-without a version bump, without acknowledgment, or with a stale bound consumer; accepted as the
-complete batch), determinism and fail-closed refusal for every projection target, and lossless
+without a version bump, without acknowledgment, with a stale bound consumer or referencing
+property, or with a stale workflow pin; accepted as the complete batch, including the Walkthrough's),
+determinism and fail-closed refusal for every projection target, and lossless
 JSON and YAML round-trips.
 
 The CLI self-test then proves the drift check and validates the OpenAPI projection with
@@ -106,19 +107,21 @@ The sample model shows the loop end to end. Shell commands run under the reposit
 
 2. Attempt `order.id` from string to integer as a single patch. `loom.mutate` with
    `{ "model": <model.json>, "patch": { "op": "changeProperty", "typeId": "order", "propertyName": "id", "set": { "kind": "integer" } } }`
-   returns `"refused": true` and these error findings, which name both bound consumers:
+   returns `"refused": true` and these error findings, which name the two bound routines and
+   `shipment.orderId`, the property that references `order.id`:
 
    | Code | Fix |
    | --- | --- |
    | `BOUNDS_KIND_MISMATCH` | remove maxLength from the bounds of 'order.id' |
+   | `BINDING_KIND_MISMATCH` | set property 'orderId' kind to 'integer' and remove maxLength from its bounds, then bump type 'shipment' version and list 'shipment' in acknowledgeBreaking |
    | `BINDING_KIND_MISMATCH` | set result column 'order_id' kind to 'integer', then bump routine 'ordering.sp_place_order' version and list 'ordering.sp_place_order' in acknowledgeBreaking |
    | `BINDING_KIND_MISMATCH` | set param 'OrderId' kind to 'integer', then bump routine 'fulfillment.rb_dispatch' version and list 'fulfillment.rb_dispatch' in acknowledgeBreaking |
    | `BREAKING_CHANGE_WITHOUT_VERSION_BUMP` | bump type 'order' version above 1 and list 'order' in acknowledgeBreaking |
    | `BREAKING_CHANGE_UNACKNOWLEDGED` | list 'order' in acknowledgeBreaking to confirm the breaking change is intended |
 
-3. Apply the fixes as one atomic batch. Bumping `order` to version 2 also makes the two workflow
-   pins of `order` stale (`WORKFLOW_IMPORT_VERSION_MISMATCH`), so the batch moves them too.
-   `loom.mutate` with `model` plus:
+3. Apply the fixes as one atomic batch. Bumping `order` and `shipment` to version 2 also makes
+   their workflow pins stale (`WORKFLOW_IMPORT_VERSION_MISMATCH`), two of `order` and one of
+   `shipment`, so the batch moves all three. `loom.mutate` with `model` plus:
 
    ```json
    {
@@ -132,14 +135,17 @@ The sample model shows the loop end to end. Shell commands run under the reposit
          { "name": "OrderId", "kind": "integer", "required": true, "nullable": false, "binds": "order.id" },
          { "name": "InitialState", "kind": "enum", "required": false, "nullable": false, "binds": "shipment.state" },
          { "name": "Notify", "kind": "boolean", "required": false, "nullable": false } ] } },
+       { "op": "setVersion", "target": "type", "id": "shipment", "version": 2 },
+       { "op": "changeProperty", "typeId": "shipment", "propertyName": "orderId", "set": { "kind": "integer", "bounds": null } },
        { "op": "changeWorkflowImport", "workflowId": "wf.checkout", "typeId": "order", "version": 2 },
-       { "op": "changeWorkflowImport", "workflowId": "wf.reporting", "typeId": "order", "version": 2 }
+       { "op": "changeWorkflowImport", "workflowId": "wf.reporting", "typeId": "order", "version": 2 },
+       { "op": "changeWorkflowImport", "workflowId": "wf.fulfil", "typeId": "shipment", "version": 2 }
      ],
-     "acknowledgeBreaking": ["order", "ordering.sp_place_order", "fulfillment.rb_dispatch"]
+     "acknowledgeBreaking": ["order", "ordering.sp_place_order", "fulfillment.rb_dispatch", "shipment"]
    }
    ```
 
-   The result is `"refused": false` with three breaking changes, one per acknowledged element.
+   The result is `"refused": false` with four breaking changes, one per acknowledged element.
    Write the returned `model` back to `model.json` (`loom.export` renders it as canonical JSON).
 
 4. Project every artifact: `loom.projectAll` returns the file map, and the CLI writes it.
@@ -183,11 +189,12 @@ The sample model shows the loop end to end. Shell commands run under the reposit
 A model is a single object with: `version`, `components`, `types`, `operations`, `routines`,
 `mutations`, `workflows`, `edges`, `requirements`, `scenarios`. Types, operations and routines
 are versioned contracts: each carries a required `version`. A type may name its backing `table`
-and must then name the `key` properties that identify a row. A routine may name its `source` file
-(repository-relative), list the `writesColumns` it writes as `<table>.<column>`, and declare on a
-param or result column `binds: 'typeId.propertyName'`, the producer property it expects. Ids may
-contain dots, so bindings, table qualifiers and written columns resolve by the longest known id or
-table prefix.
+and must then name the `key` properties that identify a row. A property may declare
+`binds: 'typeId.propertyName'`, the key it references (a foreign key). A routine may name its
+`source` file (repository-relative), list the `writesColumns` it writes as `<table>.<column>`, and
+declare on a param or result column `binds: 'typeId.propertyName'`, the producer property it
+expects. Ids may contain dots, so bindings, table qualifiers and written columns resolve by the
+longest known id or table prefix.
 
 Each model is first checked against a structural meta-schema (via Ajv), then against the
 semantic rules:
@@ -215,6 +222,12 @@ semantic rules:
   uniquely-named columns;
 - a bound param or column must match its producer property's kind and nullability exactly, and a
   param or column of kind `enum` must bind an enum property, which supplies its values;
+- a property's `binds` must name the whole key of a type, possibly its own, and that key must be a
+  single property, because a property is one column. The kinds must match exactly. When both types
+  are table-backed, the projected SQL column types must also be identical, because a foreign key
+  column must match the data type and size of the key it references (Microsoft Learn, *Modify
+  Foreign Key Relationships*, Limitations and Restrictions). A nullable property is an optional
+  reference;
 - a workflow's import must pin the imported type's current version (an error, so a version
   bump must carry its pinned consumers in the same change); dependency graphs must be acyclic;
 - every mutation must trace to at least one requirement and one scenario, and a scenario must
@@ -228,7 +241,8 @@ that changed. Breaking, with consumers listed by reverse-reachability:
 - types: the `owner`, `stateProperty`, `table` or `key` changed;
 - type properties: removed; kind changed; nullability changed (either direction); became
   required; became optional; became immutable; an enum value removed; a bound tightened (added,
-  `min`/`minLength` raised, `max`/`maxLength` lowered); a new required property;
+  `min`/`minLength` raised, `max`/`maxLength` lowered); `binds` added, changed or removed; a new
+  required property;
 - routines: the `owner` or `host` changed; params removed, retyped, nullability changed,
   optional to required, or a required param added; result columns removed, retyped, reordered or
   with nullability changed; any `binds` change;
@@ -237,7 +251,7 @@ that changed. Breaking, with consumers listed by reverse-reachability:
 - an authority permission changed or a scope added/changed, on an operation or routine;
 - a type, operation, routine, mutation or workflow removed.
 
-Loosened bounds, optional additions, added enum values, appended result columns, added
+Loosened bounds, optional additions, added enum values, appended result columns, added HTTP
 bindings, a removed authority scope and a moved routine `source` are compatible.
 
 ## Projections
@@ -249,7 +263,7 @@ all under these file names.
 | --- | --- | --- |
 | `json-schema` | `schema.json` | JSON Schema 2020-12, one `$defs` entry per type. |
 | `openapi` | `openapi.json` | OpenAPI 3.1 paths from the operations' HTTP bindings, with the types as component schemas. |
-| `sql` | `schema.sql` | T-SQL DDL: one `CREATE SCHEMA` per component that owns a table (`dbo` excepted) and one `CREATE TABLE` per table-backed type, with `PRIMARY KEY` from `key` and a `CHECK` per enum. Procedure bodies are outside the model. |
+| `sql` | `schema.sql` | T-SQL DDL: one `CREATE SCHEMA` per component that owns a table (`dbo` excepted) and one `CREATE TABLE` per table-backed type, with `PRIMARY KEY` from `key` and a `CHECK` per enum. After every table, one `ALTER TABLE ... ADD CONSTRAINT [FK_<table>_<column>] FOREIGN KEY` per property whose `binds` references a table-backed type, so table order, reference cycles and self-references never matter. Procedure bodies are outside the model. |
 | `sql-contract-tests` | `contract-tests.sql` | T-SQL conformance checks, one batch per `sql-procedure` routine and per table-backed type. |
 | `pester-contract-tests` | `Routines.Contract.Tests.ps1` | One Pester 5 test file for the `runbook` and `function` routines that declare a `source`; it also runs under Pester 6. |
 | `yaml` | `model.yaml` | The canonical model as YAML 1.2, keys sorted. `importModel()` reads it back losslessly. |
@@ -291,6 +305,7 @@ those features needs a fuller edition.
 | Each property column exists | `INFORMATION_SCHEMA.COLUMNS` | `THROW 50012` |
 | Each column's nullability | `INFORMATION_SCHEMA.COLUMNS.IS_NULLABLE` | `THROW 50013` |
 | Each column's type family | `INFORMATION_SCHEMA.COLUMNS.DATA_TYPE` | `THROW 50014` |
+| Each property `binds` between table-backed types: an enabled, single-column foreign key from its column to the referenced table's key column | `sys.foreign_keys` and `sys.foreign_key_columns` | `THROW 50015` |
 | Script parameter names and order | `ParamBlock.Parameters` of the parsed script | failed `It` |
 | Script parameter `Mandatory` equals `required` | the `[Parameter(Mandatory)]` attribute | failed `It` |
 | Script parameter type fits the kind | the type constraint's resolved .NET type | failed `It` |
@@ -312,7 +327,7 @@ Not verified, by design or by limit of the platform:
 | Whether a SQL parameter is required or nullable | `sys.parameters.has_default_value` is `0` for Transact-SQL objects and `is_nullable` applies to natively compiled procedures only (Microsoft Learn, *sys.parameters*). |
 | Procedure and script bodies: what they read, write or compute | The body is outside the model; `writesTables` and `writesColumns` are declarations. |
 | Result sets after the first | `sys.dm_exec_describe_first_result_set_for_object` describes the first result set only. |
-| Live table keys and constraints, and columns the model does not declare | The table checks cover the declared property columns only. |
+| Live primary keys and `CHECK` constraints; a foreign key's name, referential actions and trust (`WITH NOCHECK`); constraints and columns the model does not declare | The table checks cover the declared property columns and one enabled foreign key per property `binds`. |
 | Live HTTP services | The OpenAPI projection is validated as a document, never against a running service. |
 
 ## Engine API (`@loom/core`)

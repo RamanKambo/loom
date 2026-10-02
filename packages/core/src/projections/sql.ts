@@ -1,5 +1,5 @@
 import type { Model, Routine, TypeDef, Kind } from '../types.js';
-import { qualifyTable, tableOwner } from '../refs.js';
+import { qualifyTable, resolveBinding, tableOwner } from '../refs.js';
 import { sqlColumnType, SQL_TYPE_FAMILY } from '../sql-types.js';
 import { SQL_NOTICE, toText } from './notice.js';
 
@@ -31,6 +31,39 @@ export function sqlTables(model: Model): SqlTable[] {
   return out;
 }
 
+export interface SqlForeignKey {
+  /** The referencing table and its column (the property that declares `binds`). */
+  table: SqlTable;
+  column: string;
+  /** The referenced table and its single key column. */
+  referenced: SqlTable;
+  referencedColumn: string;
+  /** The declaring property's `binds`, 'typeId.propertyName'. */
+  binds: string;
+}
+
+/**
+ * One foreign key per property of a table-backed type whose `binds` references
+ * another table-backed type (or its own), in model order. validate() has
+ * already proved each one names a whole single-property key of matching SQL type.
+ */
+export function sqlForeignKeys(model: Model): SqlForeignKey[] {
+  const tables = sqlTables(model);
+  const byType = new Map(tables.map((x) => [x.type.id, x]));
+  const typeIds = model.types.map((t) => t.id);
+  const out: SqlForeignKey[] = [];
+  for (const table of tables) {
+    for (const p of table.type.properties) {
+      if (p.binds === undefined) continue;
+      const ref = resolveBinding(p.binds, typeIds);
+      const referenced = ref ? byType.get(ref.typeId) : undefined;
+      if (!ref || !referenced) continue;
+      out.push({ table, column: p.name, referenced, referencedColumn: ref.property, binds: p.binds });
+    }
+  }
+  return out;
+}
+
 /**
  * A procedure's SQL name: the schema is the routine's owner; the name is the
  * routine id with any '<owner>.' prefix removed ('ordering.sp_place_order' ->
@@ -43,12 +76,17 @@ export function procedureName(r: Routine): { schema: string; name: string } {
 
 const objectName = (schema: string, name: string): string => `${bracket(schema)}.${bracket(name)}`;
 
-/** T-SQL DDL: one CREATE TABLE per table-backed type. Procedure bodies are outside the model. */
+/**
+ * T-SQL DDL: one CREATE TABLE per table-backed type, then one ALTER TABLE ...
+ * FOREIGN KEY per referencing property. The foreign keys follow every table, so
+ * table order, reference cycles and self-references never matter. Procedure
+ * bodies are outside the model.
+ */
 export function projectSql(model: Model): string {
   const tables = sqlTables(model);
   const lines: string[] = [
     SQL_NOTICE,
-    '-- T-SQL DDL for every table-backed type. Procedure bodies are outside the model.',
+    '-- T-SQL DDL for every table-backed type, then the foreign keys between them. Procedure bodies are outside the model.',
     '',
   ];
   const schemas = [...new Set(tables.map((t) => t.schema))].filter((s) => s.toLowerCase() !== 'dbo').sort();
@@ -67,6 +105,15 @@ export function projectSql(model: Model): string {
       );
     }
     lines.push(`-- type ${t.id} (version ${t.version})`, `CREATE TABLE ${objectName(schema, name)} (`, defs.join(',\n'), ');', 'GO', '');
+  }
+  for (const fk of sqlForeignKeys(model)) {
+    lines.push(
+      `-- property ${fk.table.type.id}.${fk.column} references ${fk.binds}`,
+      `ALTER TABLE ${objectName(fk.table.schema, fk.table.name)} ADD CONSTRAINT ${bracket(`FK_${fk.table.name}_${fk.column}`)} ` +
+        `FOREIGN KEY (${bracket(fk.column)}) REFERENCES ${objectName(fk.referenced.schema, fk.referenced.name)} (${bracket(fk.referencedColumn)});`,
+      'GO',
+      '',
+    );
   }
   return toText(lines);
 }
@@ -152,7 +199,7 @@ function procedureBlock(r: Routine): string[] {
   return lines;
 }
 
-function tableBlock({ schema, name, type: t }: SqlTable): string[] {
+function tableBlock({ schema, name, type: t }: SqlTable, foreignKeys: readonly SqlForeignKey[]): string[] {
   const obj = objectName(schema, name);
   const fail = (n: number, message: string): string =>
     `    THROW ${n}, ${nstr(`Loom contract: table ${obj} ${message}`)}, 1;`;
@@ -173,6 +220,28 @@ function tableBlock({ schema, name, type: t }: SqlTable): string[] {
       fail(50014, `column ${bracket(p.name)} is not of the ${p.kind} type family (${types.join(', ')})`),
     );
   }
+  // The constraint name is the pipeline's own; the contract is the enabled,
+  // single-column foreign key from this column to the referenced key column.
+  for (const fk of foreignKeys) {
+    const referenced = objectName(fk.referenced.schema, fk.referenced.name);
+    lines.push(
+      'IF NOT EXISTS (',
+      '    SELECT 1',
+      '    FROM sys.foreign_keys AS fk',
+      '    INNER JOIN sys.foreign_key_columns AS fkc ON fkc.constraint_object_id = fk.object_id',
+      `    WHERE fk.parent_object_id = OBJECT_ID(${nstr(obj)}, N'U')`,
+      `        AND fk.referenced_object_id = OBJECT_ID(${nstr(referenced)}, N'U')`,
+      '        AND fk.is_disabled = 0',
+      `        AND COL_NAME(fkc.parent_object_id, fkc.parent_column_id) = ${nstr(fk.column)}`,
+      `        AND COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) = ${nstr(fk.referencedColumn)}`,
+      '        AND NOT EXISTS (SELECT 1 FROM sys.foreign_key_columns AS other WHERE other.constraint_object_id = fk.object_id AND other.constraint_column_id > 1)',
+      ')',
+      fail(
+        50015,
+        `column ${bracket(fk.column)} has no enabled single-column foreign key referencing ${referenced} (${bracket(fk.referencedColumn)})`,
+      ),
+    );
+  }
   lines.push('GO');
   return lines;
 }
@@ -181,20 +250,24 @@ function tableBlock({ schema, name, type: t }: SqlTable): string[] {
  * T-SQL conformance checks: one batch per sql-procedure routine (existence,
  * parameter names/order/count and type families, first result set columns,
  * nullability and type families) and one per table-backed type (each property
- * column present with the right nullability and type family). Read-only and
- * idempotent: only SELECT inside IF predicates and THROW.
+ * column present with the right nullability and type family, and each foreign
+ * key its properties' `binds` declare). Read-only and idempotent: only SELECT
+ * inside IF predicates and THROW.
  */
 export function projectSqlContractTests(model: Model): string {
   const lines: string[] = [
     SQL_NOTICE,
     '-- Loom conformance checks for SQL procedures and tables. Read-only and idempotent: SELECT and THROW only.',
     '-- Each block is one batch; a failed check THROWs an exact message',
-    '-- (50001-50007 procedures, 50011-50014 tables). Run with sqlcmd -b so the first failure fails the pipeline.',
+    '-- (50001-50007 procedures, 50011-50015 tables). Run with sqlcmd -b so the first failure fails the pipeline.',
     '',
   ];
   for (const r of model.routines) {
     if (r.host === 'sql-procedure') lines.push(...procedureBlock(r), '');
   }
-  for (const table of sqlTables(model)) lines.push(...tableBlock(table), '');
+  const foreignKeys = sqlForeignKeys(model);
+  for (const table of sqlTables(model)) {
+    lines.push(...tableBlock(table, foreignKeys.filter((fk) => fk.table.type.id === table.type.id)), '');
+  }
   return toText(lines);
 }
