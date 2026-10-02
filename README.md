@@ -21,9 +21,11 @@ until it is valid again (fail-closed).
   random values, no machine paths. Every projection opens with a source notice in its own syntax.
 - **Fail-closed.** `project()`, `projectToFiles()` and `exportModel()` throw if the model has any
   error finding, so an invalid model can never leak into a downstream artifact.
-- **Declared contracts only.** Loom never executes SQL or PowerShell and never calls a live
-  service. Routine contracts project to conformance checks that a pipeline runs against the real
-  artifacts (see [Conformance checks](#conformance-checks)).
+- **Declared contracts only.** The engine (`@loom/core`) never executes SQL or PowerShell and never
+  calls a live service. Routine contracts project to conformance checks that the adopting pipeline
+  runs against its own real artifacts; the CLI self-test additionally proves the SQL check
+  end-to-end against a disposable database it creates and drops itself (probe (f), see
+  [Conformance checks](#conformance-checks)).
 
 ## Layout
 
@@ -35,7 +37,7 @@ An npm-workspaces monorepo:
 | `packages/cli` | File IO front end (`--self-test`, `--check`, `--write`): drift check and the standard-tool probes. Also validates the OpenAPI projection with `@apidevtools/swagger-parser` and every projected Mermaid diagram with `mermaid` (`jsdom` supplies the `document` it needs). |
 | `packages/mcp-server` | Model Context Protocol server (stdio) exposing the engine as tools. Dep: `@modelcontextprotocol/sdk`. |
 | `apps/designer` | Angular 22 designer, a thin projection of the core; it consumes `@loom/core` through a `file:` link to `packages/core` and has its own `package.json` and lockfile (see [Designer](#designer)). |
-| `examples/` | Test fixtures for the generated Pester file: `conforming/` and `violating/` copies of the sample runbook. |
+| `examples/` | Test fixtures: `conforming/` and `violating/` copies of the sample runbook (`fulfillment/rb_dispatch.ps1`, for the generated Pester file) and the sample procedure (`ordering/sp_place_order.sql`, for `contract-tests.sql` against a real database). |
 
 ## Build and test
 
@@ -56,9 +58,10 @@ JSON and YAML round-trips.
 The CLI self-test then proves the drift check and validates the OpenAPI projection with
 `swagger-parser`, and runs the standard-tool probes. A probe reports `PASS` or `FAIL` only when its
 tool ran; an absent tool, a load failure or an unreadable result is `UNKNOWN`, never a pass.
-Probes (a)-(c) use external tools that nothing in this repository installs. Probes (d) and (e) use
-declared dependencies, `yaml` through `importModel` and `mermaid` with `jsdom`; (e) is `UNKNOWN`
-only if `mermaid` or `jsdom` fails to load.
+Probes (a)-(c) and (f) use external tools that nothing in this repository installs; (f) is
+`UNKNOWN` if `SqlLocalDB.exe` or `sqlcmd` is absent, or the instance will not start. Probes (d) and
+(e) use declared dependencies, `yaml` through `importModel` and `mermaid` with `jsdom`; (e) is
+`UNKNOWN` only if `mermaid` or `jsdom` fails to load.
 
 | Probe | Proof | Tool |
 | --- | --- | --- |
@@ -67,6 +70,7 @@ only if `mermaid` or `jsdom` fails to load.
 | (c) | `schema.sql` and `contract-tests.sql` parse with zero errors | `Microsoft.SqlServer.TransactSql.ScriptDom`, the newest `TSqlNNNParser`, from `PSModulePath` or a NuGet, DacFx, SSMS, Visual Studio or Azure Data Studio install |
 | (d) | `model.yaml` parses back to the identical canonical model | `importModel` (the `yaml` package) |
 | (e) | Every `stateDiagram-v2` and `flowchart` Mermaid block in `workflows.md` and `reference.md` parses, and a deliberately malformed diagram is rejected | `mermaid.parse()`, with `jsdom` supplying the `document` it needs |
+| (f) | On a disposable database, the conforming `ordering.sp_place_order` fixture passes every check in `contract-tests.sql` (exit 0) and the violating fixture raises exactly `THROW 50005` | `sqlcmd -b` against a `SqlLocalDB` instance (`SqlLocalDB.exe`, on PATH or the newest under `%ProgramFiles%\Microsoft SQL Server\*\Tools\Binn`) |
 
 ## CLI
 
@@ -154,8 +158,10 @@ The sample model shows the loop end to end. Shell commands run under the reposit
    # DRIFT schema.sql: stale                                                     (exit 1)
    ```
 
-6. Run the conformance checks in the pipeline, against the real scripts and a database the
-   pipeline owns; Loom itself connects to neither.
+6. Run the conformance checks in the pipeline, against the real scripts and the database the
+   pipeline owns; the engine itself connects to neither. Probe (f) of the CLI self-test proves
+   `contract-tests.sql` the same way already, but against a disposable `loom_selftest_*` database
+   it creates and drops itself, never the pipeline's own.
 
    ```powershell
    Invoke-Pester -Container (New-PesterContainer -Path ./generated/Routines.Contract.Tests.ps1 -Data @{ RoutineRoot = '<repository root>' })
@@ -264,6 +270,13 @@ real procedures, tables and scripts still match them. Both are read-only and ide
 `contract-tests.sql` holds only `SELECT` (inside `IF` predicates) and `THROW`, and the Pester file
 parses each script without executing it. Each `.sql` block is one batch, so run the file with
 `sqlcmd -b` to fail the pipeline on the first broken contract.
+
+Loom's own live SQL check (probe (f)) runs on SQL Server Express LocalDB: it runs under the
+invoking user's account with no Windows service and starts on demand (Microsoft Learn, *SQL Server
+Express LocalDB instance APIs*). It carries Express's limits — no SQL Server Agent, no Database
+Mail, Service Broker client-only, no FILESTREAM (Microsoft Learn, *Editions and supported features
+of SQL Server 2022*; *SQL Server Express LocalDB*, Restrictions). A check that depends on one of
+those features needs a fuller edition.
 
 | Contract | Checked by | Failure |
 | --- | --- | --- |

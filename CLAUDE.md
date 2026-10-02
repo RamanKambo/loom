@@ -69,11 +69,16 @@ scripts: @package.json
   rule, so a field it lacks is rejected on import.
 - **A new projection target** is added to both `PROJECTION_TARGETS` and `PROJECTION_FILES`. The
   self-test's determinism and fail-closed loops then cover it with no further change.
-- **Loom checks declared contracts.** It never executes SQL or PowerShell and never calls a live
-  service. Routine contracts become generated conformance tests, the `sql-contract-tests` and
-  `pester-contract-tests` targets, which the adopting pipeline runs. Do not add execution to the
-  engine.
+- **The engine checks declared contracts; it never executes them.** `packages/core` never executes
+  SQL or PowerShell and never calls a live service. Routine contracts become generated conformance
+  tests, the `sql-contract-tests` and `pester-contract-tests` targets, which the adopting pipeline
+  runs against its own real artifacts. Do not add execution to the engine — the CLI self-test's
+  probe (f) (`packages/cli/src/probes.ts`) proves `sql-contract-tests` against a disposable LocalDB
+  database it creates and drops itself, but that stays in `packages/cli`, never the engine.
 - **The MCP server writes only JSON-RPC to stdout.** Any other output corrupts the protocol, so
   status goes to stderr.
-- **Keep the Pester fixtures' roles.** `examples/conforming` must pass and `examples/violating` must
-  fail the generated Pester file; probe (b) proves both.
+- **Keep the fixtures' roles.** `examples/conforming` must pass and `examples/violating` must fail
+  both the generated Pester file (probe (b), `fulfillment/rb_dispatch.ps1`) and the generated
+  `contract-tests.sql` run against a real database (probe (f), `ordering/sp_place_order.sql`); the
+  violating SQL fixture must break exactly the one contract named by its header comment and the
+  `EXPECTED_VIOLATION_CODE` in `packages/cli/src/probes.ts`.

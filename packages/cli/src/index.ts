@@ -17,7 +17,7 @@ import {
   type Finding,
   type Model,
 } from '@loom/core';
-import { probePesterParse, probePesterRun, probeScriptDom, probeMermaid, type ProbeResult } from './probes.js';
+import { probePesterParse, probePesterRun, probeScriptDom, probeMermaid, probeLocalDb, type ProbeResult } from './probes.js';
 
 type Log = (line: string) => void;
 const out: Log = (line) => console.log(line);
@@ -199,6 +199,20 @@ async function runSelfTest(): Promise<number> {
         'workflows.md': readFileSync(join(projection, 'workflows.md'), 'utf8'),
         'reference.md': readFileSync(join(projection, 'reference.md'), 'utf8'),
       }),
+      // The override env vars exist only to prove the UNKNOWN path in a test
+      // run, without uninstalling SqlLocalDB or removing sqlcmd from PATH.
+      probeLocalDb(
+        {
+          schemaSql: join(projection, 'schema.sql'),
+          contractTestsSql: join(projection, 'contract-tests.sql'),
+          conformingFixture: join(EXAMPLES, 'conforming', 'ordering', 'sp_place_order.sql'),
+          violatingFixture: join(EXAMPLES, 'violating', 'ordering', 'sp_place_order.sql'),
+        },
+        {
+          sqlLocalDbExe: process.env['LOOM_PROBE_SQLLOCALDB_EXE'],
+          sqlcmdExe: process.env['LOOM_PROBE_SQLCMD_EXE'],
+        },
+      ),
     ];
     for (const p of probes) out(`probe (${p.id}) ${p.title}: ${p.status} - ${p.detail}`);
 
