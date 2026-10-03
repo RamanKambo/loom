@@ -2,25 +2,865 @@
   "registerVersion": 1,
   "capabilities": [
     {
+      "id": "cli.check",
+      "description": "`loom check` evaluates ownership, configuration, validity, the comparison with the trusted accepted baseline and the installed outputs and manifest, or a directory of projections with --out, and never writes.",
+      "code": ["packages/cli/src/commands.ts#cmdCheck","packages/cli/src/commands.ts#checkOne","packages/cli/src/commands.ts#directoryDrift"],
+      "contract": ["icd/cli.json","result.schema.json#/$defs/ResultEnvelope"],
+      "verification": ["cli.cli.check-with-an-explicit-model-outside-a-workspace-is-validation-only","cli.cli.write-and-check-agree-on-an-installed-bundle-and-report-a-hand-edit-as-drift","cli.cli.write-out-writes-every-projection-into-a-directory-and-refuses-an-invalid-model","cli.cli.an-explicit-model-inside-a-governed-workspace-is-still-compared-with-the-trusted-accepted-baseline","cli.cli.check-reports-a-breaking-change-kept-at-the-accepted-contract-version-whether-a-file-edit-another-document-or-two-accepted-patches-made-it","cli.cli.check-reports-no-unbumped-version-once-the-breaking-change-raises-it-nor-for-a-compatible-edit-at-the-accepted-version","cli.concurrency.overlapping-component-roots-in-one-configuration-are-reported-by-check"]
+    },
+    {
+      "id": "cli.commands",
+      "description": "The CLI dispatches every workspace command over the shared result envelope, prints it with --json, and exits 0 for a result, 1 for a refusal or an error finding and 2 for a usage error.",
+      "code": ["packages/cli/src/cli.ts#run","packages/cli/src/render.ts#exitStatus","packages/cli/src/render.ts#renderEnvelope","packages/cli/src/args.ts#parseArgs"],
+      "contract": ["icd/cli.json","result.schema.json#/$defs/ResultEnvelope"],
+      "verification": ["cli.cli.the-cli-without-a-command-prints-usage-and-an-unknown-command-is-a-usage-error","cli.cli.readiness-evaluates-a-task-and-refuses-an-invalid-task-class","cli.cli.plan-previews-a-change-and-refuses-a-stale-base","cli.cli.evidence-lists-the-store-and-refuses-an-unknown-record","cli.cli.describe-lists-every-tool-and-finding-code","cli.cli.context-is-bounded-names-its-continuation-and-refuses-a-continuation-of-another-revision"]
+    },
+    {
+      "id": "contract.digest",
+      "description": "The contract digest is the SHA-256 of the canonical schema bundle, profiles, projection profiles and interface control documents, regenerated with the contract and named in every result and every baseline.",
+      "code": ["packages/core/scripts/generate.mjs#generate","packages/core/scripts/generate.mjs#sha256","packages/core/scripts/generate.mjs#canonical","packages/core/src/generated/digest.ts#CONTRACT_DIGEST","packages/core/src/envelope.ts#revisionsOf"],
+      "contract": ["result.schema.json#/$defs/RevisionSet","assurance.schema.json#/$defs/Baseline/properties/generator"],
+      "verification": ["cli.contract.the-contract-digest-is-regenerated-from-every-authored-schema-profile-and-interface-control-document","core.selftest.contract","core.selftest.result-envelopes","mcp-server.mcp.a-workspace-result-names-the-model-configuration-profile-policy-and-baseline-revisions-it-was-evaluated-against-and-an-inline-result-only-its-own"]
+    },
+    {
+      "id": "contract.fixtures",
+      "description": "Every document definition has hand-authored valid and invalid fixtures, and generation fails when a valid instance is rejected or an invalid one is accepted or fails on another keyword or path than it names.",
+      "code": ["packages/core/scripts/generate.mjs#runFixtures"],
+      "contract": ["fixtures/policy.json","fixtures/model.json","fixtures/evidence-record.json","fixtures/capability-register.json"],
+      "verification": ["cli.contract.a-hand-authored-contract-fixture-whose-valid-instance-the-schema-rejects-fails-generation","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand"]
+    },
+    {
+      "id": "contract.generator.drift",
+      "description": "`generate --check`, which `npm run build` runs before compiling, regenerates the patch schema and src/generated in memory and fails on any difference from the files on disk.",
+      "code": ["packages/core/scripts/generate.mjs#generate","packages/core/scripts/generate.mjs#derivePatchSchema"],
+      "contract": ["patch.schema.json","model.schema.json"],
+      "verification": ["cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand"]
+    },
+    {
+      "id": "contract.icd.boundaries",
+      "description": "Each component has an interface control document stating what it provides and consumes, and generation fails on an interface consumed but provided by no component or provided with no consumer.",
+      "code": ["packages/core/scripts/generate.mjs#checkIcdBoundaries","packages/core/scripts/generate.mjs#loadData"],
+      "contract": ["profile.schema.json#/$defs/Icd","icd/core.json","icd/workspace.json","icd/qualification.json","icd/cli.json","icd/mcp.json","icd/designer.json"],
+      "verification": ["cli.contract.an-interface-control-document-that-consumes-an-interface-no-component-provides-fails-generation","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand"]
+    },
+    {
+      "id": "contract.profiles",
+      "description": "Each language and interface profile declares its artifacts with their instancing and language, its supported and unsupported constructs, its tools with version policies, its proof limits and its check definitions, and the engine and the runners read them from the generated PROFILES.",
+      "code": ["packages/core/src/project.ts#artifactProfile","packages/core/src/project.ts#unsupportedConstructs","packages/qualification/src/run.ts#resolveChecks","packages/qualification/src/tools.ts#satisfies"],
+      "contract": ["profile.schema.json#/$defs/ProfileDefinition","profiles/sql.json","profiles/csharp.json","profiles/typescript.json","profiles/powershell.json","profiles/powershell-pester6.json","profiles/openapi.json"],
+      "verification": ["core.selftest.projection-instances","core.selftest.unsupported-constructs","qualification.framework.a-tool-outside-the-version-policy-is-unknown-and-its-actual-version-is-recorded","qualification.framework.version-policies-compare-numerically","qualification.framework.a-required-check-whose-tool-is-missing-is-unknown-and-keeps-the-aggregate-from-pass"]
+    },
+    {
+      "id": "contract.schema.single-source",
+      "description": "Every record, patch, result, tool, workspace and assurance shape is authored once as JSON Schema 2020-12; the patch schema, TypeScript types, schema bundle and registries are generated from it, and the runtime validates against that bundle.",
+      "code": ["packages/core/scripts/generate.mjs#bundle","packages/core/scripts/generate.mjs#registries","packages/core/src/schema-runtime.ts#schemaErrors","packages/core/src/load.ts#structuralFindings"],
+      "contract": ["model.schema.json","tools.schema.json","result.schema.json","workspace.schema.json","assurance.schema.json","common.schema.json"],
+      "verification": ["core.selftest.contract","core.selftest.round-trip-and-formats","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand","cli.properties.every-changed-field-value-reaches-the-comparison-and-every-semantic-delta-yields-a-change-never-an-empty-comparison"]
+    },
+    {
+      "id": "contract.vocabulary.qualified",
+      "description": "Generation fails on a schema keyword outside the qualified typed, runtime and annotation vocabulary and on a type generator that maps a typed keyword differently than qualified, and the vocabulary in use is emitted as SCHEMA_VOCABULARY.",
+      "code": ["packages/core/scripts/generate.mjs#VOCABULARY","packages/core/scripts/generate.mjs#qualifyVocabulary","packages/core/scripts/generate.mjs#qualifyTypeGenerator","packages/core/src/generated/digest.ts#SCHEMA_VOCABULARY"],
+      "contract": ["common.schema.json","model.schema.json"],
+      "verification": ["cli.contract.a-schema-keyword-outside-the-qualified-vocabulary-fails-generation-instead-of-being-dropped","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand"]
+    },
+    {
+      "id": "core.baseline.acceptance",
+      "description": "Only trusted acceptance records grant acceptance: a baseline by an acceptance of exactly the revision it pins, a change by an acceptance of the candidate revision whose scope covers the record, while an untrusted record, a stored status word or an acknowledgement grants nothing.",
+      "code": ["packages/core/src/scope.ts#baselineAccepted","packages/core/src/scope.ts#acceptsBaseline","packages/core/src/scope.ts#trustedAcceptances","packages/core/src/scope.ts#acceptanceScopeCovers","packages/core/src/scope.ts#makeAcceptanceCheck"],
+      "contract": ["assurance.schema.json#/$defs/Acceptance","result.schema.json#/$defs/AcceptanceState"],
+      "verification": ["core.selftest.baselines-and-acceptance","core.selftest.knowledge-with-inputs","cli.cli.a-baseline-whose-acceptance-accepted-another-revision-is-not-accepted-and-one-accepted-at-the-revision-it-pins-is","cli.cli.accept-needs-a-policy-and-baseline-creation-needs-an-acceptance-record","workspace.trust.acceptance-is-trusted-at-the-trusted-ref-or-under-a-listed-key-never-with-a-tampered-signature","designer.states.a-selected-baseline-with-its-acceptance-record-is-still-not-accepted-because-the-designer-cannot-establish-trust"]
+    },
+    {
+      "id": "core.baseline.compare",
+      "description": "compareBaseline judges a candidate against the trusted accepted baseline from the two models and the trusted records alone, so a patch, an import and a file edit are judged alike, and reports unaccepted, prohibited and frozen changes, breaking changes at an unchanged contract version, untrusted or tampered baselines and blocked retirements.",
+      "code": ["packages/core/src/baseline.ts#compareBaseline","packages/core/src/baseline.ts#classifyChange","packages/core/src/mutate.ts#unbumpedContracts","packages/core/src/tools.ts#compareBaselineTool"],
+      "contract": ["assurance.schema.json#/$defs/Baseline","tools.schema.json#/$defs/DiffData","result.schema.json#/$defs/AcceptanceState"],
+      "verification": ["core.selftest.baselines-and-acceptance","cli.cli.an-explicit-model-inside-a-governed-workspace-is-still-compared-with-the-trusted-accepted-baseline","cli.cli.check-reports-a-breaking-change-kept-at-the-accepted-contract-version-whether-a-file-edit-another-document-or-two-accepted-patches-made-it","cli.cli.check-reports-no-unbumped-version-once-the-breaking-change-raises-it-nor-for-a-compatible-edit-at-the-accepted-version","mcp-server.mcp.a-diff-against-the-baseline-reports-a-breaking-change-kept-at-the-accepted-version-for-the-workspace-model-and-for-an-imported-document","mcp-server.mcp.a-diff-against-the-baseline-reports-no-unbumped-version-once-the-breaking-change-raises-it","mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace"]
+    },
+    {
+      "id": "core.baseline.freeze",
+      "description": "A component the baseline records as frozen, or every component when the policy freezes on acceptance, reports FROZEN_COMPONENT_CHANGED for a change to its records that no trusted acceptance of the candidate covers, even when the change class is pre-authorized.",
+      "code": ["packages/core/src/baseline.ts#compareBaseline","packages/workspace/src/records.ts#createBaseline"],
+      "contract": ["assurance.schema.json#/$defs/Baseline/properties/components","assurance.schema.json#/$defs/Policy/properties/freeze"],
+      "verification": ["core.selftest.baselines-and-acceptance","workspace.trust.a-committed-baseline-is-the-trusted-head-and-a-tampered-snapshot-is-reported"]
+    },
+    {
+      "id": "core.comparison.dimensions",
+      "description": "Every change carries its kind and compatibility dimension, and the trusted policy's change classes match changes by kind, dimension, element kind or rule, the most restrictive matching class deciding whether a change is pre-authorized, needs acceptance or is prohibited.",
+      "code": ["packages/core/src/baseline.ts#classifyChange","packages/core/src/diff.ts#diff","packages/core/src/field-policy.ts#DIFF_RULES"],
+      "contract": ["result.schema.json#/$defs/Change","assurance.schema.json#/$defs/ChangeClass","common.schema.json#/$defs/Dimension"],
+      "verification": ["core.selftest.comparison","core.selftest.baselines-and-acceptance","core.selftest.context-and-previews","mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace"]
+    },
+    {
       "id": "core.comparison.field-policy",
       "description": "Every model field delta is classified by a comparison rule with a compatibility dimension, or reported as requiring review.",
-      "code": ["packages/core/src/field-policy.ts#FIELD_POLICY", "packages/core/src/diff.ts#diff"],
+      "code": ["packages/core/src/field-policy.ts#FIELD_POLICY","packages/core/src/diff.ts#diff","packages/core/src/diff.ts#reachablePolicyKeys"],
       "contract": ["result.schema.json#/$defs/Change"],
-      "verification": ["core.selftest.comparison"]
+      "verification": ["core.selftest.comparison","core.selftest.contract","cli.properties.every-changed-field-value-reaches-the-comparison-and-every-semantic-delta-yields-a-change-never-an-empty-comparison"]
+    },
+    {
+      "id": "core.comparison.parameter-order",
+      "description": "Reordering the parameters of a routine with positional passing is a breaking PARAM_REORDERED change whose consumers include the operations that invoke the routine, and a switch between positional and named passing is breaking.",
+      "code": ["packages/core/src/diff.ts#diff","packages/core/src/field-policy.ts#DIFF_RULES","packages/core/src/field-policy.ts#FIELD_POLICY"],
+      "contract": ["model.schema.json#/$defs/Routine","model.schema.json#/$defs/RoutineParam"],
+      "verification": ["core.selftest.regressions","core.selftest.comparison"]
+    },
+    {
+      "id": "core.evidence.invalidation",
+      "description": "Evidence whose recorded record or artifact inputs differ from their current hashes is stale and listed with the changed inputs, a change plan names the evidence it invalidates by the candidate's own hashes, and an artifact input without a supplied current hash leaves its evidence unknown.",
+      "code": ["packages/core/src/evidence.ts#changedInputs","packages/core/src/evidence.ts#unhashedArtifacts","packages/core/src/evidence.ts#invalidatedBy","packages/core/src/project.ts#withArtifactHashes","packages/workspace/src/trust.ts#gatherEvaluationInputs"],
+      "contract": ["tools.schema.json#/$defs/EvidenceInvalidation","assurance.schema.json#/$defs/EvidenceRecord/properties/inputs"],
+      "verification": ["core.selftest.evidence","core.selftest.context-and-previews","cli.concurrency.stored-evidence-of-a-signed-run-goes-stale-when-the-model-changes-what-its-artifact-holds","workspace.trust.gathered-inputs-carry-the-current-hash-of-each-artifact-stored-evidence-names-so-that-evidence-is-current-or-stale-and-never-of-unknown-currency","mcp-server.mcp.a-workspace-change-that-alters-an-artifact-invalidates-the-evidence-about-it-judged-by-the-candidate-rendering-in-the-plan-and-in-an-inline-diff","mcp-server.mcp.a-workspace-change-that-leaves-an-artifact-alone-keeps-the-evidence-about-it-current-in-the-plan-and-in-an-inline-diff","designer.states.is-current-while-the-model-still-renders-the-artifact-it-names","designer.states.is-invalidated-once-an-edit-changes-the-artifact-it-names"]
+    },
+    {
+      "id": "core.evidence.obligations",
+      "description": "deriveObligations gives one evidence obligation per required criterion of an active requirement, retained behavior and migration in scope, per release evidence kind of the effective gates for each non-external component, and per check the trusted policy requires or lists as optional.",
+      "code": ["packages/core/src/evidence.ts#deriveObligations"],
+      "contract": ["tools.schema.json#/$defs/EvidenceObligation"],
+      "verification": ["core.selftest.evidence","core.selftest.readiness","cli.cli.qualify-judges-the-evidence-of-its-own-signed-run-against-the-artifacts-that-run-rendered"]
+    },
+    {
+      "id": "core.evidence.results",
+      "description": "evaluateEvidence keeps absent, failing, unknown, stale, untrusted, not-applicable and passing evidence distinct per obligation; only trusted current PASS or justified NOT_APPLICABLE evidence meets one, and qualification is qualified only when every required obligation is met.",
+      "code": ["packages/core/src/evidence.ts#evaluateEvidence","packages/core/src/tools.ts#evaluateEvidenceTool"],
+      "contract": ["tools.schema.json#/$defs/EvidenceObligation","result.schema.json#/$defs/QualificationState","common.schema.json#/$defs/CheckResult"],
+      "verification": ["core.selftest.evidence","qualification.framework.not-applicable-without-a-justification-is-unknown","qualification.framework.the-aggregate-is-pass-only-when-every-required-check-passed-or-is-justified-not-applicable","cli.cli.qualify-runs-a-named-check-and-refuses-an-unknown-one","cli.cli.qualify-judges-the-evidence-of-its-own-signed-run-against-the-artifacts-that-run-rendered"]
+    },
+    {
+      "id": "core.evidence.revision-set",
+      "description": "Passing evidence that pins one repository at different revisions, or one artifact at different hashes, cannot qualify an assembled system and is reported as EVIDENCE_REVISION_SET_INCONSISTENT.",
+      "code": ["packages/core/src/evidence.ts#evaluateEvidence","packages/core/src/evidence.ts#revisionSetProblems","packages/qualification/src/revision.ts#verifyRunRevisionSet"],
+      "contract": ["result.schema.json#/$defs/RevisionSet","result.schema.json#/$defs/SourceRevision"],
+      "verification": ["core.selftest.evidence","qualification.framework.evidence-from-another-run-or-another-revision-set-is-reported-inconsistent"]
+    },
+    {
+      "id": "core.evidence.separation",
+      "description": "Evidence of Loom's own self-test, recognized by its process environment and loom. check id, never meets an adopting system's integration, end-to-end or operational obligation, and integration evidence against a substitute never meets a real-boundary obligation.",
+      "code": ["packages/core/src/evidence.ts#isEngineSelfTest","packages/core/src/evidence.ts#evaluateEvidence"],
+      "contract": ["assurance.schema.json#/$defs/EvidenceRecord","common.schema.json#/$defs/EvidenceKind"],
+      "verification": ["core.selftest.evidence","workspace.trust.evidence-is-trusted-only-when-signed-by-a-runner-key-the-trusted-policy-lists","cli.cli.qualify-runs-a-named-check-and-refuses-an-unknown-one"]
+    },
+    {
+      "id": "core.format.migration",
+      "description": "A model document carries its format version; another version is refused with MODEL_FORMAT_UNSUPPORTED, migrateModel applies the registered deterministic steps without modifying its input, and `loom migrate` writes the result only to a new file.",
+      "code": ["packages/core/src/migrate.ts#migrateModel","packages/core/src/migrate.ts#MODEL_MIGRATIONS","packages/core/src/load.ts#loadModel","packages/cli/src/commands.ts#cmdMigrate"],
+      "contract": ["model.schema.json#/$defs/Model/properties/version"],
+      "verification": ["core.selftest.round-trip-and-formats","core.selftest.contradictions","cli.cli.migrate-leaves-a-current-document-unchanged-never-replaces-its-source-and-refuses-an-unknown-format"]
+    },
+    {
+      "id": "core.gates.strengthen-only",
+      "description": "effectiveGates merges the trusted policy with the workspace gates so that configuration can only strengthen them, and a weaker configured gate is overridden and reported as POLICY_WEAKENED.",
+      "code": ["packages/core/src/inputs.ts#effectiveGates","packages/core/src/baseline.ts#gateFindings"],
+      "contract": ["assurance.schema.json#/$defs/Policy/properties/readiness","workspace.schema.json#/$defs/LoomConfig/properties/gates"],
+      "verification": ["core.selftest.baselines-and-acceptance","workspace.trust.policy-is-read-from-the-trusted-ref-and-a-weakened-working-tree-copy-is-ignored"]
+    },
+    {
+      "id": "core.impact.paths",
+      "description": "changeImpact names every consumer a change reaches with its dependency path and reason, including former consumers of a removed dependency, new consumers of an added one and the co-hosted components of a hosting change.",
+      "code": ["packages/core/src/graph.ts#changeImpact","packages/core/src/graph.ts#dependencyGraph","packages/core/src/graph.ts#coHosted"],
+      "contract": ["result.schema.json#/$defs/AffectedElement"],
+      "verification": ["core.selftest.impact-and-repairs","core.selftest.design-order-and-impact","designer.workflow.imports-edits-a-record-previews-and-applies-a-batch-explains-its-impact-and-saves-with-a-revision-check"]
+    },
+    {
+      "id": "core.knowledge.attachments",
+      "description": "An attachment records its source, digest and the record states it was reviewed against, and rationale reviewed against another record state, or whose source changed since the baseline, is reported as RATIONALE_REVIEW_REQUIRED instead of changing intent.",
+      "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules"],
+      "contract": ["model.schema.json#/$defs/Attachment"],
+      "verification": ["core.selftest.knowledge-with-inputs","core.selftest.contradictions"]
+    },
+    {
+      "id": "core.knowledge.criteria",
+      "description": "An active requirement needs criteria, each required criterion needs its own covering scenario, and a scenario that restates its own criterion is reported as CRITERION_SELF_ORACLE.",
+      "code": ["packages/core/src/rules/requirements.ts#requirementRules","packages/core/src/rules/knowledge.ts#knowledgeRules"],
+      "contract": ["model.schema.json#/$defs/Requirement","model.schema.json#/$defs/Criterion","model.schema.json#/$defs/Scenario"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions","cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs"]
+    },
+    {
+      "id": "core.knowledge.decisions",
+      "description": "A decision compares alternatives with their consequences and rejection reasons, and one comparing a single alternative or resting on an invalidated assumption is reported.",
+      "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules"],
+      "contract": ["model.schema.json#/$defs/Decision","model.schema.json#/$defs/Alternative"],
+      "verification": ["core.selftest.contradictions","core.selftest.knowledge-with-inputs"]
+    },
+    {
+      "id": "core.knowledge.invalidation",
+      "description": "Knowledge goes out of date by rule: an open assumption past its expiry and a decision whose inputs changed since the baseline, until it is revised, are reported, and a decision resting on an invalidated assumption is reported while the work resting on it is blocked.",
+      "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules","packages/core/src/readiness.ts#checkReadiness"],
+      "contract": ["model.schema.json#/$defs/Assumption","model.schema.json#/$defs/Decision"],
+      "verification": ["core.selftest.knowledge-with-inputs","core.selftest.readiness","core.selftest.contradictions"]
+    },
+    {
+      "id": "core.knowledge.inventory",
+      "description": "The inventory and retained behaviors of an existing system are recorded with their disposition; a replaced item without its replacement and a retained behavior without a covering scenario are reported, and each retained behavior is an evidence obligation.",
+      "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules","packages/core/src/evidence.ts#deriveObligations"],
+      "contract": ["model.schema.json#/$defs/InventoryItem","model.schema.json#/$defs/RetainedBehavior"],
+      "verification": ["core.selftest.contradictions","cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs"]
+    },
+    {
+      "id": "core.knowledge.provenance",
+      "description": "A requirement, constraint or workload whose basis is sourced names its source, and one that names none is reported as SOURCE_REFERENCE_MISSING.",
+      "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules","packages/core/src/rules/knowledge.ts#sources"],
+      "contract": ["common.schema.json#/$defs/SourceRef","common.schema.json#/$defs/Basis"],
+      "verification": ["core.selftest.contradictions","core.selftest.sample"]
+    },
+    {
+      "id": "core.patch.atomic",
+      "description": "mutate applies one patch or a batch to a clone as one unit: a refused patch refuses the whole batch with model null, and the input model is never modified.",
+      "code": ["packages/core/src/mutate.ts#mutate","packages/core/src/envelope.ts#mutateTool"],
+      "contract": ["tools.schema.json#/$defs/MutateInput","tools.schema.json#/$defs/MutateData"],
+      "verification": ["core.selftest.patches","cli.properties.a-refused-mutation-leaves-its-input-unchanged-and-returns-no-model-and-an-accepted-one-never-edits-its-input","designer.loom-store.b-refuses-a-lone-breaking-change-and-leaves-the-model-unchanged","designer.loom-store.c-accepts-the-corrected-batch-whose-consumers-are-derived-from-the-model"]
+    },
+    {
+      "id": "core.patch.engine",
+      "description": "Patches of the derived patch contract add, replace, remove, update, rename and edit the keyed items of every collection; each is checked against its own variant so a misspelled member is reported at its pointer, a rename rewrites every reference, and a breaking change needs a version bump and an acknowledgement.",
+      "code": ["packages/core/src/mutate.ts#checkPatch","packages/core/src/mutate.ts#guardFindings","packages/core/src/refs.ts#renameReferences"],
+      "contract": ["patch.schema.json#/$defs/Patch"],
+      "verification": ["core.selftest.patches","core.selftest.regressions","cli.properties.every-reference-that-resolved-before-a-rename-still-resolves-after-it","cli.properties.renaming-a-type-follows-only-the-references-to-its-own-properties-never-those-of-a-type-whose-id-extends-it","designer.guided-edit.sends-a-breaking-edit-through-mutate-shows-it-refused-and-leaves-the-displayed-model-unchanged","designer.record-editor.edits-an-enum-field-of-a-component-through-an-update-patch-the-engine-accepts"]
+    },
+    {
+      "id": "core.published.validation",
+      "description": "A pinned published contract resolves only to a bundle of the pinned publisher, contract and version whose content matches the pinned digest, references into it must name records the bundle holds, and an unresolved pin keeps dependent work from being ready.",
+      "code": ["packages/core/src/rules/versions.ts#publishedRules","packages/core/src/rules/versions.ts#pinnedBundle","packages/core/src/rules/versions.ts#bundleFor"],
+      "contract": ["model.schema.json#/$defs/PublishedContractRef","workspace.schema.json#/$defs/PublishedContract"],
+      "verification": ["core.selftest.published-contracts","core.selftest.published-contract-types","qualification.native.a-model-that-consumes-a-pinned-published-contract-over-http-qualifies-its-openapi-document-with-the-resolved-bundle-outside-draft-mode"]
+    },
+    {
+      "id": "core.purity",
+      "description": "packages/core imports only ajv, ajv-formats, yaml and its own modules and reaches no filesystem, process, clock, timer, network or random source, so one engine runs in the CLI, the MCP server and the browser designer.",
+      "code": ["packages/core/src/sha256.ts#sha256Hex","packages/core/src/hash.ts#modelRevision","packages/core/src/validate.ts#validate"],
+      "contract": ["icd/core.json"],
+      "verification": ["cli.contract.the-core-imports-only-its-pure-dependencies-and-reaches-no-process-clock-timer-network-or-random-source","core.selftest.sha256","designer.loom-store.a-loads-the-sample-with-zero-error-findings"]
+    },
+    {
+      "id": "core.readiness.design-order",
+      "description": "designOrder ranks design work by propagation, centrality, uncertainty and reversal cost, and reports implementation, runtime and deployment orders separately, a provider before its consumers.",
+      "code": ["packages/core/src/readiness.ts#designOrder"],
+      "contract": ["tools.schema.json#/$defs/DesignOrder","tools.schema.json#/$defs/OrderedItem"],
+      "verification": ["core.selftest.design-order-and-impact"]
     },
     {
       "id": "core.readiness.evaluation",
       "description": "Task readiness is evaluated from the model, the accepted baselines, the dependencies, the evidence and the policy, with exact missing prerequisites.",
-      "code": ["packages/core/src/readiness.ts#checkReadiness"],
-      "contract": ["tools.schema.json#/$defs/ReadinessData"],
+      "code": ["packages/core/src/readiness.ts#checkReadiness","packages/core/src/readiness.ts#makeMaturity","packages/core/src/tools.ts#checkReadinessTool"],
+      "contract": ["tools.schema.json#/$defs/ReadinessData","tools.schema.json#/$defs/Prerequisite"],
+      "verification": ["core.selftest.readiness","cli.cli.readiness-evaluates-a-task-and-refuses-an-invalid-task-class","mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace"]
+    },
+    {
+      "id": "core.readiness.modes",
+      "description": "A task is scoped by component, covering what the named components own, or by slice, covering the closure of the named requirements across components, and both add the deployment units, migrations, retained behaviors and decisions that touch the scope.",
+      "code": ["packages/core/src/scope.ts#resolveScope"],
+      "contract": ["tools.schema.json#/$defs/TaskSpec"],
+      "verification": ["core.selftest.readiness","mcp-server.mcp.core-cli-and-mcp-agree-on-the-readiness-cases-of-the-independent-fixtures","cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs"]
+    },
+    {
+      "id": "core.readiness.recompute",
+      "description": "recomputeReadiness reports the work packages a change affects with the records that changed and keeps unaffected accepted work as it was.",
+      "code": ["packages/core/src/readiness.ts#recomputeReadiness"],
+      "contract": ["tools.schema.json#/$defs/WorkPackage"],
       "verification": ["core.selftest.readiness"]
     },
     {
-      "id": "mcp.mutation.expected-revision",
-      "description": "A persistent MCP mutation commits only onto its expected base revision; of two writers on one base exactly one succeeds.",
-      "code": ["packages/mcp-server/src/tools.ts#executeTool", "packages/workspace/src/write.ts#writeModel"],
-      "contract": ["tools.schema.json#/$defs/MutateInput", "icd/workspace.json"],
-      "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds"]
+      "id": "core.readiness.substitutes",
+      "description": "A substitute stands in for a dependency only when the dependency and the trusted policy permit its kind for the task class; it is reported as applied and never makes integration ready.",
+      "code": ["packages/core/src/readiness.ts#checkReadiness"],
+      "contract": ["tools.schema.json#/$defs/AppliedSubstitute","model.schema.json#/$defs/Substitute","assurance.schema.json#/$defs/Policy/properties/substitutes"],
+      "verification": ["core.selftest.readiness","core.selftest.evidence"]
+    },
+    {
+      "id": "core.readiness.task-classes",
+      "description": "Readiness is evaluated per task class: discovery, specification, implementation, integration, release and operations each have their own prerequisites, and a missing input leaves the task unresolved, never ready.",
+      "code": ["packages/core/src/readiness.ts#checkReadiness","packages/core/src/readiness.ts#makeMaturity"],
+      "contract": ["common.schema.json#/$defs/TaskClass","result.schema.json#/$defs/ReadinessState"],
+      "verification": ["core.selftest.readiness","cli.cli.readiness-evaluates-a-task-and-refuses-an-invalid-task-class","designer.states.shows-a-valid-model-as-blocked-for-release-and-unresolved-for-implementation-without-an-accepted-baseline"]
+    },
+    {
+      "id": "core.readiness.work-packages",
+      "description": "A readiness result carries a work package with its scope, input revisions, allowed edits, tests, required contracts and exit evidence.",
+      "code": ["packages/core/src/readiness.ts#checkReadiness"],
+      "contract": ["tools.schema.json#/$defs/WorkPackage","tools.schema.json#/$defs/ReadinessData"],
+      "verification": ["core.selftest.readiness","cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs"]
+    },
+    {
+      "id": "core.repairs",
+      "description": "A finding offers repairs: a mechanical repair carries the patches that clear it without acceptance, and an intent change is marked as needing acceptance.",
+      "code": ["packages/core/src/rules/context.ts#mechanicalRepair","packages/core/src/rules/context.ts#intentRepair"],
+      "contract": ["result.schema.json#/$defs/Repair"],
+      "verification": ["core.selftest.impact-and-repairs"]
+    },
+    {
+      "id": "core.seal.derived",
+      "description": "Whether the workspace is sealed is derived from a trusted acceptance of the current revision, and a sealed flag in state.json without one is reported as SEALED_FLAG_UNBACKED and grants nothing.",
+      "code": ["packages/core/src/baseline.ts#derivedSeal","packages/core/src/baseline.ts#gateFindings"],
+      "contract": ["workspace.schema.json#/$defs/WorkflowState"],
+      "verification": ["core.selftest.baselines-and-acceptance"]
+    },
+    {
+      "id": "core.validation.bounds",
+      "description": "Value shapes are checked: bounds of another kind, inverted ranges, enums without or with repeated values, incomplete decimal, reference and item shapes, and defaults of the wrong kind are reported.",
+      "code": ["packages/core/src/rules/values.ts#valueShapes","packages/core/src/rules/values.ts#misplacedBounds"],
+      "contract": ["model.schema.json#/$defs/Bounds","model.schema.json#/$defs/DecimalShape","model.schema.json#/$defs/EnumValue"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions"]
+    },
+    {
+      "id": "core.validation.concerns",
+      "description": "The design concerns that apply to the system profile must be resolved or justified as not applicable; an applicable concern the model leaves open is reported as CONCERN_UNRESOLVED, and without a system profile they are not evaluated.",
+      "code": ["packages/core/src/rules/concerns.ts#concernRules","packages/core/src/rules/concerns.ts#CONCERNS"],
+      "contract": ["profile.schema.json#/$defs/ConcernDefinition","model.schema.json#/$defs/SystemProfile"],
+      "verification": ["core.selftest.contradictions","core.selftest.readiness"]
+    },
+    {
+      "id": "core.validation.enforcement",
+      "description": "A state-changing operation names the components accountable for its enforcement, an invariant names its enforcement owner, and one layer enforcing a predicate twice is a conflict.",
+      "code": ["packages/core/src/rules/hosting.ts#enforcementRules","packages/core/src/rules/concerns.ts#concernRules"],
+      "contract": ["model.schema.json#/$defs/Enforcement","model.schema.json#/$defs/Enforcer"],
+      "verification": ["core.selftest.contradictions"]
+    },
+    {
+      "id": "core.validation.hosting",
+      "description": "A deployment unit must fit the capabilities of its host, components sharing a unit need a decision, and a service component needs a deployment unit.",
+      "code": ["packages/core/src/rules/hosting.ts#hostingRules"],
+      "contract": ["model.schema.json#/$defs/Host","model.schema.json#/$defs/DeploymentUnit","profiles/host.json"],
+      "verification": ["core.selftest.contradictions","core.selftest.design-order-and-impact","cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs"]
+    },
+    {
+      "id": "core.validation.http",
+      "description": "HTTP bindings are checked for completeness, valid and unique routes, declared path parameters, known parameter properties, permitted bodies and responses, and a declared security scheme.",
+      "code": ["packages/core/src/rules/operations.ts#operationRules","packages/core/src/rules/operations.ts#parseRoute"],
+      "contract": ["model.schema.json#/$defs/Binding","model.schema.json#/$defs/HttpParameter","model.schema.json#/$defs/HttpResponse"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions"]
+    },
+    {
+      "id": "core.validation.identity",
+      "description": "Record ids and keyed items are unique, every reference resolves to a record of its declared kind, and a property reference resolves by the longest known type id prefix.",
+      "code": ["packages/core/src/rules/identity.ts#duplicateIds","packages/core/src/rules/identity.ts#duplicateKeys","packages/core/src/rules/identity.ts#references","packages/core/src/refs.ts#resolveReference","packages/core/src/records.ts#resolveProperty"],
+      "contract": ["common.schema.json#/$defs/RecordRef","common.schema.json#/$defs/Id"],
+      "verification": ["core.selftest.contradictions","core.selftest.patches","cli.properties.every-reference-that-resolved-before-a-rename-still-resolves-after-it"]
+    },
+    {
+      "id": "core.validation.mappings",
+      "description": "A mapping between types names properties that exist, copies between compatible kinds, declares any narrowing conversion, maps or explains every required destination and feeds no optional source into a required destination.",
+      "code": ["packages/core/src/rules/representations.ts#representationRules"],
+      "contract": ["model.schema.json#/$defs/Mapping","model.schema.json#/$defs/FieldMapping"],
+      "verification": ["core.selftest.contradictions"]
+    },
+    {
+      "id": "core.validation.migrations",
+      "description": "A migration moves its contract forward with acyclic dependencies, and a storage change against the accepted baseline without a covering migration is reported as MIGRATION_MISSING.",
+      "code": ["packages/core/src/rules/representations.ts#migrationRules"],
+      "contract": ["model.schema.json#/$defs/Migration"],
+      "verification": ["core.selftest.contradictions","core.selftest.knowledge-with-inputs","qualification.native.sql-migration-fails-when-the-migration-loses-a-representative-row"]
+    },
+    {
+      "id": "core.validation.mutations",
+      "description": "A mutation moves the state property of its type between legal states, writes only known and mutable properties, supplies every required property on creation, declares its state write and traces to a requirement and a scenario.",
+      "code": ["packages/core/src/rules/mutations.ts#mutationRules"],
+      "contract": ["model.schema.json#/$defs/Mutation"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions"]
+    },
+    {
+      "id": "core.validation.portability",
+      "description": "The portable model carries no machine path and no credential.",
+      "code": ["packages/core/src/rules/portability.ts#portabilityRules"],
+      "contract": ["model.schema.json#/$defs/Model"],
+      "verification": ["core.selftest.contradictions"]
+    },
+    {
+      "id": "core.validation.predicates",
+      "description": "Guards, conditions and invariants are typed predicates over declared properties: an unknown property or an incompatible comparison is reported, and a prose predicate needs a scenario that verifies it.",
+      "code": ["packages/core/src/rules/predicates.ts#predicateRules","packages/core/src/rules/predicates.ts#checkExpression"],
+      "contract": ["model.schema.json#/$defs/Predicate","model.schema.json#/$defs/Expression"],
+      "verification": ["core.selftest.contradictions"]
+    },
+    {
+      "id": "core.validation.routines",
+      "description": "A routine returns result columns, writes exactly its declared columns inside its transaction scope on storage it may write, and binds its enum and keyed parameters to properties of matching kind and nullability.",
+      "code": ["packages/core/src/rules/routines.ts#routineRules"],
+      "contract": ["model.schema.json#/$defs/Routine","model.schema.json#/$defs/RoutineParam","model.schema.json#/$defs/ResultColumn"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions"]
+    },
+    {
+      "id": "core.validation.storage",
+      "description": "Storage records map the type their owner owns onto one table each, with valid primary keys within SQL Server limits, supported and lossless column types, matching nullability, every required property mapped and foreign keys to key columns.",
+      "code": ["packages/core/src/rules/storage.ts#storageRules","packages/core/src/sql-types.ts#lossReason","packages/core/src/sql-types.ts#keyColumnBytes"],
+      "contract": ["model.schema.json#/$defs/Storage","model.schema.json#/$defs/StorageColumn","model.schema.json#/$defs/SqlType"],
+      "verification": ["core.selftest.contradictions","core.selftest.regressions","qualification.native.sql-catalog-reports-a-deployed-column-whose-precision-differs-from-its-storage-record"]
+    },
+    {
+      "id": "core.validation.structure",
+      "description": "A model is first checked against the structural contract and refused at the exact pointer of any violation, then for workflow and build dependency cycles, runtime cycles without defined behavior and stale workflow imports.",
+      "code": ["packages/core/src/load.ts#structuralFindings","packages/core/src/rules/structure.ts#structureRules","packages/core/src/rules/structure.ts#findCycles","packages/core/src/validate.ts#validate"],
+      "contract": ["model.schema.json#/$defs/Model","model.schema.json#/$defs/Edge","model.schema.json#/$defs/Workflow"],
+      "verification": ["core.selftest.contradictions","core.selftest.sample","core.selftest.result-envelopes","cli.properties.generated-models-stay-valid-so-every-property-below-is-checked-on-models-the-engine-accepts"]
+    },
+    {
+      "id": "core.versions.coexistence",
+      "description": "A versioned contract keeps superseded versions supported, each naming the baseline that holds its accepted shape, and listing the current version as supported or binding a consumer to an unsupported version is reported.",
+      "code": ["packages/core/src/rules/versions.ts#versionRules","packages/workspace/src/trust.ts#supportedBaselineIds"],
+      "contract": ["model.schema.json#/$defs/SupportedVersion","model.schema.json#/$defs/ConsumerBinding"],
+      "verification": ["core.selftest.contradictions","core.selftest.baselines-and-acceptance"]
+    },
+    {
+      "id": "core.versions.retirement",
+      "description": "Retiring a supported version that an active required consumer still binds is blocked unless its retirement condition is an accepted decision, and proceeds once the consumers moved on.",
+      "code": ["packages/core/src/baseline.ts#retirementFindings"],
+      "contract": ["model.schema.json#/$defs/SupportedVersion"],
+      "verification": ["core.selftest.baselines-and-acceptance"]
+    },
+    {
+      "id": "delivery.final-gate",
+      "description": "`npm run self-test` passes only when the engine battery, the drift gate and every check of the self-qualification policy pass, a required UNKNOWN failing it, and coverage --check holds every registered capability to passing cases.",
+      "code": ["packages/cli/src/selftest.ts#runSelfTest","packages/qualification/src/selfqualify.ts#selfQualify","packages/qualification/src/selfqualify.ts#unlistedChecks","packages/cli/src/coverage.ts#checkCapabilities"],
+      "contract": ["qualification/policy.json","assurance.schema.json#/$defs/RunRecord"],
+      "verification": ["qualification.native.every-profile-check-passes-against-loom-s-own-fixtures-under-the-self-qualification-policy","cli.cli.coverage-check-resolves-code-contracts-and-cases-and-fires-on-each-kind-of-miss","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand","qualification.check.csharp-build","qualification.check.csharp-conformance","qualification.check.diagrams-parse","qualification.check.documentation-drift","qualification.check.documentation-yaml-roundtrip","qualification.check.json-schema-compile","qualification.check.openapi-validate","qualification.check.openapi-compatibility","qualification.check.powershell-pester6-conformance","qualification.check.powershell-parse","qualification.check.powershell-conformance","qualification.check.sql-build","qualification.check.sql-parse","qualification.check.sql-catalog","qualification.check.sql-behavior","qualification.check.sql-transaction","qualification.check.sql-migration","qualification.check.sql-operations","qualification.check.typescript-build","qualification.check.typescript-conformance"]
+    },
+    {
+      "id": "designer.baseline-candidate-publish",
+      "description": "In the designer, selecting a baseline, editing the candidate and publishing a pinned contract bundle are separate operations, and a bundle is published only from a valid model, with the canonical hash of its content as digest.",
+      "code": ["apps/designer/src/app/loom-store.ts#LoomStore.selectBaseline","apps/designer/src/app/loom-store.ts#LoomStore.publish","apps/designer/src/app/baseline-panel.ts#BaselinePanel","apps/designer/src/app/publish-panel.ts#PublishPanel"],
+      "contract": ["icd/designer.json","workspace.schema.json#/$defs/PublishedContract"],
+      "verification": ["designer.views.publishes-selected-records-as-a-bundle-whose-digest-is-the-canonical-hash-of-its-content","designer.views.refuses-to-publish-from-a-model-with-error-findings","designer.states.a-selected-baseline-with-its-acceptance-record-is-still-not-accepted-because-the-designer-cannot-establish-trust","designer.states.refuses-a-baseline-record-that-does-not-match-the-contract"]
+    },
+    {
+      "id": "designer.explanations",
+      "description": "The designer explains a change with exactly the change planner and diff results the MCP tools return: the delta, its impact on consumers, the evidence it invalidates and the repairs.",
+      "code": ["apps/designer/src/app/loom-store.ts#LoomStore.preview","apps/designer/src/app/loom-store.ts#LoomStore.apply","apps/designer/src/app/changes-table.ts#ChangesTable","apps/designer/src/app/affected-table.ts#AffectedTable","apps/designer/src/app/findings-table.ts#FindingsTable"],
+      "contract": ["icd/designer.json","tools.schema.json#/$defs/PlanChangeData"],
+      "verification": ["designer.states.explains-a-change-with-exactly-the-planner-and-diff-results-the-mcp-tools-return","designer.states.is-invalidated-once-an-edit-changes-the-artifact-it-names","designer.workflow.imports-edits-a-record-previews-and-applies-a-batch-explains-its-impact-and-saves-with-a-revision-check"]
+    },
+    {
+      "id": "designer.records",
+      "description": "The designer edits every record collection through forms and a structured editor generated from the contract definitions, and every edit is a patch the engine accepts or refuses.",
+      "code": ["apps/designer/src/app/record-editor.ts#RecordEditor","apps/designer/src/app/schema-fields.ts#COLLECTION_SPECS","apps/designer/src/app/schema-fields.ts#fieldsOf","apps/designer/src/app/loom-store.ts#LoomStore.apply"],
+      "contract": ["icd/designer.json","patch.schema.json#/$defs/Patch"],
+      "verification": ["designer.record-editor.offers-every-collection-the-contract-defines-with-fields-read-from-its-definition","designer.record-editor.edits-an-enum-field-of-a-component-through-an-update-patch-the-engine-accepts","designer.record-editor.edits-a-requirement-priority-through-the-same-form","designer.record-editor.adds-a-new-record-of-another-kind-from-the-contract-fields","designer.record-editor.leaves-the-decision-to-the-engine-an-unacknowledged-breaking-criterion-edit-is-refused-and-the-model-is-unchanged","designer.record-editor.shows-contract-errors-in-the-structured-editor-and-the-engine-refuses-the-misspelled-record","designer.guided-edit.sends-a-breaking-edit-through-mutate-shows-it-refused-and-leaves-the-displayed-model-unchanged"]
+    },
+    {
+      "id": "designer.states",
+      "description": "The designer shows validation, readiness for a chosen task, acceptance and qualification as independent states with their reasons and the revisions evaluated, and evaluates every loaded baseline, acceptance, policy and evidence record as untrusted.",
+      "code": ["apps/designer/src/app/states-panel.ts#StatesPanel","apps/designer/src/app/loom-store.ts#TRUST_LIMIT","apps/designer/src/app/loom-store.ts#LoomStore"],
+      "contract": ["icd/designer.json","result.schema.json#/$defs/States"],
+      "verification": ["designer.states.importing-a-model-never-accepts-it-acceptance-is-not-evaluated-without-a-selected-baseline","designer.states.a-selected-baseline-with-its-acceptance-record-is-still-not-accepted-because-the-designer-cannot-establish-trust","designer.states.shows-a-valid-model-as-blocked-for-release-and-unresolved-for-implementation-without-an-accepted-baseline","designer.states.is-current-while-the-model-still-renders-the-artifact-it-names"]
+    },
+    {
+      "id": "designer.views",
+      "description": "The designer renders each documentation view through the engine with its source revision, draft flag and coverage, plus the mapping and hosting records, and downloads every projection target as the files the engine writes.",
+      "code": ["apps/designer/src/app/views-panel.ts#ViewsPanel","apps/designer/src/app/generate-panel.ts#GeneratePanel","apps/designer/src/app/loom-store.ts#LoomStore.view","apps/designer/src/app/loom-store.ts#LoomStore.projectionFile"],
+      "contract": ["icd/designer.json","tools.schema.json#/$defs/CoverageManifest"],
+      "verification": ["designer.views.renders-each-documentation-view-with-its-source-revision-and-coverage-plus-the-mapping-and-hosting-records","designer.loom-store.e-produces-non-empty-output-for-every-projection-targets-entry-on-the-sample"]
+    },
+    {
+      "id": "docs.capability-register",
+      "description": "`loom coverage --check` resolves every capability's code symbols, contract pointers and verification cases and counts a case only on a supplied passing result, so a missing result never counts as a pass.",
+      "code": ["packages/cli/src/coverage.ts#checkCapabilities","packages/cli/src/coverage.ts#enumerateCases","packages/cli/src/coverage.ts#parseTap"],
+      "contract": ["assurance.schema.json#/$defs/CapabilityRegister","fixtures/capability-register.json"],
+      "verification": ["cli.cli.coverage-check-resolves-code-contracts-and-cases-and-fires-on-each-kind-of-miss"]
+    },
+    {
+      "id": "docs.checks",
+      "description": "`loom docs --check` reports broken links, anchors and record references, history narrated in documents or comments, hand-authored copies of generated registers, installed views that differ from a fresh rendering, and accepted interfaces dropped from the documentation.",
+      "code": ["packages/cli/src/docs.ts#documentationFindings","packages/cli/src/docs.ts#linkFindings","packages/cli/src/docs.ts#historyInProse","packages/cli/src/docs.ts#historyInComments","packages/cli/src/docs.ts#duplicatesGenerated","packages/cli/src/docs.ts#cumulativeFindings"],
+      "contract": ["icd/cli.json"],
+      "verification": ["cli.cli.docs-installs-the-views-with-evaluated-inputs-and-docs-check-reports-broken-links-unknown-records-and-history-markers","cli.cli.docs-check-flags-a-hand-authored-copy-of-a-generated-register-and-a-comment-narrating-history","cli.cli.docs-check-reports-an-accepted-interface-dropped-from-the-regenerated-documentation"]
+    },
+    {
+      "id": "mcp.context",
+      "description": "loom.context returns the required context of a component, record, claim or task within a declared budget, nearest first, with completeness naming what it omitted and a continuation bound to one model revision.",
+      "code": ["packages/core/src/retrieval.ts#retrieveContext","packages/core/src/retrieval.ts#continuationToken","packages/core/src/tools.ts#contextTool","packages/mcp-server/src/tools.ts#executeTool"],
+      "contract": ["tools.schema.json#/$defs/ContextInput","tools.schema.json#/$defs/ContextData","result.schema.json#/$defs/Completeness"],
+      "verification": ["core.selftest.context-and-previews","mcp-server.mcp.an-inline-diff-with-an-invalid-side-is-marked-provisional-and-a-stale-context-continuation-is-refused","mcp-server.mcp.record-text-that-reads-as-an-instruction-is-returned-as-data-and-changes-no-state-finding-or-file","cli.cli.context-is-bounded-names-its-continuation-and-refuses-a-continuation-of-another-revision"]
+    },
+    {
+      "id": "mcp.data-not-instructions",
+      "description": "Text inside a record is returned as data and never changes a state, a finding or the workspace, whatever it asks for.",
+      "code": ["packages/mcp-server/src/tools.ts#executeTool","packages/core/src/retrieval.ts#retrieveContext"],
+      "contract": ["icd/mcp.json","icd/core.json"],
+      "verification": ["mcp-server.mcp.record-text-that-reads-as-an-instruction-is-returned-as-data-and-changes-no-state-finding-or-file"]
+    },
+    {
+      "id": "mcp.diff",
+      "description": "loom.diff compares two inline models, or a candidate against the trusted accepted baseline, marks a comparison with an invalid side provisional, and judges an inline candidate by its own artifact hashes.",
+      "code": ["packages/core/src/envelope.ts#diffTool","packages/core/src/tools.ts#compareBaselineTool","packages/mcp-server/src/tools.ts#executeTool"],
+      "contract": ["tools.schema.json#/$defs/DiffInput","tools.schema.json#/$defs/DiffData"],
+      "verification": ["mcp-server.mcp.an-inline-diff-with-an-invalid-side-is-marked-provisional-and-a-stale-context-continuation-is-refused","mcp-server.mcp.a-diff-against-the-baseline-reports-a-breaking-change-kept-at-the-accepted-version-for-the-workspace-model-and-for-an-imported-document","mcp-server.mcp.a-diff-against-the-baseline-reports-no-unbumped-version-once-the-breaking-change-raises-it","mcp-server.mcp.a-workspace-change-that-alters-an-artifact-invalidates-the-evidence-about-it-judged-by-the-candidate-rendering-in-the-plan-and-in-an-inline-diff","mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace"]
+    },
+    {
+      "id": "mcp.new-tools",
+      "description": "Beside validate, mutate, diff, project, projectAll, export, import and selftest, the MCP server provides loom.describe, loom.context, loom.checkReadiness and loom.planChange over the same core functions the CLI calls.",
+      "code": ["packages/mcp-server/src/tools.ts#TOOL_CONTRACTS","packages/core/src/describe.ts#describe","packages/core/src/tools.ts#checkReadinessTool","packages/core/src/tools.ts#planChangeTool","packages/core/src/tools.ts#describeTool"],
+      "contract": ["icd/mcp.json","tools.schema.json#/$defs/DescribeData","tools.schema.json#/$defs/PlanChangeData"],
+      "verification": ["mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace","mcp-server.mcp.every-tool-lists-the-input-and-output-schemas-generated-from-the-contract-and-a-request-outside-its-input-schema-is-refused-before-anything-runs","core.selftest.context-and-previews"]
+    },
+    {
+      "id": "mcp.persistent-mutate",
+      "description": "A persistent loom.mutate requires expectedRevision, is refused as stale-base when the model changed since that revision, writes through the workspace lock that rechecks it, and a dry run writes nothing.",
+      "code": ["packages/mcp-server/src/tools.ts#persistentMutate","packages/workspace/src/write.ts#writeModel","packages/workspace/src/lock.ts#withLock"],
+      "contract": ["tools.schema.json#/$defs/MutateInput","icd/mcp.json"],
+      "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs"]
+    },
+    {
+      "id": "mcp.result-states",
+      "description": "Every result reports validation, readiness, qualification and acceptance as independent states with reasons, and a state without its inputs is notEvaluated with the reason, never a success.",
+      "code": ["packages/core/src/envelope.ts#envelope","packages/core/src/envelope.ts#defaultStates","packages/core/src/envelope.ts#validationState"],
+      "contract": ["result.schema.json#/$defs/States","result.schema.json#/$defs/ResultEnvelope"],
+      "verification": ["core.selftest.result-envelopes","mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace","designer.states.importing-a-model-never-accepts-it-acceptance-is-not-evaluated-without-a-selected-baseline"]
+    },
+    {
+      "id": "mcp.revisions",
+      "description": "Every result names the contract digest and the model revision it evaluated, and a workspace result adds the configuration, projection profile, policy and baseline revisions.",
+      "code": ["packages/core/src/envelope.ts#revisionsOf","packages/workspace/src/session.ts#stampSession","packages/workspace/src/session.ts#sessionRevisions"],
+      "contract": ["result.schema.json#/$defs/RevisionSet"],
+      "verification": ["mcp-server.mcp.a-workspace-result-names-the-model-configuration-profile-policy-and-baseline-revisions-it-was-evaluated-against-and-an-inline-result-only-its-own","core.selftest.result-envelopes"]
+    },
+    {
+      "id": "mcp.typed-io",
+      "description": "Each MCP tool's input and output schemas are generated from the contract bundle, every input is validated before anything runs, and every result is structured content conforming to its output schema with a text fallback.",
+      "code": ["packages/mcp-server/src/tools.ts#inputSchemaOf","packages/mcp-server/src/tools.ts#outputSchemaOf","packages/mcp-server/src/tools.ts#toolDefinitions","packages/mcp-server/src/tools.ts#inputRefusal","packages/mcp-server/src/server.ts#createLoomServer"],
+      "contract": ["tools.schema.json#/$defs/ValidateInput","result.schema.json#/$defs/ResultEnvelope","icd/mcp.json"],
+      "verification": ["mcp-server.mcp.every-tool-lists-the-input-and-output-schemas-generated-from-the-contract-and-a-request-outside-its-input-schema-is-refused-before-anything-runs","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs","mcp-server.mcp.the-server-refuses-a-workspace-request-when-no-workspace-governs-its-directory"]
+    },
+    {
+      "id": "projections.coverage-manifest",
+      "description": "Every projection reports a coverage manifest of its in-scope records as projected, unsupported or out of scope, and a record a renderer drops or falsely claims fails the projection with PROJECTION_COVERAGE_LOSS.",
+      "code": ["packages/core/src/project.ts#renderWithSpec","packages/core/src/projections/context.ts#RenderContext"],
+      "contract": ["tools.schema.json#/$defs/CoverageManifest","tools.schema.json#/$defs/CoverageItem"],
+      "verification": ["core.selftest.coverage-guard","core.selftest.projections","cli.properties.every-record-a-target-is-responsible-for-appears-in-its-coverage-manifest-and-no-target-drops-a-record-silently"]
+    },
+    {
+      "id": "projections.csharp",
+      "description": "The csharp-contract-tests target renders, for each component that declares C#, xUnit conformance tests of the implementation's public types and System.Text.Json serialization, which csharp.build and csharp.conformance run against conforming and violating implementations.",
+      "code": ["packages/core/src/projections/csharp.ts#projectCsharpContractTests","packages/core/src/projections/csharp.ts#csharpModule","packages/qualification/src/runners/csharp.ts#CSHARP_RUNNERS"],
+      "contract": ["profiles/csharp.json"],
+      "verification": ["core.selftest.projections","core.selftest.projection-instances","qualification.native.csharp-build-fails-when-the-implementation-does-not-compile","qualification.native.csharp-conformance-fails-against-an-implementation-that-breaks-the-declared-types","qualification.check.csharp-build","qualification.check.csharp-conformance"]
+    },
+    {
+      "id": "projections.determinism",
+      "description": "Every projection is deterministic: rendering one model twice yields identical bytes with no timestamps, random values or machine paths, so drift is a byte comparison.",
+      "code": ["packages/core/src/project.ts#renderTarget","packages/core/src/project.ts#renderAll","packages/core/src/canonical.ts#canonicalStringify"],
+      "contract": ["icd/core.json"],
+      "verification": ["core.selftest.projections","cli.cli.write-and-check-agree-on-an-installed-bundle-and-report-a-hand-edit-as-drift","qualification.native.documentation-drift-detects-a-hand-edit-of-a-generated-view"]
+    },
+    {
+      "id": "projections.draft",
+      "description": "A projection of an unsupported construct is refused unless requested as a draft, which marks exactly the incomplete instances, reports an incomplete coverage manifest and is never qualified.",
+      "code": ["packages/core/src/project.ts#renderWithSpec","packages/core/src/envelope.ts#projectTool","packages/qualification/src/run.ts#runChecks"],
+      "contract": ["tools.schema.json#/$defs/ProjectData","profile.schema.json#/$defs/UnsupportedConstruct"],
+      "verification": ["core.selftest.unsupported-constructs","core.selftest.published-contract-types","qualification.framework.a-draft-artifact-set-never-qualifies"]
+    },
+    {
+      "id": "projections.instances",
+      "description": "A per-component target renders one instance per component that its profile and the component's declared languages admit, named '<file>#<component>', and a two-file target keeps one instance per file.",
+      "code": ["packages/core/src/project.ts#instancesOf","packages/core/src/project.ts#artifactProfile"],
+      "contract": ["profile.schema.json#/$defs/ProfileDefinition","workspace.schema.json#/$defs/ArtifactInstanceName"],
+      "verification": ["core.selftest.projection-instances","workspace.outputs.a-per-component-artifact-is-not-routed-by-its-bare-file-name"]
+    },
+    {
+      "id": "projections.json-schema",
+      "description": "The json-schema target renders a JSON Schema 2020-12 document of every type that compiles under Ajv strict mode, accepts a conforming sample and rejects one missing a required member.",
+      "code": ["packages/core/src/projections/json.ts#projectJsonSchema","packages/core/src/projections/json.ts#typeSchema","packages/qualification/src/runners/documents.ts#DOCUMENT_RUNNERS"],
+      "contract": ["profiles/json-schema.json"],
+      "verification": ["core.selftest.projections","qualification.native.json-schema-compile-rejects-a-schema-ajv-cannot-compile","qualification.check.json-schema-compile"]
+    },
+    {
+      "id": "projections.openapi",
+      "description": "The openapi target renders an OpenAPI 3.1 document of the HTTP-bound operations, their types and security schemes, including the types of resolved pinned bundles, which openapi.validate and openapi.compatibility qualify.",
+      "code": ["packages/core/src/projections/openapi.ts#projectOpenApi","packages/qualification/src/runners/openapi.ts#OPENAPI_RUNNERS"],
+      "contract": ["profiles/openapi.json"],
+      "verification": ["core.selftest.projections","core.selftest.published-contract-types","core.selftest.regressions","qualification.native.openapi-validate-rejects-a-templated-path-that-does-not-declare-its-parameter","qualification.native.a-model-that-consumes-a-pinned-published-contract-over-http-qualifies-its-openapi-document-with-the-resolved-bundle-outside-draft-mode","qualification.check.openapi-validate"]
+    },
+    {
+      "id": "projections.pester",
+      "description": "The pester-contract-tests target renders Pester conformance tests for the script routines that declare a source file, run under Pester 5 by the powershell profile and under Pester 6 by the powershell-pester6 profile.",
+      "code": ["packages/core/src/projections/pester.ts#projectPesterContractTests","packages/qualification/src/runners/powershell.ts#POWERSHELL_RUNNERS"],
+      "contract": ["profiles/powershell.json","profiles/powershell-pester6.json"],
+      "verification": ["core.selftest.projections","qualification.native.powershell-parse-rejects-a-malformed-generated-file","qualification.native.pester-conformance-fails-when-the-routines-break-their-contract","qualification.check.powershell-parse","qualification.check.powershell-conformance","qualification.check.powershell-pester6-conformance"]
+    },
+    {
+      "id": "projections.sql",
+      "description": "The sql target renders SQL Server DDL per component in foreign-key deployment order from the storage records, which sql.parse, sql.build and sql.catalog qualify.",
+      "code": ["packages/core/src/projections/sql.ts#projectSql","packages/core/src/projections/sql.ts#sqlDeploymentOrder","packages/core/src/sql-types.ts#sqlTypeText"],
+      "contract": ["profiles/sql.json","model.schema.json#/$defs/Storage"],
+      "verification": ["core.selftest.projections","core.selftest.projection-instances","qualification.native.sql-parse-rejects-malformed-t-sql","qualification.native.sql-build-rejects-ddl-with-an-unresolved-object-reference","qualification.native.sql-catalog-reports-a-deployed-column-whose-precision-differs-from-its-storage-record","qualification.check.sql-parse","qualification.check.sql-build","qualification.check.sql-catalog"]
+    },
+    {
+      "id": "projections.sql-contract-tests",
+      "description": "The sql-contract-tests target renders T-SQL contract tests of the SQL procedures and storage, which sql.behavior and sql.transaction run against conforming and violating implementations in a disposable LocalDB instance.",
+      "code": ["packages/core/src/projections/sql.ts#projectSqlContractTests","packages/core/src/projections/sql.ts#procedureName","packages/qualification/src/runners/sql.ts#SQL_RUNNERS"],
+      "contract": ["profiles/sql.json"],
+      "verification": ["core.selftest.projections","qualification.native.sql-behavior-fails-when-the-implementation-breaks-the-routine-contract","qualification.native.sql-transaction-fails-when-a-routine-leaves-writes-behind-after-a-failure-inside-its-scope-and-passes-when-it-rolls-them-back","qualification.check.sql-behavior","qualification.check.sql-transaction"]
+    },
+    {
+      "id": "projections.typescript",
+      "description": "The typescript-contract-tests target renders, for each component that declares TypeScript, node:test conformance tests that check the implementation's exported types at compile time and its serialization at run time.",
+      "code": ["packages/core/src/projections/typescript.ts#projectTypescriptContractTests","packages/core/src/projections/typescript.ts#typescriptModule","packages/qualification/src/runners/typescript.ts#TYPESCRIPT_RUNNERS"],
+      "contract": ["profiles/typescript.json"],
+      "verification": ["core.selftest.projection-instances","qualification.native.typescript-build-fails-when-an-exported-type-loses-a-readonly-member","qualification.native.typescript-conformance-fails-against-an-implementation-whose-parse-accepts-a-missing-member","qualification.check.typescript-build","qualification.check.typescript-conformance"]
+    },
+    {
+      "id": "projections.views",
+      "description": "The documentation targets render the reference, interface control, architecture, registers, workflow diagrams, readiness report, coverage matrix and evidence index from the model, each naming its source revision and the reports their evaluation inputs.",
+      "code": ["packages/core/src/projections/reference.ts#projectReference","packages/core/src/projections/icd.ts#projectIcd","packages/core/src/projections/architecture.ts#projectArchitecture","packages/core/src/projections/registers.ts#projectRegisters","packages/core/src/projections/mermaid.ts#projectWorkflow","packages/core/src/projections/reports.ts#projectReadinessReport","packages/core/src/projections/reports.ts#projectCoverageMatrix","packages/core/src/projections/reports.ts#projectEvidenceIndex","packages/core/src/projections/views.ts#viewHeader"],
+      "contract": ["profiles/documentation.json","profiles/diagrams.json","projection-profiles/documentation.json"],
+      "verification": ["core.selftest.projections","designer.views.renders-each-documentation-view-with-its-source-revision-and-coverage-plus-the-mapping-and-hosting-records","cli.cli.docs-installs-the-views-with-evaluated-inputs-and-docs-check-reports-broken-links-unknown-records-and-history-markers","qualification.native.diagrams-parse-rejects-a-malformed-diagram-in-a-generated-view","qualification.native.documentation-drift-passes-on-a-freshly-written-workspace-whose-readiness-coverage-and-evidence-views-summarize-its-inputs","qualification.check.diagrams-parse","qualification.check.documentation-drift"]
+    },
+    {
+      "id": "qualification.adapter-agreement",
+      "description": "The core, the CLI, the MCP server and the designer give identical states, reasons and change plans for one model and its inputs, because every adapter opens one session and calls the same core tool functions.",
+      "code": ["packages/workspace/src/session.ts#openSession","packages/core/src/tools.ts#checkReadinessTool","packages/core/src/tools.ts#planChangeTool","packages/core/src/tools.ts#compareBaselineTool"],
+      "contract": ["icd/cli.json","icd/mcp.json","icd/designer.json"],
+      "verification": ["mcp-server.mcp.core-cli-and-mcp-agree-on-readiness-acceptance-and-compatibility-for-one-governed-workspace","mcp-server.mcp.core-cli-and-mcp-agree-on-the-readiness-cases-of-the-independent-fixtures","designer.states.explains-a-change-with-exactly-the-planner-and-diff-results-the-mcp-tools-return"]
+    },
+    {
+      "id": "qualification.concurrency",
+      "description": "Of concurrent writers on one expected revision exactly one commits, through the workspace API, the CLI and two MCP server processes alike, an interrupted installation stays visibly incomplete, and parallel qualification runs keep separate directories and LocalDB instances.",
+      "code": ["packages/workspace/src/write.ts#writeModel","packages/workspace/src/lock.ts#withLock","packages/qualification/src/run.ts#runChecks"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.trust.of-two-writers-on-the-same-expected-revision-exactly-one-succeeds-and-the-other-is-refused-as-stale","cli.concurrency.of-two-cli-mutations-against-one-expected-revision-exactly-one-commits-and-the-other-is-refused-as-stale","cli.concurrency.an-interrupted-multi-file-installation-stays-visibly-incomplete-to-check-until-write-completes-it","mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds","qualification.framework.two-parallel-runs-use-separate-directories-and-never-remove-each-other-s-files","qualification.native.two-parallel-runs-each-use-their-own-localdb-instance-and-leave-none-behind"]
+    },
+    {
+      "id": "qualification.cross-interface",
+      "description": "One model revision is qualified across every interface artifact it projects: each profile check runs against artifacts rendered from that model, its evidence records the instances and model records it exercised, and the run binds them to one revision set.",
+      "code": ["packages/qualification/src/run.ts#runChecks","packages/qualification/src/run.ts#buildEvidence","packages/qualification/src/artifacts.ts#materialize","packages/qualification/src/revision.ts#verifyRunRevisionSet"],
+      "contract": ["assurance.schema.json#/$defs/RunRecord","assurance.schema.json#/$defs/EvidenceRecord"],
+      "verification": ["qualification.native.every-profile-check-passes-against-loom-s-own-fixtures-under-the-self-qualification-policy","qualification.native.sql-catalog-reports-a-deployed-column-whose-precision-differs-from-its-storage-record","cli.adoption.the-native-checks-a-fixture-case-names-give-their-stated-results-against-its-inputs","qualification.framework.evidence-from-another-run-or-another-revision-set-is-reported-inconsistent"]
+    },
+    {
+      "id": "qualification.fixtures",
+      "description": "The adoption fixture sets under qualification/fixtures hold cases whose expected validation, findings, readiness, changes and evidence states are authored independently of the engine, and each case meets its expectation through the core and, in a governed workspace, the CLI.",
+      "code": ["packages/cli/src/fixtures.ts#evaluateFixtures","packages/cli/src/fixtures.ts#readFixtureSets","packages/cli/src/fixtures.ts#prepareCase","packages/cli/src/fixtures.ts#compareWithExpectation"],
+      "contract": ["qualification/fixtures/conventions.json","qualification/fixtures/currency-change/expected.json"],
+      "verification": ["cli.adoption.the-fixture-sets-hold-every-case-with-an-asserted-validation-and-its-inputs","cli.adoption.the-native-checks-a-fixture-case-names-give-their-stated-results-against-its-inputs","cli.adoption.a-workspace-that-vendors-the-pinned-bundle-installs-a-complete-openapi-document-and-one-without-it-refuses-to-install"]
+    },
+    {
+      "id": "qualification.framework",
+      "description": "runChecks runs each named profile check through its built-in runner one at a time; a missing, out-of-policy, crashed, timed-out or unreadable tool and an unjustified NOT_APPLICABLE are UNKNOWN, and the aggregate is PASS only when every required check passed or is justified not applicable.",
+      "code": ["packages/qualification/src/run.ts#runChecks","packages/qualification/src/policy.ts#aggregate","packages/qualification/src/policy.ts#isRequired","packages/qualification/src/policy.ts#environmentFor","packages/qualification/src/exec.ts#exec"],
+      "contract": ["assurance.schema.json#/$defs/RunRecord","profile.schema.json#/$defs/CheckDefinition","icd/qualification.json"],
+      "verification": ["qualification.framework.a-required-check-whose-tool-is-missing-is-unknown-and-keeps-the-aggregate-from-pass","qualification.framework.an-optional-check-that-is-unknown-stays-visible-but-does-not-block-a-passing-required-check","qualification.framework.a-tool-outside-the-version-policy-is-unknown-and-its-actual-version-is-recorded","qualification.framework.a-runner-that-never-finishes-is-stopped-and-reported-unknown","qualification.framework.a-runner-that-crashes-is-reported-unknown-with-the-error","qualification.framework.an-executable-still-running-at-the-timeout-is-killed-and-reported-as-a-timeout","qualification.framework.a-tool-whose-output-is-unreadable-yields-unknown-never-a-pass","qualification.framework.not-applicable-without-a-justification-is-unknown","qualification.framework.the-aggregate-is-pass-only-when-every-required-check-passed-or-is-justified-not-applicable"]
+    },
+    {
+      "id": "qualification.isolation",
+      "description": "Each qualification run works in its own temporary directory and, for database checks, its own LocalDB instance that it creates and removes, and a fixture check runs only in an environment the policy designates.",
+      "code": ["packages/qualification/src/run.ts#runChecks","packages/qualification/src/runners/localdb.ts#runInstance","packages/qualification/src/runners/localdb.ts#createDatabase","packages/qualification/src/runners/localdb.ts#dropDatabase","packages/qualification/src/policy.ts#environmentFor"],
+      "contract": ["icd/qualification.json","assurance.schema.json#/$defs/Policy/properties/environments"],
+      "verification": ["qualification.framework.two-parallel-runs-use-separate-directories-and-never-remove-each-other-s-files","qualification.framework.a-fixture-check-runs-only-in-an-environment-the-policy-designates","qualification.native.two-parallel-runs-each-use-their-own-localdb-instance-and-leave-none-behind"]
+    },
+    {
+      "id": "qualification.metrics",
+      "description": "`loom qualify --metrics` measures the engine on its own corpora (seeded errors, legitimate changes, contradictions, stale evidence, unnecessary blocking, qualification coverage, context size and manual duplication), and --compare reports each measurement beside the recorded one.",
+      "code": ["packages/cli/src/metrics.ts#computeMetrics","packages/cli/src/metrics.ts#compareMetrics","packages/core/src/selftest/corpus.ts#seededRegressions","packages/core/src/selftest/corpus.ts#declaredContradictions"],
+      "contract": ["assurance.schema.json#/$defs/MetricsReport","qualification/metrics.json"],
+      "verification": ["cli.cli.qualify-metrics-measures-the-outcome-corpora-and-compare-reports-every-measurement-beside-the-recorded-one"]
+    },
+    {
+      "id": "qualification.native-runners",
+      "description": "The built-in runners run the native tools the profiles name (ScriptDom, DacFx, sqlcmd with LocalDB, dotnet, tsc and node, pwsh with Pester, swagger-parser, oasdiff, Ajv and mermaid), each located within its version policy and never installed.",
+      "code": ["packages/qualification/src/runners/index.ts#RUNNERS","packages/qualification/src/runners/sql.ts#SQL_RUNNERS","packages/qualification/src/runners/csharp.ts#CSHARP_RUNNERS","packages/qualification/src/runners/typescript.ts#TYPESCRIPT_RUNNERS","packages/qualification/src/runners/powershell.ts#POWERSHELL_RUNNERS","packages/qualification/src/runners/openapi.ts#OPENAPI_RUNNERS","packages/qualification/src/runners/documents.ts#DOCUMENT_RUNNERS","packages/qualification/src/tools.ts#defaultToolLocator"],
+      "contract": ["profile.schema.json#/$defs/ToolName","profile.schema.json#/$defs/CheckDefinition"],
+      "verification": ["qualification.native.every-profile-check-passes-against-loom-s-own-fixtures-under-the-self-qualification-policy","qualification.native.sql-parse-rejects-malformed-t-sql","qualification.native.csharp-build-fails-when-the-implementation-does-not-compile","qualification.native.typescript-build-fails-when-an-exported-type-loses-a-readonly-member","qualification.native.powershell-parse-rejects-a-malformed-generated-file","qualification.native.openapi-validate-rejects-a-templated-path-that-does-not-declare-its-parameter","qualification.native.json-schema-compile-rejects-a-schema-ajv-cannot-compile","qualification.native.diagrams-parse-rejects-a-malformed-diagram-in-a-generated-view","qualification.check.csharp-build","qualification.check.csharp-conformance","qualification.check.diagrams-parse","qualification.check.documentation-drift","qualification.check.documentation-yaml-roundtrip","qualification.check.json-schema-compile","qualification.check.openapi-validate","qualification.check.openapi-compatibility","qualification.check.powershell-pester6-conformance","qualification.check.powershell-parse","qualification.check.powershell-conformance","qualification.check.sql-build","qualification.check.sql-parse","qualification.check.sql-catalog","qualification.check.sql-behavior","qualification.check.sql-transaction","qualification.check.sql-migration","qualification.check.sql-operations","qualification.check.typescript-build","qualification.check.typescript-conformance"]
+    },
+    {
+      "id": "qualification.openapi-compatibility",
+      "description": "openapi.compatibility runs oasdiff between the baseline and candidate documents and passes only when every breaking item oasdiff reports is also a breaking change in the model comparison; without a baseline it is NOT_APPLICABLE with its reason.",
+      "code": ["packages/qualification/src/runners/openapi.ts#OPENAPI_RUNNERS","packages/qualification/src/runners/openapi.ts#unmatchedBreaks"],
+      "contract": ["profiles/openapi.json"],
+      "verification": ["qualification.native.openapi-compatibility-passes-when-every-oasdiff-break-is-also-a-model-break-and-is-not-applicable-without-a-baseline","qualification.framework.an-oasdiff-breaking-item-the-model-comparison-does-not-report-is-unmatched","qualification.check.openapi-compatibility"]
+    },
+    {
+      "id": "qualification.pester-version",
+      "description": "The powershell profile runs the generated Pester tests under Pester 5 and the powershell-pester6 profile under Pester 6, each selecting the module within its version policy and recording the version it used.",
+      "code": ["packages/qualification/src/runners/powershell.ts#POWERSHELL_RUNNERS"],
+      "contract": ["profiles/powershell.json","profiles/powershell-pester6.json"],
+      "verification": ["qualification.native.pester-conformance-fails-when-the-routines-break-their-contract","qualification.check.powershell-conformance","qualification.check.powershell-pester6-conformance"]
+    },
+    {
+      "id": "qualification.properties",
+      "description": "Property tests over generated models show that generated models stay valid, refused mutations leave their input unchanged, exports round-trip, canonical JSON ignores member order, renames keep every reference resolving, every changed field reaches the comparison and no target drops a record.",
+      "code": ["packages/core/src/mutate.ts#mutate","packages/core/src/exportModel.ts#exportModel","packages/core/src/exportModel.ts#importModel","packages/core/src/canonical.ts#canonicalStringify","packages/core/src/refs.ts#renameReferences"],
+      "contract": ["model.schema.json#/$defs/Model"],
+      "verification": ["cli.properties.generated-models-stay-valid-so-every-property-below-is-checked-on-models-the-engine-accepts","cli.properties.a-refused-mutation-leaves-its-input-unchanged-and-returns-no-model-and-an-accepted-one-never-edits-its-input","cli.properties.export-and-import-round-trip-every-generated-model-through-json-and-yaml","cli.properties.canonical-json-orders-members-the-same-way-whatever-order-they-were-written-in","cli.properties.every-reference-that-resolved-before-a-rename-still-resolves-after-it","cli.properties.renaming-a-type-follows-only-the-references-to-its-own-properties-never-those-of-a-type-whose-id-extends-it","cli.properties.regression-renaming-order-keeps-the-reference-to-property-note-of-order-part0","cli.properties.every-changed-field-value-reaches-the-comparison-and-every-semantic-delta-yields-a-change-never-an-empty-comparison","cli.properties.every-record-a-target-is-responsible-for-appears-in-its-coverage-manifest-and-no-target-drops-a-record-silently"]
+    },
+    {
+      "id": "qualification.signing",
+      "description": "Evidence and run records are signed with Ed25519 under the key id the signer names, from a key held in an environment variable; a tampered record fails verification, and a run without a key writes unsigned records that count as untrusted.",
+      "code": ["packages/workspace/src/trust.ts#signRecord","packages/workspace/src/trust.ts#verifyRecord","packages/qualification/src/run.ts#runChecks"],
+      "contract": ["common.schema.json#/$defs/Signature","assurance.schema.json#/$defs/PublicKey"],
+      "verification": ["qualification.framework.evidence-and-run-records-are-signed-with-the-key-the-signer-names-and-a-tampered-record-fails-verification","qualification.framework.without-a-signing-key-the-records-are-written-unsigned","qualification.framework.a-storing-run-puts-every-signed-record-into-the-workspace-evidence-store-where-the-trusted-policy-verifies-it","cli.cli.qualify-judges-the-evidence-of-its-own-signed-run-against-the-artifacts-that-run-rendered"]
+    },
+    {
+      "id": "qualification.sql-layers",
+      "description": "SQL is qualified in layers: parsing, a dacpac build, the deployed catalog against the storage and routine records, routine behavior, transaction rollback, migration of representative rows and operational backup and index checks, each against a disposable LocalDB database.",
+      "code": ["packages/qualification/src/runners/sql.ts#SQL_RUNNERS","packages/qualification/src/runners/sql.ts#declarativeDdl","packages/qualification/src/runners/catalog.ts#storageMismatches","packages/qualification/src/runners/catalog.ts#routineMismatches"],
+      "contract": ["profiles/sql.json"],
+      "verification": ["qualification.native.sql-parse-rejects-malformed-t-sql","qualification.native.sql-build-rejects-ddl-with-an-unresolved-object-reference","qualification.native.sql-catalog-reports-a-deployed-column-whose-precision-differs-from-its-storage-record","qualification.native.sql-behavior-fails-when-the-implementation-breaks-the-routine-contract","qualification.native.sql-transaction-fails-when-a-routine-leaves-writes-behind-after-a-failure-inside-its-scope-and-passes-when-it-rolls-them-back","qualification.native.sql-migration-fails-when-the-migration-loses-a-representative-row","qualification.native.sql-operations-reports-a-declared-index-the-deployed-database-lacks","qualification.framework.only-the-idempotent-create-schema-guard-is-rewritten-for-the-database-project","qualification.check.sql-parse","qualification.check.sql-build","qualification.check.sql-catalog","qualification.check.sql-behavior","qualification.check.sql-transaction","qualification.check.sql-migration","qualification.check.sql-operations"]
+    },
+    {
+      "id": "workspace.config.validation",
+      "description": "loom.json and state.json are checked against their contract, the model they govern and the workflow phase: an invalid member, an unknown profile, an undeclared component, a missing model, and the none profile or empty gates outside the unplanned phase are reported.",
+      "code": ["packages/workspace/src/config.ts#checkConfig","packages/workspace/src/config.ts#readConfig","packages/workspace/src/config.ts#readState","packages/workspace/src/config.ts#openWorkspace"],
+      "contract": ["workspace.schema.json#/$defs/LoomConfig","workspace.schema.json#/$defs/WorkflowState"],
+      "verification": ["workspace.scope.a-configuration-is-checked-against-its-contract-the-model-it-governs-and-the-phase-the-workspace-is-in","workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked"]
+    },
+    {
+      "id": "workspace.discovery.cache",
+      "description": "Discovery caches its walk of the boundary under .loom/cache keyed by directory identities and descriptor hashes, re-reads descriptors every time, and a new descriptor invalidates the cache.",
+      "code": ["packages/workspace/src/discover.ts#discoverAll","packages/workspace/src/discover.ts#cacheValid"],
+      "contract": ["workspace.schema.json#/$defs/WorkspaceCoverage"],
+      "verification": ["workspace.scope.creating-a-child-descriptor-invalidates-the-cached-discovery-result"]
+    },
+    {
+      "id": "workspace.discovery.explicit-model",
+      "description": "An explicit --model selects the document but stays under the governing workspace's scope, baseline and policy, and outside any workspace it is validation only.",
+      "code": ["packages/workspace/src/discover.ts#resolveModel","packages/workspace/src/session.ts#openSession"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.scope.an-explicit-model-path-keeps-the-governing-workspace-outside-one-it-is-validation-only","cli.cli.check-with-an-explicit-model-outside-a-workspace-is-validation-only","cli.cli.an-explicit-model-inside-a-governed-workspace-is-still-compared-with-the-trusted-accepted-baseline"]
+    },
+    {
+      "id": "workspace.discovery.full-walk",
+      "description": "`check --all` walks every descriptor under the boundary, reports overlapping claims and unreadable descriptors, and marks its coverage incomplete when a declared submodule has no checkout.",
+      "code": ["packages/workspace/src/discover.ts#discoverAll","packages/workspace/src/discover.ts#overlapFindings","packages/workspace/src/repo.ts#declaredSubmodules","packages/cli/src/commands.ts#checkAll"],
+      "contract": ["workspace.schema.json#/$defs/WorkspaceCoverage"],
+      "verification": ["cli.cli.check-all-finds-every-descriptor-and-reports-overlapping-claims","cli.concurrency.a-declared-submodule-without-a-checkout-leaves-check-all-incomplete-and-its-paths-without-an-owner","workspace.scope.a-declared-submodule-without-a-checkout-makes-coverage-incomplete-and-ownership-inside-it-unresolved"]
+    },
+    {
+      "id": "workspace.discovery.owner",
+      "description": "resolveOwner names the one model and component that claim a path by whole segments, reports an unclaimed path as SCOPE_NO_OWNER and two claims as an overlap naming both, and leaves ownership unresolved behind an unreadable descriptor or a missing checkout.",
+      "code": ["packages/workspace/src/discover.ts#resolveOwner","packages/workspace/src/discover.ts#ancestorDescriptors","packages/cli/src/commands.ts#cmdOwner"],
+      "contract": ["workspace.schema.json#/$defs/OwnershipResult"],
+      "verification": ["workspace.scope.an-unclaimed-sibling-gets-an-explicit-no-owner-result-not-the-nearest-unrelated-model","workspace.scope.a-claiming-child-plus-a-claiming-parent-is-an-overlap-naming-both-never-a-first-match","workspace.scope.an-unreadable-descriptor-makes-ownership-unresolved","workspace.scope.discovery-inside-a-governed-child-resolves-the-ancestor-owner-across-a-nearer-non-claiming-descriptor","cli.cli.owner-names-the-owning-model-or-reports-an-ungoverned-path"]
+    },
+    {
+      "id": "workspace.evidence.store",
+      "description": "The evidence store under .loom/evidence is append-only: identical content is idempotent, a rewrite is refused, and an unreadable store is reported rather than read as empty.",
+      "code": ["packages/workspace/src/evidence.ts#putEvidence","packages/workspace/src/evidence.ts#listEvidence","packages/workspace/src/evidence.ts#readEvidence"],
+      "contract": ["assurance.schema.json#/$defs/EvidenceRecord"],
+      "verification": ["workspace.trust.the-evidence-store-is-append-only-and-an-unreadable-store-is-reported","qualification.framework.a-storing-run-puts-every-signed-record-into-the-workspace-evidence-store-where-the-trusted-policy-verifies-it","cli.cli.evidence-lists-the-store-and-refuses-an-unknown-record"]
+    },
+    {
+      "id": "workspace.init.existing-refusal",
+      "description": "init refuses an existing .loom and leaves every file unchanged; with --force it restores only a missing .gitignore and never invents an authority file.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#reinit"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.init.an-existing-loom-is-refused-and-every-file-keeps-its-content","workspace.init.force-restores-a-missing-gitignore-and-nothing-else","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file","cli.cli.init-scaffolds-a-repository-root-and-refuses-a-subdirectory-and-a-second-run"]
+    },
+    {
+      "id": "workspace.init.no-child-scaffold",
+      "description": "init runs only at a repository root and refuses a subdirectory, naming the root and writing nothing.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/repo.ts#findRepositoryRoot"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.init.init-below-the-repository-root-is-refused-and-names-the-root","cli.cli.init-scaffolds-a-repository-root-and-refuses-a-subdirectory-and-a-second-run"]
+    },
+    {
+      "id": "workspace.init.overlap-refusal",
+      "description": "init refuses a repository root that an ancestor's or a descendant's descriptor already claims, naming that descriptor and writing nothing.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#overlapWith","packages/workspace/src/discover.ts#ancestorDescriptors","packages/workspace/src/discover.ts#discoverAll"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.init.init-where-an-ancestor-model-claims-the-path-is-refused-with-the-ancestor-named-and-writes-nothing","workspace.init.init-detects-a-descendant-model-instead-of-ignoring-it"]
+    },
+    {
+      "id": "workspace.init.repository-root",
+      "description": "init scaffolds .loom at the root of the Git repository that owns the code and refuses a directory outside any repository.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/repo.ts#findRepositoryRoot","packages/workspace/src/repo.ts#isRepositoryRoot"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.init-outside-any-repository-is-refused"]
+    },
+    {
+      "id": "workspace.init.scaffold",
+      "description": "init writes exactly model.json, loom.json, state.json and .gitignore, which validate as an unplanned workspace whose one placeholder component claims '.', and never stages or commits them.",
+      "code": ["packages/workspace/src/init.ts#scaffoldModel","packages/workspace/src/init.ts#scaffoldConfig","packages/workspace/src/init.ts#scaffoldState","packages/workspace/src/init.ts#initWorkspace"],
+      "contract": ["workspace.schema.json#/$defs/LoomConfig","workspace.schema.json#/$defs/WorkflowState"],
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","cli.cli.init-scaffolds-a-repository-root-and-refuses-a-subdirectory-and-a-second-run"]
+    },
+    {
+      "id": "workspace.init.staged-install",
+      "description": "init validates the scaffold, stages it in a sibling directory and renames it into place, so no staging directory and no apparently initialized workspace is left behind, and an incomplete .loom needs repair by its owner.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace"],
+      "contract": ["icd/workspace.json"],
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file"]
+    },
+    {
+      "id": "workspace.outputs.collisions",
+      "description": "Two artifact instances routed to one file, a file another model's manifest lists, and a target under .loom or an unlisted existing file are refused before anything is written.",
+      "code": ["packages/workspace/src/outputs.ts#planOutputs","packages/workspace/src/outputs.ts#collisionFindings"],
+      "contract": ["workspace.schema.json#/$defs/OutputManifest"],
+      "verification": ["workspace.outputs.two-artifact-instances-resolving-to-one-file-are-a-collision","workspace.outputs.an-output-another-model-s-manifest-lists-is-a-collision","workspace.outputs.a-protected-target-is-refused-before-anything-is-written"]
+    },
+    {
+      "id": "workspace.outputs.install-journal",
+      "description": "Installation stages every file and records its progress in a journal before replacing destinations, so an interrupted installation stays visibly incomplete to check until write or recovery completes it.",
+      "code": ["packages/workspace/src/outputs.ts#installOutputs","packages/workspace/src/outputs.ts#recoverInstall","packages/workspace/src/outputs.ts#journalPath","packages/workspace/src/outputs.ts#journalFindings"],
+      "contract": ["workspace.schema.json#/$defs/InstallJournal"],
+      "verification": ["workspace.outputs.an-interrupted-installation-stays-visibly-incomplete-until-it-is-recovered","cli.concurrency.an-interrupted-multi-file-installation-stays-visibly-incomplete-to-check-until-write-completes-it"]
+    },
+    {
+      "id": "workspace.outputs.instances",
+      "description": "Each per-component artifact instance is routed by its instance name, an unmapped one to a subdirectory of Docs/Loom named by its component, never by its bare file name.",
+      "code": ["packages/workspace/src/outputs.ts#planOutputs"],
+      "contract": ["workspace.schema.json#/$defs/ArtifactInstanceName","workspace.schema.json#/$defs/LoomConfig/properties/outputs"],
+      "verification": ["workspace.outputs.a-per-component-artifact-is-not-routed-by-its-bare-file-name","workspace.outputs.outputs-route-to-docs-loom-by-default-and-to-a-mapped-directory-otherwise"]
+    },
+    {
+      "id": "workspace.outputs.manifest",
+      "description": "The output manifest records every installed instance with its path and hash, and check reports a drifted or missing output and a stale or missing manifest.",
+      "code": ["packages/workspace/src/outputs.ts#checkOutputs","packages/workspace/src/outputs.ts#readManifest","packages/workspace/src/outputs.ts#manifestPath"],
+      "contract": ["workspace.schema.json#/$defs/OutputManifest","workspace.schema.json#/$defs/ManifestArtifact"],
+      "verification": ["workspace.outputs.drift-missing-files-and-a-stale-or-missing-manifest-are-detected","cli.cli.write-and-check-agree-on-an-installed-bundle-and-report-a-hand-edit-as-drift"]
+    },
+    {
+      "id": "workspace.outputs.routing",
+      "description": "Each enabled artifact goes to the directory outputs maps it to, an unmapped one to Docs/Loom, and an enabled target this engine does not render fails closed instead of being skipped.",
+      "code": ["packages/workspace/src/outputs.ts#planOutputs","packages/workspace/src/outputs.ts#enabledTargets"],
+      "contract": ["workspace.schema.json#/$defs/LoomConfig/properties/outputs","projection-profiles/complete.json"],
+      "verification": ["workspace.outputs.outputs-route-to-docs-loom-by-default-and-to-a-mapped-directory-otherwise","workspace.outputs.a-target-this-engine-does-not-render-fails-closed-instead-of-being-skipped"]
+    },
+    {
+      "id": "workspace.paths.identity",
+      "description": "Paths are compared by whole segments under the probed case sensitivity of the volume, and a scope root that escapes the workspace through a link or junction is rejected.",
+      "code": ["packages/workspace/src/paths.ts#containsPath","packages/workspace/src/paths.ts#isCaseSensitive","packages/workspace/src/paths.ts#realPathOf","packages/workspace/src/paths.ts#resolveRoot","packages/workspace/src/paths.ts#samePath"],
+      "contract": ["common.schema.json#/$defs/RelativePath"],
+      "verification": ["workspace.scope.containment-compares-whole-segments","workspace.scope.a-case-variant-path-resolves-under-the-probed-case-sensitivity-of-the-volume","workspace.scope.a-scope-root-that-escapes-the-workspace-through-a-junction-is-rejected"]
+    },
+    {
+      "id": "workspace.published.resolution",
+      "description": "A pinned published contract resolves only from its bundle vendored under .loom/contracts/<publisher>/<contract>@<version>.json; without it the pin stays unresolved and a dependent artifact refuses to install outside draft mode.",
+      "code": ["packages/workspace/src/published.ts#resolvePublishedContracts","packages/workspace/src/published.ts#bundleLocation"],
+      "contract": ["workspace.schema.json#/$defs/PublishedContract","model.schema.json#/$defs/PublishedContractRef"],
+      "verification": ["workspace.trust.a-pinned-published-contract-without-a-vendored-bundle-stays-unresolved","cli.adoption.a-workspace-that-vendors-the-pinned-bundle-installs-a-complete-openapi-document-and-one-without-it-refuses-to-install"]
+    },
+    {
+      "id": "workspace.revision-set.pins",
+      "description": "pinRevisionSet records the exact HEAD and dirty flag of the workspace repository and of every repository holding a scope root, and verifyRevisionSet reports a changed, missing or dirty one.",
+      "code": ["packages/workspace/src/trust.ts#pinRevisionSet","packages/workspace/src/trust.ts#verifyRevisionSet"],
+      "contract": ["result.schema.json#/$defs/SourceRevision"],
+      "verification": ["workspace.trust.the-pinned-revision-set-detects-a-changed-repository-head"]
+    },
+    {
+      "id": "workspace.scope.component-roots",
+      "description": "loom.json scope maps each component to its repository-relative roots; overlapping roots of different components are reported as SCOPE_COMPONENT_ROOT_OVERLAP, and a narrowed configuration claims exactly its roots.",
+      "code": ["packages/workspace/src/config.ts#checkConfig","packages/workspace/src/paths.ts#resolveRoot"],
+      "contract": ["workspace.schema.json#/$defs/LoomConfig/properties/scope"],
+      "verification": ["workspace.scope.workspace-at-beside-an-overlapping-component-root-fails","workspace.scope.a-narrowed-configuration-claims-exactly-its-roots-by-whole-path-segment","cli.concurrency.overlapping-component-roots-in-one-configuration-are-reported-by-check"]
+    },
+    {
+      "id": "workspace.trust.signatures",
+      "description": "A record is trusted under a signature only when it verifies under a key the trusted policy lists for that use; an unsigned, unlisted or tampered record is untrusted with the reason.",
+      "code": ["packages/workspace/src/trust.ts#verifyRecord","packages/workspace/src/trust.ts#signRecord","packages/workspace/src/trust.ts#verifiedBy","packages/workspace/src/trust.ts#readAcceptances","packages/workspace/src/trust.ts#readTrustedEvidence"],
+      "contract": ["assurance.schema.json#/$defs/PublicKey","common.schema.json#/$defs/Signature"],
+      "verification": ["workspace.trust.acceptance-is-trusted-at-the-trusted-ref-or-under-a-listed-key-never-with-a-tampered-signature","workspace.trust.evidence-is-trusted-only-when-signed-by-a-runner-key-the-trusted-policy-lists","qualification.framework.evidence-and-run-records-are-signed-with-the-key-the-signer-names-and-a-tampered-record-fails-verification"]
+    },
+    {
+      "id": "workspace.trust.trusted-ref",
+      "description": "Policy, baselines and committed acceptances are read only from the trusted Git ref, never from the working tree, so a candidate cannot authorize itself; a policy naming another ref is untrusted and a baseline whose snapshot does not match its hash is reported.",
+      "code": ["packages/workspace/src/trust.ts#resolveTrustedRef","packages/workspace/src/trust.ts#readPolicy","packages/workspace/src/trust.ts#readBaselines","packages/workspace/src/trust.ts#readAcceptances"],
+      "contract": ["assurance.schema.json#/$defs/Policy/properties/trust","assurance.schema.json#/$defs/Baseline"],
+      "verification": ["workspace.trust.policy-is-read-from-the-trusted-ref-and-a-weakened-working-tree-copy-is-ignored","workspace.trust.a-committed-baseline-is-the-trusted-head-and-a-tampered-snapshot-is-reported","cli.cli.an-explicit-model-inside-a-governed-workspace-is-still-compared-with-the-trusted-accepted-baseline"]
+    },
+    {
+      "id": "workspace.write.expected-revision",
+      "description": "writeModel writes only while the model on disk is still at the expected revision, rechecked under the workspace lock, so of two writers on one base exactly one succeeds and a stale write writes nothing.",
+      "code": ["packages/workspace/src/write.ts#writeModel","packages/workspace/src/write.ts#writeState","packages/workspace/src/lock.ts#withLock"],
+      "contract": ["icd/workspace.json","tools.schema.json#/$defs/MutateInput"],
+      "verification": ["workspace.trust.of-two-writers-on-the-same-expected-revision-exactly-one-succeeds-and-the-other-is-refused-as-stale","workspace.trust.a-write-against-a-stale-base-revision-writes-nothing","cli.cli.mutate-persists-only-onto-the-expected-revision-and-a-dry-run-writes-nothing","designer.persistence.refuses-the-second-of-two-saves-made-from-the-same-base-and-leaves-the-file-as-the-first-save-wrote-it"]
     }
   ]
 }

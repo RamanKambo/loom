@@ -173,3 +173,23 @@ test('discovery inside a governed child resolves the ancestor owner across a nea
   const parsed = readJsonFile<LoomConfig>(join(parent, '.loom', 'loom.json'));
   assert.deepEqual(parsed.scope, { sql: ['child/sql'] });
 });
+
+test('a configuration is checked against its contract, the model it governs and the phase the workspace is in', () => {
+  const root = gitInit(scratch());
+  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(openWorkspace(root).findings.filter((f) => f.severity === 'error').length, 0, 'the scaffold checks clean');
+  const configPath = join(root, '.loom', 'loom.json');
+  const scaffold = readJsonFile<LoomConfig>(configPath);
+  const findingsWith = (config: unknown): string[] => {
+    writeJson(configPath, config);
+    return codes(openWorkspace(root).findings);
+  };
+  assert.ok(findingsWith({ ...scaffold, outputs: 'Docs' }).includes('CONFIG_INVALID'));
+  assert.ok(findingsWith({ ...scaffold, projectionProfile: 'everything' }).includes('CONFIG_PROFILE_UNKNOWN'));
+  assert.ok(findingsWith({ ...scaffold, scope: { workspace: ['.'], billing: ['.'] } }).includes('SCOPE_COMPONENT_UNKNOWN'));
+  assert.ok(findingsWith({ ...scaffold, model: 'absent.json' }).includes('CONFIG_MODEL_MISSING'));
+  writeJson(join(root, '.loom', 'state.json'), { stateVersion: 1, phase: 'implementation', sealed: false });
+  const planned = findingsWith(scaffold);
+  assert.equal(planned.filter((c) => c === 'CONFIG_PROFILE_NOT_PERMITTED').length, 2, 'outside the unplanned phase the none profile and empty gates are refused');
+  assert.deepEqual(findingsWith({ ...scaffold, projectionProfile: 'contracts', gates: { policyRef: 'engineering' } }).filter((c) => c.startsWith('CONFIG_')), []);
+});
