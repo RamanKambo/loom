@@ -61,7 +61,9 @@ export const CONTRADICTIONS: readonly Contradiction[] = [
     column(m, 'billing.invoices', 'order_id').sqlType = { name: 'nvarchar', length: 600 };
   } },
   { label: 'a column mapping an unknown property', code: 'STORAGE_COLUMN_UNKNOWN_PROPERTY', break: (m) => (column(m, 'ordering.orders', 'note').property = 'memo') },
-  { label: 'a decimal stored as float', code: 'STORAGE_COLUMN_TYPE_MISMATCH', break: (m) => (column(m, 'ordering.orders', 'total').sqlType = { name: 'float' }) },
+  { label: 'a decimal stored as text', code: 'STORAGE_COLUMN_TYPE_MISMATCH', break: (m) => (column(m, 'ordering.orders', 'total').sqlType = { name: 'nvarchar', length: 20 }) },
+  { label: 'a decimal stored as binary floating point', code: 'STORAGE_COLUMN_LOSSY', break: (m) => (column(m, 'ordering.orders', 'total').sqlType = { name: 'float' }) },
+  { label: 'free text in a non-Unicode column', code: 'STORAGE_COLUMN_LOSSY', break: (m) => (column(m, 'ordering.orders', 'note').sqlType = { name: 'varchar', length: 280 }) },
   { label: 'a decimal stored with fewer digits', code: 'STORAGE_COLUMN_LOSSY', break: (m) => (column(m, 'ordering.orders', 'total').sqlType = { name: 'decimal', precision: 10, scale: 1 }) },
   { label: 'a nullable property in a NOT NULL column', code: 'STORAGE_COLUMN_NULLABILITY_MISMATCH', break: (m) => (column(m, 'ordering.orders', 'note').nullable = false) },
   { label: 'a required property without a column', code: 'STORAGE_PROPERTY_UNMAPPED', break: (m) => {
@@ -120,4 +122,40 @@ export const CONTRADICTIONS: readonly Contradiction[] = [
   { label: 'a criterion without its scenario', code: 'CRITERION_UNCOVERED', break: (m) => (pick(m.scenarios, 'scn.pay').criteria = []) },
   { label: 'a machine path in the portable model', code: 'PORTABILITY_VIOLATION', break: (m) => (pick(m.components, 'ordering').purpose = 'Reads D:\\exports\\orders.csv every night.') },
   { label: 'a credential in the portable model', code: 'PORTABILITY_VIOLATION', break: (m) => (pick(m.deploymentUnits, 'du.ordering-api').isolation = 'Server=db;Password=hunter2') },
+  { label: 'a sourced requirement without its source', code: 'SOURCE_REFERENCE_MISSING', break: (m) => (pick(m.requirements, 'req.pay-order').source = []) },
+  { label: 'a scenario restating its own criterion', code: 'CRITERION_SELF_ORACLE', break: (m) => (pick(m.scenarios, 'scn.pay').expected = 'Paying a placed order moves it to paid.') },
+  { label: 'a retrying asynchronous command without deduplication', code: 'CONCERN_UNRESOLVED', pathIncludes: 'async.deduplication', break: (m) => delete op(m, 'shipment.dispatch').async!.deduplication },
+  { label: 'an optional stored property without defaulting semantics', code: 'CONCERN_UNRESOLVED', pathIncludes: 'note/default', break: (m) => delete prop(m, 'order', 'note').default },
+  { label: 'a state-changing operation without enforcement owners', code: 'OPERATION_ENFORCEMENT_MISSING', break: (m) => delete op(m, 'order.place').enforcement },
+  { label: 'a decision comparing one alternative', code: 'DECISION_UNJUSTIFIED', break: (m) => {
+    const d = pick(m.decisions, 'dec.order-store');
+    d.alternatives = d.alternatives.slice(0, 1);
+  } },
+  { label: 'a decision resting on an invalidated assumption', code: 'DECISION_ASSUMPTION_INVALIDATED', break: (m) => (pick(m.assumptions, 'asm.peak-factor').status = 'invalidated') },
+  { label: 'a retained behavior without a scenario', code: 'RETAINED_BEHAVIOR_UNCOVERED', break: (m) => (pick(m.retainedBehaviors, 'rb.dispatch-notify').scenarios = []) },
+  { label: 'a replaced inventory item without its replacement', code: 'INVENTORY_REPLACEMENT_UNDECLARED', break: (m) => (pick(m.inventory, 'inv.dispatch-runbook').disposition = 'replaced') },
+  { label: 'rationale reviewed against another record state', code: 'RATIONALE_REVIEW_REQUIRED', break: (m) => {
+    m.attachments.push({ id: 'att.order-store', title: 'Order store rationale', source: { kind: 'document', ref: 'order-store-rationale', revision: '1' }, digest: `sha256:${'b'.repeat(64)}`, explains: [{ kind: 'decision', id: 'dec.order-store' }], reviewedAgainst: [{ record: { kind: 'decision', id: 'dec.order-store' }, hash: `sha256:${'c'.repeat(64)}` }] });
+  } },
+  { label: 'a private property on a public response', code: 'REPRESENTATION_EXPOSES_PRIVATE', break: (m) => (prop(m, 'order', 'note').visibility = 'private') },
+  { label: 'a caller supplying a server-owned value', code: 'REPRESENTATION_TRUST_VIOLATION', break: (m) => pick(m.mappings, 'map.order-request').fields.push({ from: 'note', to: 'status', transform: 'convert' }) },
+  { label: 'a mapping naming an unknown property', code: 'MAPPING_FIELD_UNKNOWN', break: (m) => pick(m.mappings, 'map.order-request').fields.push({ from: 'note', to: 'memo', transform: 'copy' }) },
+  { label: 'a copy between kinds', code: 'MAPPING_KIND_MISMATCH', break: (m) => (pick(m.mappings, 'map.order-response').fields.find((f) => f.to === 'total')!.from = 'note') },
+  { label: 'an undeclared narrowing conversion', code: 'MAPPING_LOSSY_UNDECLARED', break: (m) => (prop(m, 'order-response', 'total').decimal = { precision: 10, scale: 1 }) },
+  { label: 'a required destination neither mapped nor explained', code: 'MAPPING_INCOMPLETE', break: (m) => (pick(m.mappings, 'map.order-request').unmapped = []) },
+  { label: 'an optional source feeding a required destination', code: 'MAPPING_NULLABILITY_NARROWED', break: (m) => Object.assign(prop(m, 'order-response', 'note'), { required: true, nullable: false }) },
+  { label: 'a migration moving its contract backwards', code: 'MIGRATION_VERSION_INVALID', break: (m) => {
+    m.migrations.push({ id: 'mig.invoice', contract: { kind: 'type', id: 'invoice' }, fromVersion: 2, toVersion: 1, dependsOn: [], readers: { old: true, new: true }, writers: { old: false, new: true }, transaction: 'single', locking: 'A brief schema lock.', recovery: 'rollback', evidence: ['migration'] });
+  } },
+  { label: 'a migration dependency cycle', code: 'MIGRATION_DEPENDENCY_CYCLE', break: (m) => {
+    const base = { contract: { kind: 'storage' as const, id: 'billing.invoices' }, fromVersion: 1, toVersion: 2, readers: { old: true, new: true }, writers: { old: false, new: true }, transaction: 'single' as const, locking: 'A brief schema lock.', recovery: 'rollback' as const, evidence: ['migration' as const] };
+    m.migrations.push({ id: 'mig.a', dependsOn: ['mig.b'], ...base }, { id: 'mig.b', dependsOn: ['mig.a'], ...base });
+  } },
+  { label: 'an invariant without an enforcement owner', code: 'INVARIANT_ENFORCER_MISSING', break: (m) => (type(m, 'order').invariants = [{ form: 'prose', text: 'A paid order keeps its total.' }]) },
+  { label: 'one layer enforcing a predicate twice', code: 'INVARIANT_ENFORCEMENT_CONFLICT', break: (m) => (mutation(m, 'order.create').guard.enforcedBy ??= []).push({ component: 'ordering', layer: 'domain', purpose: 'Reject a negative total at intake.' }) },
+  { label: 'a unit timeout above its host maximum', code: 'HOST_CAPABILITY_MISMATCH', break: (m) => (pick(m.deploymentUnits, 'du.dispatch-worker').timeout = 'PT20M') },
+  { label: 'co-hosting without a decision', code: 'COHOSTING_UNJUSTIFIED', break: (m) => delete pick(m.deploymentUnits, 'du.ordering-api').decision },
+  { label: 'a service component without a deployment unit', code: 'COMPONENT_UNDEPLOYED', break: (m) => m.components.push({ id: 'audit', purpose: 'Audits orders.', responsibilities: [], kind: 'service' }) },
+  { label: 'the current version listed as supported', code: 'VERSION_SUPPORT_INVALID', break: (m) => (type(m, 'order').supported = [{ version: 1, baseline: 'bl-1', status: 'supported', retirement: { condition: 'no-active-required-consumers' } }]) },
+  { label: 'a consumer bound to an unsupported version', code: 'VERSION_BINDING_UNSUPPORTED', break: (m) => (pick(m.consumerBindings, 'cb.billing-order').version = 3) },
 ];

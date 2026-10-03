@@ -37,6 +37,14 @@ export class DependencyGraph {
     for (const [id, entry] of index.criteria) {
       this.link({ kind: 'criterion', id }, { kind: 'requirement', id: entry.requirement.id }, 'reference');
     }
+    // An operation exchanging a type uses the mappings into and out of it, so a
+    // changed mapping reaches the operations whose values it transforms.
+    for (const o of model.operations ?? []) {
+      const exchanged = new Set([o.request, o.response, o.result].filter((t): t is string => typeof t === 'string'));
+      for (const m of model.mappings ?? []) {
+        if (exchanged.has(m.from) || exchanged.has(m.to)) this.link({ kind: 'operation', id: o.id }, { kind: 'mapping', id: m.id }, 'reference');
+      }
+    }
   }
 
   private recordLevel(ref: RecordRef): RecordRef {
@@ -65,6 +73,13 @@ export class DependencyGraph {
     add(this.reverse, t, f);
   }
 
+  /** Direct arcs in either direction, with their kinds; centrality counts them. */
+  adjacent(ref: RecordRef): { dependencies: Array<{ ref: RecordRef; kinds: EdgeKind[] }>; consumers: Array<{ ref: RecordRef; kinds: EdgeKind[] }> } {
+    const k = nodeKey(ref);
+    const list = (m: Map<string, Set<EdgeKind>> | undefined) => [...(m ?? new Map<string, Set<EdgeKind>>())].map(([n, kinds]) => ({ ref: parseKey(n), kinds: [...kinds].sort() }));
+    return { dependencies: list(this.forward.get(k)), consumers: list(this.reverse.get(k)) };
+  }
+
   /** Direct dependencies of a record. */
   dependenciesOf(ref: RecordRef): RecordRef[] {
     return [...(this.forward.get(nodeKey(ref))?.keys() ?? [])].map(parseKey);
@@ -90,19 +105,51 @@ export class DependencyGraph {
         queue.push({ key: consumer, path: entry.path, kinds: entry.edgeKinds });
       }
     }
+    // The component a consumer binding names is affected with the binding, but
+    // only there: following its owner arcs would mark every record it owns.
+    for (const entry of [...out.values()]) {
+      if (entry.ref.kind !== 'consumerBinding') continue;
+      const b = (this.index.model.consumerBindings ?? []).find((x) => x.id === entry.ref.id);
+      if (!b || b.status === 'retired') continue;
+      const k = nodeKey(b.consumer);
+      if (seen.has(k) || out.has(k)) continue;
+      out.set(k, { ref: b.consumer, path: [...entry.path, b.consumer.id], edgeKinds: entry.edgeKinds });
+    }
     return out;
   }
 
   /** Consumers of the targets as affected elements, in a deterministic order. */
   affected(targets: readonly RecordRef[]): AffectedElement[] {
-    return [...this.consumersOf(targets).values()]
-      .map((c) => ({ ref: c.ref, reason: 'depends-on' as const, path: c.path, edgeKinds: c.edgeKinds }))
-      .sort(compareAffected);
+    const out = [...this.consumersOf(targets).values()].map((c) => ({ ref: c.ref, reason: 'depends-on' as const, path: c.path, edgeKinds: c.edgeKinds }) as AffectedElement);
+    const seen = new Set([...targets, ...out.map((a) => a.ref)].map(nodeKey));
+    for (const a of coHosted(this.index.model, targets)) if (!seen.has(nodeKey(a.ref))) out.push(a);
+    return out.sort(compareAffected);
   }
 }
 
 export function compareAffected(a: AffectedElement, b: AffectedElement): number {
   return a.ref.kind.localeCompare(b.ref.kind) || a.ref.id.localeCompare(b.ref.id);
+}
+
+/**
+ * Components that share a deployment unit with a changed unit or component:
+ * a scaling, identity or isolation change of the unit reaches all of them.
+ */
+export function coHosted(model: Model, targets: readonly RecordRef[]): AffectedElement[] {
+  const out = new Map<string, AffectedElement>();
+  for (const t of targets) {
+    for (const u of model.deploymentUnits ?? []) {
+      const viaUnit = t.kind === 'deploymentUnit' && t.id === u.id;
+      const viaComponent = t.kind === 'component' && u.components.includes(t.id);
+      if (!viaUnit && !viaComponent) continue;
+      for (const c of u.components) {
+        if (viaComponent && c === t.id) continue;
+        const ref: RecordRef = { kind: 'component', id: c };
+        if (!out.has(nodeKey(ref))) out.set(nodeKey(ref), { ref, reason: 'co-hosted', path: viaUnit ? [u.id, c] : [t.id, u.id, c] });
+      }
+    }
+  }
+  return [...out.values()];
 }
 
 /** Dependency graph of a model. */
@@ -135,6 +182,12 @@ export function changeImpact(before: Model, after: Model, changed: readonly Reco
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ ref: c.ref, reason: 'new-consumer', path: c.path, edgeKinds: c.edgeKinds });
+  }
+  for (const a of [...coHosted(before, changed), ...coHosted(after, changed)]) {
+    const key = nodeKey(a.ref);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(a);
   }
   const direct = out.filter((x) => x.reason === 'direct-change');
   return [...direct, ...out.filter((x) => x.reason !== 'direct-change').sort(compareAffected)];

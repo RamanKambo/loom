@@ -2,6 +2,8 @@ import type { Finding, FindingCode, Model, RecordRef, Repair, RecordKind } from 
 import { FINDING_RULES } from '../codes.js';
 import type { ModelIndex } from '../records.js';
 import type { DependencyGraph } from '../graph.js';
+import type { EvaluationInputs } from '../inputs.js';
+import { modelRevision } from '../hash.js';
 
 export interface ReportExtra {
   repairs?: Repair[];
@@ -12,6 +14,10 @@ export interface RuleContext {
   readonly model: Model;
   readonly index: ModelIndex;
   readonly graph: DependencyGraph;
+  /** Verified records supplied by an adapter; empty in plain validation, so input-dependent rules stay silent. */
+  readonly inputs: EvaluationInputs;
+  /** The canonical revision of the model being validated. */
+  revision(): string;
   /**
    * Record a finding. Severity comes from FINDING_RULES, so it has one home;
    * impact is every transitive consumer of `about`.
@@ -22,11 +28,14 @@ export interface RuleContext {
 /** One semantic rule pass. Rules are pure and total: an unresolved reference is a finding, never an exception. */
 export type Rule = (ctx: RuleContext) => void;
 
-export function createContext(model: Model, index: ModelIndex, graph: DependencyGraph, sink: Finding[]): RuleContext {
+export function createContext(model: Model, index: ModelIndex, graph: DependencyGraph, sink: Finding[], inputs: EvaluationInputs = {}): RuleContext {
+  let revision: string | undefined;
   return {
     model,
     index,
     graph,
+    inputs,
+    revision: () => (revision ??= modelRevision(model)),
     report(code, path, message, about, fix, extra) {
       const finding: Finding = { code, severity: FINDING_RULES[code].severity, path, message, fix };
       const impact = graph.affected(about);

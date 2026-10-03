@@ -6395,8 +6395,11 @@ export interface DescribeData {
   }[];
   comparisonRules: {
     rule: string;
-    kind: ChangeKind;
-    dimension: Dimension;
+    /**
+     * 'contextual' when the kind is decided per change, for example by the consumers of an added enum value.
+     */
+    kind: ChangeKind | 'contextual';
+    dimension: Dimension | 'contextual';
     description: string;
   }[];
   projectionTargets: {

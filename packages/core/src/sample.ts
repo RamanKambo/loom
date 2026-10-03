@@ -270,6 +270,7 @@ export function sampleModel(): Model {
         kind: 'query',
         description: 'Read the state of a shipment.',
         response: 'shipment-status',
+        errors: [{ code: 'SHIPMENT_NOT_FOUND', status: 404, retryable: false, description: 'No shipment has the id.' }],
         authority: { permission: 'shipment.read', scheme: 'bearer' },
         bindings: [
           {
@@ -596,7 +597,10 @@ export function sampleModel(): Model {
           { id: 'separate', description: 'Each component has its own container.', consequences: 'Independent scaling and a second deployment pipeline.', rejectedBecause: 'Billing load is small and follows order intake.' },
         ],
         criteria: ['Operational cost.', 'Failure isolation.'],
-        basedOn: [{ kind: 'workload', id: 'wl.checkout' }],
+        basedOn: [
+          { kind: 'workload', id: 'wl.checkout' },
+          { kind: 'inventory', id: 'inv.container-platform' },
+        ],
         chosen: 'shared',
         affects: [{ kind: 'deploymentUnit', id: 'du.ordering-api' }],
         authority: 'team-architecture',
@@ -618,6 +622,21 @@ export function sampleModel(): Model {
         disposition: 'retained',
         components: ['ordering', 'fulfillment', 'billing'],
         executableBaseline: { status: 'not-applicable', reason: 'The store has no behavior of its own to capture.' },
+      },
+      {
+        id: 'inv.container-platform',
+        product: 'Container platform',
+        version: '1',
+        role: 'Runs the ordering and billing services.',
+        capabilities: ['HTTP and queue triggers.', 'Automatic scaling.'],
+        limits: ['No local durable state.'],
+        compatibility: 'OCI images.',
+        license: 'Covered by the platform agreement.',
+        support: 'supported',
+        source: [{ kind: 'vendor-documentation', ref: 'container platform service description', revision: '1' }],
+        disposition: 'retained',
+        components: ['ordering', 'billing'],
+        executableBaseline: { status: 'not-applicable', reason: 'The platform has no behavior of its own to capture.' },
       },
       {
         id: 'inv.dispatch-runbook',
@@ -779,6 +798,7 @@ export function sampleModel(): Model {
       {
         id: 'host.container',
         kind: 'container',
+        inventory: 'inv.container-platform',
         capabilities: { triggers: ['http', 'queue'], maxTimeout: 'PT10M', maxConcurrency: 1000, scaling: 'automatic', state: 'stateless', identities: ['workload-identity', 'service-account'] },
         limits: ['No local durable state.'],
       },

@@ -541,8 +541,8 @@
             "required": ["rule", "kind", "dimension", "description"],
             "properties": {
               "rule": { "type": "string" },
-              "kind": { "$ref": "result.schema.json#/$defs/ChangeKind" },
-              "dimension": { "$ref": "common.schema.json#/$defs/Dimension" },
+              "kind": { "description": "'contextual' when the kind is decided per change, for example by the consumers of an added enum value.", "anyOf": [{ "$ref": "result.schema.json#/$defs/ChangeKind" }, { "const": "contextual" }] },
+              "dimension": { "anyOf": [{ "$ref": "common.schema.json#/$defs/Dimension" }, { "const": "contextual" }] },
               "description": { "type": "string" }
             }
           }

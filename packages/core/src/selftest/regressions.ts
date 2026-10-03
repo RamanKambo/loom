@@ -134,7 +134,7 @@ export const REGRESSIONS: readonly Regression[] = [
     run: (t) => {
       const m = fresh();
       pick(pick(m.storage, 'ordering.orders').columns, 'total').sqlType = { name: 'float' };
-      assert(t, codes(t, m).includes('STORAGE_COLUMN_TYPE_MISMATCH'), 'float storage of a decimal is rejected');
+      assert(t, codes(t, m).includes('STORAGE_COLUMN_LOSSY'), 'float storage of a decimal is rejected as lossy');
       const n = fresh();
       pick(pick(n.storage, 'ordering.orders').columns, 'total').sqlType = { name: 'decimal', precision: 10, scale: 2 };
       assert(t, codes(t, n).includes('STORAGE_COLUMN_LOSSY'), 'narrower precision is lossy');

@@ -111,6 +111,8 @@ export const references: Rule = (ctx) => {
       ],
     });
   }
+  // With resolved bundles supplied, publishedRules judges every pin, resolved or not.
+  if (ctx.inputs.publishedContracts !== undefined) return;
   for (const [id, paths] of [...external].sort(([a], [b]) => a.localeCompare(b))) {
     ctx.report(
       FINDING.PUBLISHED_CONTRACT_UNRESOLVED,

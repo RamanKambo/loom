@@ -89,18 +89,18 @@ export function envelope(tool: string, parts: EnvelopeParts): ResultEnvelope {
   return env;
 }
 
-const refusal = (cause: Refusal['cause'], message: string): Refusal => ({ cause, message });
-const asFinding = (code: Finding['code'], path: string, message: string, fix: string): Finding => ({ code, severity: FINDING_RULES[code].severity, path, message, fix });
+export const refusal = (cause: Refusal['cause'], message: string): Refusal => ({ cause, message });
+export const asFinding = (code: Finding['code'], path: string, message: string, fix: string): Finding => ({ code, severity: FINDING_RULES[code].severity, path, message, fix });
 
 /** Structurally load an untrusted model value, or return the refusal envelope for it. */
-function loadOrRefuse(tool: string, value: unknown): { model: Model } | { refused: ResultEnvelope } {
+export function loadOrRefuse(tool: string, value: unknown): { model: Model } | { refused: ResultEnvelope } {
   const findings = structuralFindings(value);
   if (findings.length) return { refused: envelope(tool, { model: null, findings, refusal: refusal('invalid-input', 'The model does not satisfy the structural contract.') }) };
   return { model: value as Model };
 }
 
 /** Workspace inputs are resolved by an adapter before the core sees them. */
-function workspaceRefusal(tool: string): ResultEnvelope {
+export function workspaceRefusal(tool: string): ResultEnvelope {
   return envelope(tool, {
     model: null,
     findings: [],
@@ -177,6 +177,13 @@ export function diffTool(input: { before?: unknown; after?: unknown }): ResultEn
   return envelope('loom.diff', { model: a.model, findings: [...bf, ...af], data });
 }
 
+/** A draft can never be reported qualified: its qualification is unqualified, with the draft as the reason. */
+function projectionStates(model: Model, findings: Finding[], draft: boolean): States {
+  const states = defaultStates(validationState(validate(model)));
+  if (draft) states.qualification = { state: 'unqualified', reasons: [reason(FINDING.PROJECTION_DRAFT, 'The artifact is an incomplete draft; it can neither qualify nor publish a contract.', findings.flatMap((f) => f.refs ?? []))] };
+  return states;
+}
+
 function projectionRefusal(tool: string, model: Model, e: unknown): ResultEnvelope {
   if (e instanceof LoomInvalidModelError) {
     const unsupported = e.findings.some((f) => f.code === 'PROFILE_UNSUPPORTED_CONSTRUCT');
@@ -192,7 +199,7 @@ export function projectTool(input: { model?: unknown; workspace?: boolean; targe
   try {
     const r = renderTarget(loaded.model, input.target, { draft: input.draft === true });
     const data: ProjectData = { files: r.files, draft: r.draft, coverage: [] };
-    return envelope('loom.project', { model: loaded.model, findings: r.findings, data });
+    return envelope('loom.project', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
     return projectionRefusal('loom.project', loaded.model, e);
   }
@@ -205,7 +212,7 @@ export function projectAllTool(input: { model?: unknown; workspace?: boolean; dr
   try {
     const r = renderAll(loaded.model, { draft: input.draft === true });
     const data: ProjectData = { files: r.files, draft: r.draft, coverage: [] };
-    return envelope('loom.projectAll', { model: loaded.model, findings: r.findings, data });
+    return envelope('loom.projectAll', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
     return projectionRefusal('loom.projectAll', loaded.model, e);
   }

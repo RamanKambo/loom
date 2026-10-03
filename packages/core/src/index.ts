@@ -34,6 +34,10 @@ export {
   exportTool,
   importTool,
   checkRevision,
+  loadOrRefuse,
+  workspaceRefusal,
+  refusal,
+  asFinding,
 } from './envelope.js';
 export type { EnvelopeParts, MutateToolInput } from './envelope.js';
 export { canonicalStringify, canonicalJson, deepEqual, deepClone } from './canonical.js';
@@ -54,10 +58,26 @@ export {
   columnOf,
 } from './records.js';
 export type { ModelIndex, CollectionName, PropertyRef } from './records.js';
-export { DependencyGraph, dependencyGraph, changeImpact } from './graph.js';
+export { DependencyGraph, dependencyGraph, changeImpact, coHosted } from './graph.js';
 export { collectReferences, resolveReference, renameReferences, splitQualified } from './refs.js';
 export type { Reference, Resolution } from './refs.js';
 export { sqlTypeText, SQL_KIND_FAMILY } from './sql-types.js';
 export { predicateText, expressionText } from './projections/context.js';
+export { effectiveGates, durationSeconds } from './inputs.js';
+export type { EvaluationInputs, EffectiveGates, ImplementationGate } from './inputs.js';
+export { resolveScope, ownersOf, makeAcceptanceCheck, trustedAcceptances, baselineAccepted, acceptanceScopeCovers, CONTRACT_KINDS, refKey, parseRefKey } from './scope.js';
+export type { Scope } from './scope.js';
+export { CONCERNS } from './rules/concerns.js';
+export { compareBaseline, classifyChange, derivedSeal, gateFindings, retirementFindings } from './baseline.js';
+export type { BaselineComparison, Approval } from './baseline.js';
+export { deriveObligations, evaluateEvidence, invalidatedBy, changedInputs, isEngineSelfTest } from './evidence.js';
+export type { EvidenceEvaluation } from './evidence.js';
+export { checkReadiness, recomputeReadiness, designOrder, makeMaturity } from './readiness.js';
+export type { ReadinessResult, Recompute } from './readiness.js';
+export { retrieveContext, continuationToken } from './retrieval.js';
+export type { ContextRequest, ContextResult } from './retrieval.js';
+export { describe, TOOL_EFFECTS } from './describe.js';
+export { describeTool, contextTool, checkReadinessTool, planChangeTool, compareBaselineTool, evaluateEvidenceTool } from './tools.js';
+export type { PlanChangeToolInput } from './tools.js';
 export { sampleModel } from './sample.js';
 export { selfTest } from './selftest/index.js';

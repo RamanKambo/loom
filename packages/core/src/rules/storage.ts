@@ -49,6 +49,10 @@ export const storageRules: Rule = (ctx) => {
         ctx.report(FINDING.STORAGE_TYPE_UNSUPPORTED, `${cpath}/sqlType`, `column '${s.id}.${c.name}' stores ${p.kind} property '${type.id}.${p.name}', which the SQL profile cannot store in one column`, about, `store the members of '${type.id}.${p.name}' in their own storage record`);
         continue;
       }
+      if (p.kind === 'decimal' && (c.sqlType.name === 'float' || c.sqlType.name === 'real')) {
+        ctx.report(FINDING.STORAGE_COLUMN_LOSSY, `${cpath}/sqlType`, `column '${s.id}.${c.name}' stores exact decimal '${type.id}.${p.name}' as binary floating point ${c.sqlType.name}, which rounds decimal values`, about, `store '${type.id}.${p.name}' as decimal(${p.decimal?.precision ?? 18},${p.decimal?.scale ?? 0})`);
+        continue;
+      }
       if (!family.includes(c.sqlType.name)) {
         ctx.report(FINDING.STORAGE_COLUMN_TYPE_MISMATCH, `${cpath}/sqlType`, `column '${s.id}.${c.name}' is ${sqlTypeText(c.sqlType)}, outside the ${p.kind} family (${family.join(', ')}) of '${type.id}.${p.name}'`, about, `store '${type.id}.${p.name}' as one of ${family.join(', ')}`);
         continue;

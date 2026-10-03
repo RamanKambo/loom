@@ -158,8 +158,8 @@ export const operationRules: Rule = (ctx) => {
       if (!m) continue;
       if (o.kind === 'query') {
         ctx.report(FINDING.OPERATION_INVOCATION_INVALID, path, `query '${o.id}' invokes mutation '${m.id}'; a query changes no state`, about, `make operation '${o.id}' a command, or remove the invocation`);
-      } else if (m.owner !== o.owner) {
-        ctx.report(FINDING.OPERATION_INVOCATION_INVALID, path, `operation '${o.id}' (owner '${o.owner}') invokes mutation '${m.id}' owned by '${m.owner}'`, [...about, ref('mutation', m.id)], `invoke an operation or routine owned by '${m.owner}' instead`);
+      } else if (m.owner !== o.owner && o.enforcement?.persistence !== m.owner) {
+        ctx.report(FINDING.OPERATION_INVOCATION_INVALID, path, `operation '${o.id}' (owner '${o.owner}') invokes mutation '${m.id}' owned by '${m.owner}'`, [...about, ref('mutation', m.id)], `name '${m.owner}' as the persistence enforcer of operation '${o.id}', or invoke an operation or routine owned by '${m.owner}'`);
       }
     }
     representationRules(ctx, o);

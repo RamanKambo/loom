@@ -28,13 +28,15 @@ function checkSlot(
   if (p.kind !== slot.kind || !sameDecimal(p.decimal, slot.decimal)) {
     ctx.report(FINDING.BINDING_KIND_MISMATCH, path, `routine '${routineId}' ${role} '${slot.name}' is '${slot.kind}' but binds '${slot.binds}', which is '${p.kind}'`, about, `give ${role} '${slot.name}' the kind and shape of '${slot.binds}', then ${step}`);
   }
-  if (p.nullable !== slot.nullable) {
+  // A param may be stricter than the property it writes; a result column may be looser than the property it reads.
+  const unsafe = role === 'param' ? slot.nullable && !p.nullable : !slot.nullable && p.nullable;
+  if (unsafe) {
     ctx.report(
       FINDING.BINDING_NULLABILITY_MISMATCH,
       path,
       `routine '${routineId}' ${role} '${slot.name}' is ${slot.nullable ? 'nullable' : 'non-nullable'} but binds '${slot.binds}', which is ${p.nullable ? 'nullable' : 'non-nullable'}`,
       about,
-      `set ${role} '${slot.name}' nullable to ${String(p.nullable)}, then ${step}`,
+      role === 'param' ? `make param '${slot.name}' non-nullable, or '${slot.binds}' nullable, then ${step}` : `make result column '${slot.name}' nullable, then ${step}`,
     );
   }
 }

@@ -112,6 +112,17 @@ export function unsupportedReason(t: SqlType): string | null {
   return null;
 }
 
+/**
+ * True when a pattern admits printable ASCII only: it contains no non-ASCII
+ * character and no construct that matches outside a listed set (a dot, a
+ * negated class or a negated shorthand), so a non-Unicode column holds every
+ * matching value.
+ */
+export function asciiOnly(pattern: string | undefined): boolean {
+  if (pattern === undefined || !/^[\x20-\x7e]*$/.test(pattern)) return false;
+  return !/(^|[^\\])\.|\[\^|\\[SWDp]/.test(pattern);
+}
+
 export interface LogicalShape {
   kind: Kind;
   enumValues?: string[];
@@ -131,7 +142,7 @@ export function lossReason(shape: LogicalShape, t: SqlType): string | null {
       const max = shape.bounds?.maxLength;
       if (max === undefined) return `an unbounded string cannot fit ${sqlTypeText(t)}; declare maxLength or use length max`;
       if ((t.length ?? 1) < max) return `${sqlTypeText(t)} is shorter than maxLength ${max}`;
-      if (!UNICODE_TYPES.has(t.name)) return `${sqlTypeText(t)} is not a Unicode type and loses characters outside its code page`;
+      if (!UNICODE_TYPES.has(t.name) && !asciiOnly(shape.bounds?.pattern)) return `${sqlTypeText(t)} is not a Unicode type and loses characters outside its code page`;
       return null;
     }
     case 'enum': {
