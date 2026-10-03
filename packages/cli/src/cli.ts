@@ -42,7 +42,7 @@ const USAGE = [
   '  migrate [--model <path>] [--to <file>] Migrate a model document to the current format into a new file.',
   '  baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]',
   '  accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]',
-  '  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...]',
+  '  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...] | readiness --task <file>',
   '  plan --patch <file> [--base <revision>] [--ack id,...]',
   '  mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]',
   '  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics] [--key-id <id> --key-env <var>]',

@@ -368,6 +368,14 @@ export function cmdAccept(ctx: Context): CommandResult {
 
 function taskOf(ctx: Context): TaskSpec {
   const a = ctx.args;
+  const file = flag(a, 'task');
+  if (file !== undefined) {
+    // Substitutes and records have no flag form, so a whole TaskSpec comes from a file.
+    const task = readJsonFile(resolve(ctx.cwd, file), 'task file') as TaskSpec;
+    const errors = schemaErrors('TaskSpec', task);
+    if (errors.length) throw new UsageError(`the task file is not a valid task: ${errors.map((e) => `${e.pointer || '(root)'} ${e.message}`).join('; ')}`);
+    return task;
+  }
   const components = list(a, 'components');
   const requirements = list(a, 'requirements');
   const records = list(a, 'records');
