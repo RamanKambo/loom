@@ -6,24 +6,59 @@
   "language": "mermaid",
   "description": "Mermaid state, workflow, dependency, ownership and hosting diagrams inside the workflow and architecture views.",
   "artifacts": [
-    { "target": "workflow", "instancing": "singleton" },
-    { "target": "architecture", "instancing": "singleton" }
+    {
+      "target": "workflow",
+      "instancing": "singleton"
+    },
+    {
+      "target": "architecture",
+      "instancing": "singleton"
+    }
   ],
   "supports": [
-    { "construct": "diagram.state", "description": "State diagrams from mutation transitions." },
-    { "construct": "diagram.flow", "description": "Workflow dependency, component dependency, ownership and hosting flowcharts." }
+    {
+      "construct": "diagram.state",
+      "description": "State diagrams from mutation transitions."
+    },
+    {
+      "construct": "diagram.flow",
+      "description": "Workflow dependency, component dependency, ownership and hosting flowcharts."
+    }
   ],
   "unsupported": [],
   "tooling": [
-    { "tool": "mermaid", "versionPolicy": { "major": 11 }, "required": true, "purpose": "Parses every diagram block." }
+    {
+      "tool": "mermaid",
+      "versionPolicy": {
+        "major": 12
+      },
+      "required": true,
+      "purpose": "Parses every diagram block."
+    }
   ],
-  "proofLimits": ["Parsing proves diagram syntax only, not layout or completeness."],
+  "proofLimits": [
+    "Parsing proves diagram syntax only, not layout or completeness."
+  ],
   "checks": [
     {
-      "id": "diagrams.parse", "revision": 1, "layer": "parse", "evidence": "parse",
+      "id": "diagrams.parse",
+      "revision": 1,
+      "layer": "parse",
+      "evidence": "parse",
       "claim": "Every Mermaid block in the generated views parses.",
-      "tool": { "name": "mermaid", "versionPolicy": { "major": 11 } }, "runner": "mermaid-parse",
-      "inputs": ["workflow", "architecture"], "environment": "process", "requiredByDefault": true,
+      "tool": {
+        "name": "mermaid",
+        "versionPolicy": {
+          "major": 12
+        }
+      },
+      "runner": "mermaid-parse",
+      "inputs": [
+        "workflow",
+        "architecture"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
       "limits": "Syntax only."
     }
   ]

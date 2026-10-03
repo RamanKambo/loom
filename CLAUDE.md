@@ -14,10 +14,14 @@ scripts: @package.json
   `packages/*/dist`, never the sources.
 - `npm run generate` regenerates `packages/core/schema/patch.schema.json` and
   `packages/core/src/generated/*` from the authored schemas; never edit those files by hand.
-- `npm run self-test` is the whole proof: the engine battery, then the CLI's drift check and probes.
-  The core has no per-test runner; `selfTest()` throws on the first failed assertion and names it.
-- A probe reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent or
-  unreadable and is never a pass.
+- `npm run self-test` is the whole proof: the engine battery, the CLI's drift check, then every
+  profile check run by `packages/qualification` against Loom's own fixtures under
+  `qualification/policy.json`. The core has no per-test runner; `selfTest()` throws on the first
+  failed assertion and names it. `npm run test:workspace` and `npm run test:qualification` run the
+  adapters' node:test suites.
+- A check reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent,
+  outside its profile's version policy, unreadable, crashed or timed out, and is never a pass; a
+  required `UNKNOWN` fails the self-test.
 - Running `packages/cli/dist/index.js` with node and no arguments prints the CLI usage. Its
   `--check <model> <dir>` mode is the drift gate: it compares committed projections with a fresh
   projection and never writes.
@@ -33,8 +37,8 @@ scripts: @package.json
   control documents and hand-authored fixtures. `packages/core/scripts/generate.mjs` emits the TypeScript types,
   the embedded schema bundle, the registries and the contract digest into `src/generated`.
 - `packages/core` is pure: no Node or browser-only API. The same engine runs in the CLI, the MCP
-  server and the browser designer; file IO lives only in `packages/cli`, stdio only in
-  `packages/mcp-server`.
+  server and the browser designer; file IO lives only in the adapters (`packages/workspace`,
+  `packages/qualification`, `packages/cli`), stdio only in `packages/mcp-server`.
 - One pipeline, every step in `packages/core/src`:
   - `importModel` reads JSON or YAML; `loadModel` checks the structure against the generated
     bundle with Ajv 2020-12 and refuses another model format version.
@@ -94,14 +98,14 @@ scripts: @package.json
 - **The engine checks declared contracts; it never executes them.** `packages/core` never executes
   SQL or PowerShell and never calls a live service. Routine contracts become generated conformance
   tests, the `sql-contract-tests` and `pester-contract-tests` targets, which the adopting pipeline
-  runs against its own real artifacts. Do not add execution to the engine — the CLI self-test's
-  probe (f) (`packages/cli/src/probes.ts`) proves `sql-contract-tests` against a disposable LocalDB
-  database it creates and drops itself, but that stays in `packages/cli`, never the engine.
+  runs against its own real artifacts. Do not add execution to the engine: native tools run only in
+  `packages/qualification`, through the built-in runner a profile check names, in the run's own
+  temporary directory and, for database checks, its own LocalDB instance.
 - **The MCP server writes only JSON-RPC to stdout.** Any other output corrupts the protocol, so
   status goes to stderr.
 - **Keep the fixtures' roles.** `examples/conforming` must pass and `examples/violating` must fail
-  both the generated Pester file (probe (b), on `examples/conforming/fulfillment/rb_dispatch.ps1`
-  and its violating copy) and the generated `contract-tests.sql` run against a real database
-  (probe (f), on `examples/conforming/ordering/sp_place_order.sql` and its violating copy). The
-  violating SQL fixture must break exactly the one contract named by its header comment and the
-  `EXPECTED_VIOLATION_CODE` in `packages/cli/src/probes.ts`.
+  every conformance check that runs them: the Pester checks, `sql.behavior`, `csharp.conformance`
+  and `typescript.conformance` (`selfFixtures` in `packages/qualification/src/selfqualify.ts`
+  wires them). The violating SQL fixture must break exactly the one contract named by its header
+  comment and the `negativeControl.reason` of `sql.behavior` in
+  `packages/core/schema/profiles/sql.json`.

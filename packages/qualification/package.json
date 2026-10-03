@@ -1,0 +1,30 @@
+{
+  "name": "@loom/qualification",
+  "version": "1.0.0",
+  "description": "Loom qualification adapter: runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "@loom/core": "1.0.0",
+    "@loom/workspace": "1.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "jsdom": "^30.1.1",
+    "mermaid": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0"
+  }
+}

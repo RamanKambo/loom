@@ -5,27 +5,92 @@
   "version": 1,
   "description": "Generated reference, interface control, register, readiness, coverage and evidence views, plus the canonical YAML export.",
   "artifacts": [
-    { "target": "yaml", "instancing": "singleton" },
-    { "target": "reference", "instancing": "singleton" },
-    { "target": "icd", "instancing": "per-component" },
-    { "target": "registers", "instancing": "singleton" },
-    { "target": "readiness-report", "instancing": "singleton" },
-    { "target": "coverage-matrix", "instancing": "singleton" },
-    { "target": "evidence-index", "instancing": "singleton" }
+    {
+      "target": "yaml",
+      "instancing": "singleton"
+    },
+    {
+      "target": "reference",
+      "instancing": "singleton"
+    },
+    {
+      "target": "icd",
+      "instancing": "per-component"
+    },
+    {
+      "target": "registers",
+      "instancing": "singleton"
+    },
+    {
+      "target": "readiness-report",
+      "instancing": "singleton"
+    },
+    {
+      "target": "coverage-matrix",
+      "instancing": "singleton"
+    },
+    {
+      "target": "evidence-index",
+      "instancing": "singleton"
+    }
   ],
   "supports": [
-    { "construct": "view.generated", "description": "Every view is rendered from its owning records and identifies the revisions it was rendered from." }
+    {
+      "construct": "view.generated",
+      "description": "Every view is rendered from its owning records and identifies the revisions it was rendered from."
+    }
   ],
   "unsupported": [],
   "tooling": [],
-  "proofLimits": ["A current view establishes that it matches its inputs, not that the inputs are correct."],
+  "proofLimits": [
+    "A current view establishes that it matches its inputs, not that the inputs are correct."
+  ],
   "checks": [
     {
-      "id": "documentation.drift", "revision": 1, "layer": "drift", "evidence": "drift",
+      "id": "documentation.drift",
+      "revision": 1,
+      "layer": "drift",
+      "evidence": "drift",
       "claim": "Every enabled generated file is byte-identical to a fresh projection of the identified inputs and listed in a current manifest.",
-      "tool": { "name": "node", "versionPolicy": { "minimum": "22.0" } }, "runner": "projection-drift",
-      "inputs": ["yaml", "reference", "icd", "registers", "readiness-report", "coverage-matrix", "evidence-index"], "environment": "process", "requiredByDefault": true,
+      "tool": {
+        "name": "node",
+        "versionPolicy": {
+          "minimum": "22.0"
+        }
+      },
+      "runner": "projection-drift",
+      "inputs": [
+        "yaml",
+        "reference",
+        "icd",
+        "registers",
+        "readiness-report",
+        "coverage-matrix",
+        "evidence-index"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
       "limits": "Generated-file equality only."
+    },
+    {
+      "id": "documentation.yaml-roundtrip",
+      "revision": 1,
+      "layer": "parse",
+      "evidence": "parse",
+      "claim": "The canonical YAML export parses back to a model whose canonical JSON equals the source model.",
+      "tool": {
+        "name": "node",
+        "versionPolicy": {
+          "minimum": "22.0"
+        }
+      },
+      "runner": "yaml-roundtrip",
+      "inputs": [
+        "yaml"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
+      "limits": "Round trip of the exported model only; hand-authored YAML is not covered."
     }
   ]
 }

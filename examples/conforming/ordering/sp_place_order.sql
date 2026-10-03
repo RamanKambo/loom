@@ -1,4 +1,4 @@
--- Conformance fixture for probe (f): satisfies every check the generated
+-- Conformance fixture for the sql.behavior check: satisfies every check the generated
 -- contract-tests.sql runs against routine ordering.sp_place_order (params
 -- @p_total DECIMAL(12,2) and @p_note NVARCHAR(280), in this order; result
 -- columns order_id NVARCHAR(64) NOT NULL and status NVARCHAR(16) NOT NULL, in

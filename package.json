@@ -8,6 +8,7 @@
   "workspaces": [
     "packages/core",
     "packages/workspace",
+    "packages/qualification",
     "packages/cli",
     "packages/mcp-server"
   ],
@@ -17,6 +18,7 @@
     "clean": "tsc -b --clean",
     "self-test": "node packages/cli/dist/index.js --self-test",
     "test:workspace": "node --test \"packages/workspace/dist/test/*.test.js\"",
+    "test:qualification": "node --test --test-concurrency=1 \"packages/qualification/dist/test/*.test.js\"",
     "smoke:mcp": "node packages/mcp-server/dist/smoke.js"
   },
   "devDependencies": {

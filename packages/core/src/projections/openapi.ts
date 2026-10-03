@@ -2,6 +2,7 @@ import type { Binding, HttpParameter, Model, Operation, SecurityScheme, TypeDef 
 import { SOURCE_NOTICE } from './notice.js';
 import { coverTypes, typeSchema, valueSchema } from './json.js';
 import { pointer, type RenderContext } from './context.js';
+import { splitQualified } from '../refs.js';
 
 type Json = Record<string, unknown>;
 export const OPENAPI_FILE = 'openapi.json';
@@ -104,6 +105,13 @@ export function projectOpenApi(model: Model, ctx: RenderContext): Record<string,
   for (const op of model.operations) {
     const http = (op.bindings ?? []).filter((b) => b.transport === 'http' && b.method && b.path);
     if (http.length) ctx.covered({ kind: 'operation', id: op.id }, OPENAPI_FILE, ...http.map((b) => pointer('paths', b.path as string, (b.method as string).toLowerCase())));
+    if (http.length) {
+      // A body typed by a published-contract record would be a $ref to a schema this document does not hold.
+      const bodies = [op.request, op.response, op.async?.accepted?.type, ...http.flatMap((b) => (b.responses ?? []).map((r) => r.type)), ...(op.errors ?? []).map((e) => e.type)];
+      for (const id of new Set(bodies)) {
+        if (id !== undefined && splitQualified(id)) ctx.unsupported('type.externalSchema', { kind: 'operation', id: op.id }, `operation '${op.id}' carries '${id}', which points into a published contract the document does not include`);
+      }
+    }
     http.forEach((b, i) => {
       if (b.requestMediaType !== undefined && FORM_MEDIA.test(b.requestMediaType)) {
         ctx.unsupported('http.multipart', { kind: 'operation', id: op.id }, `operation '${op.id}' takes a ${b.requestMediaType} body, which this profile does not represent`);

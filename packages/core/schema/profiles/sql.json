@@ -72,7 +72,7 @@
     {
       "tool": "scriptdom",
       "versionPolicy": {
-        "major": 170
+        "minimum": "16.1"
       },
       "required": true,
       "purpose": "Parses generated T-SQL."
@@ -110,27 +110,6 @@
   ],
   "checks": [
     {
-      "id": "sql.parse",
-      "revision": 1,
-      "layer": "parse",
-      "evidence": "parse",
-      "claim": "Every generated T-SQL file parses without error under ScriptDom for the selected platform.",
-      "tool": {
-        "name": "scriptdom",
-        "versionPolicy": {
-          "major": 170
-        }
-      },
-      "runner": "sql-parse",
-      "inputs": [
-        "sql",
-        "sql-contract-tests"
-      ],
-      "environment": "process",
-      "requiredByDefault": true,
-      "limits": "Syntax only; no object reference, type or runtime behavior is checked."
-    },
-    {
       "id": "sql.build",
       "revision": 1,
       "layer": "build",
@@ -149,6 +128,27 @@
       "environment": "process",
       "requiredByDefault": true,
       "limits": "Target-platform build only; no data, permission or transaction behavior."
+    },
+    {
+      "id": "sql.parse",
+      "revision": 1,
+      "layer": "parse",
+      "evidence": "parse",
+      "claim": "Every generated T-SQL file parses without error under ScriptDom for the selected platform.",
+      "tool": {
+        "name": "scriptdom",
+        "versionPolicy": {
+          "minimum": "16.1"
+        }
+      },
+      "runner": "sql-parse",
+      "inputs": [
+        "sql",
+        "sql-contract-tests"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
+      "limits": "Syntax only; no object reference, type or runtime behavior is checked."
     },
     {
       "id": "sql.catalog",

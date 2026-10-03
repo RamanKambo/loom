@@ -35,7 +35,8 @@ export {
   SOURCE_NOTICE,
 } from './project.js';
 export type { ProjectOptions, RenderedTarget, RenderedBundle, ArtifactProfile } from './project.js';
-export { sqlDeploymentOrder } from './projections/sql.js';
+export { sqlDeploymentOrder, procedureName } from './projections/sql.js';
+export { sampleValue, sampleObject, decimalSample } from './projections/samples.js';
 export { exportModel, exportYaml, importModel } from './exportModel.js';
 export {
   envelope,

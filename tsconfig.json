@@ -8,6 +8,9 @@
       "path": "./packages/workspace"
     },
     {
+      "path": "./packages/qualification"
+    },
+    {
       "path": "./packages/cli"
     },
     {

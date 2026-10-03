@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, appendFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, appendFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
-import SwaggerParser from '@apidevtools/swagger-parser';
 import {
   selfTest,
   validate,
-  project,
   projectToFiles,
   sampleModel,
-  sqlDeploymentOrder,
   exportModel,
   importModel,
   LoomStructuralError,
@@ -18,15 +16,13 @@ import {
   type Finding,
   type Model,
 } from '@loom/core';
-import { probePesterParse, probePesterRun, probeScriptDom, probeMermaid, probeLocalDb, type ProbeResult } from './probes.js';
+import { selfQualify } from '@loom/qualification';
 
 type Log = (line: string) => void;
 const out: Log = (line) => console.log(line);
 
 // dist/index.js sits three levels below the loom root.
 const LOOM_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const TMP = join(LOOM_ROOT, '.tmp');
-const EXAMPLES = join(LOOM_ROOT, 'examples');
 
 function printUsage(): void {
   out(
@@ -34,7 +30,7 @@ function printUsage(): void {
       'loom - schema-driven systems-engineering model',
       '',
       'Usage:',
-      '  loom --self-test                  Run the engine self-test, the drift check and the standard-tool probes.',
+      "  loom --self-test                  Run the engine self-test, the drift check and every profile check against Loom's own fixtures.",
       '  loom --check <model> [dir]        Validate a model (JSON or YAML); exit non-zero on any error finding.',
       '                                    With <dir>, also compare every projected file byte-for-byte (CRLF as LF)',
       '                                    and exit non-zero on drift. Never writes.',
@@ -157,35 +153,12 @@ function runWrite(file: string, dir: string, log: Log): number {
   return 0;
 }
 
-/** (d) model.yaml parses back to the same model. */
-function probeYaml(yamlText: string, model: Model): ProbeResult {
-  const title = 'YAML parse-back of model.yaml';
-  try {
-    const same = exportModel(importModel(yamlText)) === exportModel(model);
-    return {
-      id: 'd',
-      title,
-      status: same ? 'PASS' : 'FAIL',
-      detail: same ? 'parsed model re-exports to the identical canonical JSON' : 'parsed model differs from the source model',
-    };
-  } catch (e) {
-    return { id: 'd', title, status: 'FAIL', detail: e instanceof Error ? e.message : String(e) };
-  }
-}
-
 async function runSelfTest(): Promise<number> {
   // Prints the core summary line and throws on any assertion failure.
   selfTest();
 
-  // OpenAPI projection, proved by a standard validator the engine does not own.
-  const api = (await SwaggerParser.validate(
-    JSON.parse(JSON.stringify(project(sampleModel(), 'openapi'))),
-  )) as { paths?: Record<string, unknown> };
-  out(`loom cli: OpenAPI 3.1 projection validated by swagger-parser (paths: ${Object.keys(api.paths ?? {}).join(', ')}).`);
-
-  const work = join(TMP, 'cli-self-test');
-  rmSync(work, { recursive: true, force: true });
-  mkdirSync(work, { recursive: true });
+  // A per-run directory, so parallel self-tests never delete each other's files.
+  const work = mkdtempSync(join(tmpdir(), 'loom-cli-self-test-'));
   try {
     const model = sampleModel();
     const modelFile = join(work, 'model.json');
@@ -200,39 +173,6 @@ async function runSelfTest(): Promise<number> {
     if (cleanCode !== 0 || captured.some((l) => l.startsWith('DRIFT'))) {
       throw new Error(`cli self-test: a fresh projection should check clean, got exit ${cleanCode}: ${captured.join(' | ')}`);
     }
-
-    // Standard-tool proofs on the files just written. Per-component artifacts
-    // sit in <component>/ directories; SQL files apply in foreign-key order.
-    const testFile = join(projection, 'fulfillment', 'Routines.Contract.Tests.ps1');
-    const sqlComponents = sqlDeploymentOrder(model);
-    const schemaFiles = sqlComponents.map((c) => join(projection, c, 'schema.sql'));
-    const contractFiles = sqlComponents.map((c) => join(projection, c, 'contract-tests.sql'));
-    const probes: ProbeResult[] = [
-      probePesterParse(testFile),
-      probePesterRun(testFile, EXAMPLES),
-      probeScriptDom([...schemaFiles, ...contractFiles]),
-      probeYaml(readFileSync(join(projection, 'model.yaml'), 'utf8'), model),
-      await probeMermaid({
-        'workflows.md': readFileSync(join(projection, 'workflows.md'), 'utf8'),
-        'reference.md': readFileSync(join(projection, 'reference.md'), 'utf8'),
-        'architecture.md': readFileSync(join(projection, 'architecture.md'), 'utf8'),
-      }),
-      // The override env vars exist only to prove the UNKNOWN path in a test
-      // run, without uninstalling SqlLocalDB or removing sqlcmd from PATH.
-      probeLocalDb(
-        {
-          schemaSql: schemaFiles,
-          contractTestsSql: contractFiles,
-          conformingFixture: join(EXAMPLES, 'conforming', 'ordering', 'sp_place_order.sql'),
-          violatingFixture: join(EXAMPLES, 'violating', 'ordering', 'sp_place_order.sql'),
-        },
-        {
-          sqlLocalDbExe: process.env['LOOM_PROBE_SQLLOCALDB_EXE'],
-          sqlcmdExe: process.env['LOOM_PROBE_SQLCMD_EXE'],
-        },
-      ),
-    ];
-    for (const p of probes) out(`probe (${p.id}) ${p.title}: ${p.status} - ${p.detail}`);
 
     // Drift: edit one file, delete one, add a stray one.
     appendFileSync(join(projection, 'ordering', 'schema.sql'), '-- hand edit\n', 'utf8');
@@ -249,16 +189,19 @@ async function runSelfTest(): Promise<number> {
       `loom cli: drift check - fresh projection exit 0; edited ordering/schema.sql -> "DRIFT ordering/schema.sql: stale", ` +
         `deleted reference.md -> "DRIFT reference.md: missing", stray ordering/notes.txt warned, exit ${driftCode}.`,
     );
-
-    const failed = probes.filter((p) => p.status === 'FAIL');
-    out(
-      `loom cli self-test ${failed.length ? 'FAIL' : 'PASS'}: swagger-parser OK, drift check OK, probes ` +
-        `${probes.map((p) => `${p.id}=${p.status}`).join(' ')}.`,
-    );
-    return failed.length ? 1 : 0;
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+
+  // Every profile check, run by the qualification adapter against Loom's own fixtures.
+  const q = await selfQualify(LOOM_ROOT);
+  for (const c of q.run.checks) out(`check ${c.check} (${c.required ? 'required' : 'optional'}): ${c.result} - ${c.reason ?? ''}`);
+  for (const id of q.unlisted) out(`check ${id}: the self-qualification policy neither requires it nor marks it optional`);
+  const counts = (['PASS', 'FAIL', 'UNKNOWN', 'NOT_APPLICABLE'] as const).map((r) => `${q.run.checks.filter((c) => c.result === r).length} ${r}`).join(', ');
+  // A required UNKNOWN keeps the aggregate from PASS, so a missing tool can never read as a qualified self-test.
+  const ok = q.run.aggregate === 'PASS' && q.unlisted.length === 0;
+  out(`loom cli self-test ${ok ? 'PASS' : 'FAIL'}: drift check OK; qualification ${q.run.aggregate} over ${q.run.checks.length} checks (${counts}).`);
+  return ok ? 0 : 1;
 }
 
 async function main(): Promise<number> {

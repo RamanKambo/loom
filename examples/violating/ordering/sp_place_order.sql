@@ -1,4 +1,4 @@
--- Violating fixture for probe (f): breaks exactly one contract of routine
+-- Violating fixture for the sql.behavior check: breaks exactly one contract of routine
 -- ordering.sp_place_order by returning status before order_id. The generated
 -- contract-tests.sql must raise THROW 50005 ("first result set columns differ
 -- from the contract (expected order_id, status in this order)"). Applied

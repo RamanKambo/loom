@@ -379,7 +379,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
       {
         "tool": "mermaid",
         "versionPolicy": {
-          "major": 11
+          "major": 12
         },
         "required": true,
         "purpose": "Parses every diagram block."
@@ -398,7 +398,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "tool": {
           "name": "mermaid",
           "versionPolicy": {
-            "major": 11
+            "major": 12
           }
         },
         "runner": "mermaid-parse",
@@ -485,6 +485,26 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "environment": "process",
         "requiredByDefault": true,
         "limits": "Generated-file equality only."
+      },
+      {
+        "id": "documentation.yaml-roundtrip",
+        "revision": 1,
+        "layer": "parse",
+        "evidence": "parse",
+        "claim": "The canonical YAML export parses back to a model whose canonical JSON equals the source model.",
+        "tool": {
+          "name": "node",
+          "versionPolicy": {
+            "minimum": "22.0"
+          }
+        },
+        "runner": "yaml-roundtrip",
+        "inputs": [
+          "yaml"
+        ],
+        "environment": "process",
+        "requiredByDefault": true,
+        "limits": "Round trip of the exported model only; hand-authored YAML is not covered."
       }
     ]
   },
@@ -1030,7 +1050,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
       {
         "tool": "scriptdom",
         "versionPolicy": {
-          "major": 170
+          "minimum": "16.1"
         },
         "required": true,
         "purpose": "Parses generated T-SQL."
@@ -1068,27 +1088,6 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ],
     "checks": [
       {
-        "id": "sql.parse",
-        "revision": 1,
-        "layer": "parse",
-        "evidence": "parse",
-        "claim": "Every generated T-SQL file parses without error under ScriptDom for the selected platform.",
-        "tool": {
-          "name": "scriptdom",
-          "versionPolicy": {
-            "major": 170
-          }
-        },
-        "runner": "sql-parse",
-        "inputs": [
-          "sql",
-          "sql-contract-tests"
-        ],
-        "environment": "process",
-        "requiredByDefault": true,
-        "limits": "Syntax only; no object reference, type or runtime behavior is checked."
-      },
-      {
         "id": "sql.build",
         "revision": 1,
         "layer": "build",
@@ -1107,6 +1106,27 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "environment": "process",
         "requiredByDefault": true,
         "limits": "Target-platform build only; no data, permission or transaction behavior."
+      },
+      {
+        "id": "sql.parse",
+        "revision": 1,
+        "layer": "parse",
+        "evidence": "parse",
+        "claim": "Every generated T-SQL file parses without error under ScriptDom for the selected platform.",
+        "tool": {
+          "name": "scriptdom",
+          "versionPolicy": {
+            "minimum": "16.1"
+          }
+        },
+        "runner": "sql-parse",
+        "inputs": [
+          "sql",
+          "sql-contract-tests"
+        ],
+        "environment": "process",
+        "requiredByDefault": true,
+        "limits": "Syntax only; no object reference, type or runtime behavior is checked."
       },
       {
         "id": "sql.catalog",

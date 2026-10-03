@@ -1,0 +1,51 @@
+{
+  "policyVersion": 1,
+  "id": "loom-self-qualification",
+  "revision": 1,
+  "trust": {
+    "ref": "refs/heads/main",
+    "acceptanceVia": "trusted-ref",
+    "acceptanceKeys": [],
+    "evidenceKeys": []
+  },
+  "changeClasses": [],
+  "readiness": {
+    "implementation": { "requires": "none" },
+    "integration": { "evidence": [] },
+    "release": { "evidence": [] }
+  },
+  "substitutes": [],
+  "qualification": {
+    "required": [
+      "csharp.build",
+      "csharp.conformance",
+      "diagrams.parse",
+      "documentation.drift",
+      "documentation.yaml-roundtrip",
+      "json-schema.compile",
+      "openapi.validate",
+      "openapi.compatibility",
+      "powershell.parse",
+      "powershell.conformance",
+      "powershell-pester6.conformance",
+      "sql.parse",
+      "sql.build",
+      "sql.catalog",
+      "sql.behavior",
+      "sql.transaction",
+      "sql.migration",
+      "sql.operations",
+      "typescript.build",
+      "typescript.conformance"
+    ],
+    "optional": []
+  },
+  "environments": [
+    {
+      "id": "localdb-fixture",
+      "kind": "disposable-fixture",
+      "designated": true,
+      "description": "A LocalDB instance the qualification run creates for itself and stops and deletes when the run ends; it holds only fixture databases."
+    }
+  ]
+}
