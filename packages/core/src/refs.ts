@@ -1,6 +1,6 @@
 import type { Model, RecordKind, RecordRef } from './generated/types.js';
 import { REFERENCE_FIELDS } from './generated/registry.js';
-import { findRecord, resolveProperty, type ModelIndex } from './records.js';
+import { findRecord, longestIdPrefix, resolveProperty, type ModelIndex } from './records.js';
 import { visitPath } from './walk.js';
 
 /** A reference as the contract declares it: a field and the record kind it names. */
@@ -83,10 +83,16 @@ export function resolveReference(index: ModelIndex, r: Reference): Resolution {
 
 /**
  * Rewrite every reference to `from` (a record of `kind`) so it names `to`.
- * Mutates `model` in place; the caller passes a clone. Property references
- * '<from>.<name>' follow a renamed type.
+ * Mutates `model` in place; the caller passes a clone. A property reference
+ * '<typeId>.<name>' follows a renamed type only when that type is the one it
+ * names: type ids may contain dots, so 'order.part.note' names a property of
+ * 'order.part', not of 'order', and resolves by the longest type id as
+ * resolveProperty reads it.
  */
 export function renameReferences(model: Model, kind: RecordKind, from: string, to: string): void {
+  // The type ids as they were before the rename, whether or not the caller already renamed the record.
+  const typeIds = kind === 'type' ? [...new Set([...model.types.map((t) => (t.id === to ? from : t.id)), from])] : [];
+  const namesFrom = (property: string): boolean => kind === 'type' && longestIdPrefix(property, typeIds) === from;
   for (const f of REFERENCE_FIELDS) {
     visitPath(model, f.path, (v) => {
       const parent = v.parents[v.parents.length - 1] as Record<string, unknown> | unknown[] | undefined;
@@ -96,11 +102,11 @@ export function renameReferences(model: Model, kind: RecordKind, from: string, t
         if (f.target === 'record') {
           const ref = current as RecordRef;
           if (ref.kind === kind && ref.id === from) return { ...ref, id: to };
-          if (kind === 'type' && ref.kind === 'property' && ref.id.startsWith(`${from}.`)) return { ...ref, id: `${to}${ref.id.slice(from.length)}` };
+          if (ref.kind === 'property' && namesFrom(ref.id)) return { ...ref, id: `${to}${ref.id.slice(from.length)}` };
           return current;
         }
         const s = String(current);
-        if (f.target === 'property') return kind === 'type' && s.startsWith(`${from}.`) ? `${to}${s.slice(from.length)}` : current;
+        if (f.target === 'property') return namesFrom(s) ? `${to}${s.slice(from.length)}` : current;
         const expected = f.target === 'invocation' ? String((parent as { kind?: string }).kind) : f.target;
         if ((expected === kind || expected === 'any') && s === from) return to;
         return current;
