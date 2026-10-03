@@ -31,6 +31,16 @@ export interface EvaluationInputs {
   artifacts?: Readonly<Record<string, string>>;
 }
 
+/**
+ * The inputs an artifact is rendered with when it is qualified or when the
+ * currency of evidence about it is checked: the resolved published contracts
+ * and nothing else. A view rendered with every input summarizes the evidence
+ * store, so evidence about it would go stale the moment it was stored.
+ */
+export function artifactInputs(inputs: EvaluationInputs): EvaluationInputs | undefined {
+  return inputs.publishedContracts?.length ? { publishedContracts: inputs.publishedContracts } : undefined;
+}
+
 export type ImplementationGate = 'none' | 'proposed-contract' | 'accepted-contract';
 
 export interface EffectiveGates {

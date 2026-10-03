@@ -1,7 +1,7 @@
 import { createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { canonicalHash, canonicalJson, modelRevision, schemaErrors, structuralFindings } from '@loom/core';
+import { LoomInvalidModelError, PROJECTION_FILES, artifactInputs, canonicalHash, canonicalJson, modelRevision, renderTarget, schemaErrors, structuralFindings } from '@loom/core';
 import type { Acceptance, Baseline, EvaluationInputs, EvidenceRecord, Finding, Model, Policy, PublicKey, Signature, SourceRevision } from '@loom/core';
 import { LOOM_DIR, loomDirOf, openWorkspace } from './config.js';
 import { listEvidence } from './evidence.js';
@@ -263,7 +263,30 @@ export function gatherEvaluationInputs(root: string, options: { trustedRef?: str
   const pc = resolvePublishedContracts(root, ws.value.model);
   findings.push(...pc.findings);
   inputs.publishedContracts = pc.bundles;
+  const artifacts = artifactHashes(ws.value.model, inputs);
+  if (artifacts) inputs.artifacts = artifacts;
   return { inputs, ref, findings };
+}
+
+/**
+ * Current hashes of the artifact instances that stored evidence names,
+ * rendered exactly as a qualification run renders them, so evidence about an
+ * artifact goes stale when the model changes what that artifact holds. An
+ * instance the current model cannot render gets no hash.
+ */
+function artifactHashes(model: Model, inputs: EvaluationInputs): Record<string, string> | undefined {
+  const named = new Set((inputs.evidence ?? []).flatMap((e) => e.record.inputs.filter((i) => i.ref.startsWith('artifact:')).map((i) => i.ref.slice('artifact:'.length))));
+  if (!named.size) return undefined;
+  const rendering = artifactInputs(inputs);
+  const out: Record<string, string> = {};
+  for (const target of new Set([...named].map((instance) => PROJECTION_FILES[instance.split('#')[0] as string]).filter((t) => t !== undefined))) {
+    try {
+      for (const f of renderTarget(model, target, rendering ? { inputs: rendering } : {}).files) if (named.has(f.instance)) out[f.instance] = f.hash;
+    } catch (e) {
+      if (!(e instanceof LoomInvalidModelError)) throw e;
+    }
+  }
+  return out;
 }
 
 /**

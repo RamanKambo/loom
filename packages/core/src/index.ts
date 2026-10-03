@@ -80,7 +80,7 @@ export { collectReferences, resolveReference, renameReferences, splitQualified }
 export type { Reference, Resolution } from './refs.js';
 export { sqlTypeText, SQL_KIND_FAMILY } from './sql-types.js';
 export { predicateText, expressionText } from './projections/context.js';
-export { effectiveGates, durationSeconds } from './inputs.js';
+export { artifactInputs, effectiveGates, durationSeconds } from './inputs.js';
 export type { EvaluationInputs, EffectiveGates, ImplementationGate } from './inputs.js';
 export { resolveScope, ownersOf, makeAcceptanceCheck, trustedAcceptances, baselineAccepted, acceptanceScopeCovers, CONTRACT_KINDS, refKey, parseRefKey } from './scope.js';
 export type { Scope } from './scope.js';

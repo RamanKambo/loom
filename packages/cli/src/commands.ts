@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import {
   LoomInvalidModelError,
   PROFILES,
+  artifactInputs,
   asFinding,
   checkReadinessTool,
   compareBaselineTool,
@@ -462,12 +463,13 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
   const fixturesFile = flag(a, 'fixtures');
   const fixtures = (fixturesFile ? readJsonFile(resolve(ctx.cwd, fixturesFile), 'fixtures file') : {}) as Fixtures;
   if (!fixtures.baseline && s.inputs.baseline) fixtures.baseline = s.inputs.baseline.model;
+  const rendering = artifactInputs(s.inputs);
   const out = await runChecks({
     root: s.workspace.root,
     model: s.model,
     checks,
     fixtures,
-    inputs: s.inputs,
+    ...(rendering ? { inputs: rendering } : {}),
     ...(s.inputs.policy ? { policy: s.inputs.policy } : {}),
     ...(signer ? { signer } : {}),
     ...(has(a, 'store') ? { store: true } : {}),
