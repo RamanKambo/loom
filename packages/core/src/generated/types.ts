@@ -934,9 +934,10 @@ export interface MetricsReport {
     contractDigest: Hash;
   };
   seededErrors: MetricCount;
-  legitimateChanges: MetricCount;
-  staleEvidence: MetricCount;
-  unnecessaryBlocking: MetricCount;
+  legitimateChanges: MetricCount1;
+  escapedContradictions?: MetricCount2;
+  staleEvidence: MetricCount3;
+  unnecessaryBlocking: MetricCount4;
   qualificationCoverage: {
     required: number;
     passed: number;
@@ -961,9 +962,49 @@ export interface MetricsReport {
   }[];
 }
 /**
- * Cases measured, cases with the intended outcome, and the ids of cases without it.
+ * Seeded defects: the self-test regressions and every fixture case that expects an invalid model or an error finding; a missed entry escaped detection.
  */
 export interface MetricCount {
+  cases: number;
+  intended: number;
+  missed: string[];
+}
+/**
+ * Fixture cases of a valid model that expect no error finding; a missed entry was refused or misjudged.
+ */
+export interface MetricCount1 {
+  cases: number;
+  intended: number;
+  missed: string[];
+}
+/**
+ * Declared contradictions of the valid sample; a missed entry is one validation accepted.
+ */
+export interface MetricCount2 {
+  cases: number;
+  intended: number;
+  missed: string[];
+}
+/**
+ * Fixture expectations about evidence currency: evidence a change must invalidate, and current evidence that must not be reported stale.
+ */
+export interface MetricCount3 {
+  cases: number;
+  intended: number;
+  missed: string[];
+}
+/**
+ * Fixture readiness expectations of a ready task; a missed entry came out blocked or unresolved.
+ */
+export interface MetricCount4 {
+  cases: number;
+  intended: number;
+  missed: string[];
+}
+/**
+ * Cases measured, cases with the intended outcome, and the ids of cases without it.
+ */
+export interface MetricCount5 {
   cases: number;
   intended: number;
   missed: string[];

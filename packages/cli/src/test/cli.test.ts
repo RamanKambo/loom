@@ -4,11 +4,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { exportModel, modelRevision, sampleModel, textHash } from '@loom/core';
-import type { LoomConfig, Model, Policy, ResultEnvelope } from '@loom/core';
+import { exportModel, modelRevision, sampleModel, schemaErrors, textHash } from '@loom/core';
+import type { LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
+const LOOM_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 
 interface Run {
   status: number;
@@ -248,6 +249,29 @@ test('qualify runs a named check and refuses an unknown one', () => {
   const run = (r.env.data as { run: { checks: Array<{ check: string; result: string }> } }).run;
   assert.equal(run.checks[0]?.result, 'PASS');
   assert.equal(loom(dir, 'qualify', '--checks', 'no.such.check').status, 2);
+});
+
+test('qualify --metrics measures the outcome corpora and --compare reports every measurement beside the recorded one', () => {
+  const dir = workspace({ projectionProfile: 'documentation' });
+  commitAll(dir, 'workspace');
+  const recorded = join(LOOM_ROOT, 'qualification', 'metrics.json');
+  const r = loom(dir, 'qualify', '--checks', 'documentation.yaml-roundtrip', '--metrics', '--compare', recorded);
+  assert.equal(r.status, 0, r.stdout);
+  const metrics = (r.env.data as { metrics: MetricsReport }).metrics;
+  assert.deepEqual(schemaErrors('MetricsReport', metrics), []);
+  for (const c of [metrics.seededErrors, metrics.legitimateChanges, metrics.escapedContradictions!, metrics.staleEvidence, metrics.unnecessaryBlocking]) {
+    assert.ok(c.cases > 0 && c.intended + c.missed.length === c.cases, 'every count names its corpus and accounts for each case');
+  }
+  assert.equal(metrics.manualDuplication.handMaintainedStructuralDeclarations, 0, 'no structural declaration is maintained by hand');
+  const baseline = JSON.parse(readFileSync(recorded, 'utf8')) as MetricsReport;
+  const byMetric = new Map((metrics.comparison ?? []).map((c) => [c.metric, c]));
+  assert.equal(byMetric.get('seededErrors.intended')?.baseline, baseline.seededErrors.intended);
+  assert.equal(byMetric.get('qualificationCoverage.required')?.baseline, baseline.qualificationCoverage.required);
+  assert.equal(byMetric.get('qualificationCoverage.required')?.current, 1, 'the current coverage is that of this run');
+  assert.ok(['seededErrors', 'legitimateChanges', 'escapedContradictions', 'staleEvidence', 'unnecessaryBlocking', 'qualificationCoverage', 'contextSize', 'manualDuplication'].every((m) => [...byMetric.keys()].some((k) => k.startsWith(`${m}.`))), 'every metric is compared');
+  assert.equal(loom(dir, 'qualify', '--checks', 'documentation.yaml-roundtrip', '--compare', recorded).status, 2, '--compare needs --metrics');
+  writeJson(join(dir, 'not-a-report.json'), { metricsVersion: 2 });
+  assert.equal(loom(dir, 'qualify', '--checks', 'documentation.yaml-roundtrip', '--metrics', '--compare', join(dir, 'not-a-report.json')).status, 2, 'a baseline that is not a metrics report is refused');
 });
 
 test('evidence lists the store and refuses an unknown record', () => {

@@ -1,0 +1,141 @@
+{
+  "contextSize": [
+    {
+      "bytes": 47977,
+      "records": 62,
+      "target": "sample/component:ordering",
+      "truncated": false
+    },
+    {
+      "bytes": 42747,
+      "records": 53,
+      "target": "sample/component:fulfillment",
+      "truncated": false
+    },
+    {
+      "bytes": 34173,
+      "records": 42,
+      "target": "sample/component:billing",
+      "truncated": false
+    },
+    {
+      "bytes": 29010,
+      "records": 37,
+      "target": "api-database/component:invoicing-api",
+      "truncated": false
+    },
+    {
+      "bytes": 24906,
+      "records": 29,
+      "target": "api-database/component:invoicing-store",
+      "truncated": false
+    },
+    {
+      "bytes": 6869,
+      "records": 8,
+      "target": "api-database/component:reporting",
+      "truncated": false
+    },
+    {
+      "bytes": 6863,
+      "records": 8,
+      "target": "api-database/component:dunning",
+      "truncated": false
+    },
+    {
+      "bytes": 45287,
+      "records": 53,
+      "target": "async-workflow/component:statements-api",
+      "truncated": false
+    },
+    {
+      "bytes": 48842,
+      "records": 59,
+      "target": "async-workflow/component:render-worker",
+      "truncated": false
+    },
+    {
+      "bytes": 43775,
+      "records": 49,
+      "target": "async-workflow/component:notifier",
+      "truncated": false
+    },
+    {
+      "bytes": 43834,
+      "records": 52,
+      "target": "async-workflow/component:statements-store",
+      "truncated": false
+    },
+    {
+      "bytes": 9777,
+      "records": 14,
+      "target": "cli-library/component:csvcheck-cli",
+      "truncated": false
+    },
+    {
+      "bytes": 9629,
+      "records": 14,
+      "target": "cli-library/component:csvcheck-lib",
+      "truncated": false
+    },
+    {
+      "bytes": 18044,
+      "records": 26,
+      "target": "currency-change/component:orders-api",
+      "truncated": false
+    },
+    {
+      "bytes": 17092,
+      "records": 24,
+      "target": "currency-change/component:orders-store",
+      "truncated": false
+    },
+    {
+      "bytes": 12162,
+      "records": 17,
+      "target": "currency-change/component:storefront",
+      "truncated": false
+    }
+  ],
+  "engine": {
+    "contractDigest": "sha256:baef9861569b1172daec7ab28026b4f3fd3581a522e8b43e26fa421529dd1a17",
+    "version": "1.0.0"
+  },
+  "escapedContradictions": {
+    "cases": 102,
+    "intended": 102,
+    "missed": []
+  },
+  "legitimateChanges": {
+    "cases": 14,
+    "intended": 14,
+    "missed": []
+  },
+  "manualDuplication": {
+    "files": [],
+    "handMaintainedStructuralDeclarations": 0
+  },
+  "metricsVersion": 1,
+  "qualificationCoverage": {
+    "failed": 0,
+    "notApplicable": 0,
+    "passed": 20,
+    "required": 20,
+    "unknown": 0
+  },
+  "seededErrors": {
+    "cases": 27,
+    "intended": 27,
+    "missed": []
+  },
+  "staleEvidence": {
+    "cases": 2,
+    "intended": 2,
+    "missed": []
+  },
+  "unnecessaryBlocking": {
+    "cases": 11,
+    "intended": 11,
+    "missed": []
+  }
+}

@@ -444,10 +444,11 @@
             "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" }
           }
         },
-        "seededErrors": { "$ref": "#/$defs/MetricCount" },
-        "legitimateChanges": { "$ref": "#/$defs/MetricCount" },
-        "staleEvidence": { "$ref": "#/$defs/MetricCount" },
-        "unnecessaryBlocking": { "$ref": "#/$defs/MetricCount" },
+        "seededErrors": { "description": "Seeded defects: the self-test regressions and every fixture case that expects an invalid model or an error finding; a missed entry escaped detection.", "$ref": "#/$defs/MetricCount" },
+        "legitimateChanges": { "description": "Fixture cases of a valid model that expect no error finding; a missed entry was refused or misjudged.", "$ref": "#/$defs/MetricCount" },
+        "escapedContradictions": { "description": "Declared contradictions of the valid sample; a missed entry is one validation accepted.", "$ref": "#/$defs/MetricCount" },
+        "staleEvidence": { "description": "Fixture expectations about evidence currency: evidence a change must invalidate, and current evidence that must not be reported stale.", "$ref": "#/$defs/MetricCount" },
+        "unnecessaryBlocking": { "description": "Fixture readiness expectations of a ready task; a missed entry came out blocked or unresolved.", "$ref": "#/$defs/MetricCount" },
         "qualificationCoverage": {
           "type": "object",
           "additionalProperties": false,

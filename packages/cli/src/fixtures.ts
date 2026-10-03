@@ -231,7 +231,7 @@ export function prepareCase(root: string, set: FixtureSet, c: FixtureCase, keys:
 }
 
 /** What one evaluation path observed for a case, in the terms the expectations use. */
-export interface Observation {
+export interface CaseObservation {
   validation: 'valid' | 'invalid';
   /** The findings of validation alone, which decide the validation state. */
   validationFindings: Finding[];
@@ -251,7 +251,7 @@ const sameRef = (a: RecordRef, b: RecordRef): boolean => a.kind === b.kind && a.
 const sorted = (xs: Iterable<string>): string[] => [...new Set(xs)].sort();
 
 /** Every way the observation departs from the expectation; an empty list is agreement. */
-export function compareWithExpectation(x: Expectation, o: Observation): string[] {
+export function compareWithExpectation(x: Expectation, o: CaseObservation): string[] {
   const out: string[] = [];
   const codes = new Set<string>([...o.findings.map((f) => f.code), ...o.reasonCodes]);
   if (o.validation !== x.validation) out.push(`validation is ${o.validation}, expected ${x.validation}: ${o.validationFindings.filter((f) => f.severity === 'error').map((f) => `${f.code} ${f.path}`).join('; ')}`);
@@ -302,12 +302,12 @@ export function compareWithExpectation(x: Expectation, o: Observation): string[]
 }
 
 /** The core's evaluation of a prepared case: validation, comparison, evidence and every readiness task. */
-export function observeCore(p: PreparedCase): Observation {
+export function observeCore(p: PreparedCase): CaseObservation {
   const { model, inputs } = p;
   const findings = validate(model, inputs);
   const all: Finding[] = [...findings];
   const reasonCodes: string[] = [];
-  const o: Observation = { validation: findings.some((f) => f.severity === 'error') ? 'invalid' : 'valid', validationFindings: findings, findings: all, reasonCodes, readiness: [] };
+  const o: CaseObservation = { validation: findings.some((f) => f.severity === 'error') ? 'invalid' : 'valid', validationFindings: findings, findings: all, reasonCodes, readiness: [] };
   // Acceptance is evaluated whenever acceptance records are read, with or without a baseline, as every adapter does.
   const compared = compareBaseline(model, inputs);
   all.push(...compared.findings);
@@ -379,7 +379,7 @@ export interface CaseOutcome {
   /** '<set>/<case id>'. */
   id: string;
   prepared: PreparedCase;
-  observation: Observation;
+  observation: CaseObservation;
   mismatches: string[];
 }
 

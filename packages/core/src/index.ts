@@ -98,3 +98,5 @@ export { describeTool, contextTool, checkReadinessTool, planChangeTool, compareB
 export type { PlanChangeToolInput } from './tools.js';
 export { sampleModel } from './sample.js';
 export { selfTest } from './selftest/index.js';
+export { seededRegressions, declaredContradictions } from './selftest/corpus.js';
+export type { CorpusOutcome } from './selftest/corpus.js';

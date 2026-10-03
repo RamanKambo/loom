@@ -28,6 +28,7 @@ import type {
   ContextTarget,
   DescribeInput,
   Finding,
+  MetricsReport,
   Model,
   MutateData,
   Patch,
@@ -65,7 +66,7 @@ import {
 } from '@loom/workspace';
 import { runChecks, selfQualify, type Fixtures, type RunOutput, type Signer } from '@loom/qualification';
 import { UsageError, flag, has, integer, list, required, type Args } from './args.js';
-import { computeMetrics } from './metrics.js';
+import { compareMetrics, computeMetrics } from './metrics.js';
 
 export interface Context {
   cwd: string;
@@ -449,16 +450,32 @@ function runSummary(run: RunOutput['run']): string[] {
   return run.checks.map((c) => `check ${c.check} (${c.required ? 'required' : 'optional'}): ${c.result}${c.reason ? ` - ${c.reason}` : ''}`);
 }
 
+/** The outcome metrics of the run, beside the recorded baseline that --compare names. */
+function metricsOf(ctx: Context, run: RunOutput['run']): { report: MetricsReport; detail: string[] } {
+  const report = computeMetrics(ctx.loomRoot, run);
+  const file = flag(ctx.args, 'compare');
+  const line = (name: string, c: { cases: number; intended: number }): string => `${name}: ${c.intended} of ${c.cases} with the intended outcome`;
+  const detail = [line('seeded errors detected', report.seededErrors), line('legitimate changes accepted', report.legitimateChanges), line('contradictions rejected', report.escapedContradictions ?? { cases: 0, intended: 0 }), line('stale evidence detected', report.staleEvidence), line('ready tasks not blocked', report.unnecessaryBlocking)];
+  if (file === undefined) return { report, detail };
+  const baseline = readJsonFile(resolve(ctx.cwd, file), 'metrics baseline');
+  const errors = schemaErrors('MetricsReport', baseline);
+  if (errors.length) throw new UsageError(`'${file}' is not a metrics report: ${errors.map((e) => `${e.pointer || '(root)'} ${e.message}`).join('; ')}`);
+  const compared = compareMetrics(report, baseline as MetricsReport);
+  return { report: compared, detail: [...detail, ...(compared.comparison ?? []).map((c) => `${c.metric}: baseline ${c.baseline}, current ${c.current}`)] };
+}
+
 export async function cmdQualify(ctx: Context): Promise<CommandResult> {
   const a = ctx.args;
+  if (has(a, 'compare') && !has(a, 'metrics')) throw new UsageError('--compare names the baseline of --metrics');
   const signer = signerOf(ctx);
   if (has(a, 'self')) {
     const q = await selfQualify(ctx.loomRoot, signer ? { signer } : {});
     const data: Record<string, unknown> = { run: q.run, evidence: q.evidence.map((e) => e.id), unlisted: q.unlisted };
-    if (has(a, 'metrics')) data['metrics'] = computeMetrics(ctx.loomRoot, q.run);
+    const metrics = has(a, 'metrics') ? metricsOf(ctx, q.run) : null;
+    if (metrics) data['metrics'] = metrics.report;
     const states = defaultStates(NOT_EVALUATED);
     states.qualification = q.unlisted.length ? { state: 'unknown', reasons: [{ code: 'EVIDENCE_UNKNOWN', message: `checks outside the self-qualification policy: ${q.unlisted.join(', ')}`, refs: [] }] } : qualificationOf(q.run.aggregate);
-    return { env: envelope('cli.qualify', { model: null, findings: q.findings, states, data }), detail: [...runSummary(q.run), `aggregate: ${q.run.aggregate}`] };
+    return { env: envelope('cli.qualify', { model: null, findings: q.findings, states, data }), detail: [...runSummary(q.run), `aggregate: ${q.run.aggregate}`, ...(metrics?.detail ?? [])] };
   }
   const s = session(ctx);
   if (!s.workspace || !s.model) return noWorkspace('cli.qualify', s);
@@ -494,8 +511,9 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
   const states = defaultStates(validationState(validate(s.model, s.inputs)));
   states.qualification = evaluated.states.qualification;
   const data: Record<string, unknown> = { run: out.run, evidence: out.evidence.map((e) => e.id), obligations: (evaluated.data as { obligations?: unknown } | undefined)?.obligations ?? [] };
-  if (has(a, 'metrics')) data['metrics'] = computeMetrics(ctx.loomRoot, out.run);
-  return { env: stampSession(envelope('cli.qualify', { model: s.model, findings: out.findings, states, data }), s), detail: [...runSummary(out.run), `aggregate: ${out.run.aggregate}`] };
+  const metrics = has(a, 'metrics') ? metricsOf(ctx, out.run) : null;
+  if (metrics) data['metrics'] = metrics.report;
+  return { env: stampSession(envelope('cli.qualify', { model: s.model, findings: out.findings, states, data }), s), detail: [...runSummary(out.run), `aggregate: ${out.run.aggregate}`, ...(metrics?.detail ?? [])] };
 }
 
 export function cmdEvidence(ctx: Context): CommandResult {

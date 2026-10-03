@@ -9,7 +9,7 @@ import type { Change, Finding, LoomConfig, Model, Patch, ProjectionTarget, Recor
 import { putEvidence } from '@loom/workspace';
 import { commitAll, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { materialize, readSelfPolicy, resolveChecks, runChecks, type MigrationFixture } from '@loom/qualification';
-import { FIXTURE_AS_OF, compareWithExpectation, evaluateFixtures, fixtureKeys, observeCore, readFixtureSets, type Observation, type PreparedCase } from '../../fixtures.js';
+import { FIXTURE_AS_OF, compareWithExpectation, evaluateFixtures, fixtureKeys, observeCore, readFixtureSets, type CaseObservation, type PreparedCase } from '../../fixtures.js';
 
 const ROOT = fileURLToPath(new URL('../../../../../', import.meta.url));
 const CLI = fileURLToPath(new URL('../../index.js', import.meta.url));
@@ -114,11 +114,11 @@ function workspaceFor(p: PreparedCase): { dir: string; planned?: Planned } {
 }
 
 /** What the CLI reports for the case: check for validation, comparison and evidence, readiness for every task. */
-function observeCli(p: PreparedCase): Observation {
+function observeCli(p: PreparedCase): CaseObservation {
   const { dir, planned } = workspaceFor(p);
   const check = loom(dir, 'check', '--as-of', FIXTURE_AS_OF);
   assert.ok(check.env.states, `check returns an envelope: ${check.output.slice(0, 400)}`);
-  const o: Observation = {
+  const o: CaseObservation = {
     validation: check.env.states.validation.state === 'valid' ? 'valid' : 'invalid',
     validationFindings: check.env.findings,
     findings: check.env.findings,

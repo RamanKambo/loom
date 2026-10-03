@@ -45,7 +45,7 @@ const USAGE = [
   '  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...] | readiness --task <file>',
   '  plan --patch <file> [--base <revision>] [--ack id,...]',
   '  mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]',
-  '  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics] [--key-id <id> --key-env <var>]',
+  '  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]',
   '  evidence list | evidence show <id>',
   '  context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]',
   '  describe [--sections a,b] [--profile <id>]',

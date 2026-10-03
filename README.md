@@ -154,6 +154,8 @@ Source: `packages/qualification/src/selfqualify.ts` and `qualification/policy.js
 
 Evidence and run records are signed with Ed25519 when the private key is supplied through the environment variable `qualify --key-env` names (by default `LOOM_EVIDENCE_KEY`); an unsigned record is kept and reported untrusted.
 
+`qualify --metrics` adds an outcome report, the `MetricsReport` of `packages/core/schema/assurance.schema.json`, measured by running the engine over its own corpora: the self-test regressions and declared contradictions, the fixture cases, the context tool and the qualification run. `qualification/metrics.json` is the recorded measurement of this revision, taken with `qualify --self --metrics`, and `--compare <file>` reports each measurement beside its recorded value. The counts describe these corpora and claim no general accuracy rate.
+
 ## Designer
 
 `apps/designer` is the browser designer; its build, run and test commands are in [apps/designer/README.md](apps/designer/README.md).
