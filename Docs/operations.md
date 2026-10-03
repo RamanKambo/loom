@@ -13,7 +13,7 @@ Exit status: 0 ok, 1 refusal or error finding, 2 usage error.
 
 ## MCP server
 
-The server lists these tools in this order, each with the description generated from its operation and the input and output schemas generated from the contract bundle:
+The server lists these tools in this order, each with the description generated from its operation:
 
 1. `loom.validate`, operation [validate](#validate)
 2. `loom.mutate`, operation [mutate](#mutate)
@@ -27,6 +27,8 @@ The server lists these tools in this order, each with the description generated 
 10. `loom.context`, operation [context](#context)
 11. `loom.checkReadiness`, operation [checkReadiness](#checkreadiness)
 12. `loom.planChange`, operation [planChange](#planchange)
+
+Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the `loom://schema/<Definition>` resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most 8192 bytes.
 
 ## Operations
 

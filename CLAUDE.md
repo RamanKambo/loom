@@ -23,7 +23,8 @@ the open-items register. Workspace scripts: @package.json
   failed assertion and names it. `npm run test:workspace`, `npm run test:qualification`,
   `npm run test:cli` and `npm run test:mcp` run the adapters' node:test suites,
   `npm run test:fixtures` runs every case of `qualification/fixtures` against its authored
-  expectation, and `npm run smoke:mcp` checks every MCP result against its output schema.
+  expectation, and `npm run smoke:mcp` checks every MCP result against the full contract and
+  its advertised output schema, the schema resources the tools name, and the tool budget.
 - A check reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent,
   outside its profile's version policy, unreadable, crashed or timed out, or its database refused
   the connection or login, and is never a pass; a required `UNKNOWN` fails the self-test.
@@ -68,6 +69,8 @@ the open-items register. Workspace scripts: @package.json
   | --- | --- |
   | Every record, patch, result and workspace shape | `packages/core/schema/*.schema.json` |
   | Every operation: purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP tool and CLI command | `packages/core/schema/operations.json`; the MCP tool list and descriptions, the tools and examples of `loom.describe`, the CLI usage and dispatch words and `Docs/operations.md` are generated from it, and the adapters' handler tables are checked against it |
+  | The size budget of one advertised MCP tool definition | `mcp.toolBudget` in `packages/core/schema/operations.json`; the smoke test holds every tool and tools/list to it |
+  | How an advertised tool schema is compacted and which schema resources the server lists | `inputSchemaOf`, `outputSchemaOf` and `advertisedDefinitions` in `packages/mcp-server/src/tools.ts` |
   | The finding-code vocabulary | `FindingCode` in `packages/core/schema/result.schema.json` |
   | Each code's severity and one-line rule | `FINDING_RULES` in `packages/core/src/codes.ts` |
   | Change rules and the comparison decision for every model field | `DIFF_RULES` and `FIELD_POLICY` in `packages/core/src/field-policy.ts` |

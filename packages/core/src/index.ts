@@ -3,7 +3,7 @@ export { SCHEMA_BUNDLE, SCHEMA_BUNDLE_ID } from './generated/schemas.js';
 export { CONTRACT_DIGEST, SCHEMA_VOCABULARY } from './generated/digest.js';
 export { COLLECTIONS, FIELD_PATHS, REFERENCE_FIELDS, KEYED_ARRAYS, ORDERED_ARRAYS, PATCH_VARIANTS } from './generated/registry.js';
 export { PROFILES, PROJECTION_PROFILES, ICDS } from './generated/contracts.js';
-export { OPERATION_CATALOGUE, MCP_TOOLS, TOOL_EXAMPLES, CLI_COMMANDS, CLI_USAGE } from './generated/operations.js';
+export { OPERATION_CATALOGUE, MCP_TOOLS, MCP_TOOL_BUDGET, TOOL_EXAMPLES, CLI_COMMANDS, CLI_USAGE } from './generated/operations.js';
 export type { CatalogueTool } from './generated/operations.js';
 export { handlerGaps } from './operations.js';
 

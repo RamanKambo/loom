@@ -1,4 +1,5 @@
 import {
+  CONTRACT_DIGEST,
   MCP_TOOLS,
   SCHEMA_BUNDLE,
   asFinding,
@@ -34,6 +35,13 @@ export const TOOL_CONTRACTS: readonly ToolContract[] = MCP_TOOLS;
 
 type Json = Record<string, unknown>;
 const DEFS = SCHEMA_BUNDLE.$defs as unknown as Record<string, Json>;
+const DRAFT = 'https://json-schema.org/draft/2020-12/schema';
+
+/** The resource that holds the full contract of one definition. */
+export const schemaUri = (definition: string): string => `loom://schema/${definition}`;
+
+const refName = (ref: string): string => ref.slice('#/$defs/'.length);
+const isObject = (v: unknown): v is Json => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
 /** Every definition a definition reaches through $ref. */
 function closure(name: string, seen = new Set<string>()): Set<string> {
@@ -43,7 +51,7 @@ function closure(name: string, seen = new Set<string>()): Set<string> {
     if (Array.isArray(node)) node.forEach(walk);
     else if (node && typeof node === 'object') {
       for (const [k, v] of Object.entries(node)) {
-        if (k === '$ref' && typeof v === 'string') closure(v.slice('#/$defs/'.length), seen);
+        if (k === '$ref' && typeof v === 'string') closure(refName(v), seen);
         else walk(v);
       }
     }
@@ -61,7 +69,7 @@ function strip(node: unknown): unknown {
 
 function standalone(root: Json, names: Iterable<string>): Json {
   const $defs = Object.fromEntries([...names].sort().map((n) => [n, strip(DEFS[n])]));
-  return { $schema: 'https://json-schema.org/draft/2020-12/schema', ...(strip(root) as Json), $defs };
+  return { $schema: DRAFT, ...(strip(root) as Json), $defs };
 }
 
 const ROOT_COMBINATORS = ['oneOf', 'anyOf', 'allOf'];
@@ -72,27 +80,136 @@ function presenceOnly(branch: unknown): boolean {
 }
 
 /**
- * A tool's complete input schema: the definition with only the definitions it references.
- * Claude-family clients drop a tool whose input schema has oneOf, anyOf or allOf at its root,
- * so the contract's root exactly-one combinators are left out of the advertised schema; the
- * tool description states them and presenceFindings plus the contract validator enforce them
- * on every call. A root combinator that constrains shape rather than presence is kept, and the
- * smoke test fails on it.
+ * The full contract of a tool's result: the result envelope with `data` bound to the tool's
+ * payload definition and every definition both reach. The server's results conform to it, and
+ * the smoke test validates every result against it.
  */
-export function inputSchemaOf(definition: string): Json {
-  const names = closure(definition);
-  names.delete(definition);
-  const root = Object.fromEntries(Object.entries(DEFS[definition] as Json).filter(([k, v]) => !(ROOT_COMBINATORS.includes(k) && Array.isArray(v) && v.every(presenceOnly))));
-  return standalone(root, [...names]);
-}
-
-/** A tool's output schema: the result envelope with `data` bound to the tool's payload definition. */
-export function outputSchemaOf(data: string): Json {
+export function contractOutputSchemaOf(data: string): Json {
   const envelopeDef = DEFS['ResultEnvelope'] as Json;
   const root: Json = { ...envelopeDef, properties: { ...(envelopeDef['properties'] as Json), data: { $ref: `#/$defs/${data}` } } };
   const names = new Set([...closure('ResultEnvelope'), ...closure(data)]);
   names.delete('ResultEnvelope');
   return standalone(root, names);
+}
+
+/** The full contract of one definition, as its schema resource serves it: the definition, its $defs closure and the contract digest. */
+export function schemaResource(definition: string): Json | null {
+  if (!Object.hasOwn(DEFS, definition)) return null;
+  return { $schema: DRAFT, $id: schemaUri(definition), $comment: `Contract digest ${CONTRACT_DIGEST}.`, $ref: `#/$defs/${definition}`, ...standaloneDefs(closure(definition)) };
+}
+
+const standaloneDefs = (names: Iterable<string>): Json => ({ $defs: Object.fromEntries([...names].sort().map((n) => [n, strip(DEFS[n])])) });
+
+// The compact view a tool advertises. A member of one of these shapes is stated inline, exactly as
+// the contract states it; anything deeper becomes an opaque value that admits every value of its
+// JSON type, so the advertised schema accepts every valid value, and whose description names the
+// resource holding its full contract.
+const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null']);
+/** The longest enumeration stated inline; a longer vocabulary is named by its resource. */
+const INLINE_ENUM_LIMIT = 32;
+/** The most members of a small object of simple members stated inline. */
+const INLINE_OBJECT_LIMIT = 8;
+
+/** The definition a schema refers to and the schema it resolves to. */
+function resolve(schema: Json): { schema: Json; name: string | null } {
+  return typeof schema['$ref'] === 'string' ? { schema: DEFS[refName(schema['$ref'])] as Json, name: refName(schema['$ref']) } : { schema, name: null };
+}
+
+const valueType = (v: unknown): string => (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v === 'number' ? (Number.isInteger(v) ? 'integer' : 'number') : typeof v);
+
+/** The JSON types a schema admits, when they can be read off it; undefined when it admits any value. */
+function jsonTypes(schema: Json, seen = new Set<string>()): string[] | undefined {
+  const { schema: s, name } = resolve(schema);
+  if (name !== null) {
+    if (seen.has(name)) return undefined;
+    seen.add(name);
+    return jsonTypes(s, seen);
+  }
+  const t = s['type'];
+  if (typeof t === 'string') return [t];
+  if (Array.isArray(t)) return t as string[];
+  if ('const' in s) return [valueType(s['const'])];
+  if (Array.isArray(s['enum'])) return [...new Set((s['enum'] as unknown[]).map(valueType))];
+  for (const k of ['oneOf', 'anyOf']) {
+    if (!Array.isArray(s[k])) continue;
+    const branches = (s[k] as Json[]).map((b) => jsonTypes(b, new Set(seen)));
+    return branches.some((b) => b === undefined) ? undefined : [...new Set(branches.flat() as string[])];
+  }
+  return undefined;
+}
+
+function isScalar(schema: Json): boolean {
+  const s = resolve(schema).schema;
+  if (['properties', 'items', 'additionalProperties', 'propertyNames', '$ref', ...ROOT_COMBINATORS].some((k) => k in s)) return false;
+  if (Array.isArray(s['enum']) && s['enum'].length > INLINE_ENUM_LIMIT) return false;
+  const types = jsonTypes(s);
+  return types !== undefined && types.every((t) => SCALAR_TYPES.has(t));
+}
+
+function isSmallObject(s: Json): boolean {
+  if (s['type'] !== 'object' || !isObject(s['properties']) || ROOT_COMBINATORS.some((k) => k in s)) return false;
+  const members = Object.values(s['properties'] as Record<string, Json>);
+  return members.length <= INLINE_OBJECT_LIMIT && members.every(isScalar);
+}
+
+/** A value the compact schema leaves to its resource: its JSON type and a description naming the resource. */
+function opaque(schema: Json, owner: string, refs: Set<string>, own?: unknown): Json {
+  refs.add(owner);
+  const types = jsonTypes(schema);
+  const pointer = `Full contract: ${schemaUri(owner)}.`;
+  return { ...(types ? { type: types.length === 1 ? types[0] : types } : {}), description: typeof own === 'string' ? `${own} ${pointer}` : pointer };
+}
+
+/** One member of a compact schema; `owner` is the definition whose resource holds an inline member's full contract. */
+function member(schema: Json, owner: string, refs: Set<string>): Json {
+  const { schema: s, name } = resolve(schema);
+  const own = schema['description'];
+  const holder = name ?? owner;
+  if (isScalar(s)) {
+    const { description: _d, ...shape } = strip(s) as Json;
+    return name === null ? (strip(s) as Json) : { ...shape, ...(typeof own === 'string' ? { description: own } : {}) };
+  }
+  if (s['type'] === 'array' && isObject(s['items'])) {
+    const kept = Object.fromEntries(['minItems', 'maxItems', 'uniqueItems'].filter((k) => k in s).map((k) => [k, s[k]]));
+    return { type: 'array', ...kept, items: member(s['items'] as Json, holder, refs), ...(typeof (own ?? s['description']) === 'string' ? { description: own ?? s['description'] } : {}) };
+  }
+  if (isSmallObject(s)) return { ...shapeOf(s, holder, refs), ...(typeof own === 'string' ? { description: own } : {}) };
+  return opaque(s, holder, refs, own);
+}
+
+/** The top level of an object definition: its members as compact members, its requirements, its closure and its remaining root combinators. */
+function shapeOf(def: Json, owner: string, refs: Set<string>, replace: Record<string, Json> = {}): Json {
+  const properties = Object.fromEntries(Object.entries((def['properties'] ?? {}) as Record<string, Json>).map(([k, v]) => [k, replace[k] ?? member(v, owner, refs)]));
+  const out: Json = { type: 'object', properties };
+  if (Array.isArray(def['required'])) out['required'] = def['required'];
+  if ('additionalProperties' in def) out['additionalProperties'] = isObject(def['additionalProperties']) ? member(def['additionalProperties'], owner, refs) : def['additionalProperties'];
+  // Claude-family clients drop a tool whose input schema has oneOf, anyOf or allOf at its root, so a
+  // presence-only combinator is left out: the tool description states it, and the server checks it.
+  // A combinator that constrains shape stays, and the smoke test fails on it.
+  for (const k of ROOT_COMBINATORS) if (Array.isArray(def[k]) && !(def[k] as unknown[]).every(presenceOnly)) out[k] = strip(def[k]);
+  return out;
+}
+
+const described = (schema: Json, text: string): Json => ({ $schema: DRAFT, description: text, ...schema });
+
+/**
+ * A tool's advertised input schema: the compact top level of its input definition. The server
+ * validates every call against the full definition before anything runs.
+ */
+export function inputSchemaOf(definition: string, refs = new Set<string>()): Json {
+  const def = DEFS[definition] as Json;
+  refs.add(definition);
+  const text = `${typeof def['description'] === 'string' ? `${def['description']} ` : ''}Full contract: ${schemaUri(definition)}.`;
+  return described(shapeOf(def, definition, refs), text);
+}
+
+/** A tool's advertised output schema: the compact result envelope with the compact top level of the tool's payload as `data`. */
+export function outputSchemaOf(data: string, refs = new Set<string>()): Json {
+  refs.add('ResultEnvelope');
+  refs.add(data);
+  const payload = { description: `Full contract: ${schemaUri(data)}.`, ...shapeOf(DEFS[data] as Json, data, refs) };
+  const envelopeDef = DEFS['ResultEnvelope'] as Json;
+  return described(shapeOf(envelopeDef, 'ResultEnvelope', refs, { data: payload }), `${String(envelopeDef['description'])} Full contract: ${schemaUri('ResultEnvelope')}.`);
 }
 
 export interface ToolDefinition {
@@ -110,6 +227,26 @@ export function toolDefinitions(structured: boolean): ToolDefinition[] {
     inputSchema: inputSchemaOf(t.input),
     ...(structured ? { outputSchema: outputSchemaOf(t.data) } : {}),
   }));
+}
+
+/** Every definition the advertised schemas name as the resource of a member's full contract. */
+export function advertisedDefinitions(): string[] {
+  const refs = new Set<string>();
+  for (const t of TOOL_CONTRACTS) {
+    inputSchemaOf(t.input, refs);
+    outputSchemaOf(t.data, refs);
+  }
+  return [...refs].sort();
+}
+
+/** The serialized size of one advertised tool definition, the measure the tool budget applies to. */
+export const advertisedBytes = (t: ToolDefinition): number => Buffer.byteLength(JSON.stringify({ name: t.name, description: t.description, inputSchema: t.inputSchema, outputSchema: t.outputSchema }), 'utf8');
+
+/** Every tool whose advertised definition exceeds the budget, and a tool list larger than the budget times its length. */
+export function budgetProblems(tools: readonly ToolDefinition[], budget: number, listBytes: number): string[] {
+  const problems = tools.filter((t) => advertisedBytes(t) > budget).map((t) => `${t.name} advertises ${advertisedBytes(t)} bytes, over the budget of ${budget}`);
+  if (listBytes > budget * tools.length) problems.push(`tools/list takes ${listBytes} bytes, over ${budget} times ${tools.length} tools`);
+  return problems;
 }
 
 export interface ToolContext {

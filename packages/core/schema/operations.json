@@ -12,6 +12,7 @@
     ],
     "exitStatus": "0 ok, 1 refusal or error finding, 2 usage error."
   },
+  "mcp": { "toolBudget": 8192 },
   "presenceRules": [
     {
       "id": "model-or-workspace",

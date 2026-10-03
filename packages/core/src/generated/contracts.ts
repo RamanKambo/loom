@@ -1818,12 +1818,13 @@ export const ICDS: readonly Icd[] = [
     "id": "mcp",
     "responsibility": "Exposes the shared core and workspace services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews.",
     "owns": [
-      "Tool registration, schema-conforming structured content with a text fallback, and protocol compatibility results."
+      "Tool registration with compact advertised schemas, the schema resources that hold the full contract, schema-conforming structured content with a text fallback, and protocol compatibility results."
     ],
     "boundary": [
       "Writes only JSON-RPC to stdout.",
       "No alternative mutation, readiness or acceptance policy.",
-      "Record text and retrieved documents are returned as data and never grant tool authority."
+      "Record text and retrieved documents are returned as data and never grant tool authority.",
+      "An advertised schema is a compact view; every call is validated against the full contract before anything runs."
     ],
     "provides": [
       {
@@ -1840,6 +1841,15 @@ export const ICDS: readonly Icd[] = [
         ],
         "effects": "writes",
         "concurrency": "A persistent mutation requires the expected base revision; two agents editing one prior revision cannot both succeed."
+      },
+      {
+        "name": "schemaResources",
+        "kind": "record",
+        "input": "none",
+        "output": "none",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "The full contract of one definition at loom://schema/<Definition>, immutable for the contract digest it names; an unknown definition is a resource-not-found protocol error."
       }
     ],
     "consumes": [
@@ -2019,6 +2029,10 @@ export const ICDS: readonly Icd[] = [
       {
         "component": "mcp",
         "interface": "tools"
+      },
+      {
+        "component": "mcp",
+        "interface": "schemaResources"
       }
     ]
   },

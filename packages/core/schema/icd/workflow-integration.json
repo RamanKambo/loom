@@ -13,6 +13,7 @@
   ],
   "consumes": [
     { "component": "cli", "interface": "commands" },
-    { "component": "mcp", "interface": "tools" }
+    { "component": "mcp", "interface": "tools" },
+    { "component": "mcp", "interface": "schemaResources" }
   ]
 }

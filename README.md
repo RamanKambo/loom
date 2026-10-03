@@ -30,7 +30,7 @@ Source: the interface control documents in `packages/core/schema/icd`, one per c
 | Workspace adapter | `packages/workspace` | Every file under `.loom`: initialization, discovery and path ownership, output installation, trusted baselines, expected-revision writes and the evidence store |
 | Qualification adapter | `packages/qualification` | Fixed native-tool checks against designated fixtures or adopting implementations, returning signed, revision-bound evidence |
 | Command line | `packages/cli` | The workspace commands over the shared result envelope |
-| MCP server | `packages/mcp-server` | The same services as Model Context Protocol tools with generated input and output schemas |
+| MCP server | `packages/mcp-server` | The same services as Model Context Protocol tools with compact generated input and output schemas, and the full contract as schema resources |
 | Designer | `apps/designer` | Browser editing and visualization through the same core; see [apps/designer/README.md](apps/designer/README.md) |
 
 The interface each component provides and consumes, its refusals and its concurrency behavior are stated in its ICD file; [Docs/workflow-integration.md](Docs/workflow-integration.md) covers the boundary to a workflow or plugin integration.
@@ -78,7 +78,7 @@ The commands below run from the repository root after `npm install`. `npm run bu
 | `npm run self-test` | The engine battery, the drift gate, and every profile check run against Loom's own fixtures under `qualification/policy.json` |
 | `npm run test:workspace`, `test:qualification`, `test:cli`, `test:mcp` | The adapters' node:test suites |
 | `npm run test:fixtures` | Every case of `qualification/fixtures` meets its authored expectation through the core and, in a governed workspace, the CLI, and its named native checks give their stated results |
-| `npm run smoke:mcp` | Every MCP tool result and typed refusal conforms to its declared output schema |
+| `npm run smoke:mcp` | Every MCP tool result and typed refusal conforms to the full contract and to its advertised output schema, every schema resource the tools name is listed and compiles, and every tool fits the tool budget |
 
 The designer has its own lockfile and commands; see [apps/designer/README.md](apps/designer/README.md).
 
@@ -94,9 +94,9 @@ An explicit `--model <path>` selects a document. Inside a governed workspace the
 
 ## MCP server
 
-Source: `packages/mcp-server/src/server.ts`, `packages/core/schema/icd/mcp.json` and the operation catalogue `packages/core/schema/operations.json`.
+Source: `packages/mcp-server/src/server.ts`, `tools.ts` and `resources.ts`, `packages/core/schema/icd/mcp.json` and the operation catalogue `packages/core/schema/operations.json`.
 
-The server speaks the Model Context Protocol over stdio. Its tools, in the order it lists them and with the descriptions generated from their catalogue entries, are listed in [Docs/operations.md](Docs/operations.md#mcp-server). Each tool's input and output schema is generated from the contract bundle, every input is validated before anything runs, and every result is structured content with a text fallback.
+The server speaks the Model Context Protocol over stdio. Its tools, in the order it lists them and with the descriptions generated from their catalogue entries, are listed in [Docs/operations.md](Docs/operations.md#mcp-server). Each tool advertises compact input and output schemas derived from the contract bundle: they keep the top-level members, their requirements and their simple types, and every deeper value names the `loom://schema/<Definition>` resource that holds its full contract with the contract digest. The server lists the resources its advertised schemas name and serves any definition of the bundle; an unknown one is a resource-not-found error. Every input is validated against the full contract before anything runs, every result is structured content with a text fallback, and one tool's advertised definition stays within the tool budget, `mcp.toolBudget` of the catalogue.
 
 The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectedRevision` and is refused as `stale-base` when the model changed since that revision; `loom.planChange` and a `dryRun` mutation never write.
 

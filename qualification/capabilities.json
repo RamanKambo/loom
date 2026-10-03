@@ -478,6 +478,13 @@
       "verification": ["cli.cli.docs-check-self-holds-loom-s-own-repository-to-the-release-wording-which-fires-in-documents-comments-and-json-prose-but-never-in-a-dependency-or-an-adopter-s-text","core.selftest.generated-wording"]
     },
     {
+      "id": "mcp.compact-schemas",
+      "description": "Each MCP tool advertises compact input and output schemas that keep the top-level members, requirements and simple types and admit every valid value, every deeper value naming the loom://schema/<Definition> resource the server serves with its full contract and the contract digest; an unknown definition is a resource-not-found error, every call is still validated against the full contract, and every advertised tool fits the tool budget of the catalogue.",
+      "code": ["packages/mcp-server/src/tools.ts#inputSchemaOf","packages/mcp-server/src/tools.ts#outputSchemaOf","packages/mcp-server/src/tools.ts#schemaResource","packages/mcp-server/src/tools.ts#advertisedDefinitions","packages/mcp-server/src/tools.ts#budgetProblems","packages/mcp-server/src/resources.ts#listResources","packages/mcp-server/src/resources.ts#readResource","packages/mcp-server/src/server.ts#createLoomServer","packages/core/src/generated/operations.ts#MCP_TOOL_BUDGET"],
+      "contract": ["icd/mcp.json","operations.json","tools.schema.json#/$defs/OperationCatalogue/properties/mcp"],
+      "verification": ["mcp-server.mcp.an-argument-the-compact-input-schema-accepts-is-still-validated-against-the-full-contract-before-anything-runs","mcp-server.mcp.every-compact-input-schema-accepts-the-catalogue-examples-and-every-compact-output-schema-states-the-top-level-of-its-result","mcp-server.mcp.the-server-lists-the-schema-resources-the-advertised-schemas-name-serves-each-with-its-full-contract-and-refuses-an-unknown-one-as-not-found","mcp-server.mcp.the-tool-budget-fails-a-tool-whose-advertised-definition-or-a-tool-list-outgrows-it","mcp-server.mcp.every-tool-lists-the-input-and-output-schemas-generated-from-the-contract-and-a-request-outside-its-input-schema-is-refused-before-anything-runs"]
+    },
+    {
       "id": "mcp.context",
       "description": "loom.context returns the required context of a component, record, claim or task within a declared budget, nearest first, with completeness naming what it omitted and a continuation bound to one model revision.",
       "code": ["packages/core/src/retrieval.ts#retrieveContext","packages/core/src/retrieval.ts#continuationToken","packages/core/src/tools.ts#contextTool","packages/mcp-server/src/tools.ts#executeTool"],

@@ -1,8 +1,9 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListResourcesRequestSchema, ListToolsRequestSchema, McpError, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { asFinding, canonicalStringify, envelope, refusal } from '@loom/core';
 import type { ResultEnvelope } from '@loom/core';
+import { RESOURCE_NOT_FOUND, listResources, readResource } from './resources.js';
 import { executeTool, toolDefinitions, type ToolContext } from './tools.js';
 
 /** The first protocol version whose tool results carry outputSchema and structuredContent. */
@@ -20,17 +21,27 @@ export interface LoomServer {
 
 /**
  * Build the Loom MCP server on the low-level SDK Server with JSON Schema tool
- * contracts. The tool list and every result follow the negotiated protocol
- * version: a client without structured tool results gets the result envelope
- * as text plus an explicit compatibility finding.
+ * contracts. Tools advertise compact schemas whose deep members name the
+ * schema resources holding their full contract, which the server serves. The
+ * tool list and every result follow the negotiated protocol version: a client
+ * without structured tool results gets the result envelope as text plus an
+ * explicit compatibility finding.
  */
 export function createLoomServer(options: LoomServerOptions = {}): LoomServer {
   const ctx: ToolContext = { workspace: options.workspace ?? process.cwd(), ...(options.trustedRef ? { trustedRef: options.trustedRef } : {}) };
   let negotiated: string | undefined;
   const structured = (): boolean => negotiated === undefined || negotiated >= STRUCTURED_SINCE;
-  const server = new Server({ name: 'loom', version: '1.0.0' }, { capabilities: { tools: {} } });
+  const server = new Server({ name: 'loom', version: '1.0.0' }, { capabilities: { tools: {}, resources: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolDefinitions(structured()) }));
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: listResources() }));
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const contents = readResource(request.params.uri);
+    if (!contents) throw new McpError(RESOURCE_NOT_FOUND, 'Resource not found', { uri: request.params.uri });
+    return { contents: [contents] };
+  });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let env: ResultEnvelope;

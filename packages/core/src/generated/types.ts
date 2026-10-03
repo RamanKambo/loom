@@ -6536,6 +6536,15 @@ export interface PlanChangeData {
 export interface OperationCatalogue {
   catalogueVersion: 1;
   /**
+   * The MCP server as a whole: the size budget its advertised tool definitions are held to.
+   */
+  mcp: {
+    /**
+     * The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.
+     */
+    toolBudget: number;
+  };
+  /**
    * The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.
    */
   cli: {

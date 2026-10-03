@@ -685,9 +685,18 @@
       "description": "Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["catalogueVersion", "cli", "presenceRules", "operations"],
+      "required": ["catalogueVersion", "cli", "mcp", "presenceRules", "operations"],
       "properties": {
         "catalogueVersion": { "const": 1 },
+        "mcp": {
+          "description": "The MCP server as a whole: the size budget its advertised tool definitions are held to.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["toolBudget"],
+          "properties": {
+            "toolBudget": { "description": "The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.", "type": "integer", "minimum": 1024 }
+          }
+        },
         "cli": {
           "description": "The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.",
           "type": "object",
