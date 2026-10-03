@@ -144,7 +144,7 @@ Source: `packages/core/schema/profiles` and `packages/core/schema/projection-pro
 
 Each profile file states its supported constructs, its unsupported constructs and whether using one refuses the projection or permits only a marked draft, the native tools it requires with their version policy, its proof limits and its fixed check definitions. The adoption conventions of the C#, TypeScript, SQL and PowerShell conformance artifacts are stated in the `supports` entries of `csharp.json`, `typescript.json`, `sql.json`, `powershell.json` and `powershell-pester6.json`.
 
-The required native tools are provisioned by the developer or the pipeline; no adapter installs one. A check whose tool is absent, outside its version policy, unreadable or interrupted reports `UNKNOWN`, and a required `UNKNOWN` never yields a qualified result.
+The required native tools are provisioned by the developer or the pipeline; no adapter installs one. A check whose tool is absent, outside its version policy, unreadable or interrupted, or whose database connection or login fails, reports `UNKNOWN`, and a required `UNKNOWN` never yields a qualified result.
 
 ## Qualification of Loom
 

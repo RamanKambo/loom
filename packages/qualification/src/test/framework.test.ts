@@ -12,6 +12,7 @@ import { runChecks } from '../run.js';
 import { verifyRunRevisionSet } from '../revision.js';
 import { defaultToolLocator, satisfies, type ToolLocator } from '../tools.js';
 import { unmatchedBreaks, type OasdiffItem } from '../runners/openapi.js';
+import { connectionFailure } from '../runners/localdb.js';
 import { declarativeDdl } from '../runners/sql.js';
 import { outcome, type Runner } from '../types.js';
 import { LOOM_ROOT, sampleArtifacts, selfPolicy, clone } from './helpers.js';
@@ -248,6 +249,33 @@ test('an oasdiff breaking item the model comparison does not report is unmatched
   const unmatched = unmatchedBreaks(items, changes, model, model);
   assert.deepEqual(unmatched.map((i) => i.id), ['api-path-removed-without-deprecation']);
   assert.deepEqual(unmatchedBreaks(items.slice(0, 1), changes, model, model), []);
+});
+
+/** sqlcmd 15 with ODBC Driver 17, run against a LocalDB instance that does not exist. */
+const UNREACHABLE = [
+  'Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : SQL Server Network Interfaces: .',
+  'Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Login timeout expired.',
+  'Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : A network-related or instance-specific error has occurred while establishing a connection to SQL Server. Server is not found or not accessible.',
+].join('\r\n');
+
+test('sqlcmd output reporting an unreachable server, a refused login or an expired timeout is a connection failure with its reason', () => {
+  assert.match(connectionFailure(UNREACHABLE) ?? '', /Login timeout expired\..*Server is not found or not accessible/);
+  assert.equal(connectionFailure("Msg 18456, Level 14, State 1, Server (localdb)\\loom-x, Line 1\r\nLogin failed for user 'loom'.\r\n"), "Msg 18456: Login failed for user 'loom'.");
+  assert.match(connectionFailure('Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Cannot open database "loom_catalog_1a2b3c4d" requested by the login. The login failed..') ?? '', /requested by the login/);
+  assert.match(connectionFailure('Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Query timeout expired.') ?? '', /Query timeout expired/);
+  assert.match(connectionFailure('Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Communication link failure.') ?? '', /Communication link failure/);
+});
+
+test('sqlcmd output of statements the server ran and rejected is not a connection failure', () => {
+  for (const output of [
+    'Msg 50005, Level 16, State 1, Server (localdb)\\loom-x, Procedure sp_place_order, Line 9\r\nThe order total must be positive.\r\n',
+    "Msg 102, Level 15, State 1, Server (localdb)\\loom-x, Line 3\r\nIncorrect syntax near 'TABL'.\r\n",
+    'Msg 547, Level 16, State 0, Server (localdb)\\loom-x, Line 1\r\nThe INSERT statement conflicted with the CHECK constraint "LOOM_QUALIFY_INJECTED_FAILURE".\r\n',
+    "Sqlcmd: Error: Syntax error at line 4 near command ':setvar' in file 'batch.sql'.",
+    '',
+  ]) {
+    assert.equal(connectionFailure(output), null, output);
+  }
 });
 
 test('only the idempotent CREATE SCHEMA guard is rewritten for the database project', () => {

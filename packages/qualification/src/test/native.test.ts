@@ -1,15 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sampleModel, validate, type LoomConfig, type Model, type PublishedContract } from '@loom/core';
 import { initWorkspace, installOutputs, openSession } from '@loom/workspace';
 import { commitAll, gitInit, readJsonFile, scratch, writeJson } from '@loom/workspace/testing';
-import { exec } from '../exec.js';
-import { runChecks, type RunOutput } from '../run.js';
+import { exec, type ExecResult } from '../exec.js';
+import { resolveChecks, runChecks, type RunOutput } from '../run.js';
+import { connectionFailure, type LocalDbInstance } from '../runners/localdb.js';
+import { SQL_RUNNERS } from '../runners/sql.js';
 import { selfFixtures, selfQualify } from '../selfqualify.js';
-import { findSqlLocalDb } from '../tools.js';
-import type { ArtifactSet, Fixtures } from '../types.js';
+import { defaultToolLocator, findSqlLocalDb, type ToolLocator } from '../tools.js';
+import type { ArtifactSet, Fixtures, Runner, RunResources } from '../types.js';
 import { LOOM_ROOT, clone, replaceArtifact, sampleArtifacts, selfPolicy, tempDir } from './helpers.js';
 
 const NATIVE = { timeout: 1_200_000 };
@@ -160,6 +163,89 @@ test('sql.migration fails when the migration loses a representative row', NATIVE
     assert.match(r.reason ?? '', /2 row\(s\), it held 3/);
   } finally {
     t.done();
+  }
+});
+
+type Sqlcmd = LocalDbInstance['sqlcmd'];
+
+interface SqlCall {
+  batch: string;
+  result: ExecResult;
+}
+
+/**
+ * One SQL check through runChecks with its run instance's sqlcmd replaced by
+ * `through(real)`. With `live` false no LocalDB instance is created: `real`
+ * is null and every call is answered by the replacement.
+ */
+async function throughSqlcmd(checkId: string, live: boolean, through: (real: Sqlcmd | null) => Sqlcmd, shared: { set: ArtifactSet; tools: ToolLocator }): Promise<RunOutput['run']['checks'][number]> {
+  const check = resolveChecks([checkId])[0]!;
+  const runner: Runner = (ctx) => {
+    const resources: RunResources = {
+      acquire: <T>(key: string, create: () => Promise<T>, release: (value: T) => Promise<void>): Promise<T> => {
+        if (key !== 'localdb') return ctx.resources.acquire(key, create, release);
+        if (!live) return ctx.resources.acquire(key, async () => ({ name: 'loom-replayed', server: '(localdb)\\loom-replayed', engineVersion: '15.0', sqlcmd: through(null) }) satisfies LocalDbInstance as unknown as T, async () => undefined);
+        return ctx.resources.acquire(key, async () => {
+          const inst = (await create()) as unknown as LocalDbInstance;
+          return { ...inst, sqlcmd: through(inst.sqlcmd) } as unknown as T;
+        }, release);
+      },
+    };
+    return SQL_RUNNERS[check.runner]!({ ...ctx, resources });
+  };
+  const out = await runChecks({ root: LOOM_ROOT, model: sampleModel(), checks: [check], artifacts: shared.set, fixtures: selfFixtures(LOOM_ROOT), policy: selfPolicy(), toolLocator: shared.tools, runners: { [check.runner]: runner } });
+  return out.run.checks[0]!;
+}
+
+/** The real sqlcmd, with each batch and its result recorded in order. */
+const recording = (calls: SqlCall[]) => (real: Sqlcmd | null): Sqlcmd => async (args, options) => {
+  const batch = readFileSync(args[args.indexOf('-i') + 1]!, 'utf8');
+  const result = await real!(args, options);
+  calls.push({ batch, result });
+  return result;
+};
+
+/** The recorded results up to call `k`, then `failure` for that call and every later one, as when the server goes away. */
+const failingFrom = (calls: readonly SqlCall[], k: number, failure: ExecResult) => (): Sqlcmd => {
+  let i = 0;
+  return async () => (i < k ? calls[i++]!.result : failure);
+};
+
+test('a connection failure, a refused login or a timeout at any sqlcmd call of a SQL check is UNKNOWN with its reason, never FAIL', NATIVE, async () => {
+  const tools = defaultToolLocator();
+  const sqlcmd = await tools('sqlcmd', { minimum: '15.0' });
+  assert.ok(sqlcmd.status === 'found', 'sqlcmd is installed on this host');
+  const absent = await exec(sqlcmd.tool.path, ['-S', `(localdb)\\loom-absent-${randomBytes(3).toString('hex')}`, '-b', '-l', '5', '-Q', 'SELECT 1'], { timeoutMs: 120_000 });
+  const unreachable = absent.ok ? connectionFailure(`${absent.stdout}\n${absent.stderr}`) : null;
+  assert.ok(absent.ok && absent.status !== 0 && unreachable, `sqlcmd reports an instance it cannot reach as a connection failure: ${JSON.stringify(absent)}`);
+  const failures: Array<{ label: string; result: ExecResult; reason: string }> = [
+    { label: 'unreachable instance', result: absent, reason: unreachable! },
+    { label: 'refused login', result: { ok: true, status: 1, stdout: "Msg 18456, Level 14, State 1, Server (localdb)\\loom-replayed, Line 1\r\nLogin failed for user 'loom'.\r\n", stderr: '' }, reason: "Msg 18456: Login failed for user 'loom'." },
+    { label: 'stopped process', result: { ok: false, kind: 'timeout', reason: 'sqlcmd did not finish within 900000 ms and was stopped', stdout: '', stderr: '' }, reason: 'did not finish within 900000 ms' },
+  ];
+  const { set, done } = sampleArtifacts();
+  try {
+    for (const checkId of ['sql.catalog', 'sql.behavior', 'sql.transaction', 'sql.migration', 'sql.operations']) {
+      const calls: SqlCall[] = [];
+      const clean = await throughSqlcmd(checkId, true, recording(calls), { set, tools });
+      assert.equal(clean.result, 'PASS', `${checkId} passes with every call answered: ${clean.reason}`);
+      assert.ok(calls.length > 1, `${checkId} made ${calls.length} sqlcmd call(s)`);
+      for (let k = 0; k < calls.length; k++) {
+        // A failure that reaches only the closing drops of the check's databases leaves its claim decided.
+        const onlyCleanup = calls.slice(k).every((c) => c.batch.startsWith("IF DB_ID(N'"));
+        for (const f of failures) {
+          const r = await throughSqlcmd(checkId, false, failingFrom(calls, k, f.result), { set, tools });
+          const at = `${checkId}, ${f.label} at call ${k + 1} of ${calls.length} (${calls[k]!.batch.split(/\r?\n/)[0]})`;
+          if (onlyCleanup) assert.equal(r.result, clean.result, `${at}: ${r.reason}`);
+          else {
+            assert.equal(r.result, 'UNKNOWN', `${at}: ${r.result} ${r.reason}`);
+            assert.ok((r.reason ?? '').includes(f.reason), `${at} names the failure: ${r.reason}`);
+          }
+        }
+      }
+    }
+  } finally {
+    done();
   }
 });
 

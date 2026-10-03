@@ -292,7 +292,7 @@ const sqlTransaction: Runner = async (ctx) => {
       // inside its transaction; a trigger cannot be used, because a routine that
       // returns OUTPUT rows without INTO is rejected outright on a table with one.
       const inject = await runSql(ctx, inst, `ALTER TABLE [${last.schema}].[${last.table}] WITH NOCHECK ADD CONSTRAINT [${INJECTED}] CHECK (1 = 0);`, db);
-      if (!inject.ok || inject.status !== 0) return outcome('UNKNOWN', `the failure could not be injected into [${last.schema}].[${last.table}]`);
+      if (!inject.ok || inject.status !== 0) return outcome('UNKNOWN', `the failure could not be injected into [${last.schema}].[${last.table}]: ${inject.ok ? throwMessage(`${inject.stdout}\n${inject.stderr}`).message : inject.reason}`);
       const failing = await runSql(ctx, inst, `SET XACT_ABORT OFF;\n${execStatement(ctx.model, r)}`, db);
       if (!failing.ok) return outcome('UNKNOWN', failing.reason);
       const failText = `${failing.stdout}\n${failing.stderr}`;
@@ -303,7 +303,9 @@ const sqlTransaction: Runner = async (ctx) => {
       if (typeof after === 'string') return outcome('UNKNOWN', after);
       const kept = scope.filter((_s, i) => after[i] !== before[i]);
       if (kept.length) return outcome('FAIL', `routine ${r.id} failed inside its transaction scope but left rows in ${kept.map((s) => `[${s.schema}].[${s.table}]`).join(', ')}`);
-      await runSql(ctx, inst, `ALTER TABLE [${last.schema}].[${last.table}] DROP CONSTRAINT [${INJECTED}];`, db);
+      // Left in place, the injected constraint would fail the valid call below and read as a defect of the routine.
+      const removed = await runSql(ctx, inst, `ALTER TABLE [${last.schema}].[${last.table}] DROP CONSTRAINT [${INJECTED}];`, db);
+      if (!removed.ok || removed.status !== 0) return outcome('UNKNOWN', `the injected failure could not be removed from [${last.schema}].[${last.table}]: ${removed.ok ? throwMessage(`${removed.stdout}\n${removed.stderr}`).message : removed.reason}`);
       const ok = await runSql(ctx, inst, execStatement(ctx.model, r), db);
       if (!ok.ok) return outcome('UNKNOWN', ok.reason);
       if (ok.status !== 0) return outcome('FAIL', `routine ${r.id} fails with sample arguments: ${throwMessage(`${ok.stdout}\n${ok.stderr}`).message}`);
