@@ -35,12 +35,24 @@ function editModel(ws: Workspace, edit: (m: Model) => void): Workspace {
 }
 
 test('outputs route to Docs/Loom by default and to a mapped directory otherwise', () => {
-  const ws = sampleWorkspace({ 'schema.sql': 'db/schema/' });
+  const ws = sampleWorkspace({ 'model.yaml': 'model/', 'schema.sql#ordering': 'db/schema/' });
   const plan = planOutputs(ws, { targets: TARGETS });
   assert.equal(plan.findings.filter((f) => f.severity === 'error').length, 0, JSON.stringify(plan.findings));
   const paths = Object.fromEntries(plan.artifacts.map((a) => [a.instance, a.path]));
-  assert.deepEqual(paths, { 'reference.md': 'Docs/Loom/reference.md', 'model.yaml': 'Docs/Loom/model.yaml', 'schema.sql': 'db/schema/schema.sql' });
-  assert.deepEqual(plan.manifest.artifacts.map((a) => a.instance), ['model.yaml', 'reference.md', 'schema.sql']);
+  assert.deepEqual(paths, {
+    'reference.md': 'Docs/Loom/reference.md',
+    'model.yaml': 'model/model.yaml',
+    'schema.sql#ordering': 'db/schema/schema.sql',
+    'schema.sql#fulfillment': 'Docs/Loom/fulfillment/schema.sql',
+    'schema.sql#billing': 'Docs/Loom/billing/schema.sql',
+  });
+  assert.deepEqual(plan.manifest.artifacts.map((a) => a.instance), ['model.yaml', 'reference.md', 'schema.sql#billing', 'schema.sql#fulfillment', 'schema.sql#ordering']);
+});
+
+test('a per-component artifact is not routed by its bare file name', () => {
+  const ws = sampleWorkspace({ 'schema.sql': 'db/schema/' });
+  const plan = planOutputs(ws, { targets: ['sql'] });
+  assert.deepEqual(plan.artifacts.map((a) => a.path).sort(), ['Docs/Loom/billing/schema.sql', 'Docs/Loom/fulfillment/schema.sql', 'Docs/Loom/ordering/schema.sql']);
 });
 
 test('two artifact instances resolving to one file are a collision', () => {

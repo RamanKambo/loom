@@ -1,7 +1,7 @@
 import type { ItemShape, Model, Property, RecordRef, TypeDef } from '../generated/types.js';
 import { splitQualified } from '../refs.js';
 import { SOURCE_NOTICE } from './notice.js';
-import type { RenderContext } from './context.js';
+import { pointer, type RenderContext } from './context.js';
 
 export const JSON_SCHEMA_ID = 'urn:loom:projection:json-schema';
 
@@ -123,15 +123,28 @@ export function typeSchema(t: TypeDef, refPrefix: string, ctx: RenderContext, op
   return schema;
 }
 
+export const JSON_SCHEMA_FILE = 'schema.json';
+
+/** Record every type and property of the model as projected at `base` (a JSON Pointer prefix ending in the type map). */
+export function coverTypes(model: Model, ctx: RenderContext, file: string, base: string[]): void {
+  for (const t of model.types) {
+    ctx.covered({ kind: 'type', id: t.id }, file, pointer(...base, t.id));
+    for (const p of t.properties) ctx.covered({ kind: 'property', id: `${t.id}.${p.name}` }, file, pointer(...base, t.id, 'properties', p.name));
+  }
+}
+
 /** JSON Schema 2020-12 document with one $defs entry per type. */
-export function projectJsonSchema(model: Model, ctx: RenderContext): Json {
+export function projectJsonSchema(model: Model, ctx: RenderContext): Record<string, Json> {
   const defs: Json = {};
   for (const t of model.types) defs[t.id] = typeSchema(t, '#/$defs/', ctx, false);
+  coverTypes(model, ctx, JSON_SCHEMA_FILE, ['$defs']);
   return {
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: JSON_SCHEMA_ID,
-    $comment: SOURCE_NOTICE,
-    title: 'Loom projected type schemas',
-    $defs: defs,
+    [JSON_SCHEMA_FILE]: {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $id: JSON_SCHEMA_ID,
+      $comment: SOURCE_NOTICE,
+      title: 'Loom projected type schemas',
+      $defs: defs,
+    },
   };
 }

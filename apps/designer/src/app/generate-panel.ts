@@ -51,11 +51,11 @@ export class GeneratePanel {
     if (t) this.picked.set(t);
   }
 
-  /** Downloads the file exactly as the engine writes it, under the engine's file name. */
+  /** Downloads every file exactly as the engine writes it, each under its relative path flattened to one name. */
   protected download(): void {
-    const file = this.store.projectionFile(this.target());
-    this.downloadError.set(file.ok ? null : file.error);
-    if (!file.ok) return;
-    downloadText(file.fileName, file.text, file.fileName.endsWith('.json') ? 'application/json' : 'text/plain');
+    const out = this.store.projectionFile(this.target());
+    this.downloadError.set(out.ok ? null : out.error);
+    if (!out.ok) return;
+    for (const f of out.files) downloadText(f.fileName.replace(/\//g, '-'), f.text, f.fileName.endsWith('.json') ? 'application/json' : 'text/plain');
   }
 }

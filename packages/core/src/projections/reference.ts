@@ -7,7 +7,9 @@ import { recordKey, recordsOf, type CollectionName } from '../records.js';
 import { sqlTypeText } from '../sql-types.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
 import { workflowSections } from './mermaid.js';
-import { predicateText } from './context.js';
+import { predicateText, type RenderContext } from './context.js';
+
+export const REFERENCE_FILE = 'reference.md';
 
 const code = (s: string): string => `\`${s.replace(/`/g, "'")}\``;
 const codes = (values: readonly string[]): string => (values.length ? values.map(code).join(', ') : '(none)');
@@ -78,7 +80,20 @@ const sqlText = (t: SqlType): string => sqlTypeText(t);
  * requirements, a consumers index by reverse reachability, the workflow
  * diagrams, and the rules the model is checked against.
  */
-export function projectReference(model: Model): string {
+export function projectReference(model: Model, ctx: RenderContext): Record<string, string> {
+  const cover = (kind: RecordKind, id: string, location: string): void => ctx.covered({ kind, id }, REFERENCE_FILE, location);
+  for (const c of model.components) cover('component', c.id, `## Component ${code(c.id)}\n`);
+  for (const t of model.types) cover('type', t.id, `#### Type ${code(t.id)} (`);
+  for (const s of model.storage) cover('storage', s.id, `#### Storage ${code(s.id)} (`);
+  for (const o of model.operations) cover('operation', o.id, `#### Operation ${code(o.id)} (`);
+  for (const r of model.routines) cover('routine', r.id, `#### Routine ${code(r.id)} (`);
+  for (const m of model.mutations) cover('mutation', m.id, `#### Mutation ${code(m.id)} (`);
+  for (const w of model.workflows) cover('workflow', w.id, `### Workflow ${code(w.id)} (`);
+  for (const r of model.requirements) cover('requirement', r.id, `| ${code(r.id)} | ${r.status} |`);
+  return { [REFERENCE_FILE]: referenceText(model) };
+}
+
+function referenceText(model: Model): string {
   const L: string[] = [MARKDOWN_NOTICE, '# Loom model reference', ''];
   L.push(`Model format version ${model.version}.`, '');
   if (model.systemProfile) L.push(`System: ${model.systemProfile.kind}; traits ${codes(model.systemProfile.traits)}.`, '');

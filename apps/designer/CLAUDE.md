@@ -18,8 +18,9 @@ model changes only to the model `mutate()` returned, so a refused edit never rea
 - Never re-implement an engine rule in the UI. The guided edit form builds a `Patch` and sends it
   through `LoomStore.apply()`, the same path as the batch editor.
 - Lists the engine publishes are read from it, not hard-coded: projection targets from
-  `PROJECTION_TARGETS`, download file names from `PROJECTION_FILES`, property kinds from
-  `SCHEMA_BUNDLE.$defs.Kind`. A hard-coded copy goes stale when the core adds a target or kind.
+  `PROJECTION_TARGETS`, download file names from the files `renderTarget` returns (one per
+  component instance for a per-component target), property kinds from `SCHEMA_BUNDLE.$defs.Kind`.
+  A hard-coded copy goes stale when the core adds a target or kind.
 - Keep `prebundle.exclude: ["@loom/core"]` in the `serve` options of `angular.json`. The dev server
   otherwise keeps serving its cached pre-bundle of the linked core after the core is rebuilt, and
   the page fails on any export the cache predates; the production build and the tests do not show it.

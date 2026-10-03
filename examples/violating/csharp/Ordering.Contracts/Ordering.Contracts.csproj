@@ -1,0 +1,10 @@
+<!-- Conformance fixture that VIOLATES the sample contract: Order.Total is a double, not a decimal. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Ordering.Contracts</AssemblyName>
+    <RootNamespace>Ordering.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

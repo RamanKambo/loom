@@ -1,12 +1,15 @@
 import type { Binding, HttpParameter, Model, Operation, SecurityScheme, TypeDef } from '../generated/types.js';
 import { SOURCE_NOTICE } from './notice.js';
-import { typeSchema, valueSchema } from './json.js';
-import type { RenderContext } from './context.js';
+import { coverTypes, typeSchema, valueSchema } from './json.js';
+import { pointer, type RenderContext } from './context.js';
 
 type Json = Record<string, unknown>;
+export const OPENAPI_FILE = 'openapi.json';
 const REF = '#/components/schemas/';
 const BODYLESS = new Set(['GET', 'HEAD', 'DELETE']);
 const MEDIA = 'application/json';
+/** Request media types whose body is not a JSON document of the request type. */
+const FORM_MEDIA = /^(multipart\/|application\/x-www-form-urlencoded$)/;
 
 function content(typeId: string | undefined, mediaType: string | undefined): Json | undefined {
   return typeId === undefined ? undefined : { [mediaType ?? MEDIA]: { schema: { $ref: `${REF}${typeId}` } } };
@@ -93,13 +96,18 @@ function acceptedDescription(op: Operation): string {
  * security requirements. The authority stays visible as x-authority, but the
  * security requirement is the declaration a client acts on.
  */
-export function projectOpenApi(model: Model, ctx: RenderContext): Json {
+export function projectOpenApi(model: Model, ctx: RenderContext): Record<string, Json> {
   const schemas: Json = {};
   for (const t of model.types) schemas[t.id] = typeSchema(t, REF, ctx, true);
+  coverTypes(model, ctx, OPENAPI_FILE, ['components', 'schemas']);
   const paths: Record<string, Json> = {};
   for (const op of model.operations) {
     const http = (op.bindings ?? []).filter((b) => b.transport === 'http' && b.method && b.path);
+    if (http.length) ctx.covered({ kind: 'operation', id: op.id }, OPENAPI_FILE, ...http.map((b) => pointer('paths', b.path as string, (b.method as string).toLowerCase())));
     http.forEach((b, i) => {
+      if (b.requestMediaType !== undefined && FORM_MEDIA.test(b.requestMediaType)) {
+        ctx.unsupported('http.multipart', { kind: 'operation', id: op.id }, `operation '${op.id}' takes a ${b.requestMediaType} body, which this profile does not represent`);
+      }
       const method = (b.method as string).toLowerCase();
       const item = paths[b.path as string] ?? (paths[b.path as string] = {});
       const request = op.request ? model.types.find((t) => t.id === op.request) : undefined;
@@ -121,10 +129,13 @@ export function projectOpenApi(model: Model, ctx: RenderContext): Json {
   }
   const components: Json = { schemas };
   if (model.securitySchemes.length) components['securitySchemes'] = Object.fromEntries(model.securitySchemes.map((s) => [s.id, securityScheme(s)]));
+  for (const s of model.securitySchemes) ctx.covered({ kind: 'securityScheme', id: s.id }, OPENAPI_FILE, pointer('components', 'securitySchemes', s.id));
   return {
-    openapi: '3.1.0',
-    info: { title: 'Loom projected API', version: String(model.version), description: SOURCE_NOTICE },
-    paths,
-    components,
+    [OPENAPI_FILE]: {
+      openapi: '3.1.0',
+      info: { title: 'Loom projected API', version: String(model.version), description: SOURCE_NOTICE },
+      paths,
+      components,
+    },
   };
 }

@@ -1,13 +1,14 @@
 import type { Model } from '../generated/types.js';
 import { ABSENT_STATE } from '../records.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
+import type { RenderContext } from './context.js';
 
 /** Mermaid label text: a double quote would end the label, so it becomes an entity. */
 export function label(s: string): string {
   return s.replace(/"/g, '#quot;').replace(/\r?\n/g, ' ');
 }
 
-const code = (s: string): string => `\`${s.replace(/`/g, "'")}\``;
+export const code = (s: string): string => `\`${s.replace(/`/g, "'")}\``;
 
 /**
  * Markdown sections holding the Mermaid diagrams: one stateDiagram-v2 per
@@ -72,7 +73,11 @@ export function workflowSections(model: Model, level: number): string[] {
   return lines;
 }
 
+export const WORKFLOW_FILE = 'workflows.md';
+
 /** Markdown file of the workflow and state-machine diagrams. */
-export function projectWorkflow(model: Model): string {
-  return toText([MARKDOWN_NOTICE, '# Loom workflows', '', ...workflowSections(model, 2)]);
+export function projectWorkflow(model: Model, ctx: RenderContext): Record<string, string> {
+  for (const t of model.types) if (t.stateProperty !== undefined) ctx.covered({ kind: 'type', id: t.id }, WORKFLOW_FILE, `# Type ${code(t.id)} (`);
+  for (const w of model.workflows) ctx.covered({ kind: 'workflow', id: w.id }, WORKFLOW_FILE, `["${label(`${w.id} (${w.status})`)}"]`);
+  return { [WORKFLOW_FILE]: toText([MARKDOWN_NOTICE, '# Loom workflows', '', ...workflowSections(model, 2)]) };
 }

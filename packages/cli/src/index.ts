@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, appendFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import SwaggerParser from '@apidevtools/swagger-parser';
@@ -10,6 +10,7 @@ import {
   project,
   projectToFiles,
   sampleModel,
+  sqlDeploymentOrder,
   exportModel,
   importModel,
   LoomStructuralError,
@@ -69,6 +70,23 @@ function readIfFile(path: string): string | null {
   }
 }
 
+/** Every file below `root` as a forward-slash relative path, sorted; an unreadable root yields none. */
+function filesUnder(root: string, prefix = ''): string[] {
+  let entries;
+  try {
+    entries = readdirSync(join(root, prefix), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const out: string[] = [];
+  for (const e of entries) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push(...filesUnder(root, rel));
+    else if (e.isFile()) out.push(rel);
+  }
+  return out.sort();
+}
+
 /**
  * Validate a model; with `dir`, also compare each projected file to the file on
  * disk. Prints DRIFT <file>: missing | stale per drifted file and warns on files
@@ -93,7 +111,7 @@ function runCheck(file: string, dir: string | undefined, log: Log): number {
   const names = Object.keys(expected);
   let drifted = 0;
   for (const name of names) {
-    const actual = readIfFile(join(root, name));
+    const actual = readIfFile(join(root, ...name.split('/')));
     if (actual === null) {
       log(`DRIFT ${name}: missing`);
       drifted++;
@@ -102,16 +120,7 @@ function runCheck(file: string, dir: string | undefined, log: Log): number {
       drifted++;
     }
   }
-  let entries: string[] = [];
-  try {
-    entries = readdirSync(root, { withFileTypes: true })
-      .filter((e) => e.isFile())
-      .map((e) => e.name)
-      .sort();
-  } catch {
-    entries = [];
-  }
-  for (const name of entries) {
+  for (const name of filesUnder(root)) {
     if (!Object.prototype.hasOwnProperty.call(expected, name)) log(`WARN unexpected file ${name}: not a Loom projection`);
   }
   log(
@@ -139,7 +148,11 @@ function runWrite(file: string, dir: string, log: Log): number {
   }
   const root = resolve(dir);
   mkdirSync(root, { recursive: true });
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(root, name), text, 'utf8');
+  for (const [name, text] of Object.entries(files)) {
+    const path = join(root, ...name.split('/'));
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, text, 'utf8');
+  }
   log(`loom write: wrote ${Object.keys(files).length} file(s) to ${root}: ${Object.keys(files).join(', ')}.`);
   return 0;
 }
@@ -188,23 +201,28 @@ async function runSelfTest(): Promise<number> {
       throw new Error(`cli self-test: a fresh projection should check clean, got exit ${cleanCode}: ${captured.join(' | ')}`);
     }
 
-    // Standard-tool proofs on the files just written.
-    const testFile = join(projection, 'Routines.Contract.Tests.ps1');
+    // Standard-tool proofs on the files just written. Per-component artifacts
+    // sit in <component>/ directories; SQL files apply in foreign-key order.
+    const testFile = join(projection, 'fulfillment', 'Routines.Contract.Tests.ps1');
+    const sqlComponents = sqlDeploymentOrder(model);
+    const schemaFiles = sqlComponents.map((c) => join(projection, c, 'schema.sql'));
+    const contractFiles = sqlComponents.map((c) => join(projection, c, 'contract-tests.sql'));
     const probes: ProbeResult[] = [
       probePesterParse(testFile),
       probePesterRun(testFile, EXAMPLES),
-      probeScriptDom([join(projection, 'schema.sql'), join(projection, 'contract-tests.sql')]),
+      probeScriptDom([...schemaFiles, ...contractFiles]),
       probeYaml(readFileSync(join(projection, 'model.yaml'), 'utf8'), model),
       await probeMermaid({
         'workflows.md': readFileSync(join(projection, 'workflows.md'), 'utf8'),
         'reference.md': readFileSync(join(projection, 'reference.md'), 'utf8'),
+        'architecture.md': readFileSync(join(projection, 'architecture.md'), 'utf8'),
       }),
       // The override env vars exist only to prove the UNKNOWN path in a test
       // run, without uninstalling SqlLocalDB or removing sqlcmd from PATH.
       probeLocalDb(
         {
-          schemaSql: join(projection, 'schema.sql'),
-          contractTestsSql: join(projection, 'contract-tests.sql'),
+          schemaSql: schemaFiles,
+          contractTestsSql: contractFiles,
           conformingFixture: join(EXAMPLES, 'conforming', 'ordering', 'sp_place_order.sql'),
           violatingFixture: join(EXAMPLES, 'violating', 'ordering', 'sp_place_order.sql'),
         },
@@ -217,19 +235,19 @@ async function runSelfTest(): Promise<number> {
     for (const p of probes) out(`probe (${p.id}) ${p.title}: ${p.status} - ${p.detail}`);
 
     // Drift: edit one file, delete one, add a stray one.
-    appendFileSync(join(projection, 'schema.sql'), '-- hand edit\n', 'utf8');
+    appendFileSync(join(projection, 'ordering', 'schema.sql'), '-- hand edit\n', 'utf8');
     rmSync(join(projection, 'reference.md'));
-    writeFileSync(join(projection, 'notes.txt'), 'scratch\n', 'utf8');
+    writeFileSync(join(projection, 'ordering', 'notes.txt'), 'scratch\n', 'utf8');
     captured.length = 0;
     const driftCode = runCheck(modelFile, projection, capture);
-    const expectations = ['DRIFT schema.sql: stale', 'DRIFT reference.md: missing', 'WARN unexpected file notes.txt: not a Loom projection'];
+    const expectations = ['DRIFT ordering/schema.sql: stale', 'DRIFT reference.md: missing', 'WARN unexpected file ordering/notes.txt: not a Loom projection'];
     const unmet = expectations.filter((e) => !captured.includes(e));
     if (driftCode === 0 || unmet.length) {
       throw new Error(`cli self-test: drift should be reported with a non-zero exit, got exit ${driftCode}; missing lines: ${unmet.join(' | ')}`);
     }
     out(
-      `loom cli: drift check - fresh projection exit 0; edited schema.sql -> "DRIFT schema.sql: stale", ` +
-        `deleted reference.md -> "DRIFT reference.md: missing", stray notes.txt warned, exit ${driftCode}.`,
+      `loom cli: drift check - fresh projection exit 0; edited ordering/schema.sql -> "DRIFT ordering/schema.sql: stale", ` +
+        `deleted reference.md -> "DRIFT reference.md: missing", stray ordering/notes.txt warned, exit ${driftCode}.`,
     );
 
     const failed = probes.filter((p) => p.status === 'FAIL');

@@ -1,6 +1,9 @@
 import type { Model, Routine, Kind } from '../generated/types.js';
 import { indexModel, resolveProperty, type ModelIndex } from '../records.js';
 import { HASH_NOTICE, toText } from './notice.js';
+import type { RenderContext } from './context.js';
+
+export const PESTER_TESTS_FILE = 'Routines.Contract.Tests.ps1';
 
 /**
  * .NET types a PowerShell parameter's type constraint may resolve to for each
@@ -103,9 +106,11 @@ function orderTest(r: Routine): string[] {
   ];
 }
 
+const describeTitle = (r: Routine): string => q(`Routine ${r.id} (${r.host}, version ${r.version}, ${r.parameterPassing} parameters)`);
+
 function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
   const lines: string[] = [
-    `Describe ${q(`Routine ${r.id} (${r.host}, version ${r.version}, ${r.parameterPassing} parameters)`)} {`,
+    `Describe ${describeTitle(r)} {`,
     '    BeforeAll {',
     `        $path = Join-Path -Path $RoutineRoot -ChildPath ${q(source)}`,
     '        $routine = Read-LoomScript -Path $path',
@@ -158,17 +163,18 @@ function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
 }
 
 /**
- * One Pester test file for runbook and function routines that declare a
- * source. Each script is parsed, never executed: the checks read the param
- * block (names, and their order under positional passing; Mandatory; type
- * constraint; ValidateSet for enum params bound to an enum property). A
- * runbook's output shape cannot be checked statically, so no test covers it.
+ * One Pester test file per component for its runbook and function routines
+ * that declare a source. Each script is parsed, never executed: the checks
+ * read the param block (names, and their order under positional passing;
+ * Mandatory; type constraint; ValidateSet for enum params bound to an enum
+ * property). A runbook's output shape cannot be checked statically, so no
+ * test covers it.
  */
-export function projectPesterContractTests(model: Model): string {
+export function projectPesterContractTests(model: Model, ctx: RenderContext): Record<string, string> {
   const index = indexModel(model);
   const lines: string[] = [
     HASH_NOTICE,
-    '# Loom conformance checks for runbook and function routines (Pester 5; also runs under Pester 6).',
+    `# Loom conformance checks for the runbook and function routines of ${ctx.component ? `component ${ctx.component}` : 'every component'} (Pester 5; also runs under Pester 6).`,
     "# Each routine's script is parsed, never executed: the checks read its param block only.",
     "# A runbook's output shape cannot be checked statically, so no test covers it.",
     "# Run: Invoke-Pester -Container (New-PesterContainer -Path ./Routines.Contract.Tests.ps1 -Data @{ RoutineRoot = '<repository root>' })",
@@ -180,12 +186,14 @@ export function projectPesterContractTests(model: Model): string {
   ];
   for (const r of model.routines) {
     if (r.host !== 'runbook' && r.host !== 'function') continue;
+    if (ctx.component !== undefined && r.owner !== ctx.component) continue;
     lines.push('');
     if (r.source === undefined) {
       lines.push(`# Routine ${r.id} (${r.host}) declares no source, so its contract is not checked.`);
       continue;
     }
+    ctx.covered({ kind: 'routine', id: r.id }, PESTER_TESTS_FILE, `Describe ${describeTitle(r)}`);
     lines.push(...routineBlock(index, r, r.source));
   }
-  return toText(lines);
+  return { [PESTER_TESTS_FILE]: toText(lines) };
 }

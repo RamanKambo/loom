@@ -1,7 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
   LoomInvalidModelError,
-  PROJECTION_FILES,
   PROJECTION_TARGETS,
   canonicalStringify,
   diff,
@@ -9,7 +8,8 @@ import {
   importModel,
   mutate,
   project,
-  projectToFiles,
+  projectedPath,
+  renderTarget,
   sampleModel,
   validate,
   type AffectedElement,
@@ -39,7 +39,8 @@ export type ProjectionOutcome =
   | { ok: true; target: ProjectionTarget; text: string }
   | (Failure & { target: ProjectionTarget });
 
-export type FileOutcome = { ok: true; fileName: string; text: string } | Failure;
+/** Every file a target writes; a per-component target writes one per component, under <component>/. */
+export type FileOutcome = { ok: true; files: Array<{ fileName: string; text: string }> } | Failure;
 
 export type ExportOutcome = { ok: true; text: string } | Failure;
 
@@ -153,16 +154,14 @@ export class LoomStore {
     }
   }
 
-  /** The target as the engine writes it to a file (`loom --write`): its file name and exact text. */
+  /** The target as the engine writes it to files (`loom --write`): each file's relative path and exact text. */
   projectionFile(target: ProjectionTarget): FileOutcome {
     const m = this.current();
     if (!m) return { ok: false, error: 'no model is loaded', findings: [] };
-    const fileName = Object.keys(PROJECTION_FILES).find((f) => PROJECTION_FILES[f] === target);
-    if (fileName === undefined) return { ok: false, error: `no file is defined for '${target}'`, findings: [] };
     try {
-      const text = projectToFiles(m)[fileName];
-      if (text === undefined) return { ok: false, error: `the engine wrote no '${fileName}'`, findings: [] };
-      return { ok: true, fileName, text };
+      const files = renderTarget(m, target).files.map((f) => ({ fileName: projectedPath(f), text: f.content }));
+      if (files.length === 0) return { ok: false, error: `the engine wrote no file for '${target}'`, findings: [] };
+      return { ok: true, files };
     } catch (e) {
       return failure(e);
     }

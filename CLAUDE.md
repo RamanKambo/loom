@@ -62,7 +62,8 @@ scripts: @package.json
   | The human-readable rule list | the Rules section of the `reference` projection, rendered from both tables |
   | Logical kind to SQL Server type families and physical limits | `packages/core/src/sql-types.ts` |
   | Source-notice text | `packages/core/src/projections/notice.ts` |
-  | Projection targets and their file names | `RENDERERS` and `PROJECTION_FILES` in `packages/core/src/project.ts`; the MCP tool enum and the designer read them |
+  | Projection targets: their files, renderer and in-scope records | `TARGETS` in `packages/core/src/project.ts`; `PROJECTION_TARGETS` and `PROJECTION_FILES` derive from it, and the MCP tool enum and the designer read those |
+  | Whether a target is singleton or per-component, and the language a component must declare for it | the `artifacts` of the profiles in `packages/core/schema/profiles` |
   | The fixture model every test and the designer load | `packages/core/src/sample.ts` |
 
 ## Rules
@@ -84,8 +85,12 @@ scripts: @package.json
   `FIELD_POLICY` entry for every new field and keeps `packages/core/src/sample.ts` valid. The
   self-test fails on a field the comparison walk reaches without a policy, so a new field cannot
   bypass comparison.
-- **A new projection target** is added to the contract's `ProjectionTarget`, to `RENDERERS` and to
-  `PROJECTION_FILES`. The self-test's determinism and fail-closed loops then cover it.
+- **A new projection target** is added to the contract's `ProjectionTarget`, to a profile's
+  `artifacts` and to `TARGETS` with its files, renderer and scope. The renderer reports every
+  in-scope record through `ctx.covered` or `ctx.unsupported`; a record it drops fails the projection
+  with `PROJECTION_COVERAGE_LOSS`. Every construct it can report as unsupported is listed in its
+  profile's `unsupported`. The self-test's determinism, fail-closed and independent-coverage loops
+  then cover it.
 - **The engine checks declared contracts; it never executes them.** `packages/core` never executes
   SQL or PowerShell and never calls a live service. Routine contracts become generated conformance
   tests, the `sql-contract-tests` and `pester-contract-tests` targets, which the adopting pipeline

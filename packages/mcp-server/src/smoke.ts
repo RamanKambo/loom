@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { sampleModel, PROJECTION_FILES } from '@loom/core';
+import { sampleModel, projectToFiles } from '@loom/core';
 import { createLoomServer } from './server.js';
 import { TOOLS } from './tools.js';
 
@@ -90,23 +90,23 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // loom.projectAll returns every projection keyed by file name; loom.project
-  // returns a text target verbatim.
+  // loom.projectAll returns every projection keyed by its relative path; loom.project
+  // returns a singleton text target verbatim.
   const files = await callJson(client, 'loom.projectAll', { model });
   const fileNames = Object.keys(files).sort();
-  const expectedFiles = Object.keys(PROJECTION_FILES).sort();
+  const expectedFiles = Object.keys(projectToFiles(sampleModel())).sort();
   console.log(`loom.projectAll -> ${fileNames.length} files: ${fileNames.join(', ')}`);
   if (fileNames.join(',') !== expectedFiles.join(',') || fileNames.some((f) => typeof files[f] !== 'string')) {
     console.error(`loom.projectAll should return ${expectedFiles.join(', ')} as text`);
     process.exit(1);
   }
-  const sqlRes = await client.callTool({ name: 'loom.project', arguments: { model, target: 'sql' } });
-  const sqlText = ((sqlRes.content ?? []) as Array<{ text?: string }>).map((c) => c.text ?? '').join('');
-  if (sqlRes.isError || sqlText !== files['schema.sql']) {
-    console.error('loom.project sql should return the same text as projectAll schema.sql');
+  const refRes = await client.callTool({ name: 'loom.project', arguments: { model, target: 'reference' } });
+  const refText = ((refRes.content ?? []) as Array<{ text?: string }>).map((c) => c.text ?? '').join('');
+  if (refRes.isError || refText !== files['reference.md']) {
+    console.error('loom.project reference should return the same text as projectAll reference.md');
     process.exit(1);
   }
-  console.log(`loom.project sql -> ${sqlText.split('\n').length - 1} lines, identical to projectAll schema.sql`);
+  console.log(`loom.project reference -> ${refText.split('\n').length - 1} lines, identical to projectAll reference.md`);
 
   console.log(
     `MCP smoke test PASS: server lists ${names.length} tools; selftest, refused and accepted mutate, projectAll and project respond over an in-memory client.`,

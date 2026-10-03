@@ -198,7 +198,7 @@ export function projectTool(input: { model?: unknown; workspace?: boolean; targe
   if ('refused' in loaded) return loaded.refused;
   try {
     const r = renderTarget(loaded.model, input.target, { draft: input.draft === true });
-    const data: ProjectData = { files: r.files, draft: r.draft, coverage: [] };
+    const data: ProjectData = { files: r.files, draft: r.draft, coverage: [r.coverage] };
     return envelope('loom.project', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
     return projectionRefusal('loom.project', loaded.model, e);
@@ -211,7 +211,7 @@ export function projectAllTool(input: { model?: unknown; workspace?: boolean; dr
   if ('refused' in loaded) return loaded.refused;
   try {
     const r = renderAll(loaded.model, { draft: input.draft === true });
-    const data: ProjectData = { files: r.files, draft: r.draft, coverage: [] };
+    const data: ProjectData = { files: r.files, draft: r.draft, coverage: r.coverage };
     return envelope('loom.projectAll', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
     return projectionRefusal('loom.projectAll', loaded.model, e);

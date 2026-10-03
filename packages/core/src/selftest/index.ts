@@ -1,5 +1,3 @@
-import { Ajv2020 } from 'ajv/dist/2020.js';
-import addFormatsModule from 'ajv-formats';
 import type { Change, FindingCode, Model, Patch, SelftestData } from '../generated/types.js';
 import { CONTRACT_DIGEST } from '../generated/digest.js';
 import { FIELD_PATHS, PATCH_VARIANTS } from '../generated/registry.js';
@@ -16,7 +14,6 @@ import { DIFF_RULES, FIELD_POLICY, type DiffRule } from '../field-policy.js';
 import { mutate, guardFindings } from '../mutate.js';
 import { changeImpact } from '../graph.js';
 import { exportModel, exportYaml, importModel } from '../exportModel.js';
-import { project, projectToFiles, renderTarget, PROJECTION_TARGETS } from '../project.js';
 import { LoomInvalidModelError, LoomStructuralError } from '../errors.js';
 import { schemaErrors } from '../schema-runtime.js';
 import { checkRevision, mutateTool, projectTool, validateTool, diffTool, importTool, exportTool, projectAllTool } from '../envelope.js';
@@ -25,6 +22,7 @@ import { CONTRADICTIONS } from './contradictions.js';
 import { DIFF_CASES } from './diffs.js';
 import { REGRESSIONS } from './regressions.js';
 import { EVALUATION_SECTIONS } from './evaluation.js';
+import { PROJECTION_SECTIONS } from './projections.js';
 import { assert, assertThrows, codesOf, errorsOf, fresh, observe, pick, SelfTestFailure, type Tally } from './harness.js';
 
 /**
@@ -36,7 +34,6 @@ const RAISED_ELSEWHERE: Partial<Record<FindingCode, string>> = {
   POLICY_UNRESOLVED: 'workspace adapter',
   POLICY_UNTRUSTED: 'workspace adapter',
   EVIDENCE_STORE_UNAVAILABLE: 'workspace adapter',
-  PROJECTION_COVERAGE_LOSS: 'projection coverage manifest',
   PROJECTION_INVALID: 'qualification adapter',
   SCOPE_OVERLAP: 'workspace adapter',
   SCOPE_COMPONENT_UNKNOWN: 'workspace adapter',
@@ -63,10 +60,6 @@ const RAISED_ELSEWHERE: Partial<Record<FindingCode, string>> = {
   VALIDATION_ONLY_MODE: 'workspace adapter',
   CLIENT_CAPABILITY_UNSUPPORTED: 'MCP server',
 };
-
-type FormatsPlugin = (ajv: unknown, opts?: unknown) => unknown;
-const rawFormats = addFormatsModule as unknown as FormatsPlugin | { default: FormatsPlugin };
-const addFormats: FormatsPlugin = typeof rawFormats === 'function' ? rawFormats : rawFormats.default;
 
 interface Section {
   name: string;
@@ -275,43 +268,7 @@ const SECTIONS: readonly Section[] = [
       assert(t, recordHash(sampleModel(), { kind: 'property', id: 'order.total' }) !== null && recordHash(sampleModel(), { kind: 'edge', id: 'billing|ordering|integration' }) !== null, 'any record, a property or an edge has a canonical hash');
     },
   },
-  {
-    name: 'projections',
-    run: (t) => {
-      for (const target of PROJECTION_TARGETS) {
-        const a = canonicalStringify(project(sampleModel(), target));
-        const b = canonicalStringify(project(sampleModel(), target));
-        assert(t, a === b, `${target} renders deterministically`);
-      }
-      const files = projectToFiles(sampleModel());
-      assert(t, Object.keys(files).length === PROJECTION_TARGETS.length, 'every target writes one file');
-      const broken = fresh();
-      pick(broken.mutations, 'order.pay').to = 'refunded';
-      for (const target of PROJECTION_TARGETS) {
-        assertThrows(t, () => project(broken, target), `${target} refuses an invalid model`, (e) => e instanceof LoomInvalidModelError);
-      }
-      assertThrows(t, () => exportModel(broken), 'export refuses an invalid model', (e) => e instanceof LoomInvalidModelError);
-      const ajv = new Ajv2020({ strict: true, allErrors: true });
-      addFormats(ajv);
-      const schema = project(sampleModel(), 'json-schema') as Record<string, unknown>;
-      ajv.addSchema(schema);
-      const validOrder = ajv.getSchema('urn:loom:projection:json-schema#/$defs/order');
-      assert(t, validOrder !== undefined, 'the projected JSON Schema compiles under Ajv 2020-12 strict mode');
-      assert(t, validOrder!({ id: 'o-1', status: 'placed', total: '12.50', note: null }) === true, `a conforming order validates: ${ajv.errorsText(validOrder!.errors)}`);
-      assert(t, validOrder!({ id: 'o-1', status: 'placed' }) === false, 'an order without its total is rejected');
-      assert(t, validOrder!({ id: 'o-1', status: 'placed', total: 12.5 }) === false, 'a floating-point total is rejected');
-      const prose = fresh();
-      pick(prose.storage, 'ordering.orders').checks = [{ name: 'reasonable', predicate: { form: 'prose', text: 'The total is reasonable.' } }];
-      const unsupported = assertThrows(t, () => project(prose, 'sql'), 'a prose check cannot be rendered as a constraint', (e) => e instanceof LoomInvalidModelError) as LoomInvalidModelError;
-      observe(t, unsupported.findings);
-      assert(t, codesOf(unsupported.findings).includes('PROFILE_UNSUPPORTED_CONSTRUCT'), 'the refusal names the unsupported construct');
-      const draft = renderTarget(prose, 'sql', { draft: true });
-      observe(t, draft.findings);
-      assert(t, draft.draft && draft.files[0]!.content.split('\n')[1]!.startsWith('-- DRAFT'), 'a draft is rendered and marked as incomplete');
-      const env = projectTool({ model: prose, target: 'sql' });
-      assert(t, env.outcome === 'refused' && env.refusal?.cause === 'policy-failure', 'the project tool refuses an unsupported construct outside draft mode');
-    },
-  },
+  ...PROJECTION_SECTIONS,
   {
     name: 'round trip and formats',
     run: (t) => {

@@ -246,16 +246,32 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ],
     "supports": [
       {
+        "construct": "type.naming",
+        "description": "A type id maps to a PascalCase public class in the namespace named by the component's csharp module, which is also the implementation assembly name; a property maps to a PascalCase public property whose JSON member name is the model property name."
+      },
+      {
+        "construct": "type.kinds",
+        "description": "string to string, integer to long, number to double, decimal to decimal carried as a JSON string, boolean to bool, date to DateOnly, datetime to DateTimeOffset, uuid to Guid, enum to a string or a C# enum serialized by member name, ref to the referenced class, array to IReadOnlyList<T>."
+      },
+      {
+        "construct": "type.presence",
+        "description": "A required member carries the required modifier or [JsonRequired]; a nullable or optional member is a nullable reference or Nullable<T>; an immutable member is init-only or get-only."
+      },
+      {
         "construct": "type.publicShape",
-        "description": "Public type and property presence, CLR type of each property, nullability annotation and read-only (immutable) properties."
+        "description": "Public type and property presence and CLR type, checked by reflection over the implementation assembly, so a missing type fails its own tests rather than the build."
       },
       {
         "construct": "type.serialization",
-        "description": "JSON member names, required members, enum string values and round-trip of a contract-conforming payload through System.Text.Json."
+        "description": "JSON member names, rejection of a payload missing a required member, rejection of an enum value outside the set under the reject policy, and round trip of a contract-conforming payload, with System.Text.Json and the module's ContractJson.Options when the module defines it, otherwise JsonSerializerDefaults.Web."
       },
       {
         "construct": "type.decimal",
-        "description": "Exact decimal values survive serialization without floating-point conversion."
+        "description": "An exact decimal keeps its text through a round trip; a floating-point member fails the CLR type check."
+      },
+      {
+        "construct": "project.reference",
+        "description": "The generated test project references the implementation through the MSBuild property LoomImplementationProject, which qualification sets; the generated files name no path."
       }
     ],
     "unsupported": [
@@ -960,7 +976,7 @@ export const PROFILES: readonly ProfileDefinition[] = [
     "supports": [
       {
         "construct": "storage.table",
-        "description": "Schema-qualified table per storage record, with exact column types, lengths, precision, scale, collation and nullability."
+        "description": "One schema.sql per component for the storage records it owns: schema-qualified tables with exact column types, lengths, precision, scale, collation and nullability. Each file creates the schemas it uses idempotently, and a foreign key into another component's table needs that component's file applied first."
       },
       {
         "construct": "storage.constraints",
@@ -977,6 +993,10 @@ export const PROFILES: readonly ProfileDefinition[] = [
       {
         "construct": "migration.script",
         "description": "Execution of an authored migration script against representative fixture data."
+      },
+      {
+        "construct": "storage.catalogChecks",
+        "description": "One contract-tests.sql per component checks the deployed catalog for exact column types, collation and nullability, the primary key, unique keys, foreign keys, check constraints, indexes, defaults and identity, without depending on constraint names."
       }
     ],
     "unsupported": [
@@ -1210,12 +1230,24 @@ export const PROFILES: readonly ProfileDefinition[] = [
     ],
     "supports": [
       {
+        "construct": "module.exports",
+        "description": "The module named by the component's typescript implementation exports one PascalCase type per Loom type and a codecs object keyed by type id with parse(json: unknown): T and serialize(value: T): unknown; a referenced type is exported by the same module."
+      },
+      {
+        "construct": "type.kinds",
+        "description": "string, date, datetime, uuid and decimal to string (a decimal is its exact decimal text); integer and number to number; boolean to boolean; enum to a union of its string literals; ref to the referenced exported type; array to Array<T>; nullable adds | null, optional adds ?, immutable adds readonly."
+      },
+      {
         "construct": "type.exportedShape",
-        "description": "Compile-time equality of the exported type's keys, optionality and readonly members with the declared type."
+        "description": "Compile-time equality of each exported type with the declared shape, including keys, optionality, readonly members and member types, and of each codec's parse result with its type."
       },
       {
         "construct": "type.serialization",
-        "description": "Round-trip of contract-conforming payloads through the module's parse and serialize functions, and rejection of payloads missing a required member."
+        "description": "Round trip of contract-conforming payloads through parse and serialize, rejection of a payload missing a required member, and rejection of an enum value outside the set under the reject policy."
+      },
+      {
+        "construct": "module.resolution",
+        "description": "The generated test imports the module by name only; qualification maps the name to the implementation at run time."
       }
     ],
     "unsupported": [

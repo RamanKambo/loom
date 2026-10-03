@@ -8,6 +8,9 @@ export const SOURCE_NOTICE =
 export const SQL_NOTICE = `-- ${SOURCE_NOTICE}`;
 /** PowerShell and YAML comment form. */
 export const HASH_NOTICE = `# ${SOURCE_NOTICE}`;
+/** C# and TypeScript comment form. */
+export const SLASH_NOTICE = `// ${SOURCE_NOTICE}`;
+/** Markdown and XML comment form. */
 export const MARKDOWN_NOTICE = `<!-- ${SOURCE_NOTICE} -->`;
 
 /** Join lines into text that ends in exactly one newline. */

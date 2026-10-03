@@ -46,6 +46,7 @@ export function sampleModel(): Model {
         owner: 'team-fulfillment',
         kind: 'worker',
         implementations: [
+          { language: 'sql', module: 'fulfillment' },
           { language: 'powershell', module: 'Fulfillment' },
           { language: 'typescript', module: '@loom-fixtures/fulfillment' },
         ],

@@ -5,18 +5,63 @@
   "version": 1,
   "language": "csharp",
   "description": "xUnit conformance tests that check an implementation's real public types and its System.Text.Json serialization against the declared types.",
-  "artifacts": [{ "target": "csharp-contract-tests", "instancing": "per-component" }],
+  "artifacts": [
+    {
+      "target": "csharp-contract-tests",
+      "instancing": "per-component"
+    }
+  ],
   "supports": [
-    { "construct": "type.publicShape", "description": "Public type and property presence, CLR type of each property, nullability annotation and read-only (immutable) properties." },
-    { "construct": "type.serialization", "description": "JSON member names, required members, enum string values and round-trip of a contract-conforming payload through System.Text.Json." },
-    { "construct": "type.decimal", "description": "Exact decimal values survive serialization without floating-point conversion." }
+    {
+      "construct": "type.naming",
+      "description": "A type id maps to a PascalCase public class in the namespace named by the component's csharp module, which is also the implementation assembly name; a property maps to a PascalCase public property whose JSON member name is the model property name."
+    },
+    {
+      "construct": "type.kinds",
+      "description": "string to string, integer to long, number to double, decimal to decimal carried as a JSON string, boolean to bool, date to DateOnly, datetime to DateTimeOffset, uuid to Guid, enum to a string or a C# enum serialized by member name, ref to the referenced class, array to IReadOnlyList<T>."
+    },
+    {
+      "construct": "type.presence",
+      "description": "A required member carries the required modifier or [JsonRequired]; a nullable or optional member is a nullable reference or Nullable<T>; an immutable member is init-only or get-only."
+    },
+    {
+      "construct": "type.publicShape",
+      "description": "Public type and property presence and CLR type, checked by reflection over the implementation assembly, so a missing type fails its own tests rather than the build."
+    },
+    {
+      "construct": "type.serialization",
+      "description": "JSON member names, rejection of a payload missing a required member, rejection of an enum value outside the set under the reject policy, and round trip of a contract-conforming payload, with System.Text.Json and the module's ContractJson.Options when the module defines it, otherwise JsonSerializerDefaults.Web."
+    },
+    {
+      "construct": "type.decimal",
+      "description": "An exact decimal keeps its text through a round trip; a floating-point member fails the CLR type check."
+    },
+    {
+      "construct": "project.reference",
+      "description": "The generated test project references the implementation through the MSBuild property LoomImplementationProject, which qualification sets; the generated files name no path."
+    }
   ],
   "unsupported": [
-    { "construct": "type.union", "reason": "Polymorphic serialization is not generated.", "onUse": "fail" },
-    { "construct": "routine.any", "reason": "Routines are qualified by the SQL and PowerShell profiles.", "onUse": "fail" }
+    {
+      "construct": "type.union",
+      "reason": "Polymorphic serialization is not generated.",
+      "onUse": "fail"
+    },
+    {
+      "construct": "routine.any",
+      "reason": "Routines are qualified by the SQL and PowerShell profiles.",
+      "onUse": "fail"
+    }
   ],
   "tooling": [
-    { "tool": "dotnet", "versionPolicy": { "minimum": "8.0" }, "required": true, "purpose": "Builds and runs the generated xUnit project against the implementation assembly." }
+    {
+      "tool": "dotnet",
+      "versionPolicy": {
+        "minimum": "8.0"
+      },
+      "required": true,
+      "purpose": "Builds and runs the generated xUnit project against the implementation assembly."
+    }
   ],
   "proofLimits": [
     "The tests check public shape and serialization only; business behavior is never generated or asserted.",
@@ -24,19 +69,48 @@
   ],
   "checks": [
     {
-      "id": "csharp.build", "revision": 1, "layer": "build", "evidence": "build",
+      "id": "csharp.build",
+      "revision": 1,
+      "layer": "build",
+      "evidence": "build",
       "claim": "The generated xUnit project builds against the implementation assembly.",
-      "tool": { "name": "dotnet", "versionPolicy": { "minimum": "8.0" } }, "runner": "csharp-build",
-      "inputs": ["csharp-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "tool": {
+        "name": "dotnet",
+        "versionPolicy": {
+          "minimum": "8.0"
+        }
+      },
+      "runner": "csharp-build",
+      "inputs": [
+        "csharp-contract-tests"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
       "limits": "Compilation only."
     },
     {
-      "id": "csharp.conformance", "revision": 1, "layer": "conformance", "evidence": "conformance",
+      "id": "csharp.conformance",
+      "revision": 1,
+      "layer": "conformance",
+      "evidence": "conformance",
       "claim": "The generated xUnit tests pass against the conforming implementation fixture and fail against the violating fixture.",
-      "tool": { "name": "dotnet", "versionPolicy": { "minimum": "8.0" } }, "runner": "csharp-conformance",
-      "inputs": ["csharp-contract-tests"], "environment": "process", "requiredByDefault": true,
+      "tool": {
+        "name": "dotnet",
+        "versionPolicy": {
+          "minimum": "8.0"
+        }
+      },
+      "runner": "csharp-conformance",
+      "inputs": [
+        "csharp-contract-tests"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
       "limits": "Public shape and serialization subset only.",
-      "negativeControl": { "fixture": "examples/violating/csharp", "reason": "Failed" }
+      "negativeControl": {
+        "fixture": "examples/violating/csharp",
+        "reason": "Failed"
+      }
     }
   ]
 }

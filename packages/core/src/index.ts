@@ -18,8 +18,24 @@ export { diff, needsAcknowledgement, reachablePolicyKeys, DIFF_RULES, FIELD_POLI
 export type { DiffRule, DiffRuleId, FieldPolicy, Delta, DiffOptions } from './diff.js';
 export { mutate, checkPatch } from './mutate.js';
 export type { MutateOptions, MutateResult } from './mutate.js';
-export { project, projectToFiles, renderTarget, renderAll, PROJECTION_TARGETS, PROJECTION_FILES, JSON_SCHEMA_ID, SOURCE_NOTICE } from './project.js';
-export type { ProjectOptions, RenderedTarget } from './project.js';
+export {
+  project,
+  projectToFiles,
+  renderTarget,
+  renderAll,
+  instancesOf,
+  enabledTargets,
+  artifactProfile,
+  unsupportedConstructs,
+  filesOf,
+  projectedPath,
+  PROJECTION_TARGETS,
+  PROJECTION_FILES,
+  JSON_SCHEMA_ID,
+  SOURCE_NOTICE,
+} from './project.js';
+export type { ProjectOptions, RenderedTarget, RenderedBundle, ArtifactProfile } from './project.js';
+export { sqlDeploymentOrder } from './projections/sql.js';
 export { exportModel, exportYaml, importModel } from './exportModel.js';
 export {
   envelope,

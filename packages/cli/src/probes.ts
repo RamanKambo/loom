@@ -322,10 +322,10 @@ const LOCALDB_INSTANCE = '(localdb)\\MSSQLLocalDB';
 const EXPECTED_VIOLATION_CODE = 50005;
 
 export interface LocalDbPaths {
-  /** Path to the projected schema.sql for the sample model. */
-  schemaSql: string;
-  /** Path to the projected contract-tests.sql for the sample model. */
-  contractTestsSql: string;
+  /** Paths to the projected per-component schema.sql files, in foreign-key deployment order. */
+  schemaSql: string[];
+  /** Paths to the projected per-component contract-tests.sql files. */
+  contractTestsSql: string[];
   /** Path to examples/conforming/ordering/sp_place_order.sql. */
   conformingFixture: string;
   /** Path to examples/violating/ordering/sp_place_order.sql. */
@@ -563,8 +563,8 @@ function runLocalDbChecks(
   let conformingFixture: string;
   let violatingFixture: string;
   try {
-    schemaSql = readFileSync(paths.schemaSql, 'utf8');
-    contractTestsSql = readFileSync(paths.contractTestsSql, 'utf8');
+    schemaSql = paths.schemaSql.map((p) => readFileSync(p, 'utf8')).join('\n');
+    contractTestsSql = paths.contractTestsSql.map((p) => readFileSync(p, 'utf8')).join('\n');
     conformingFixture = readFileSync(paths.conformingFixture, 'utf8');
     violatingFixture = readFileSync(paths.violatingFixture, 'utf8');
   } catch (e) {

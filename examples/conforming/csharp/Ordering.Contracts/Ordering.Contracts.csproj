@@ -1,0 +1,10 @@
+<!-- Conformance fixture: the ordering component's public types, implemented as the sample contract declares them. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Ordering.Contracts</AssemblyName>
+    <RootNamespace>Ordering.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

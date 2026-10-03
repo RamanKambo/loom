@@ -124,8 +124,10 @@ describe('LoomStore', () => {
       const file = store.projectionFile(target);
       expect(file.ok, `${target}: ${file.ok ? '' : file.error}`).toBe(true);
       if (!file.ok) continue;
-      expect(PROJECTION_FILES[file.fileName]).toBe(target);
-      expect(file.text.trim().length, file.fileName).toBeGreaterThan(0);
+      for (const f of file.files) {
+        expect(PROJECTION_FILES[f.fileName.split('/').pop() ?? '']).toBe(target);
+        expect(f.text.trim().length, f.fileName).toBeGreaterThan(0);
+      }
     }
   });
 
