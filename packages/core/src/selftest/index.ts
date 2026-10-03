@@ -59,6 +59,15 @@ const RAISED_ELSEWHERE: Partial<Record<FindingCode, string>> = {
   INSTALL_INCOMPLETE: 'workspace adapter',
   VALIDATION_ONLY_MODE: 'workspace adapter',
   CLIENT_CAPABILITY_UNSUPPORTED: 'MCP server',
+  DOCUMENT_LINK_BROKEN: 'CLI documentation check',
+  DOCUMENT_RECORD_UNKNOWN: 'CLI documentation check',
+  DOCUMENT_HISTORY_MARKER: 'CLI documentation check',
+  DOCUMENT_DUPLICATES_GENERATED: 'CLI documentation check',
+  DOCUMENT_INTERFACE_DROPPED: 'CLI documentation check',
+  CAPABILITY_CODE_UNRESOLVED: 'CLI capability check',
+  CAPABILITY_CONTRACT_UNRESOLVED: 'CLI capability check',
+  CAPABILITY_CASE_UNKNOWN: 'CLI capability check',
+  CAPABILITY_CASE_FAILED: 'CLI capability check',
 };
 
 interface Section {

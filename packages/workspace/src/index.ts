@@ -46,3 +46,5 @@ export type { EvaluationInputs, TrustedBaseline } from './trust.js';
 export { ACCEPTANCE_DIR, BASELINES_DIR, createAcceptance, createBaseline } from './records.js';
 export type { CreateBaselineOptions, RecordOutcome } from './records.js';
 export { ENGINE_VERSION } from './version.js';
+export { openSession, sessionRevisions, stampSession } from './session.js';
+export type { Session, SessionOptions } from './session.js';

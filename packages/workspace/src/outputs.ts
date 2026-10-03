@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { CONTRACT_DIGEST, LoomInvalidModelError, PROJECTION_PROFILES, PROJECTION_TARGETS, canonicalHash, envelope, modelRevision, renderTarget, textHash } from '@loom/core';
-import type { Finding, InstallJournal, ManifestArtifact, OutputManifest, ProjectionTarget, ResultEnvelope } from '@loom/core';
+import type { EvaluationInputs, Finding, InstallJournal, ManifestArtifact, OutputManifest, ProjectionTarget, ResultEnvelope } from '@loom/core';
 import { CACHE_DIR, LOOM_DIR, profileOf, type Workspace } from './config.js';
 import { ancestorDescriptors } from './discover.js';
 import { finding, hasErrors, refusal } from './findings.js';
@@ -38,6 +38,8 @@ export interface OutputOptions {
   /** Targets to render instead of the projection profile's set. */
   targets?: ProjectionTarget[];
   draft?: boolean;
+  /** Baselines, acceptance, evidence and policy for the views that report readiness and evidence; without them those views say they were not evaluated. */
+  inputs?: EvaluationInputs;
 }
 
 /** The targets the configured projection profile enables; selection, never routing, decides this list. */
@@ -79,7 +81,7 @@ export function planOutputs(ws: Workspace, options: OutputOptions & { install?: 
     }
     let rendered;
     try {
-      rendered = renderTarget(ws.model, target, { draft: options.draft === true });
+      rendered = renderTarget(ws.model, target, options.inputs ? { draft: options.draft === true, inputs: options.inputs } : { draft: options.draft === true });
     } catch (err) {
       if (err instanceof LoomInvalidModelError) {
         findings.push(...err.findings);

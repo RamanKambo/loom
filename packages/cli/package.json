@@ -12,6 +12,7 @@
   ],
   "dependencies": {
     "@loom/core": "1.0.0",
-    "@loom/qualification": "1.0.0"
+    "@loom/qualification": "1.0.0",
+    "@loom/workspace": "1.0.0"
   }
 }

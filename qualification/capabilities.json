@@ -1,0 +1,26 @@
+{
+  "registerVersion": 1,
+  "capabilities": [
+    {
+      "id": "core.comparison.field-policy",
+      "description": "Every model field delta is classified by a comparison rule with a compatibility dimension, or reported as requiring review.",
+      "code": ["packages/core/src/field-policy.ts#FIELD_POLICY", "packages/core/src/diff.ts#diff"],
+      "contract": ["result.schema.json#/$defs/Change"],
+      "verification": ["core.selftest.comparison"]
+    },
+    {
+      "id": "core.readiness.evaluation",
+      "description": "Task readiness is evaluated from the model, the accepted baselines, the dependencies, the evidence and the policy, with exact missing prerequisites.",
+      "code": ["packages/core/src/readiness.ts#checkReadiness"],
+      "contract": ["tools.schema.json#/$defs/ReadinessData"],
+      "verification": ["core.selftest.readiness"]
+    },
+    {
+      "id": "mcp.mutation.expected-revision",
+      "description": "A persistent MCP mutation commits only onto its expected base revision; of two writers on one base exactly one succeeds.",
+      "code": ["packages/mcp-server/src/tools.ts#executeTool", "packages/workspace/src/write.ts#writeModel"],
+      "contract": ["tools.schema.json#/$defs/MutateInput", "icd/workspace.json"],
+      "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds"]
+    }
+  ]
+}

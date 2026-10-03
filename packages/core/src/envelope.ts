@@ -26,6 +26,7 @@ import { modelRevision } from './hash.js';
 import { exportModel, importModel, exportYaml } from './exportModel.js';
 import { LoomInvalidModelError, LoomStructuralError } from './errors.js';
 import { renderTarget, renderAll } from './project.js';
+import type { EvaluationInputs } from './inputs.js';
 
 const reason = (code: Reason['code'], message: string, refs: Reason['refs'] = []): Reason => ({ code, message, refs });
 
@@ -192,12 +193,12 @@ function projectionRefusal(tool: string, model: Model, e: unknown): ResultEnvelo
   throw e;
 }
 
-export function projectTool(input: { model?: unknown; workspace?: boolean; target: ProjectionTarget; draft?: boolean }): ResultEnvelope {
+export function projectTool(input: { model?: unknown; workspace?: boolean; target: ProjectionTarget; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
   if (input.workspace) return workspaceRefusal('loom.project');
   const loaded = loadOrRefuse('loom.project', input.model);
   if ('refused' in loaded) return loaded.refused;
   try {
-    const r = renderTarget(loaded.model, input.target, { draft: input.draft === true });
+    const r = renderTarget(loaded.model, input.target, inputs ? { draft: input.draft === true, inputs } : { draft: input.draft === true });
     const data: ProjectData = { files: r.files, draft: r.draft, coverage: [r.coverage] };
     return envelope('loom.project', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
@@ -205,12 +206,12 @@ export function projectTool(input: { model?: unknown; workspace?: boolean; targe
   }
 }
 
-export function projectAllTool(input: { model?: unknown; workspace?: boolean; draft?: boolean }): ResultEnvelope {
+export function projectAllTool(input: { model?: unknown; workspace?: boolean; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
   if (input.workspace) return workspaceRefusal('loom.projectAll');
   const loaded = loadOrRefuse('loom.projectAll', input.model);
   if ('refused' in loaded) return loaded.refused;
   try {
-    const r = renderAll(loaded.model, { draft: input.draft === true });
+    const r = renderAll(loaded.model, inputs ? { draft: input.draft === true, inputs } : { draft: input.draft === true });
     const data: ProjectData = { files: r.files, draft: r.draft, coverage: r.coverage };
     return envelope('loom.projectAll', { model: loaded.model, findings: r.findings, data, states: projectionStates(loaded.model, r.findings, r.draft) });
   } catch (e) {
