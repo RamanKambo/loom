@@ -195,7 +195,7 @@ function persistentMutate(args: Json, s: Session): ResultEnvelope {
     return stampSession(envelope('loom.mutate', { model, findings: [asFinding('STALE_BASE_REVISION', '(root)', `the model is at ${current}, not the expected ${expected}`, 're-read the model, re-apply the change against it and send the new expected revision')], refusal: refusal('stale-base', 'the model changed since the expected revision; nothing was written') }), s);
   }
   const { workspace: _w, expectedRevision: _e, ...rest } = args;
-  const env = mutateTool({ ...rest, model });
+  const env = mutateTool({ ...rest, model }, s.inputs);
   if (env.outcome === 'refused' || args['dryRun'] === true) return stampSession(env, s);
   const data = env.data as MutateData;
   const written = writeModel((s.workspace as NonNullable<Session['workspace']>).root, data.model as Model, expected);

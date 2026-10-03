@@ -25,7 +25,8 @@ import { diff } from './diff.js';
 import { modelRevision } from './hash.js';
 import { exportModel, importModel, exportYaml } from './exportModel.js';
 import { LoomInvalidModelError, LoomStructuralError } from './errors.js';
-import { renderTarget, renderAll } from './project.js';
+import { renderTarget, renderAll, withArtifactHashes } from './project.js';
+import { invalidatedBy } from './evidence.js';
 import type { EvaluationInputs } from './inputs.js';
 
 const reason = (code: Reason['code'], message: string, refs: Reason['refs'] = []): Reason => ({ code, message, refs });
@@ -128,8 +129,10 @@ export interface MutateToolInput {
 /**
  * The pure mutation calculation. It never persists: a persistent workspace
  * mutation goes through the workspace adapter's expected-revision write.
+ * Evidence among `inputs` that the change invalidates is listed as a change
+ * plan lists it.
  */
-export function mutateTool(input: MutateToolInput): ResultEnvelope {
+export function mutateTool(input: MutateToolInput, inputs: EvaluationInputs = {}): ResultEnvelope {
   if (input.workspace) return workspaceRefusal('loom.mutate');
   const hasPatch = input.patch !== undefined;
   const hasPatches = input.patches !== undefined;
@@ -147,6 +150,8 @@ export function mutateTool(input: MutateToolInput): ResultEnvelope {
     return envelope('loom.mutate', { model: loaded.model, findings: [asFinding(FINDING.PATCH_INVALID, 'patches', "'patches' must be an array", 'send an array of patches')], refusal: refusal('invalid-input', "'patches' is not an array.") });
   }
   const result = mutate(loaded.model, patches, { acknowledgeBreaking: input.acknowledgeBreaking ?? [] });
+  // The supplied artifact hashes are the base model's; the candidate is judged by its own, rendered the same way.
+  const afterInputs = result.model && inputs.artifacts !== undefined ? withArtifactHashes(result.model, inputs) : inputs;
   const data: MutateData = {
     committed: false,
     dryRun: input.dryRun === true,
@@ -154,7 +159,7 @@ export function mutateTool(input: MutateToolInput): ResultEnvelope {
     changes: result.changes,
     impact: result.impact,
     repairs: result.repairs,
-    invalidatedEvidence: [],
+    invalidatedEvidence: result.model ? invalidatedBy(loaded.model, result.model, inputs, afterInputs) : [],
   };
   if (result.model) {
     if (!data.dryRun) data.model = result.model;

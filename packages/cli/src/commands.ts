@@ -425,7 +425,7 @@ export function cmdMutate(ctx: Context): CommandResult {
     return { env: stampSession(envelope('loom.mutate', { model: s.model, findings: [f], refusal: refusal('stale-base', 'the model changed since the expected revision; nothing was written') }), s) };
   }
   const dryRun = has(ctx.args, 'dry-run');
-  const env = mutateTool({ model: s.model, ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun });
+  const env = mutateTool({ model: s.model, ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun }, s.inputs);
   if (env.outcome === 'refused' || dryRun) return { env: stampSession(env, s) };
   const data = env.data as MutateData;
   const written = writeModel(s.workspace.root, data.model as Model, expected);

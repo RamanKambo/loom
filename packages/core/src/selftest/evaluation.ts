@@ -1,4 +1,4 @@
-import type { Acceptance, Baseline, EvidenceRecord, Model, Policy, PublishedContract, ReadinessState, TaskSpec } from '../generated/types.js';
+import type { Acceptance, Baseline, EvidenceRecord, Model, Patch, Policy, PublishedContract, ReadinessState, TaskSpec } from '../generated/types.js';
 import { CONTRACT_DIGEST } from '../generated/digest.js';
 import { canonicalHash, modelRevision, recordHash } from '../hash.js';
 import { deepClone } from '../canonical.js';
@@ -10,6 +10,7 @@ import { compareBaseline, derivedSeal, gateFindings, retirementFindings } from '
 import { deriveObligations, evaluateEvidence } from '../evidence.js';
 import { checkReadiness, designOrder, recomputeReadiness } from '../readiness.js';
 import { checkReadinessTool, compareBaselineTool, contextTool, describeTool, evaluateEvidenceTool, planChangeTool } from '../tools.js';
+import { mutateTool } from '../envelope.js';
 import { continuationToken } from '../retrieval.js';
 import { baselineAccepted, resolveScope } from '../scope.js';
 import { mutate } from '../mutate.js';
@@ -394,6 +395,8 @@ export const EVALUATION_SECTIONS: readonly Section[] = [
       const reworded = planChangeTool({ model: m, baseRevision: modelRevision(m), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Reads one order by its id.' } } }, withDdl);
       const invalidated = (env: typeof widened): string[] => ((env.data as { invalidatedEvidence?: Array<{ evidence: string }> }).invalidatedEvidence ?? []).map((e) => e.evidence);
       assert(t, invalidated(widened).includes('ev.ddl') && !invalidated(reworded).includes('ev.ddl'), `a preview judges evidence about an artifact by the candidate's own rendering of it: ${JSON.stringify(widened.findings.map((f) => f.code))}`);
+      const mutated = (patch: Patch, acknowledgeBreaking: string[] = []): string[] => invalidated(mutateTool({ model: m, patch, acknowledgeBreaking, dryRun: true }, withDdl));
+      assert(t, mutated({ op: 'updateItem', collection: 'storage', id: 'ordering.orders', field: 'columns', key: 'note', set: { sqlType: { name: 'nvarchar', length: 400 } } }, ['ordering.orders']).includes('ev.ddl') && mutated({ op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Reads one order by its id.' } }).length === 0, 'a mutation names the evidence it invalidates as the preview of the same change does');
       for (const env of [wrongBase, preview]) assert(t, schemaErrors('ResultEnvelope', env).length === 0, `the plan result satisfies the result contract: ${JSON.stringify(schemaErrors('ResultEnvelope', env))}`);
       assert(t, schemaErrors('PlanChangeData', preview.data).length === 0, `the plan payload satisfies its contract: ${JSON.stringify(schemaErrors('PlanChangeData', preview.data))}`);
       const described = describeTool();

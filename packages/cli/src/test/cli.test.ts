@@ -5,8 +5,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { exportModel, modelRevision, sampleModel, schemaErrors, textHash } from '@loom/core';
-import type { EvidenceObligation, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
+import { exportModel, modelRevision, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
+import type { EvidenceObligation, EvidenceRecord, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
+import { putEvidence } from '@loom/workspace';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
@@ -309,6 +310,51 @@ test('mutate persists only onto the expected revision and a dry run writes nothi
   assert.equal(loom(dir, 'mutate', '--patch', patch, '--expected', base).status, 1, 'the old base is now stale');
   const outside = loom(scratch(), 'mutate', '--patch', patch, '--expected', base);
   assert.equal(outside.env.refusal?.cause, 'unresolved-context');
+});
+
+/** A workspace whose store holds one evidence record about the ordering DDL, with the patch files that change and keep that artifact. */
+function withDdlEvidence(): { dir: string; evidence: string; widen: string; reword: string } {
+  const dir = workspace();
+  commitAll(dir, 'workspace');
+  const ddl = renderTarget(sampleModel(), 'sql').files.find((f) => f.instance === 'schema.sql#ordering')!;
+  const record: EvidenceRecord = {
+    evidenceVersion: 1,
+    id: 'ev.ddl',
+    claims: [{ kind: 'contract', ref: 'storage:ordering.orders' }],
+    kind: 'conformance',
+    check: { id: 'sql.catalog', revision: 1, definitionHash: `sha256:${'0'.repeat(64)}` },
+    artifacts: [{ instance: ddl.instance, hash: ddl.hash }],
+    sources: [],
+    environment: { id: 'ci', kind: 'ci' },
+    tool: { name: 'sqlcmd', version: '15.0' },
+    result: 'PASS',
+    run: { id: 'run-1', runner: 'ci', startedAt: '2026-10-03T10:00:00Z', finishedAt: '2026-10-03T10:00:05Z' },
+    boundaries: [{ boundary: 'SQL Server engine', actual: 'real' }],
+    limits: 'Fixture database only.',
+    inputs: [{ ref: `artifact:${ddl.instance}`, hash: ddl.hash }],
+  };
+  assert.equal(putEvidence(dir, record).stored, true);
+  const widen = join(dir, 'widen.json');
+  const reword = join(dir, 'reword.json');
+  writeJson(widen, { op: 'updateItem', collection: 'storage', id: 'ordering.orders', field: 'columns', key: 'note', set: { sqlType: { name: 'nvarchar', length: 400 } } });
+  writeJson(reword, { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } });
+  return { dir, evidence: record.id, widen, reword };
+}
+
+const invalidatedBy = (r: Run): string[] => ((r.env.data as { invalidatedEvidence?: Array<{ evidence: string }> }).invalidatedEvidence ?? []).map((e) => e.evidence);
+
+test('mutate --dry-run lists the stored evidence whose artifact the patch changes', () => {
+  const { dir, evidence, widen } = withDdlEvidence();
+  const r = loom(dir, 'mutate', '--patch', widen, '--ack', 'ordering.orders', '--expected', modelRevision(sampleModel()), '--dry-run');
+  assert.equal(r.status, 0, r.stdout);
+  assert.deepEqual(invalidatedBy(r), [evidence]);
+});
+
+test('mutate --dry-run lists no evidence for a patch that leaves its artifact alone', () => {
+  const { dir, reword } = withDdlEvidence();
+  const r = loom(dir, 'mutate', '--patch', reword, '--expected', modelRevision(sampleModel()), '--dry-run');
+  assert.equal(r.status, 0, r.stdout);
+  assert.deepEqual(invalidatedBy(r), []);
 });
 
 test('qualify runs a named check and refuses an unknown one', () => {

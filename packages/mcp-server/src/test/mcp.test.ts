@@ -9,7 +9,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { CONTRACT_DIGEST, canonicalStringify, checkReadinessTool, compareBaselineTool, exportYaml, modelRevision, planChangeTool, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
-import type { EvidenceRecord, LoomConfig, Model, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
+import type { EvidenceRecord, LoomConfig, Model, MutateData, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
 import { gatherEvaluationInputs, putEvidence, signRecord } from '@loom/workspace';
 import { commitAll, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { createLoomServer } from '../server.js';
@@ -267,6 +267,29 @@ test('a workspace change that leaves an artifact alone keeps the evidence about 
   assert.ok(!data.invalidatedEvidence.some((e) => e.evidence === evidence), JSON.stringify(data.invalidatedEvidence));
   const diff = await call(client, 'loom.diff', { againstBaseline: true, after: data.candidate });
   assert.ok(!stale(diff), JSON.stringify(diff.states.qualification));
+});
+
+test('a workspace mutation that alters an artifact lists the evidence about it in its dry run and when it commits', async () => {
+  const { dir, evidence } = governedWithDdlEvidence();
+  const client = await inMemory(dir);
+  const modelPath = join(dir, '.loom', 'model.json');
+  const before = readFileSync(modelPath, 'utf8');
+  const args = { workspace: true, expectedRevision: modelRevision(sampleModel()), patch: WIDEN_NOTE, acknowledgeBreaking: ['ordering.orders'] };
+  const dry = await call(client, 'loom.mutate', { ...args, dryRun: true });
+  assert.equal(dry.outcome, 'ok', JSON.stringify(dry.findings));
+  assert.deepEqual((dry.data as MutateData).invalidatedEvidence.map((e) => e.evidence), [evidence]);
+  assert.equal(readFileSync(modelPath, 'utf8'), before, 'the dry run wrote nothing');
+  const committed = await call(client, 'loom.mutate', args);
+  assert.equal((committed.data as MutateData).committed, true, JSON.stringify(committed.refusal));
+  assert.deepEqual((committed.data as MutateData).invalidatedEvidence.map((e) => e.evidence), [evidence]);
+});
+
+test('a workspace mutation that leaves an artifact alone lists no evidence about it in its dry run', async () => {
+  const { dir } = governedWithDdlEvidence();
+  const client = await inMemory(dir);
+  const dry = await call(client, 'loom.mutate', { workspace: true, expectedRevision: modelRevision(sampleModel()), dryRun: true, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } } });
+  assert.equal(dry.outcome, 'ok', JSON.stringify(dry.findings));
+  assert.deepEqual((dry.data as MutateData).invalidatedEvidence, []);
 });
 
 test('every tool lists the input and output schemas generated from the contract, and a request outside its input schema is refused before anything runs', async () => {
