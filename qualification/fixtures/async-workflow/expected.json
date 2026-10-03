@@ -148,7 +148,7 @@
       "description": "The workers host terminates work after ten minutes while the unit declares a twenty-minute timeout.",
       "model": "counterparts/host-timeout-shorter-than-unit.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "HOST_CAPABILITY_MISMATCH"
@@ -169,7 +169,7 @@
       "description": "Two components share a deployment unit without a decision that justifies it.",
       "model": "counterparts/cohosting-without-decision.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "COHOSTING_UNJUSTIFIED"
@@ -190,7 +190,7 @@
       "description": "An inventory item is marked replaced without naming what replaces it.",
       "model": "counterparts/replacement-undeclared.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "INVENTORY_REPLACEMENT_UNDECLARED"
@@ -211,7 +211,7 @@
       "description": "A retained behavior has no scenario, so its regression obligation is uncovered.",
       "model": "counterparts/retained-behavior-without-scenario.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "RETAINED_BEHAVIOR_UNCOVERED"
@@ -232,7 +232,7 @@
       "description": "The deduplication contract of the retrying asynchronous command is removed and nothing stands in for it.",
       "model": "counterparts/deduplication-removed.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "CONCERN_UNRESOLVED"

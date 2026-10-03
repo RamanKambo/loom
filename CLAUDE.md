@@ -19,8 +19,9 @@ the open-items register. Workspace scripts: @package.json
   profile check run by `packages/qualification` against Loom's own fixtures under
   `qualification/policy.json`. The core has no per-test runner; `selfTest()` throws on the first
   failed assertion and names it. `npm run test:workspace`, `npm run test:qualification`,
-  `npm run test:cli` and `npm run test:mcp` run the adapters' node:test suites, and
-  `npm run smoke:mcp` checks every MCP result against its output schema.
+  `npm run test:cli` and `npm run test:mcp` run the adapters' node:test suites,
+  `npm run test:fixtures` runs every case of `qualification/fixtures` against its authored
+  expectation, and `npm run smoke:mcp` checks every MCP result against its output schema.
 - A check reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent,
   outside its profile's version policy, unreadable, crashed or timed out, and is never a pass; a
   required `UNKNOWN` fails the self-test.

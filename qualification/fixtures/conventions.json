@@ -11,7 +11,7 @@
     "publishedBundles": "Published contract bundles the adapter resolved; an absent list means no bundle was resolved."
   },
   "expect": {
-    "validation": "'valid' (no error finding), 'invalid' (at least one error finding) or null (not asserted).",
+    "validation": "'valid' (validation raises no error finding) or 'invalid' (it raises at least one). Comparison and evidence findings are asserted through mustInclude and mustExclude, never through validation.",
     "mustInclude": "Finding codes that must appear.",
     "mustExclude": "Finding codes that must not appear.",
     "mustIncludeFindings": "Findings that must appear for a specific record, and for CONCERN_UNRESOLVED the specific concern.",

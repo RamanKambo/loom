@@ -4,7 +4,8 @@ import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { generateKeyPairSync } from 'node:crypto';
 import { sampleModel, type Change, type CheckDefinition, type Model, type Policy } from '@loom/core';
-import { verifyRecord } from '@loom/workspace';
+import { initWorkspace, listEvidence, readTrustedEvidence, verifyRecord } from '@loom/workspace';
+import { commitAll, gitInit, scratch } from '@loom/workspace/testing';
 import { exec, runPwsh, lastJsonLine } from '../exec.js';
 import { aggregate } from '../policy.js';
 import { runChecks } from '../run.js';
@@ -165,6 +166,37 @@ test('evidence and run records are signed with the key the signer names, and a t
     assert.ok(!JSON.stringify(ev).includes('PRIVATE KEY'));
   } finally {
     delete process.env['LOOM_TEST_EVIDENCE_KEY'];
+    done();
+  }
+});
+
+test('a storing run puts every signed record into the workspace evidence store, where the trusted policy verifies it', async () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  process.env['LOOM_TEST_STORE_KEY'] = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  const root = gitInit(scratch());
+  assert.equal(initWorkspace(root).outcome, 'ok');
+  commitAll(root, 'workspace');
+  const { set, done } = sampleArtifacts();
+  try {
+    const checks = [check('t.stored.pass'), check('t.stored.fail')];
+    const out = await runChecks({ root, model: sampleModel(), checks, artifacts: set, runners: { 't.stored.pass': passing, 't.stored.fail': async () => outcome('FAIL', 'failed on purpose') }, store: true, signer: { keyEnv: 'LOOM_TEST_STORE_KEY', keyId: 'ci' } });
+    assert.deepEqual(out.findings, []);
+    const stored = listEvidence(root).value ?? [];
+    assert.deepEqual(stored.map((e) => e.id).sort(), out.evidence.map((e) => e.id).sort(), 'every record of the run is in the store');
+    assert.deepEqual(stored.map((e) => e.result).sort(), ['FAIL', 'PASS'], 'a failing record is stored as faithfully as a passing one');
+    const trusted = readTrustedEvidence(root, { ...selfPolicy(), trust: { ...selfPolicy().trust, evidenceKeys: [{ id: 'ci', spki, runner: 'ci' }] } });
+    assert.ok(trusted.evidence.length === 2 && trusted.evidence.every((e) => e.trusted), 'the stored records verify under the policy key');
+    assert.ok(readTrustedEvidence(root, selfPolicy()).evidence.every((e) => !e.trusted), 'a policy that does not list the key trusts none of them');
+
+    const blocked = gitInit(scratch());
+    assert.equal(initWorkspace(blocked).outcome, 'ok');
+    writeFileSync(join(blocked, '.loom', 'evidence'), 'not a directory');
+    const refused = await runChecks({ root: blocked, model: sampleModel(), checks: [check('t.stored.pass')], artifacts: set, runners: { 't.stored.pass': passing }, store: true });
+    assert.equal(refused.evidence.length, 1, 'the run still returns its record');
+    assert.ok(refused.findings.some((f) => f.code === 'EVIDENCE_STORE_UNAVAILABLE'), 'an unwritable store is reported, never silently skipped');
+  } finally {
+    delete process.env['LOOM_TEST_STORE_KEY'];
     done();
   }
 });

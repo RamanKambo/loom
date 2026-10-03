@@ -112,7 +112,7 @@
         "acceptance/current-contract.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "valid",
         "qualification": null,
         "mustInclude": [
           "PUBLISHED_CONTRACT_UNRESOLVED"
@@ -142,7 +142,7 @@
         "published/payments-api@2.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "PUBLISHED_CONTRACT_DIGEST_MISMATCH"
@@ -157,7 +157,7 @@
         "published/payments-api@2.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "PUBLISHED_CONTRACT_REFERENCE_UNKNOWN"
@@ -174,7 +174,7 @@
         "published/payments-api@2.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "VERSION_RETIREMENT_BLOCKED"
@@ -236,7 +236,7 @@
       "model": "model.json",
       "baseline": "baseline/model.json",
       "expect": {
-        "validation": null,
+        "validation": "valid",
         "qualification": null,
         "checks": [
           {

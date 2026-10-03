@@ -50,7 +50,7 @@
   "types": [
     {
       "id": "order",
-      "version": 1,
+      "version": 2,
       "owner": "orders-store",
       "representation": "domain",
       "stateProperty": "status",

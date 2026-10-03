@@ -40,7 +40,7 @@
       "model": "states/after-01.json",
       "policy": "policy.json",
       "expect": {
-        "validation": null,
+        "validation": "invalid",
         "qualification": null,
         "mustInclude": [
           "CONCERN_UNRESOLVED"
@@ -198,7 +198,7 @@
         "evidence/implementation-test-double.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "valid",
         "qualification": null,
         "readiness": [
           {
@@ -252,7 +252,7 @@
         "evidence/implementation-test-double.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "valid",
         "qualification": null,
         "mustInclude": [
           "FROZEN_COMPONENT_CHANGED"
@@ -294,7 +294,7 @@
         "evidence/e2e-unsigned-claim.json"
       ],
       "expect": {
-        "validation": null,
+        "validation": "valid",
         "qualification": "unqualified",
         "mustInclude": [
           "EVIDENCE_SUBSTITUTE_NOT_PERMITTED",

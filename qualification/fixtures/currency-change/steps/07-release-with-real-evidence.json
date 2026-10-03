@@ -1,5 +1,5 @@
 {
-  "description": "The pricing owner decides the default, the unknown closes, the decided default is declared, and fresh real-boundary evidence exists for every required obligation.",
+  "description": "The pricing owner decides the default, the unknown closes, the decided default is declared with the version of the order type raised, because a default changes what an absent value reads as, and fresh real-boundary evidence exists for every required obligation.",
   "patches": [
     {
       "op": "add",
@@ -55,6 +55,14 @@
           "appliesOn": "read",
           "description": "An order without a currency reads as EUR, per decision dec.currency-default."
         }
+      }
+    },
+    {
+      "op": "update",
+      "collection": "types",
+      "id": "order",
+      "set": {
+        "version": 2
       }
     },
     {

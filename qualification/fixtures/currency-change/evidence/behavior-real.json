@@ -49,7 +49,7 @@
   "inputs": [
     {
       "ref": "type:order",
-      "hash": "sha256:3f25040d39c065f39c3dda0f79d4bbedf8980d852d019bbf5f6bd5846469b319"
+      "hash": "sha256:522d3a27e4f286176c7ceaa251d7e43bf5c433b2fb350cb715f941722988c278"
     },
     {
       "ref": "type:order-request",

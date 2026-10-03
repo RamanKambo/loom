@@ -76,6 +76,7 @@ The commands below run from the repository root after `npm install`. `npm run bu
 | `npm run generate` | Regenerates `packages/core/schema/patch.schema.json` and `packages/core/src/generated/*`; those files are never edited by hand |
 | `npm run self-test` | The engine battery, the drift gate, and every profile check run against Loom's own fixtures under `qualification/policy.json` |
 | `npm run test:workspace`, `test:qualification`, `test:cli`, `test:mcp` | The adapters' node:test suites |
+| `npm run test:fixtures` | Every case of `qualification/fixtures` meets its authored expectation through the core and, in a governed workspace, the CLI, and its named native checks give their stated results |
 | `npm run smoke:mcp` | Every MCP tool result and typed refusal conforms to its declared output schema |
 
 The designer has its own lockfile and commands; see [apps/designer/README.md](apps/designer/README.md).
