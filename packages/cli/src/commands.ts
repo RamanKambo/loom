@@ -22,6 +22,7 @@ import {
   schemaErrors,
   validate,
   validationState,
+  withArtifactHashes,
 } from '@loom/core';
 import type {
   Acceptance,
@@ -507,7 +508,8 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
     const trusted = key !== undefined && verifyRecord(record, key.spki);
     return trusted ? { record, trusted } : { record, trusted, reason: key ? 'the signature does not verify' : 'no evidence key of the trusted policy signs this record' };
   });
-  const evaluated = evaluateEvidenceTool({ model: s.model }, { ...s.inputs, evidence: [...(s.inputs.evidence ?? []), ...fresh] });
+  // The session hashed only the artifacts stored evidence names; the fresh records name theirs too.
+  const evaluated = evaluateEvidenceTool({ model: s.model }, withArtifactHashes(s.model, { ...s.inputs, evidence: [...(s.inputs.evidence ?? []), ...fresh] }));
   const states = defaultStates(validationState(validate(s.model, s.inputs)));
   states.qualification = evaluated.states.qualification;
   const data: Record<string, unknown> = { run: out.run, evidence: out.evidence.map((e) => e.id), obligations: (evaluated.data as { obligations?: unknown } | undefined)?.obligations ?? [] };

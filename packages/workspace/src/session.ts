@@ -1,4 +1,4 @@
-import { PROJECTION_PROFILES, canonicalHash, revisionsOf } from '@loom/core';
+import { PROJECTION_PROFILES, canonicalHash, revisionsOf, withArtifactHashes } from '@loom/core';
 import type { EvaluationInputs, Finding, Model, ResultEnvelope, RevisionSet } from '@loom/core';
 import { profileOf, type Workspace } from './config.js';
 import { resolveModel, type ModelResolution } from './discover.js';
@@ -43,7 +43,8 @@ export function openSession(cwd: string, options: SessionOptions = {}): Session 
       ...(options.trustedRef !== undefined ? { trustedRef: options.trustedRef } : {}),
       asOf: options.asOf ?? new Date().toISOString().slice(0, 10),
     });
-    inputs = gathered.inputs;
+    // The gathered artifact hashes are those of the workspace model; an explicit document is judged by its own.
+    inputs = resolution.model && resolution.model !== resolution.workspace.model ? withArtifactHashes(resolution.model, gathered.inputs) : gathered.inputs;
     trustedRef = gathered.ref;
     findings.push(...gathered.findings);
   }

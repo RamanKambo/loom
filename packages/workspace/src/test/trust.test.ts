@@ -5,8 +5,8 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { modelRevision } from '@loom/core';
-import type { Acceptance, EvidenceRecord, Model, Policy, ResultEnvelope } from '@loom/core';
+import { evaluateEvidence, modelRevision, renderTarget } from '@loom/core';
+import type { Acceptance, EvidenceObligation, EvidenceRecord, Model, Policy, ResultEnvelope } from '@loom/core';
 import { putEvidence, listEvidence } from '../evidence.js';
 import { initWorkspace, scaffoldConfig, scaffoldModel } from '../init.js';
 import { resolvePublishedContracts } from '../published.js';
@@ -248,4 +248,36 @@ test('a committed baseline is the trusted head and a tampered snapshot is report
   rmSync(join(root, '.loom', 'policies'), { recursive: true, force: true });
   mkdirSync(join(root, '.loom', 'policies'));
   assert.equal(readPolicy(root, 'engineering', 'refs/heads/main').policy?.id, 'engineering', 'removing the working-tree policy changes nothing at the trusted ref');
+});
+
+test('gathered inputs carry the current hash of each artifact stored evidence names, so that evidence is current or stale and never of unknown currency', () => {
+  const root = governedRepo();
+  const runner = keyPair();
+  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(), gates: { policyRef: 'engineering' } });
+  writeJson(join(root, '.loom', 'policies', 'engineering.json'), policy({ trust: { ref: 'refs/heads/main', acceptanceVia: 'trusted-ref', acceptanceKeys: [], evidenceKeys: [{ id: 'ci-runner', spki: runner.spki, runner: 'ci' }] } }));
+  commitAll(root, 'policy');
+  const model = scaffoldModel();
+  const reference = renderTarget(model, 'reference').files[0]!;
+  const record: EvidenceRecord = {
+    ...evidence('ev-reference'),
+    claims: [{ kind: 'check', ref: 'documentation.drift' }],
+    kind: 'drift',
+    check: { id: 'documentation.drift', revision: 1, definitionHash: ZERO },
+    inputs: [{ ref: `artifact:${reference.instance}`, hash: reference.hash }],
+  };
+  assert.equal(putEvidence(root, signRecord(record, runner.privateKeyPem, 'ci-runner')).stored, true);
+  const obligations: EvidenceObligation[] = [{ id: 'check:documentation.drift', claim: { kind: 'check', ref: 'documentation.drift' }, kinds: ['drift'], required: true, status: 'absent' }];
+
+  const gathered = gatherEvaluationInputs(root).inputs;
+  assert.equal(gathered.artifacts?.[reference.instance], reference.hash);
+  assert.equal(evaluateEvidence(model, obligations, gathered).obligations[0]?.status, 'passing');
+  const { artifacts: _withheld, ...withheld } = gathered;
+  const unknown = evaluateEvidence(model, obligations, withheld).obligations[0];
+  assert.equal(unknown?.status, 'unknown');
+  assert.match(unknown?.reason ?? '', /'reference\.md' was not supplied/);
+
+  const changed = scaffoldModel();
+  (changed.components[0] as { purpose: string }).purpose = 'Changed after the run.';
+  assert.equal(writeModel(root, changed, modelRevision(model)).outcome, 'ok');
+  assert.equal(evaluateEvidence(changed, obligations, gatherEvaluationInputs(root).inputs).obligations[0]?.status, 'stale');
 });

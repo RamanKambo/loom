@@ -1,4 +1,4 @@
-import type { Acceptance, Model, RecordKind, RecordRef, TaskSpec } from './generated/types.js';
+import type { Acceptance, Baseline, Model, RecordKind, RecordRef, TaskSpec } from './generated/types.js';
 import { indexModel, findRecord, resolveProperty, type ModelIndex } from './records.js';
 import { modelRevision, recordHash, canonicalHash } from './hash.js';
 import type { EvaluationInputs } from './inputs.js';
@@ -168,11 +168,15 @@ export function acceptanceScopeCovers(index: ModelIndex, acceptance: Acceptance,
 export const trustedAcceptances = (inputs: EvaluationInputs): Acceptance[] =>
   (inputs.acceptances ?? []).filter((a) => a.trusted && a.record.decision === 'accepted').map((a) => a.record);
 
-/** True when the verified baseline is accepted by a trusted acceptance record. */
+/** True when an acceptance names the baseline and accepted exactly the model revision the baseline pins. */
+export const acceptsBaseline = (a: Acceptance, b: Baseline): boolean =>
+  (a.id === b.acceptance || (a.subject.kind === 'baseline' && a.subject.baseline === b.id)) && a.subject.candidate === b.model.hash;
+
+/** True when the verified baseline is accepted by a trusted acceptance of the revision it pins. */
 export function baselineAccepted(inputs: EvaluationInputs): boolean {
   const b = inputs.baseline;
   if (!b || !b.verified) return false;
-  return trustedAcceptances(inputs).some((a) => a.id === b.record.acceptance || (a.subject.kind === 'baseline' && a.subject.baseline === b.record.id));
+  return trustedAcceptances(inputs).some((a) => acceptsBaseline(a, b.record));
 }
 
 /**

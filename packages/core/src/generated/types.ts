@@ -6293,6 +6293,10 @@ export interface EvidenceObligation {
    * 'absent' (no evidence), 'failing' (evidence that failed), 'passing' (current trusted PASS) and the other states are distinct; coverage never conflates them.
    */
   status: 'absent' | 'failing' | 'passing' | 'stale' | 'untrusted' | 'unknown' | 'not-applicable';
+  /**
+   * Why the status is 'unknown' when no evidence result says so: an input of the evidence whose current state was not supplied.
+   */
+  reason?: string;
   evidence?: Id[];
 }
 export interface EvidenceInvalidation {

@@ -11,7 +11,10 @@ import { deriveObligations, evaluateEvidence } from '../evidence.js';
 import { checkReadiness, designOrder, recomputeReadiness } from '../readiness.js';
 import { checkReadinessTool, compareBaselineTool, contextTool, describeTool, evaluateEvidenceTool, planChangeTool } from '../tools.js';
 import { continuationToken } from '../retrieval.js';
-import { resolveScope } from '../scope.js';
+import { baselineAccepted, resolveScope } from '../scope.js';
+import { mutate } from '../mutate.js';
+import { exportYaml, importModel } from '../exportModel.js';
+import { renderTarget, withArtifactHashes } from '../project.js';
 import { indexModel } from '../records.js';
 import { sampleModel } from '../sample.js';
 import { assert, codesOf, fresh, observe, pick, type Tally } from './harness.js';
@@ -186,6 +189,22 @@ export const EVALUATION_SECTIONS: readonly Section[] = [
       assert(t, codesOf(observe(t, compareBaseline(sampleModel(), { ...acceptedInputs(), baseline: { record: baselineOf(sampleModel()), model: sampleModel(), verified: false } }).findings)).includes('BASELINE_UNTRUSTED'), 'a baseline not read from the trusted ref is untrusted');
       assert(t, codesOf(observe(t, compareBaseline(sampleModel(), { ...acceptedInputs(), baseline: { record: baselineOf(sampleModel(), { model: { hash: HASH('9'), formatVersion: 1, snapshot: 'x.json' } }), model: sampleModel(), verified: true } }).findings)).includes('BASELINE_HASH_MISMATCH'), 'a baseline whose snapshot does not match its hash is rejected');
       assert(t, codesOf(observe(t, compareBaseline(sampleModel(), { ...acceptedInputs(), acceptances: [{ record: acceptance('acc-1', modelRevision(sampleModel()), [], 'baseline'), trusted: false }] }).findings)).includes('ACCEPTANCE_UNTRUSTED'), 'an acceptance outside the trusted ref is untrusted');
+      const elsewhere: EvaluationInputs = { ...acceptedInputs(), acceptances: [{ record: acceptance('acc-1', modelRevision(security), [], 'baseline'), trusted: true }] };
+      const otherRevision = compareBaseline(sampleModel(), elsewhere);
+      assert(t, !baselineAccepted(elsewhere) && otherRevision.acceptance.state === 'unaccepted' && otherRevision.findings.some((f) => f.code === 'ACCEPTANCE_MISSING' && f.message.includes(modelRevision(security))), 'an acceptance of another revision does not accept the baseline that names it');
+      assert(t, checkReadiness(sampleModel(), { class: 'implementation', mode: 'component', components: ['billing'] }, elsewhere).state.state === 'blocked', 'the contracts of a baseline whose acceptance names another revision are not accepted for implementation');
+      assert(t, baselineAccepted(acceptedInputs()) && !compareBaseline(sampleModel(), acceptedInputs()).findings.some((f) => f.code === 'ACCEPTANCE_MISSING'), 'an acceptance of the revision the baseline pins accepts it');
+
+      const unbumped = (m: Model): string[] => compareBaseline(m, acceptedInputs()).findings.filter((f) => f.code === 'BREAKING_CHANGE_WITHOUT_VERSION_BUMP').map((f) => f.path);
+      assert(t, unbumped(security).includes('operations/order.get/version'), 'a breaking change against the baseline at an unchanged contract version is reported by the comparison itself');
+      const raised = mutate(sampleModel(), { op: 'update', collection: 'operations', id: 'order.get', set: { version: 2, authority: { permission: 'order.admin', scheme: 'bearer' } } }, { acknowledgeBreaking: ['order.get'] }).model;
+      const lowered = raised ? mutate(raised, { op: 'update', collection: 'operations', id: 'order.get', set: { version: 1 } }).model : null;
+      assert(t, raised !== null && lowered !== null && unbumped(lowered).includes('operations/order.get/version'), 'two accepted patches that together break a contract at its accepted version get the same finding');
+      assert(t, unbumped(importModel(exportYaml(security))).includes('operations/order.get/version'), 'an imported document gets the same finding as the edit it carries');
+      assert(t, raised !== null && unbumped(raised).length === 0, 'a breaking change that raises the version is not reported as unbumped');
+      const reworded = fresh();
+      pick(reworded.operations, 'order.get').description = 'Reads one order by its id.';
+      assert(t, unbumped(reworded).length === 0, 'a compatible edit at an unchanged version is not reported as unbumped');
 
       const supported = fresh();
       Object.assign(pick(supported.types, 'order'), { version: 2, supported: [{ version: 1, baseline: 'bl-0', status: 'supported', retirement: { condition: 'decision', decision: 'dec.order-retire' } }] });
@@ -233,6 +252,15 @@ export const EVALUATION_SECTIONS: readonly Section[] = [
         observe(t, r.findings);
         assert(t, r.obligations[0]!.status === status && codesOf(r.findings).includes(code as never) && r.qualification.state !== 'qualified', `${label} evidence is ${status} with ${code}, never qualified: ${r.obligations[0]!.status} ${codesOf(r.findings).join(', ')}`);
       }
+      const ddl = renderTarget(m, 'sql').files.find((f) => f.instance === 'schema.sql#ordering')!;
+      const aboutDdl = evidence('ev.ddl', 'behavior', [{ kind: 'criterion', ref: 'req.pay-order.paid' }], m, [], { inputs: [{ ref: `artifact:${ddl.instance}`, hash: ddl.hash }] });
+      const unhashed = run([{ record: aboutDdl, trusted: true }]);
+      observe(t, unhashed.findings);
+      assert(t, unhashed.obligations[0]!.status === 'unknown' && /was not supplied/.test(unhashed.obligations[0]!.reason ?? '') && unhashed.findings.some((f) => f.code === 'EVIDENCE_UNKNOWN' && f.message.includes(ddl.instance)) && unhashed.qualification.state === 'unknown' && !unhashed.retained.some((r) => r.evidence === 'ev.ddl'), 'evidence about an artifact whose current hash was not supplied is unknown with that reason, never current');
+      const hashed = evaluateEvidence(m, pay, withArtifactHashes(m, { evidence: [{ record: aboutDdl, trusted: true }] }));
+      assert(t, hashed.obligations[0]!.status === 'passing' && hashed.obligations[0]!.reason === undefined && hashed.retained.some((r) => r.evidence === 'ev.ddl'), 'the same evidence with the current hash supplied is passing and retained');
+      const moved = evaluateEvidence(m, pay, { evidence: [{ record: aboutDdl, trusted: true }], artifacts: { [ddl.instance]: HASH('d') } });
+      assert(t, moved.obligations[0]!.status === 'stale', 'a supplied hash that differs from the recorded one makes it stale');
       const unknownOnly = run([{ record: evidence('ev.unknown', 'behavior', [{ kind: 'criterion', ref: 'req.pay-order.paid' }], m, [], { result: 'UNKNOWN' }), trusted: true }]);
       assert(t, unknownOnly.qualification.state === 'unknown', 'a required unknown leaves qualification unknown');
       const na = run([{ record: evidence('ev.na', 'behavior', [{ kind: 'criterion', ref: 'req.pay-order.paid' }], m, [], { result: 'NOT_APPLICABLE', reason: 'The criterion is verified by review in this release.' }), trusted: true }]);
@@ -359,6 +387,13 @@ export const EVALUATION_SECTIONS: readonly Section[] = [
       const data = preview.data as { acceptanceRequired: boolean; changes: unknown[]; invalidatedEvidence: Array<{ evidence: string }>; compatibility: Array<{ dimension: string }> };
       assert(t, data.acceptanceRequired && data.changes.length > 0 && data.compatibility.some((c) => c.dimension === 'security') && data.invalidatedEvidence.some((e) => e.evidence === 'ev.get'), `a preview names the security consequence, the acceptance it needs and the evidence it invalidates: ${JSON.stringify(data.compatibility)}`);
       assert(t, modelRevision(m) === modelRevision(sampleModel()), 'a preview never persists');
+      const ddl = renderTarget(m, 'sql').files.find((f) => f.instance === 'schema.sql#ordering')!;
+      const aboutDdl = evidence('ev.ddl', 'conformance', [{ kind: 'contract', ref: 'storage:ordering.orders' }], m, [], { inputs: [{ ref: `artifact:${ddl.instance}`, hash: ddl.hash }] });
+      const withDdl = withArtifactHashes(m, { ...acceptedInputs(), evidence: [{ record: aboutDdl, trusted: true }] });
+      const widened = planChangeTool({ model: m, baseRevision: modelRevision(m), patch: { op: 'updateItem', collection: 'storage', id: 'ordering.orders', field: 'columns', key: 'note', set: { sqlType: { name: 'nvarchar', length: 400 } } }, acknowledgeBreaking: ['ordering.orders'] }, withDdl);
+      const reworded = planChangeTool({ model: m, baseRevision: modelRevision(m), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Reads one order by its id.' } } }, withDdl);
+      const invalidated = (env: typeof widened): string[] => ((env.data as { invalidatedEvidence?: Array<{ evidence: string }> }).invalidatedEvidence ?? []).map((e) => e.evidence);
+      assert(t, invalidated(widened).includes('ev.ddl') && !invalidated(reworded).includes('ev.ddl'), `a preview judges evidence about an artifact by the candidate's own rendering of it: ${JSON.stringify(widened.findings.map((f) => f.code))}`);
       for (const env of [wrongBase, preview]) assert(t, schemaErrors('ResultEnvelope', env).length === 0, `the plan result satisfies the result contract: ${JSON.stringify(schemaErrors('ResultEnvelope', env))}`);
       assert(t, schemaErrors('PlanChangeData', preview.data).length === 0, `the plan payload satisfies its contract: ${JSON.stringify(schemaErrors('PlanChangeData', preview.data))}`);
       const described = describeTool();

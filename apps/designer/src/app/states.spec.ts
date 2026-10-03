@@ -7,9 +7,11 @@ import {
   exportModel,
   modelRevision,
   planChangeTool,
+  renderTarget,
   sampleModel,
   type Acceptance,
   type Baseline,
+  type EvidenceRecord,
   type Model,
   type Patch,
 } from '@loom/core';
@@ -113,5 +115,45 @@ describe('states', () => {
 
     store.apply(patch);
     expect(store.localDiff()).toEqual(diffTool({ before: model, after: store.model()! }));
+  });
+
+  describe('loaded evidence about an artifact', () => {
+    const ddl = () => renderTarget(sampleModel(), 'sql').files.find((f) => f.instance === 'schema.sql#ordering')!;
+    const record = (): EvidenceRecord => ({
+      evidenceVersion: 1,
+      id: 'ev.ddl',
+      claims: [{ kind: 'criterion', ref: 'req.pay-order.paid' }],
+      kind: 'behavior',
+      check: { id: 'sql.behavior', revision: 1, definitionHash: ZERO },
+      artifacts: [{ instance: ddl().instance, hash: ddl().hash }],
+      sources: [],
+      environment: { id: 'ci', kind: 'ci' },
+      tool: { name: 'sqlcmd', version: '15.0' },
+      result: 'PASS',
+      run: { id: 'run-1', runner: 'ci', startedAt: '2026-10-03T10:00:00Z', finishedAt: '2026-10-03T10:00:05Z' },
+      boundaries: [{ boundary: 'SQL Server engine', actual: 'real' }],
+      limits: 'Fixture database only.',
+      inputs: [{ ref: `artifact:${ddl().instance}`, hash: ddl().hash }],
+    });
+    const lists = (store: LoomStore) => store.evidenceEvaluation()!.data as { invalidated: Array<{ evidence: string }>; retained: Array<{ evidence: string }> };
+
+    it('is current while the model still renders the artifact it names', () => {
+      const store = new LoomStore();
+      store.loadSample();
+      expect(store.addEvidence(JSON.stringify(record()))).toEqual({ ok: true });
+      expect(store.inputs().artifacts?.[ddl().instance]).toBe(ddl().hash);
+      expect(lists(store).retained.map((r) => r.evidence)).toContain('ev.ddl');
+      expect(lists(store).invalidated).toEqual([]);
+    });
+
+    it('is invalidated once an edit changes the artifact it names', () => {
+      const store = new LoomStore();
+      store.loadSample();
+      store.addEvidence(JSON.stringify(record()));
+      const outcome = store.apply({ op: 'updateItem', collection: 'storage', id: 'ordering.orders', field: 'columns', key: 'note', set: { sqlType: { name: 'nvarchar', length: 400 } } }, ['ordering.orders']);
+      expect(outcome.accepted).toBe(true);
+      expect(lists(store).invalidated.map((i) => i.evidence)).toContain('ev.ddl');
+      expect(lists(store).retained.map((r) => r.evidence)).not.toContain('ev.ddl');
+    });
   });
 });

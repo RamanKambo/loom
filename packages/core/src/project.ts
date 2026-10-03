@@ -8,7 +8,8 @@ import { canonicalStringify } from './canonical.js';
 import { textHash } from './hash.js';
 import { indexModel, recordKey, type CollectionName } from './records.js';
 import { ownersOf, refKey } from './scope.js';
-import type { EvaluationInputs } from './inputs.js';
+import { artifactInputs, type EvaluationInputs } from './inputs.js';
+import { structuralFindings } from './load.js';
 import { JSON_SCHEMA_FILE, projectJsonSchema } from './projections/json.js';
 import { OPENAPI_FILE, projectOpenApi } from './projections/openapi.js';
 import { SQL_SCHEMA_FILE, SQL_TESTS_FILE, projectSql, projectSqlContractTests, sqlDeploymentOrder } from './projections/sql.js';
@@ -444,4 +445,28 @@ export function renderAll(model: Model, options: ProjectOptions & { targets?: re
 /** Every projection keyed by its relative path ('<component>/<file>' for a per-component instance), each as the exact text to write. Fail-closed like project(). */
 export function projectToFiles(model: Model, options: ProjectOptions & { targets?: readonly ProjectionTarget[] } = {}): Record<string, string> {
   return Object.fromEntries(renderAll(model, options).files.map((f) => [projectedPath(f), f.content]));
+}
+
+/**
+ * The inputs with the current hash of every artifact instance their evidence
+ * names, rendered from `model` as a qualification run renders it
+ * (`artifactInputs`), so evidence about an artifact goes stale when the model
+ * changes what that artifact holds. An instance the model cannot render gets
+ * no hash, which leaves the evidence about it unknown rather than current.
+ */
+export function withArtifactHashes(model: Model, inputs: EvaluationInputs): EvaluationInputs {
+  const { artifacts: _replaced, ...rest } = inputs;
+  const named = new Set((inputs.evidence ?? []).flatMap((e) => e.record.inputs.filter((i) => i.ref.startsWith('artifact:')).map((i) => i.ref.slice('artifact:'.length))));
+  if (!named.size || structuralFindings(model).length) return rest;
+  const rendering = artifactInputs(inputs);
+  const artifacts: Record<string, string> = {};
+  const targets = new Set([...named].map((instance) => PROJECTION_FILES[instance.split('#')[0] as string]).filter((t): t is ProjectionTarget => t !== undefined));
+  for (const target of targets) {
+    try {
+      for (const f of renderTarget(model, target, rendering ? { inputs: rendering } : {}).files) if (named.has(f.instance)) artifacts[f.instance] = f.hash;
+    } catch (e) {
+      if (!(e instanceof LoomInvalidModelError)) throw e;
+    }
+  }
+  return { ...rest, artifacts };
 }

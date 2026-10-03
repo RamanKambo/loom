@@ -24,7 +24,7 @@ import { DependencyGraph } from './graph.js';
 import { canonicalHash, recordHash } from './hash.js';
 import { effectiveGates, type EvaluationInputs } from './inputs.js';
 import { CONTRACT_KINDS, makeAcceptanceCheck, ownersOf, refKey, resolveScope, type Scope } from './scope.js';
-import { changedInputs, deriveObligations, evaluateEvidence } from './evidence.js';
+import { changedInputs, deriveObligations, evaluateEvidence, unhashedArtifacts } from './evidence.js';
 import { bundleFor } from './rules/versions.js';
 import { collectReferences, splitQualified } from './refs.js';
 import { findCycles } from './rules/structure.js';
@@ -67,7 +67,7 @@ const prereq = (ref: RecordRef, requirement: Prerequisite['requirement'], code: 
 export function makeMaturity(model: Model, inputs: EvaluationInputs): (ref: RecordRef) => Maturity | undefined {
   const index = indexModel(model);
   const accepted = makeAcceptanceCheck(model, inputs);
-  const evidence = (inputs.evidence ?? []).filter((e) => e.trusted && e.record.result === 'PASS' && IMPLEMENTATION_EVIDENCE.has(e.record.kind) && changedInputs(model, e.record, inputs, index).length === 0);
+  const evidence = (inputs.evidence ?? []).filter((e) => e.trusted && e.record.result === 'PASS' && IMPLEMENTATION_EVIDENCE.has(e.record.kind) && changedInputs(model, e.record, inputs, index).length === 0 && unhashedArtifacts(e.record, inputs).length === 0);
   const qualifiedComponents = new Map<string, boolean>();
   const componentQualified = (c: string): boolean => {
     let q = qualifiedComponents.get(c);

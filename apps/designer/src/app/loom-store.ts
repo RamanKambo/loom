@@ -21,6 +21,7 @@ import {
   sampleModel,
   schemaErrors,
   validate,
+  withArtifactHashes,
   type Acceptance,
   type AffectedElement,
   type Baseline,
@@ -169,7 +170,10 @@ export class LoomStore {
     return m ? modelRevision(m) : null;
   });
 
-  /** The evaluation inputs: every supplied record marked untrusted, for the reason in TRUST_LIMIT. */
+  /**
+   * The evaluation inputs: every supplied record marked untrusted, for the reason in TRUST_LIMIT,
+   * and the current hash of every artifact the evidence names, rendered from the current model.
+   */
   readonly inputs = computed<EvaluationInputs>(() => {
     const out: EvaluationInputs = { asOf: this.asOf() };
     const b = this.baselineSelection();
@@ -180,7 +184,8 @@ export class LoomStore {
     if (ev.length) out.evidence = ev.map((record) => ({ record, trusted: false, reason: TRUST_LIMIT }));
     const p = this.policyRecord();
     if (p) out.policy = p;
-    return out;
+    const m = this.current();
+    return m && ev.length ? withArtifactHashes(m, out) : out;
   });
 
   /** The exact revisions every state below was evaluated against. */

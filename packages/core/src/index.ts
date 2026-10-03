@@ -29,6 +29,7 @@ export {
   unsupportedConstructs,
   filesOf,
   projectedPath,
+  withArtifactHashes,
   PROJECTION_TARGETS,
   PROJECTION_FILES,
   JSON_SCHEMA_ID,
@@ -87,7 +88,7 @@ export type { Scope } from './scope.js';
 export { CONCERNS } from './rules/concerns.js';
 export { compareBaseline, classifyChange, derivedSeal, gateFindings, retirementFindings } from './baseline.js';
 export type { BaselineComparison, Approval } from './baseline.js';
-export { deriveObligations, evaluateEvidence, invalidatedBy, changedInputs, isEngineSelfTest } from './evidence.js';
+export { deriveObligations, evaluateEvidence, invalidatedBy, changedInputs, unhashedArtifacts, isEngineSelfTest } from './evidence.js';
 export type { EvidenceEvaluation } from './evidence.js';
 export { checkReadiness, recomputeReadiness, designOrder, makeMaturity } from './readiness.js';
 export type { ReadinessResult, Recompute } from './readiness.js';

@@ -22,6 +22,7 @@ import { checkReadiness } from './readiness.js';
 import { classifyChange, compareBaseline } from './baseline.js';
 import { deriveObligations, evaluateEvidence, invalidatedBy } from './evidence.js';
 import { ownersOf, resolveScope } from './scope.js';
+import { withArtifactHashes } from './project.js';
 
 /** States of one evaluation: each dimension filled from the inputs it was given, the rest not evaluated. */
 function statesFor(model: Model, inputs: EvaluationInputs): States {
@@ -117,6 +118,8 @@ export function planChangeTool(input: PlanChangeToolInput, inputs: EvaluationInp
     if (cls.approval !== 'pre-authorized') acceptanceRequired = true;
   }
   const after = candidate ?? base;
+  // The supplied artifact hashes are the base model's; the candidate is judged by its own, rendered the same way.
+  const afterInputs = candidate && inputs.artifacts !== undefined ? withArtifactHashes(candidate, inputs) : inputs;
   const index = indexModel(after);
   const owners = [...new Set(result.impact.flatMap((a) => ownersOf(index, a.ref)))].sort();
   const obligations = owners.length ? deriveObligations(after, resolveScope(index, { mode: 'component', components: owners }), inputs) : [];
@@ -125,9 +128,9 @@ export function planChangeTool(input: PlanChangeToolInput, inputs: EvaluationInp
     changes: result.changes,
     compatibility: [...compatibility.values()].sort((a, b) => a.dimension.localeCompare(b.dimension) || a.kind.localeCompare(b.kind)),
     affected: result.impact,
-    invalidatedEvidence: candidate ? invalidatedBy(base, candidate, inputs) : [],
+    invalidatedEvidence: candidate ? invalidatedBy(base, candidate, inputs, afterInputs) : [],
     repairs: result.repairs,
-    obligations: inputs.evidence === undefined ? obligations : evaluateEvidence(after, obligations, inputs).obligations,
+    obligations: inputs.evidence === undefined ? obligations : evaluateEvidence(after, obligations, afterInputs).obligations,
     acceptanceRequired,
     changeClasses: [...classes].sort(),
   };
@@ -136,7 +139,7 @@ export function planChangeTool(input: PlanChangeToolInput, inputs: EvaluationInp
     data.candidate = candidate;
   }
   const policy = result.findings.some((f) => f.code === 'BREAKING_CHANGE_UNACKNOWLEDGED' || f.code === 'BREAKING_CHANGE_WITHOUT_VERSION_BUMP');
-  const parts: Parameters<typeof envelope>[1] = { model: after, findings: result.findings, data, states: statesFor(after, inputs) };
+  const parts: Parameters<typeof envelope>[1] = { model: after, findings: result.findings, data, states: statesFor(after, afterInputs) };
   if (!candidate) parts.refusal = refusal(policy ? 'policy-failure' : 'invalid-input', policy ? 'A breaking or unclassified change lacks its version bump or acknowledgement.' : 'The patch or the resulting model is invalid.');
   return envelope('loom.planChange', parts);
 }

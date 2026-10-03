@@ -1,10 +1,11 @@
 import type { AcceptanceState, Change, ChangeClass, Finding, FindingCode, Model, Reason, RecordRef } from './generated/types.js';
 import { FINDING, FINDING_RULES } from './codes.js';
 import { diff } from './diff.js';
+import { unbumpedContracts } from './mutate.js';
 import { modelRevision } from './hash.js';
 import { indexModel } from './records.js';
 import { effectiveGates, type EvaluationInputs } from './inputs.js';
-import { acceptanceScopeCovers, baselineAccepted, ownersOf, trustedAcceptances } from './scope.js';
+import { acceptanceScopeCovers, acceptsBaseline, baselineAccepted, ownersOf, trustedAcceptances } from './scope.js';
 
 const finding = (code: FindingCode, path: string, message: string, fix: string, refs: RecordRef[] = []): Finding => {
   const f: Finding = { code, severity: FINDING_RULES[code].severity, path, message, fix };
@@ -82,6 +83,9 @@ export function compareBaseline(candidate: Model, inputs: EvaluationInputs = {})
   const acceptanceRecord = (inputs.acceptances ?? []).find((a) => a.record.id === base.record.acceptance);
   if (!acceptanceRecord) findings.push(finding(FINDING.ACCEPTANCE_MISSING, `baselines/${base.record.id}/acceptance`, `acceptance '${base.record.acceptance}' of baseline '${base.record.id}' was not supplied`, 'supply the acceptance record named by the baseline'));
   else if (!acceptanceRecord.trusted) findings.push(finding(FINDING.ACCEPTANCE_UNTRUSTED, `acceptance/${acceptanceRecord.record.id}`, `acceptance '${acceptanceRecord.record.id}' is not present at the trusted ref and not signed by a listed key`, 'obtain the acceptance through the configured authority'));
+  else if (!acceptsBaseline(acceptanceRecord.record, base.record)) {
+    findings.push(finding(FINDING.ACCEPTANCE_MISSING, `baselines/${base.record.id}/acceptance`, `acceptance '${acceptanceRecord.record.id}' accepted revision ${acceptanceRecord.record.subject.candidate ?? '(none)'}, not revision ${base.record.model.hash} that baseline '${base.record.id}' pins`, 'accept the revision the baseline pins, or record a baseline of the revision that was accepted'));
+  }
 
   const index = indexModel(candidate);
   const baseIndex = indexModel(base.model);
@@ -117,6 +121,9 @@ export function compareBaseline(candidate: Model, inputs: EvaluationInputs = {})
   }
   for (const { ref, owners } of frozenHits.values()) {
     findings.push(finding(FINDING.FROZEN_COMPONENT_CHANGED, `${ref.kind}/${ref.id}`, `${ref.kind} '${ref.id}' belongs to frozen component(s) ${owners.join(', ')} and changed without an accepted delta`, `route the change to ${ref.kind} '${ref.id}' through an accepted delta, or limit the fix to code that preserves the accepted contract`, [ref]));
+  }
+  for (const u of unbumpedContracts(base.model, candidate, changes)) {
+    findings.push(finding(FINDING.BREAKING_CHANGE_WITHOUT_VERSION_BUMP, `${u.collection}/${u.ref.id}/version`, `${u.ref.kind} '${u.ref.id}' has a breaking change against baseline '${base.record.id}' without a version bump (${u.from} -> ${u.to}): ${u.reasons.join('; ')}`, `raise ${u.ref.kind} '${u.ref.id}' version above ${u.from}, or revert the breaking change`, [u.ref]));
   }
   findings.push(...retirementFindings(base.model, candidate, inputs));
 

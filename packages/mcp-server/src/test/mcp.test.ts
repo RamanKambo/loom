@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -7,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { canonicalStringify, checkReadinessTool, compareBaselineTool, modelRevision, planChangeTool, sampleModel, textHash } from '@loom/core';
-import type { LoomConfig, Model, Patch, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
-import { gatherEvaluationInputs } from '@loom/workspace';
+import { canonicalStringify, checkReadinessTool, compareBaselineTool, exportYaml, modelRevision, planChangeTool, renderTarget, sampleModel, textHash } from '@loom/core';
+import type { EvidenceRecord, LoomConfig, Model, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
+import { gatherEvaluationInputs, putEvidence, signRecord } from '@loom/workspace';
 import { commitAll, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { createLoomServer } from '../server.js';
 
@@ -61,9 +62,9 @@ const POLICY: Policy = {
 };
 
 /** A workspace whose policy, accepted baseline and acceptance are committed to the trusted ref. */
-function governed(): string {
+function governed(policy: Policy = POLICY): string {
   const dir = workspace(sampleModel(), { policyRef: 'engineering' });
-  writeJson(join(dir, '.loom', 'policies', 'engineering.json'), POLICY);
+  writeJson(join(dir, '.loom', 'policies', 'engineering.json'), policy);
   commitAll(dir, 'policy');
   cli(dir, 'accept', '--id', 'acc-1', '--authority', 'team-architecture', '--subject', 'baseline', '--baseline', 'bl-1');
   commitAll(dir, 'acceptance');
@@ -183,4 +184,86 @@ test('an inline diff with an invalid side is marked provisional and a stale cont
   assert.equal((d.data as { provisional: boolean }).provisional, true);
   const c = await call(client, 'loom.context', { model, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 3 }, continuation: `ctx1.${textHash('other')}.3` });
   assert.equal(c.refusal?.cause, 'stale-base');
+});
+
+/** The fixture with a narrower permission on order.get: a breaking security change, kept at the accepted version unless `version` raises it. */
+function narrowedRead(version = 1): Model {
+  const m = sampleModel();
+  const op = m.operations.find((o) => o.id === 'order.get')!;
+  op.authority = { ...op.authority, permission: 'order.admin' };
+  op.version = version;
+  return m;
+}
+
+const unbumped = (e: ResultEnvelope): string[] => e.findings.filter((f) => f.code === 'BREAKING_CHANGE_WITHOUT_VERSION_BUMP').map((f) => f.path);
+
+test('a diff against the baseline reports a breaking change kept at the accepted version, for the workspace model and for an imported document', async () => {
+  const dir = governed();
+  writeFileSync(join(dir, '.loom', 'model.json'), `${JSON.stringify(narrowedRead(), null, 2)}\n`);
+  const client = await inMemory(dir);
+  assert.deepEqual(unbumped(await call(client, 'loom.diff', { workspace: true, againstBaseline: true })), ['operations/order.get/version']);
+  const imported = await call(client, 'loom.import', { text: exportYaml(narrowedRead()) });
+  const after = (imported.data as { model: Model }).model;
+  assert.deepEqual(unbumped(await call(client, 'loom.diff', { againstBaseline: true, after })), ['operations/order.get/version']);
+});
+
+test('a diff against the baseline reports no unbumped version once the breaking change raises it', async () => {
+  const dir = governed();
+  writeFileSync(join(dir, '.loom', 'model.json'), `${JSON.stringify(narrowedRead(2), null, 2)}\n`);
+  const client = await inMemory(dir);
+  const workspaceDiff = await call(client, 'loom.diff', { workspace: true, againstBaseline: true });
+  assert.ok(workspaceDiff.findings.some((f) => f.code === 'CHANGE_UNACCEPTED'), 'the raised change still needs acceptance');
+  assert.deepEqual(unbumped(workspaceDiff), []);
+  assert.deepEqual(unbumped(await call(client, 'loom.diff', { againstBaseline: true, after: narrowedRead(2) })), []);
+});
+
+const ZERO = `sha256:${'0'.repeat(64)}`;
+const WIDEN_NOTE: Patch = { op: 'updateItem', collection: 'storage', id: 'ordering.orders', field: 'columns', key: 'note', set: { sqlType: { name: 'nvarchar', length: 400 } } };
+
+/** A governed workspace holding one trusted evidence record about the ordering DDL, signed by the runner key its policy lists. */
+function governedWithDdlEvidence(): { dir: string; evidence: string } {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  const dir = governed({ ...POLICY, trust: { ...POLICY.trust, evidenceKeys: [{ id: 'ci-runner', spki, runner: 'ci' }] } });
+  const ddl = renderTarget(sampleModel(), 'sql').files.find((f) => f.instance === 'schema.sql#ordering')!;
+  const record: EvidenceRecord = {
+    evidenceVersion: 1,
+    id: 'ev.ddl',
+    claims: [{ kind: 'criterion', ref: 'req.pay-order.paid' }],
+    kind: 'behavior',
+    check: { id: 'sql.behavior', revision: 1, definitionHash: ZERO },
+    artifacts: [{ instance: ddl.instance, hash: ddl.hash }],
+    sources: [],
+    environment: { id: 'ci', kind: 'ci' },
+    tool: { name: 'sqlcmd', version: '15.0' },
+    result: 'PASS',
+    run: { id: 'run-1', runner: 'ci', startedAt: '2026-10-03T10:00:00Z', finishedAt: '2026-10-03T10:00:05Z' },
+    boundaries: [{ boundary: 'SQL Server engine', actual: 'real' }],
+    limits: 'Fixture database only.',
+    inputs: [{ ref: `artifact:${ddl.instance}`, hash: ddl.hash }],
+  };
+  assert.equal(putEvidence(dir, signRecord(record, privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(), 'ci-runner')).stored, true);
+  return { dir, evidence: record.id };
+}
+
+const stale = (e: ResultEnvelope): boolean => e.states.qualification.reasons.some((r) => (r.code === 'EVIDENCE_STALE' || r.code === 'EVIDENCE_UNKNOWN') && r.message.includes('req.pay-order.paid'));
+
+test('a workspace change that alters an artifact invalidates the evidence about it, judged by the candidate rendering in the plan and in an inline diff', async () => {
+  const { dir, evidence } = governedWithDdlEvidence();
+  const client = await inMemory(dir);
+  const plan = await call(client, 'loom.planChange', { workspace: true, baseRevision: modelRevision(sampleModel()), patch: WIDEN_NOTE, acknowledgeBreaking: ['ordering.orders'] });
+  const data = plan.data as PlanChangeData;
+  assert.ok(data.invalidatedEvidence.some((e) => e.evidence === evidence), JSON.stringify(data.invalidatedEvidence));
+  const diff = await call(client, 'loom.diff', { againstBaseline: true, after: data.candidate });
+  assert.ok(stale(diff), JSON.stringify(diff.states.qualification));
+});
+
+test('a workspace change that leaves an artifact alone keeps the evidence about it current in the plan and in an inline diff', async () => {
+  const { dir, evidence } = governedWithDdlEvidence();
+  const client = await inMemory(dir);
+  const plan = await call(client, 'loom.planChange', { workspace: true, baseRevision: modelRevision(sampleModel()), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } } });
+  const data = plan.data as PlanChangeData;
+  assert.ok(!data.invalidatedEvidence.some((e) => e.evidence === evidence), JSON.stringify(data.invalidatedEvidence));
+  const diff = await call(client, 'loom.diff', { againstBaseline: true, after: data.candidate });
+  assert.ok(!stale(diff), JSON.stringify(diff.states.qualification));
 });

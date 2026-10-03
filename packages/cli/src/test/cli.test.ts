@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { exportModel, modelRevision, sampleModel, schemaErrors, textHash } from '@loom/core';
-import type { LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
+import type { EvidenceObligation, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
@@ -153,6 +154,76 @@ test('an explicit model inside a governed workspace is still compared with the t
   assert.ok(!codes(r).includes('VALIDATION_ONLY_MODE'));
 });
 
+/** The fixture with a narrower permission on order.get: a breaking security change, kept at the accepted version unless `version` raises it. */
+function narrowedRead(version = 1): Model {
+  const m = sampleModel();
+  const op = m.operations.find((o) => o.id === 'order.get')!;
+  op.authority = { ...op.authority, permission: 'order.admin' };
+  op.version = version;
+  return m;
+}
+
+const unbumped = (r: Run): string[] => (r.env.findings ?? []).filter((f) => f.code === 'BREAKING_CHANGE_WITHOUT_VERSION_BUMP').map((f) => f.path);
+
+test('check reports a breaking change kept at the accepted contract version, whether a file edit, another document or two accepted patches made it', () => {
+  const dir = governedWithBaseline();
+  writeModelFile(join(dir, '.loom'), 'model.json', narrowedRead());
+  const edited = loom(dir, 'check');
+  assert.equal(edited.status, 1);
+  assert.deepEqual(unbumped(edited), ['operations/order.get/version'], edited.stdout);
+  const document = loom(dir, 'check', '--model', writeModelFile(dir, 'document.json', narrowedRead()));
+  assert.deepEqual(unbumped(document), ['operations/order.get/version'], document.stdout);
+
+  writeModelFile(join(dir, '.loom'), 'model.json');
+  const raise = join(dir, 'raise.json');
+  const lower = join(dir, 'lower.json');
+  writeJson(raise, { op: 'update', collection: 'operations', id: 'order.get', set: { version: 2, authority: { permission: 'order.admin', scheme: 'bearer' } } });
+  writeJson(lower, { op: 'update', collection: 'operations', id: 'order.get', set: { version: 1 } });
+  const first = loom(dir, 'mutate', '--patch', raise, '--ack', 'order.get', '--expected', modelRevision(sampleModel()));
+  assert.equal(first.status, 0, first.stdout);
+  const second = loom(dir, 'mutate', '--patch', lower, '--expected', (first.env.data as { revision: string }).revision);
+  assert.equal(second.status, 0, 'lowering a version is no breaking change against the model it patches');
+  const patched = loom(dir, 'check');
+  assert.deepEqual(unbumped(patched), ['operations/order.get/version'], patched.stdout);
+});
+
+test('check reports no unbumped version once the breaking change raises it, nor for a compatible edit at the accepted version', () => {
+  const dir = governedWithBaseline();
+  writeModelFile(join(dir, '.loom'), 'model.json', narrowedRead(2));
+  const raised = loom(dir, 'check');
+  assert.deepEqual(unbumped(raised), [], raised.stdout);
+  assert.ok(codes(raised).includes('CHANGE_UNACCEPTED'), 'the raised change still needs acceptance');
+  const reworded = sampleModel();
+  reworded.operations.find((o) => o.id === 'order.get')!.description = 'Read one order by its id.';
+  writeModelFile(join(dir, '.loom'), 'model.json', reworded);
+  const compatible = loom(dir, 'check');
+  assert.deepEqual(unbumped(compatible), [], compatible.stdout);
+});
+
+test('a baseline whose acceptance accepted another revision is not accepted, and one accepted at the revision it pins is', () => {
+  const dir = workspace({ gates: { policyRef: 'engineering' } });
+  writeJson(join(dir, '.loom', 'policies', 'engineering.json'), POLICY);
+  commitAll(dir, 'policy');
+  assert.equal(loom(dir, 'accept', '--id', 'acc-1', '--authority', 'team-architecture', '--subject', 'baseline', '--baseline', 'bl-1').status, 0);
+  commitAll(dir, 'acceptance of the fixture revision');
+  const other = sampleModel();
+  other.operations.find((o) => o.id === 'order.get')!.description = 'Read one order by its id.';
+  writeModelFile(join(dir, '.loom'), 'model.json', other);
+  const created = loom(dir, 'baseline', 'create', '--id', 'bl-1', '--acceptance', 'acc-1');
+  assert.equal(created.status, 0, created.stdout);
+  commitAll(dir, 'baseline of another revision');
+  const r = loom(dir, 'check');
+  assert.equal(r.env.states.acceptance.state, 'unaccepted', r.stdout);
+  assert.ok(r.env.findings.some((f) => f.code === 'ACCEPTANCE_MISSING' && f.message.includes(modelRevision(sampleModel()))), r.stdout);
+  const blocked = loom(dir, 'readiness', '--class', 'implementation', '--components', 'ordering');
+  assert.ok(blocked.env.states.readiness.reasons.some((x) => x.code === 'READINESS_MATURITY_INSUFFICIENT'), blocked.stdout);
+
+  const own = governedWithBaseline();
+  assert.equal(loom(own, 'check').env.states.acceptance.state, 'accepted');
+  const ready = loom(own, 'readiness', '--class', 'implementation', '--components', 'ordering');
+  assert.ok(!ready.env.states.readiness.reasons.some((x) => x.code === 'READINESS_MATURITY_INSUFFICIENT'), ready.stdout);
+});
+
 test('check --all finds every descriptor and reports overlapping claims', () => {
   const parent = gitInit(scratch());
   assert.equal(loom(parent, 'init').status, 0);
@@ -249,6 +320,24 @@ test('qualify runs a named check and refuses an unknown one', () => {
   const run = (r.env.data as { run: { checks: Array<{ check: string; result: string }> } }).run;
   assert.equal(run.checks[0]?.result, 'PASS');
   assert.equal(loom(dir, 'qualify', '--checks', 'no.such.check').status, 2);
+});
+
+test('qualify judges the evidence of its own signed run against the artifacts that run rendered', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+  const policy: Policy = { ...POLICY, trust: { ...POLICY.trust, evidenceKeys: [{ id: 'cli-runner', spki, runner: 'loom-cli' }] }, qualification: { required: ['documentation.yaml-roundtrip'], optional: [] } };
+  const dir = workspace({ projectionProfile: 'documentation', gates: { policyRef: 'engineering' } });
+  writeJson(join(dir, '.loom', 'policies', 'engineering.json'), policy);
+  commitAll(dir, 'workspace');
+  process.env['LOOM_CLI_TEST_KEY'] = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  try {
+    const r = loom(dir, 'qualify', '--checks', 'documentation.yaml-roundtrip', '--key-id', 'cli-runner', '--key-env', 'LOOM_CLI_TEST_KEY');
+    assert.equal(r.status, 0, r.stdout);
+    const obligation = (r.env.data as { obligations: EvidenceObligation[] }).obligations.find((o) => o.id === 'check:documentation.yaml-roundtrip');
+    assert.equal(obligation?.status, 'passing', JSON.stringify(obligation));
+  } finally {
+    delete process.env['LOOM_CLI_TEST_KEY'];
+  }
 });
 
 test('qualify --metrics measures the outcome corpora and --compare reports every measurement beside the recorded one', () => {

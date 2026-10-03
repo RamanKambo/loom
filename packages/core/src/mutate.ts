@@ -171,6 +171,42 @@ function versionOf(model: Model, ref: RecordRef): number | undefined {
   return r?.version;
 }
 
+interface BreakingElement {
+  ref: RecordRef;
+  collection: string;
+  reasons: string[];
+}
+
+/** The elements with a breaking or unclassified change, each with the reasons of its changes. */
+function breakingElements(changes: readonly Change[]): BreakingElement[] {
+  const byElement = new Map<string, BreakingElement>();
+  for (const c of changes) {
+    if (!needsAcknowledgement(c)) continue;
+    const key = `${c.elementKind}:${c.element}`;
+    const kind = c.elementKind;
+    const g = byElement.get(key) ?? { ref: { kind, id: c.element }, collection: kind === 'type' ? 'types' : kind === 'operation' ? 'operations' : kind === 'routine' ? 'routines' : kind, reasons: [] };
+    g.reasons.push(c.reason);
+    byElement.set(key, g);
+  }
+  return [...byElement.values()];
+}
+
+/**
+ * Versioned contracts with a breaking or unclassified change whose version did
+ * not rise from `before` to `after`. `mutate` asks this of a patch against the
+ * model it patches and `compareBaseline` of a candidate against the accepted
+ * baseline, so an edit that never passed through `mutate` meets the same rule.
+ */
+export function unbumpedContracts(before: Model, after: Model, changes: readonly Change[]): Array<BreakingElement & { from: number; to: number }> {
+  const out: Array<BreakingElement & { from: number; to: number }> = [];
+  for (const e of breakingElements(changes)) {
+    const from = versionOf(before, e.ref);
+    const to = versionOf(after, e.ref);
+    if (from !== undefined && to !== undefined && !(to > from)) out.push({ ...e, from, to });
+  }
+  return out;
+}
+
 /**
  * Breaking and unclassified changes need a version bump on versioned contracts
  * and an acknowledgement on every element; an unclassified change is also
@@ -178,25 +214,16 @@ function versionOf(model: Model, ref: RecordRef): number | undefined {
  */
 export function guardFindings(before: Model, after: Model, changes: readonly Change[], acknowledged: readonly string[]): Finding[] {
   const acked = new Set(acknowledged);
-  const byElement = new Map<string, { ref: RecordRef; reasons: string[] }>();
-  for (const c of changes) {
-    if (!needsAcknowledgement(c)) continue;
-    const key = `${c.elementKind}:${c.element}`;
-    const g = byElement.get(key) ?? { ref: { kind: c.elementKind, id: c.element }, reasons: [] };
-    g.reasons.push(c.reason);
-    byElement.set(key, g);
-  }
   const out: Finding[] = [];
   for (const c of changes) {
     if (c.kind !== 'requiresReview') continue;
     out.push(finding(FINDING.CHANGE_REQUIRES_REVIEW, c.path, `${c.path}: ${c.reason}`, `review the change at ${c.path} and add a comparison rule for it`));
   }
-  for (const { ref, reasons } of byElement.values()) {
-    const bv = versionOf(before, ref);
-    const av = versionOf(after, ref);
-    const collection = ref.kind === 'type' ? 'types' : ref.kind === 'operation' ? 'operations' : ref.kind === 'routine' ? 'routines' : ref.kind;
-    if (bv !== undefined && av !== undefined && !(av > bv)) {
-      out.push(finding(FINDING.BREAKING_CHANGE_WITHOUT_VERSION_BUMP, `${collection}/${ref.id}/version`, `${ref.kind} '${ref.id}' has a breaking change without a version bump (${bv} -> ${av}): ${reasons.join('; ')}`, `bump ${ref.kind} '${ref.id}' version above ${bv} and list '${ref.id}' in acknowledgeBreaking`));
+  const unbumped = new Map(unbumpedContracts(before, after, changes).map((u) => [`${u.ref.kind}:${u.ref.id}`, u]));
+  for (const { ref, collection, reasons } of breakingElements(changes)) {
+    const u = unbumped.get(`${ref.kind}:${ref.id}`);
+    if (u) {
+      out.push(finding(FINDING.BREAKING_CHANGE_WITHOUT_VERSION_BUMP, `${collection}/${ref.id}/version`, `${ref.kind} '${ref.id}' has a breaking change without a version bump (${u.from} -> ${u.to}): ${reasons.join('; ')}`, `bump ${ref.kind} '${ref.id}' version above ${u.from} and list '${ref.id}' in acknowledgeBreaking`));
     }
     if (!acked.has(ref.id)) {
       out.push(finding(FINDING.BREAKING_CHANGE_UNACKNOWLEDGED, `${collection}/${ref.id}`, `${ref.kind} '${ref.id}' has an unacknowledged breaking or unclassified change: ${reasons.join('; ')}`, `list '${ref.id}' in acknowledgeBreaking to confirm the change is intended`));

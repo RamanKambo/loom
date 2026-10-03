@@ -76,12 +76,18 @@ export function deriveObligations(model: Model, scope: Scope | undefined, inputs
   return out;
 }
 
-/** The inputs of an evidence record whose current hash differs from the recorded one. */
+const ARTIFACT = 'artifact:';
+
+/**
+ * The inputs of an evidence record whose current hash differs from the
+ * recorded one. An artifact input whose current hash was not supplied is not
+ * among them; `unhashedArtifacts` names it, because its currency is unknown.
+ */
 export function changedInputs(model: Model, record: EvidenceRecord, inputs: EvaluationInputs = {}, index: ModelIndex = indexModel(model)): string[] {
   const changed: string[] = [];
   for (const i of record.inputs) {
-    if (i.ref.startsWith('artifact:')) {
-      const now = inputs.artifacts?.[i.ref.slice('artifact:'.length)];
+    if (i.ref.startsWith(ARTIFACT)) {
+      const now = inputs.artifacts?.[i.ref.slice(ARTIFACT.length)];
       if (now !== undefined && now !== i.hash) changed.push(i.ref);
       continue;
     }
@@ -92,6 +98,13 @@ export function changedInputs(model: Model, record: EvidenceRecord, inputs: Eval
   }
   return changed;
 }
+
+/** The artifact inputs of an evidence record whose current hash the adapter did not supply. */
+export const unhashedArtifacts = (record: EvidenceRecord, inputs: EvaluationInputs = {}): string[] =>
+  record.inputs.filter((i) => i.ref.startsWith(ARTIFACT) && inputs.artifacts?.[i.ref.slice(ARTIFACT.length)] === undefined).map((i) => i.ref);
+
+const unhashedReason = (evidence: string, refs: readonly string[]): string =>
+  `the current hash of ${refs.map((r) => `'${r.slice(ARTIFACT.length)}'`).join(', ')} was not supplied, so the currency of evidence '${evidence}' is unknown`;
 
 /** True when evidence speaks to an obligation: it claims the obligation, or for release evidence, a record of the component. */
 function addresses(index: ModelIndex, e: EvidenceRecord, o: EvidenceObligation): boolean {
@@ -111,20 +124,23 @@ interface Judged {
   evidence: EvidenceInput;
   verdict: Verdict;
   changed: string[];
+  unhashed: string[];
 }
 
 function judge(model: Model, index: ModelIndex, ev: EvidenceInput, kind: EvidenceKind, inputs: EvaluationInputs): Judged {
   const e = ev.record;
   const changed = changedInputs(model, e, inputs, index);
+  const unhashed = unhashedArtifacts(e, inputs);
   let verdict: Verdict;
   if (!ev.trusted) verdict = 'untrusted';
   else if (changed.length) verdict = 'stale';
+  else if (unhashed.length) verdict = 'unknown';
   else if (e.result === 'NOT_APPLICABLE') verdict = e.reason?.trim() ? 'not-applicable' : 'unknown';
   else if (e.result === 'FAIL') verdict = 'failing';
   else if (e.result === 'UNKNOWN') verdict = 'unknown';
   else if (REAL_BOUNDARY.has(kind) && e.boundaries.some((b) => b.actual === 'substitute')) verdict = 'substitute';
   else verdict = 'passing';
-  return { evidence: ev, verdict, changed };
+  return { evidence: ev, verdict, changed, unhashed };
 }
 
 const BEST: readonly Verdict[] = ['passing', 'not-applicable', 'failing', 'stale', 'untrusted', 'unknown', 'substitute', 'absent'];
@@ -134,7 +150,7 @@ export interface EvidenceEvaluation {
   obligations: EvidenceObligation[];
   qualification: QualificationState;
   invalidated: EvidenceInvalidation[];
-  /** Evidence whose inputs are unchanged, kept with that reason. */
+  /** Evidence whose every recorded input is current, kept with that reason; evidence naming an artifact without a current hash is in neither list. */
   retained: Array<{ evidence: string; reason: string }>;
   findings: Finding[];
 }
@@ -175,6 +191,7 @@ export function evaluateEvidence(model: Model, obligations: readonly EvidenceObl
   for (const o of obligations) {
     const perKind: Status[] = [];
     const ids = new Set<string>();
+    const notes = new Set<string>();
     let substitutedHere = false;
     for (const kind of o.kinds) {
       const judged = evidence
@@ -191,6 +208,7 @@ export function evaluateEvidence(model: Model, obligations: readonly EvidenceObl
         perKind.push('absent');
         continue;
       }
+      if (best === 'unknown') for (const j of judged) if (j.verdict === 'unknown' && j.unhashed.length) notes.add(unhashedReason(j.evidence.record.id, j.unhashed));
       if (best === 'unknown' && judged.some((j) => j.evidence.record.result === 'NOT_APPLICABLE')) {
         findings.push(finding(FINDING.EVIDENCE_NOT_APPLICABLE_UNJUSTIFIED, `evidence/${o.id}`, `NOT_APPLICABLE ${kind} evidence for ${o.id} carries no justification`, 'record why the check does not apply, or run it', claimRef(index, o)));
       }
@@ -198,11 +216,14 @@ export function evaluateEvidence(model: Model, obligations: readonly EvidenceObl
     }
     const status = perKind.length ? perKind.sort((a, b) => WORST.indexOf(a) - WORST.indexOf(b))[0]! : 'absent';
     const entry: EvidenceObligation = { ...o, status };
+    const reason = status === 'unknown' && notes.size ? [...notes].join('; ') : undefined;
+    if (reason) entry.reason = reason;
     if (ids.size) entry.evidence = [...ids].sort();
     result.push(entry);
     const code = STATUS_CODE[status];
     if (code && o.required && !(code === FINDING.EVIDENCE_MISSING && substitutedHere)) {
-      findings.push(finding(code, `evidence/${o.id}`, `required obligation ${o.id} (${o.kinds.join(', ')}) is ${status}`, status === 'absent' ? `run the ${o.kinds.join(' and ')} check(s) for ${o.claim.kind} '${o.claim.ref}' and record trusted evidence` : `re-run the check for ${o.claim.kind} '${o.claim.ref}' at the current revision`, claimRef(index, o)));
+      const fix = status === 'absent' ? `run the ${o.kinds.join(' and ')} check(s) for ${o.claim.kind} '${o.claim.ref}' and record trusted evidence` : reason ? 'supply the current hash of every artifact the evidence names, as the workspace adapter renders it' : `re-run the check for ${o.claim.kind} '${o.claim.ref}' at the current revision`;
+      findings.push(finding(code, `evidence/${o.id}`, `required obligation ${o.id} (${o.kinds.join(', ')}) is ${status}${reason ? `: ${reason}` : ''}`, fix, claimRef(index, o)));
     }
   }
 
@@ -211,7 +232,7 @@ export function evaluateEvidence(model: Model, obligations: readonly EvidenceObl
   for (const ev of evidence) {
     const changed = changedInputs(model, ev.record, inputs, index);
     if (changed.length) invalidated.push({ evidence: ev.record.id, reason: `input(s) ${changed.join(', ')} changed since the run`, inputs: changed });
-    else retained.push({ evidence: ev.record.id, reason: 'every recorded input is unchanged' });
+    else if (!unhashedArtifacts(ev.record, inputs).length) retained.push({ evidence: ev.record.id, reason: 'every recorded input is unchanged' });
   }
 
   const inconsistent = revisionSetProblems(used);
@@ -249,15 +270,17 @@ function revisionSetProblems(used: readonly EvidenceRecord[]): string[] {
 
 /**
  * Evidence a change invalidates: every record whose recorded inputs differ
- * between the base and the candidate model.
+ * between the base and the candidate model. `afterInputs` carries the
+ * candidate's own artifact hashes; with the base's, a change to an artifact
+ * would never show.
  */
-export function invalidatedBy(before: Model, after: Model, inputs: EvaluationInputs = {}): EvidenceInvalidation[] {
+export function invalidatedBy(before: Model, after: Model, inputs: EvaluationInputs = {}, afterInputs: EvaluationInputs = inputs): EvidenceInvalidation[] {
   const bi = indexModel(before);
   const ai = indexModel(after);
   const out: EvidenceInvalidation[] = [];
   for (const ev of inputs.evidence ?? []) {
     const was = new Set(changedInputs(before, ev.record, inputs, bi));
-    const now = changedInputs(after, ev.record, inputs, ai).filter((r) => !was.has(r));
+    const now = changedInputs(after, ev.record, afterInputs, ai).filter((r) => !was.has(r));
     if (now.length) out.push({ evidence: ev.record.id, reason: `the change alters input(s) ${now.join(', ')}`, inputs: now });
   }
   return out;
