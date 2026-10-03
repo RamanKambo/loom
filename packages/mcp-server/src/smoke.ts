@@ -68,6 +68,8 @@ async function main(): Promise<void> {
   const outputValidators = new Map(list.tools.map((t) => [t.name, ajv.compile(t.outputSchema as object)]));
   for (const t of list.tools) {
     expect(t.inputSchema.type === 'object' && Boolean(t.outputSchema), `${t.name} lacks a complete input or output schema`);
+    const rootCombinators = ['oneOf', 'anyOf', 'allOf'].filter((k) => k in t.inputSchema);
+    expect(rootCombinators.length === 0, `${t.name} advertises ${rootCombinators.join(', ')} at its input-schema root, which Claude-family clients reject by dropping the tool`);
     ajv.compile(t.inputSchema as object);
   }
   const conform = (name: string, structured: unknown): void => {
