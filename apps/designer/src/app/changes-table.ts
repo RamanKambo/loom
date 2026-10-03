@@ -9,7 +9,7 @@ import type { AffectedElement, Change } from '@loom/core';
     } @else {
       <table class="grid">
         <thead>
-          <tr><th>Kind</th><th>Dimension</th><th>Element</th><th>Path</th><th>Reason</th><th>Consumers</th></tr>
+          <tr><th>Kind</th><th>Dimension</th><th>Element</th><th>Path</th><th>Reason</th><th>Consumers and dependency paths</th></tr>
         </thead>
         <tbody>
           @for (c of changes(); track $index) {
@@ -19,7 +19,7 @@ import type { AffectedElement, Change } from '@loom/core';
               <td data-col="element"><code>{{ c.element }}</code> <span class="muted">{{ c.elementKind }}</span></td>
               <td data-col="path"><code>{{ c.path }}</code></td>
               <td data-col="reason">{{ c.reason }}</td>
-              <td data-col="consumers">{{ ids(c.consumers) }}</td>
+              <td data-col="consumers">{{ consumers(c.consumers) }}</td>
             </tr>
           }
         </tbody>
@@ -30,7 +30,7 @@ import type { AffectedElement, Change } from '@loom/core';
 export class ChangesTable {
   readonly changes = input.required<readonly Change[]>();
 
-  protected ids(list: readonly AffectedElement[]): string {
-    return list.map((a) => a.ref.id).join(', ');
+  protected consumers(list: readonly AffectedElement[]): string {
+    return list.map((a) => `${a.ref.id} (${a.reason}: ${a.path.join(' → ')})`).join('; ');
   }
 }

@@ -1,21 +1,36 @@
 <header class="top">
   <h1>Loom designer</h1>
   <div class="actions">
+    @if (canReopen) {
+      <button type="button" (click)="openPersistent()">Open model file…</button>
+    }
     <label class="file">
-      Open model file
+      Import model file
       <input #file type="file" accept=".json,.yaml,.yml,application/json" (change)="openFile(file)" />
     </label>
     <button type="button" (click)="store.loadSample()">Load sample</button>
+    <button type="button" data-testid="save" [disabled]="!store.model()" (click)="save()">
+      {{ store.persistentFile() ? 'Save' : 'Save as download' }}
+    </button>
     <button type="button" [disabled]="!store.model()" (click)="exportModel()">Export model</button>
     <button type="button" [disabled]="store.history().length === 0" (click)="store.undo()">
       Undo ({{ store.history().length }})
     </button>
   </div>
   @if (store.model(); as m) {
+    @let s = store.states();
     <p class="status">
-      <strong>{{ store.sourceName() }}</strong> · model v{{ m.version }} ·
+      <strong>{{ store.sourceName() }}</strong> · format {{ m.version }} · revision <code>{{ short(store.revision()) }}</code>
+      @if (store.baseRevision(); as b) { · edited from <code>{{ short(b) }}</code> }
+      ·
       <span [class.bad]="store.errorCount() > 0">{{ store.errorCount() }} error(s)</span>,
       {{ store.warningCount() }} warning(s)
+      @if (s) {
+        · validation <span class="badge">{{ s.validation.state }}</span>
+        · {{ store.task().class }} readiness <span class="badge" data-testid="status-readiness">{{ s.readiness.state }}</span>
+        · acceptance <span class="badge" data-testid="status-acceptance">{{ s.acceptance.state }}</span>
+        · qualification <span class="badge">{{ s.qualification.state }}</span>
+      }
     </p>
   }
 </header>
@@ -24,6 +39,27 @@
   <section class="banner error" data-testid="load-error">
     <strong>Could not load the model.</strong> {{ e }}
   </section>
+}
+
+@if (store.saveConflict(); as c) {
+  <section class="banner error" data-testid="save-conflict">
+    <p><strong>Save refused; nothing was written.</strong> {{ c.reason }}</p>
+    @if (c.diskRevision) {
+      <p>The file is at <code>{{ c.diskRevision }}</code>; this edit started from <code>{{ c.expectedRevision }}</code>.</p>
+    }
+    <app-findings-table [findings]="c.findings" />
+  </section>
+}
+
+@if (lastSave(); as s) {
+  @if (s.kind === 'saved') {
+    <section class="banner ok" data-testid="save-ok">Saved at revision <code>{{ s.revision }}</code>.</section>
+  } @else if (s.kind === 'download') {
+    <section class="banner warn" data-testid="save-download">
+      This browser cannot write the file back, so the model was downloaded together with the revision it was
+      edited from, <code>{{ s.expectedRevision }}</code>. Replace the file only while it is still at that revision.
+    </section>
+  }
 }
 
 @if (exportBlocked(); as b) {
@@ -35,19 +71,27 @@
 
 <nav class="tabs">
   <button type="button" [class.active]="tab() === 'browse'" (click)="tab.set('browse')">Browse</button>
+  <button type="button" [class.active]="tab() === 'records'" (click)="tab.set('records')">Records</button>
   <button type="button" [class.active]="tab() === 'mutate'" (click)="tab.set('mutate')">Mutate</button>
   <button type="button" [class.active]="tab() === 'validate'" (click)="tab.set('validate')">
     Validate ({{ store.findings().length }})
   </button>
+  <button type="button" [class.active]="tab() === 'states'" (click)="tab.set('states')">States</button>
+  <button type="button" [class.active]="tab() === 'unknowns'" (click)="tab.set('unknowns')">Unknowns</button>
   <button type="button" [class.active]="tab() === 'diff'" (click)="tab.set('diff')">
     Diff ({{ diffSummary()?.total ?? '?' }})
   </button>
+  <button type="button" [class.active]="tab() === 'baseline'" (click)="tab.set('baseline')">Baseline</button>
+  <button type="button" [class.active]="tab() === 'views'" (click)="tab.set('views')">Views</button>
   <button type="button" [class.active]="tab() === 'generate'" (click)="tab.set('generate')">Generate</button>
+  <button type="button" [class.active]="tab() === 'publish'" (click)="tab.set('publish')">Publish</button>
 </nav>
 
 <main>
   <!-- Panels stay instantiated so editor text survives a tab switch. -->
   <section [hidden]="tab() !== 'browse'"><app-model-browser /></section>
+
+  <section [hidden]="tab() !== 'records'"><app-record-editor /></section>
 
   <section [hidden]="tab() !== 'mutate'"><app-mutate-panel /></section>
 
@@ -56,13 +100,20 @@
     <app-findings-table [findings]="store.findings()" />
   </section>
 
+  <section [hidden]="tab() !== 'states'"><app-states-panel /></section>
+
+  <section [hidden]="tab() !== 'unknowns'"><app-unknowns-panel /></section>
+
   <section [hidden]="tab() !== 'diff'">
-    <h2>Changes since the baseline</h2>
-    @if (store.baseline()) {
-      @let d = store.changesSinceBaseline();
-      <p class="muted">Baseline: the model as last loaded ({{ store.sourceName() }}).</p>
+    <h2>Changes since the model was opened</h2>
+    @if (store.comparisonPoint()) {
+      @let d = store.changesSinceOpened();
+      <p class="muted">
+        Local comparison point: the model as last opened or saved ({{ store.sourceName() }}). It is not an accepted
+        baseline; select one on the Baseline tab.
+      </p>
       @if (d.ok) {
-        <p>{{ diffSummary()?.breaking }} breaking, {{ diffSummary()?.compatible }} compatible.</p>
+        <p>{{ diffSummary()?.breaking }} breaking, {{ diffSummary()?.compatible }} other.</p>
         <app-changes-table [changes]="d.changes" />
       } @else {
         <p class="error">{{ d.error }}</p>
@@ -72,5 +123,13 @@
     }
   </section>
 
+  <section [hidden]="tab() !== 'baseline'"><app-baseline-panel /></section>
+
+  @if (tab() === 'views') {
+    <section><app-views-panel /></section>
+  }
+
   <section [hidden]="tab() !== 'generate'"><app-generate-panel /></section>
+
+  <section [hidden]="tab() !== 'publish'"><app-publish-panel /></section>
 </main>

@@ -272,3 +272,70 @@ pre.output {
   color: var(--bad);
   margin-top: 0;
 }
+
+.banner.warn {
+  background: var(--warn-bg);
+}
+
+.banner.ok {
+  background: var(--ok-bg);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.45rem;
+  border-radius: 3px;
+  background: var(--bg-alt);
+  font-weight: 600;
+}
+
+[data-state='valid'] .badge,
+[data-state='ready'] .badge,
+[data-state='qualified'] .badge,
+[data-state='accepted'] .badge {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+[data-state='invalid'] .badge,
+[data-state='blocked'] .badge,
+[data-state='unqualified'] .badge,
+[data-state='unaccepted'] .badge {
+  background: var(--bad-bg);
+  color: var(--bad);
+}
+
+[data-state='unresolved'] .badge,
+[data-state='unknown'] .badge {
+  background: var(--warn-bg);
+}
+
+.states,
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: 0.75rem;
+}
+
+ul.plain,
+ul.reasons {
+  margin: 0.25rem 0;
+  padding-left: 1.1rem;
+}
+
+.form .field {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 0.15rem 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.form .field .error,
+.form .field .hint {
+  grid-column: 2;
+  font-size: 0.85em;
+}
+
+textarea.editor.small {
+  min-height: 3rem;
+}

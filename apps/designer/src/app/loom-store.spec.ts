@@ -89,8 +89,8 @@ describe('LoomStore', () => {
     expect([...brokenElements]).toEqual([TYPE]);
     expect(outcome.impact.some((a) => a.reason === 'direct-change' && a.ref.id === TYPE)).toBe(true);
     expect(errorsOf(store.findings())).toEqual([]);
-    // The baseline is the loaded model, so the diff tab shows exactly this batch's changes.
-    expect(store.changesSinceBaseline()).toEqual({ ok: true, changes: outcome.changes });
+    // The comparison point is the opened model, so the diff tab shows exactly this batch's changes.
+    expect(store.changesSinceOpened()).toEqual({ ok: true, changes: outcome.changes });
   });
 
   it('(d) blocks exporting an imported model that has error findings', () => {
