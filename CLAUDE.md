@@ -23,8 +23,8 @@ the open-items register. Workspace scripts: @package.json
   `npm run test:fixtures` runs every case of `qualification/fixtures` against its authored
   expectation, and `npm run smoke:mcp` checks every MCP result against its output schema.
 - A check reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent,
-  outside its profile's version policy, unreadable, crashed or timed out, and is never a pass; a
-  required `UNKNOWN` fails the self-test.
+  outside its profile's version policy, unreadable, crashed or timed out, or its database refused
+  the connection or login, and is never a pass; a required `UNKNOWN` fails the self-test.
 - Running `packages/cli/dist/index.js` with node and no arguments prints the CLI usage. Its
   `check` command is the drift gate: it compares the installed outputs and the manifest with a
   fresh projection, and with `--out <dir>` a directory of projections, and never writes.

@@ -6,13 +6,24 @@
     "ref": "refs/heads/main",
     "acceptanceVia": "trusted-ref",
     "acceptanceKeys": [],
-    "evidenceKeys": []
+    "evidenceKeys": [
+      {
+        "id": "loom-qualification",
+        "spki": "MCowBQYDK2VwAyEAco2KRlCSXsUEwzC6SnG3LBG8dss0PP3WG43X+xw6KJw="
+      }
+    ]
   },
   "changeClasses": [],
   "readiness": {
-    "implementation": { "requires": "none" },
-    "integration": { "evidence": [] },
-    "release": { "evidence": [] }
+    "implementation": {
+      "requires": "none"
+    },
+    "integration": {
+      "evidence": []
+    },
+    "release": {
+      "evidence": []
+    }
   },
   "substitutes": [],
   "qualification": {

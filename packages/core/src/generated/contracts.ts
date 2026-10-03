@@ -2049,6 +2049,8 @@ export const ICDS: readonly Icd[] = [
         "output": "result.schema.json#/$defs/ResultEnvelope",
         "refusals": [
           "invalid-input",
+          "unresolved-context",
+          "unmet-prerequisite",
           "policy-failure"
         ],
         "effects": "writes",
