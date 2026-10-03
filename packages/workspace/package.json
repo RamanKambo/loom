@@ -1,0 +1,21 @@
+{
+  "name": "@loom/workspace",
+  "version": "1.0.0",
+  "description": "Loom workspace adapter: owns the .loom directory - initialization, discovery and path ownership, output routing and installation, trusted baselines and acceptance, workflow state, expected-revision writes, the durable evidence store and published-contract resolution.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@loom/core": "1.0.0"
+  }
+}
