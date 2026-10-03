@@ -1,0 +1,78 @@
+{
+  "description": "The pricing owner decides the default, the unknown closes, the decided default is declared, and fresh real-boundary evidence exists for every required obligation.",
+  "patches": [
+    {
+      "op": "add",
+      "collection": "decisions",
+      "record": {
+        "id": "dec.currency-default",
+        "revision": 1,
+        "question": "What currency do orders without a currency have?",
+        "alternatives": [
+          {
+            "id": "eur",
+            "description": "Orders without a currency read as EUR.",
+            "consequences": "Existing orders need no backfill; readers apply the default."
+          },
+          {
+            "id": "reject",
+            "description": "Reject every order without a currency.",
+            "consequences": "Existing orders need a backfill before release.",
+            "rejectedBecause": "A backfill of every historical order is not required to meet the pricing change."
+          }
+        ],
+        "criteria": [
+          "Existing orders keep their meaning."
+        ],
+        "basedOn": [
+          {
+            "kind": "requirement",
+            "id": "req.order-currency"
+          }
+        ],
+        "chosen": "eur",
+        "rationale": "Every historical order was priced in EUR.",
+        "affects": [
+          {
+            "kind": "property",
+            "id": "order.currency"
+          }
+        ],
+        "authority": "team-pricing",
+        "status": "accepted"
+      }
+    },
+    {
+      "op": "updateItem",
+      "collection": "types",
+      "id": "order",
+      "field": "properties",
+      "key": "currency",
+      "set": {
+        "default": {
+          "policy": "literal",
+          "value": "EUR",
+          "appliesOn": "read",
+          "description": "An order without a currency reads as EUR, per decision dec.currency-default."
+        }
+      }
+    },
+    {
+      "op": "update",
+      "collection": "unknowns",
+      "id": "unk.currency-default",
+      "set": {
+        "status": "resolved",
+        "closure": {
+          "note": "Orders without a currency read as EUR.",
+          "refs": [
+            {
+              "kind": "decision",
+              "id": "dec.currency-default"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

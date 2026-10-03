@@ -1,0 +1,157 @@
+{
+  "description": "Add an optional currency to the request, domain and response types and an exact string storage column, sourced from the pricing change request; the default is left unspecified.",
+  "patches": [
+    {
+      "op": "addItem",
+      "collection": "types",
+      "id": "order-request",
+      "field": "properties",
+      "item": {
+        "name": "currencyCode",
+        "kind": "string",
+        "required": false,
+        "nullable": false,
+        "immutable": false,
+        "origin": "client",
+        "description": "ISO 4217 alphabetic currency code of the amount.",
+        "bounds": {
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    {
+      "op": "addItem",
+      "collection": "types",
+      "id": "order",
+      "field": "properties",
+      "item": {
+        "name": "currency",
+        "kind": "string",
+        "required": false,
+        "nullable": true,
+        "immutable": false,
+        "origin": "client",
+        "description": "ISO 4217 alphabetic currency code of the amount.",
+        "bounds": {
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    {
+      "op": "addItem",
+      "collection": "types",
+      "id": "order-response",
+      "field": "properties",
+      "item": {
+        "name": "currency",
+        "kind": "string",
+        "required": false,
+        "nullable": true,
+        "immutable": false,
+        "origin": "client",
+        "description": "ISO 4217 alphabetic currency code of the amount.",
+        "bounds": {
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
+        }
+      }
+    },
+    {
+      "op": "addItem",
+      "collection": "storage",
+      "id": "orders.orders",
+      "field": "columns",
+      "item": {
+        "name": "currency",
+        "property": "currency",
+        "sqlType": {
+          "name": "nchar",
+          "length": 3
+        },
+        "nullable": true
+      }
+    },
+    {
+      "op": "addItem",
+      "collection": "mappings",
+      "id": "map.order-request-to-order",
+      "field": "fields",
+      "item": {
+        "from": "currencyCode",
+        "to": "currency",
+        "transform": "rename"
+      }
+    },
+    {
+      "op": "addItem",
+      "collection": "mappings",
+      "id": "map.order-to-response",
+      "field": "fields",
+      "item": {
+        "from": "currency",
+        "to": "currency",
+        "transform": "copy"
+      }
+    },
+    {
+      "op": "add",
+      "collection": "requirements",
+      "record": {
+        "id": "req.order-currency",
+        "revision": 1,
+        "outcome": "An order records the currency of its amount when the shopper names one.",
+        "owner": "team-orders",
+        "scope": [
+          "orders-api",
+          "orders-store"
+        ],
+        "source": [
+          {
+            "kind": "document",
+            "ref": "pricing-change-request",
+            "revision": "2"
+          }
+        ],
+        "basis": "sourced",
+        "priority": "must",
+        "status": "active",
+        "criteria": [
+          {
+            "id": "req.order-currency.recorded",
+            "statement": "An order request that names a currency stores it and the response returns it unchanged.",
+            "verification": "scenario",
+            "evidence": [
+              "behavior",
+              "integration"
+            ],
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "op": "add",
+      "collection": "scenarios",
+      "record": {
+        "id": "scn.order-currency",
+        "requirements": [
+          "req.order-currency"
+        ],
+        "criteria": [
+          "req.order-currency.recorded"
+        ],
+        "kind": "success",
+        "when": "An order for 25.00 with currency CHF is placed.",
+        "expected": "The response returns currency CHF and the stored order has currency CHF.",
+        "operations": [
+          "order.place"
+        ]
+      }
+    }
+  ]
+}

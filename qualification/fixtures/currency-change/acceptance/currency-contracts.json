@@ -1,0 +1,18 @@
+{
+  "acceptanceVersion": 1,
+  "id": "acc.currency-contracts",
+  "subject": {
+    "kind": "baseline",
+    "baseline": "bl-currency-1",
+    "candidate": "sha256:e5ffd197ffcc56250b9e4a0340b9f437f813b290d2b4fc24dda7fa1858a9cf96"
+  },
+  "decision": "accepted",
+  "authority": "team-architecture",
+  "policy": {
+    "ref": "engineering",
+    "revision": 1
+  },
+  "scope": [],
+  "changeClasses": [],
+  "at": "2026-10-02T09:00:00Z"
+}

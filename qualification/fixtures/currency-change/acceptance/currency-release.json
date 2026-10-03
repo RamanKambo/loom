@@ -1,0 +1,18 @@
+{
+  "acceptanceVersion": 1,
+  "id": "acc.currency-release",
+  "subject": {
+    "kind": "baseline",
+    "baseline": "bl-currency-3",
+    "candidate": "sha256:6889f507281731f310bd2d82c4f4b2df171ff7a319f5a8d45a9a17e0b955d7cf"
+  },
+  "decision": "accepted",
+  "authority": "team-architecture",
+  "policy": {
+    "ref": "engineering",
+    "revision": 1
+  },
+  "scope": [],
+  "changeClasses": [],
+  "at": "2026-10-03T09:00:00Z"
+}

@@ -1,0 +1,18 @@
+{
+  "acceptanceVersion": 1,
+  "id": "acc.statements-1",
+  "subject": {
+    "kind": "baseline",
+    "baseline": "bl-statements-1",
+    "candidate": "sha256:58359953b7d3a3e5e90fbb723856617260b6bae67b253bc957446718445206e0"
+  },
+  "decision": "accepted",
+  "authority": "team-architecture",
+  "policy": {
+    "ref": "engineering",
+    "revision": 1
+  },
+  "scope": [],
+  "changeClasses": [],
+  "at": "2026-10-01T09:00:00Z"
+}

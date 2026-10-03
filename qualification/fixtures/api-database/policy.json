@@ -1,0 +1,127 @@
+{
+  "policyVersion": 1,
+  "id": "engineering",
+  "revision": 1,
+  "trust": {
+    "ref": "refs/heads/main",
+    "acceptanceVia": "either",
+    "acceptanceKeys": [],
+    "evidenceKeys": [
+      {
+        "id": "test-ci-runner",
+        "spki": "MCowBQYDK2VwAyEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "runner": "ci"
+      }
+    ]
+  },
+  "changeClasses": [
+    {
+      "id": "non-semantic",
+      "description": "Edits without semantic effect.",
+      "match": {
+        "kinds": [
+          "nonSemantic"
+        ]
+      },
+      "approval": "pre-authorized"
+    },
+    {
+      "id": "compatible-additive",
+      "description": "Compatible additions to provider shapes and storage.",
+      "match": {
+        "kinds": [
+          "compatible"
+        ],
+        "dimensions": [
+          "shape-provider",
+          "storage"
+        ]
+      },
+      "approval": "pre-authorized"
+    },
+    {
+      "id": "consumer-or-behavior",
+      "description": "Changes visible to consumers, to behavior or to intent.",
+      "match": {
+        "dimensions": [
+          "shape-consumer",
+          "behavior",
+          "intent"
+        ]
+      },
+      "approval": "acceptance-required"
+    },
+    {
+      "id": "security",
+      "description": "Any change with a security consequence.",
+      "match": {
+        "dimensions": [
+          "security"
+        ]
+      },
+      "approval": "acceptance-required"
+    },
+    {
+      "id": "breaking",
+      "description": "Breaking changes to an accepted contract.",
+      "match": {
+        "kinds": [
+          "breaking"
+        ]
+      },
+      "approval": "acceptance-required"
+    }
+  ],
+  "readiness": {
+    "implementation": {
+      "requires": "accepted-contract"
+    },
+    "integration": {
+      "evidence": [
+        "integration"
+      ]
+    },
+    "release": {
+      "evidence": [
+        "integration",
+        "e2e"
+      ]
+    }
+  },
+  "substitutes": [
+    {
+      "kind": "test-double",
+      "permits": [
+        "implementation"
+      ],
+      "limits": "Never satisfies a real persistence or service integration obligation."
+    }
+  ],
+  "qualification": {
+    "required": [
+      "sql.migration",
+      "sql.behavior"
+    ],
+    "optional": []
+  },
+  "environments": [
+    {
+      "id": "ci-integration",
+      "kind": "ci",
+      "designated": true,
+      "description": "Pipeline environment with real databases created per run."
+    },
+    {
+      "id": "ci-unit",
+      "kind": "ci",
+      "designated": true,
+      "description": "Pipeline environment for process-local tests."
+    }
+  ],
+  "freeze": {
+    "onAcceptance": true,
+    "defectFixRequalify": [
+      "conformance"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "description": "Case and input conventions shared by every fixture set in this directory.",
+  "case": {
+    "id": "Behavior name of the case.",
+    "model": "Candidate model document, relative to the set directory.",
+    "baseline": "Trusted accepted model the candidate is compared against; supplies change classification, freezes and version retirement.",
+    "patches": "Step file whose 'patches' are applied, in order, to the state of the previous step; the result equals the file named by 'model'.",
+    "policy": "Gate policy supplied as a trusted input.",
+    "acceptance": "Acceptance records supplied as verified inputs.",
+    "evidence": "Evidence records; their trust is established by verifying signatures per the set's evidenceTrust table, never assumed.",
+    "publishedBundles": "Published contract bundles the adapter resolved; an absent list means no bundle was resolved."
+  },
+  "expect": {
+    "validation": "'valid' (no error finding), 'invalid' (at least one error finding) or null (not asserted).",
+    "mustInclude": "Finding codes that must appear.",
+    "mustExclude": "Finding codes that must not appear.",
+    "mustIncludeFindings": "Findings that must appear for a specific record, and for CONCERN_UNRESOLVED the specific concern.",
+    "readiness": "Readiness results for TaskSpec inputs: 'state', reasons that must and must not appear, and work-package content that must appear.",
+    "changes": "Comparison results: kinds and dimensions that must appear ('dimensionsAnyOf' needs at least one) and records named among the affected elements.",
+    "invalidatedEvidence": "Evidence ids the comparison must report as invalidated.",
+    "acceptanceRequired": "Whether the trusted policy requires acceptance of the change.",
+    "qualification": "'qualified', 'unqualified', 'unknown' or null (not asserted).",
+    "stateAssertions": "Members that must be absent from the resulting model; a tool never infers them.",
+    "checks": "Qualification checks that must give the stated result against the named fixture inputs."
+  },
+  "hashes": "Every hash is sha256 over canonical JSON: keys sorted, no insignificant whitespace, undefined members dropped. An evidence input ref is \"<recordKind>:<recordId>\" and its hash is the canonical hash of that record in the named state.",
+  "signatures": "Signature values in evidence records are placeholders. A qualification harness generates an Ed25519 key pair per run, substitutes its public key for the placeholder 'spki' of policy evidence key 'test-ci-runner', and signs every record whose evidenceTrust entry says signWith 'test-ci-runner' over its canonical JSON without the 'signature' member. Records marked 'unlisted-key' are signed with a second generated key the policy does not list. Records marked 'none' keep the placeholder."
+}

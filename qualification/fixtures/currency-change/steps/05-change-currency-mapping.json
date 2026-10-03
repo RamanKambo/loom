@@ -1,0 +1,19 @@
+{
+  "description": "During implementation the request-to-domain mapping of currency changes from a rename to a conversion that upper-cases the code.",
+  "patches": [
+    {
+      "op": "updateItem",
+      "collection": "mappings",
+      "id": "map.order-request-to-order",
+      "field": "fields",
+      "key": "currency",
+      "set": {
+        "transform": "convert",
+        "conversion": {
+          "lossy": false,
+          "note": "Lower-case codes are converted to upper case."
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "cases": [
+    {
+      "id": "cli-library-has-no-distributed-concerns",
+      "description": "A standalone command-line tool and library: no idempotency, asynchronous, enforcement or hosting concern applies, so none is reported unresolved.",
+      "model": "model.json",
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [],
+        "mustExclude": [
+          "CONCERN_UNRESOLVED",
+          "OPERATION_ENFORCEMENT_MISSING",
+          "COMPONENT_UNDEPLOYED",
+          "HOST_CAPABILITY_MISMATCH",
+          "CRITERION_UNCOVERED",
+          "OPERATION_SECURITY_UNDECLARED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "specification",
+              "mode": "component",
+              "components": [
+                "csvcheck-lib"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "retrying-async-command-without-async-decisions",
+      "description": "The same tool declared as a retrying asynchronous distributed system with one asynchronous command that omits every asynchronous decision.",
+      "model": "counterparts/distributed-async-without-decisions.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "CONCERN_UNRESOLVED"
+        ],
+        "mustExclude": [],
+        "mustIncludeFindings": [
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.accepted"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.completion"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.jobIdentity"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.timeout"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.cancellation"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.retry"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.deduplication"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.async.partialFailure"
+          },
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            },
+            "concern": "operation.idempotency"
+          },
+          {
+            "code": "OPERATION_ENFORCEMENT_MISSING",
+            "ref": {
+              "kind": "operation",
+              "id": "csvcheck.batch-check"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "retrying-async-command-with-async-decisions",
+      "description": "The permitted counterpart: the asynchronous command declares acceptance, completion, job identity, timeout, cancellation, retry ownership, deduplication, partial failure, idempotency and enforcement.",
+      "model": "counterparts/distributed-async-with-decisions.json",
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [],
+        "mustExclude": [
+          "CONCERN_UNRESOLVED"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "evidenceVersion": 1,
+  "id": "ev.e2e-claim",
+  "claims": [
+    {
+      "kind": "release",
+      "ref": "bl-currency-2"
+    },
+    {
+      "kind": "criterion",
+      "ref": "req.place-order.placed"
+    },
+    {
+      "kind": "criterion",
+      "ref": "req.order-currency.recorded"
+    }
+  ],
+  "kind": "e2e",
+  "check": {
+    "id": "orders.e2e",
+    "revision": 1,
+    "definitionHash": "sha256:ca9694876a5e019f7753aed562357b67487d52c5df2555b43d836e73021d50d2"
+  },
+  "artifacts": [],
+  "sources": [
+    {
+      "repository": ".",
+      "revision": "4f1c2b7"
+    }
+  ],
+  "environment": {
+    "id": "ci-integration",
+    "kind": "ci"
+  },
+  "tool": {
+    "name": "dotnet",
+    "version": "8.0.425"
+  },
+  "result": "PASS",
+  "run": {
+    "id": "run.e2e-claim",
+    "runner": "ci",
+    "startedAt": "2026-10-02T17:00:00Z",
+    "finishedAt": "2026-10-02T17:00:40Z"
+  },
+  "boundaries": [
+    {
+      "boundary": "Order store database",
+      "actual": "real"
+    }
+  ],
+  "limits": "Text claim that the end-to-end tests passed.",
+  "inputs": [
+    {
+      "ref": "type:order",
+      "hash": "sha256:f576c3495898fc9415256c9adc3a2164fd4d0d40289935ef1fd4dd4d4562bebe"
+    },
+    {
+      "ref": "type:order-request",
+      "hash": "sha256:9f4d315f9f7ad97c3b294a0c5e68c97c1f8a0316a6b3f462cfd976301a1a886a"
+    },
+    {
+      "ref": "type:order-response",
+      "hash": "sha256:deaeaa5541ab9b1a6510505c388792bb55865917f8d5534da903903ffa2321c0"
+    },
+    {
+      "ref": "mapping:map.order-request-to-order",
+      "hash": "sha256:f81c5f4faea854937e0732b85f885ac5ca71ec94af81f0c1d866795748a06173"
+    },
+    {
+      "ref": "storage:orders.orders",
+      "hash": "sha256:5f1c1cd9f67cd8f37cd1b09333636decc593b5dd5160ac9c435ad797ed94ddba"
+    }
+  ],
+  "signature": {
+    "keyId": "test-ci-runner",
+    "algorithm": "ed25519",
+    "value": "AAAA"
+  }
+}

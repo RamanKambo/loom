@@ -1,0 +1,363 @@
+{
+  "evidenceTrust": [
+    {
+      "file": "evidence/implementation-test-double.json",
+      "signWith": "test-ci-runner",
+      "expect": "trusted"
+    },
+    {
+      "file": "evidence/integration-test-double.json",
+      "signWith": "test-ci-runner",
+      "expect": "trusted"
+    },
+    {
+      "file": "evidence/e2e-unsigned-claim.json",
+      "signWith": "unlisted-key",
+      "expect": "untrusted"
+    },
+    {
+      "file": "evidence/behavior-real.json",
+      "signWith": "test-ci-runner",
+      "expect": "trusted"
+    },
+    {
+      "file": "evidence/integration-real.json",
+      "signWith": "test-ci-runner",
+      "expect": "trusted"
+    },
+    {
+      "file": "evidence/e2e-real.json",
+      "signWith": "test-ci-runner",
+      "expect": "trusted"
+    }
+  ],
+  "cases": [
+    {
+      "id": "add-optional-currency-without-inferred-default",
+      "description": "The optional currency is added with a source but without defaulting semantics; no default is inferred, the missing default is reported, the column is an exact string type and the consumers are named.",
+      "baseline": "baseline/model.json",
+      "patches": "steps/01-add-optional-currency.json",
+      "model": "states/after-01.json",
+      "policy": "policy.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "CONCERN_UNRESOLVED"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "property",
+              "id": "order.currency"
+            },
+            "concern": "property.default"
+          }
+        ],
+        "mustExclude": [
+          "STORAGE_COLUMN_LOSSY",
+          "STORAGE_COLUMN_TYPE_MISMATCH",
+          "MAPPING_FIELD_UNKNOWN"
+        ],
+        "stateAssertions": [
+          {
+            "record": {
+              "kind": "property",
+              "id": "order.currency"
+            },
+            "absent": [
+              "default"
+            ]
+          },
+          {
+            "record": {
+              "kind": "storage",
+              "id": "orders.orders"
+            },
+            "column": "currency",
+            "absent": [
+              "default"
+            ]
+          }
+        ],
+        "changes": {
+          "kinds": [
+            "compatible"
+          ],
+          "dimensionsAnyOf": [
+            "shape-provider",
+            "shape-consumer",
+            "storage"
+          ],
+          "affectedInclude": [
+            {
+              "kind": "component",
+              "id": "storefront"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "default-recorded-as-unknown-blocks-release-only",
+      "description": "A typed unknown stands in for the default; the concern is no longer unresolved, release is blocked by the unknown and implementation is not.",
+      "baseline": "baseline/model.json",
+      "patches": "steps/02-record-default-unknown.json",
+      "model": "states/after-02.json",
+      "policy": "policy.json",
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [
+          "UNKNOWN_OPEN"
+        ],
+        "mustExclude": [
+          "CONCERN_UNRESOLVED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "release",
+              "mode": "component",
+              "components": [
+                "orders-api",
+                "orders-store"
+              ]
+            },
+            "state": "blocked",
+            "mustIncludeReasons": [
+              "READINESS_BLOCKED_BY_UNKNOWN"
+            ]
+          },
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "orders-api"
+              ]
+            },
+            "mustExcludeReasons": [
+              "READINESS_BLOCKED_BY_UNKNOWN"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "accepted-shared-contracts-permit-implementation",
+      "description": "With the request, response, domain and storage contracts accepted, implementation of both components is ready.",
+      "baseline": "states/after-02.json",
+      "patches": "steps/03-accept-shared-contracts.json",
+      "model": "states/after-03.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/currency-contracts.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "orders-api"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": []
+          },
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "orders-store"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "parallel-implementation-with-permitted-test-double",
+      "description": "The API is implemented against a test double of the order store; implementation is ready under the substitute and integration is blocked.",
+      "baseline": "states/after-02.json",
+      "patches": "steps/04-parallel-implementation-with-test-double.json",
+      "model": "states/after-04.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/currency-contracts.json"
+      ],
+      "evidence": [
+        "evidence/implementation-test-double.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "orders-api"
+              ],
+              "substitutes": [
+                {
+                  "dependency": {
+                    "kind": "component",
+                    "id": "orders-store"
+                  },
+                  "kind": "test-double"
+                }
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [
+              "READINESS_SUBSTITUTE_APPLIED"
+            ]
+          },
+          {
+            "task": {
+              "class": "integration",
+              "mode": "component",
+              "components": [
+                "orders-api",
+                "orders-store"
+              ]
+            },
+            "state": "blocked",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "mapping-change-on-frozen-component-needs-acceptance",
+      "description": "Changing the currency mapping from a rename to a conversion after acceptance is a consumer- or behavior-visible change to a frozen component; it names the affected consumers, invalidates the evidence that depended on the mapping and requires acceptance.",
+      "baseline": "states/after-04.json",
+      "patches": "steps/05-change-currency-mapping.json",
+      "model": "states/after-05.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/currency-contracts.json"
+      ],
+      "evidence": [
+        "evidence/implementation-test-double.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "FROZEN_COMPONENT_CHANGED"
+        ],
+        "changes": {
+          "dimensionsAnyOf": [
+            "shape-consumer",
+            "behavior"
+          ],
+          "affectedInclude": [
+            {
+              "kind": "operation",
+              "id": "order.place"
+            },
+            {
+              "kind": "component",
+              "id": "storefront"
+            }
+          ]
+        },
+        "invalidatedEvidence": [
+          "ev.impl-double"
+        ],
+        "acceptanceRequired": true
+      }
+    },
+    {
+      "id": "test-double-evidence-cannot-qualify-integration",
+      "description": "Integration evidence that ran against the test double, plus an end-to-end claim signed by an unlisted key, cannot qualify the change.",
+      "baseline": "states/after-05.json",
+      "patches": "steps/06-qualify-with-test-double-only.json",
+      "model": "states/after-06.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/currency-mapping.json"
+      ],
+      "evidence": [
+        "evidence/integration-test-double.json",
+        "evidence/e2e-unsigned-claim.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": "unqualified",
+        "mustInclude": [
+          "EVIDENCE_SUBSTITUTE_NOT_PERMITTED",
+          "EVIDENCE_UNTRUSTED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "release",
+              "mode": "component",
+              "components": [
+                "orders-api",
+                "orders-store"
+              ]
+            },
+            "state": "blocked",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "release-with-fresh-real-boundary-evidence",
+      "description": "The default is decided and declared, the unknown is closed, and trusted real-boundary evidence exists for every required obligation of the accepted revision; release is ready and the revision is qualified.",
+      "baseline": "states/after-06.json",
+      "patches": "steps/07-release-with-real-evidence.json",
+      "model": "states/after-07.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/currency-release.json"
+      ],
+      "evidence": [
+        "evidence/behavior-real.json",
+        "evidence/integration-real.json",
+        "evidence/e2e-real.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": "qualified",
+        "mustExclude": [
+          "CONCERN_UNRESOLVED",
+          "UNKNOWN_OPEN",
+          "EVIDENCE_STALE",
+          "EVIDENCE_MISSING",
+          "EVIDENCE_UNTRUSTED",
+          "EVIDENCE_SUBSTITUTE_NOT_PERMITTED",
+          "EVIDENCE_FAILED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "release",
+              "mode": "component",
+              "components": [
+                "orders-api",
+                "orders-store"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "acceptanceVersion": 1,
+  "id": "acc.invoicing-2",
+  "subject": {
+    "kind": "baseline",
+    "baseline": "bl-2",
+    "candidate": "sha256:2f22ab69cfe15dcba94d5ea8a73277a901228b3bf47b89bd9ce5a7d4345d869b"
+  },
+  "decision": "accepted",
+  "authority": "team-architecture",
+  "policy": {
+    "ref": "engineering",
+    "revision": 1
+  },
+  "scope": [],
+  "changeClasses": [],
+  "at": "2026-10-01T09:00:00Z"
+}

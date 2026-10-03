@@ -1,0 +1,42 @@
+{
+  "description": "Record the unknown default and old-record behavior of currency as a typed unknown that blocks release but not implementation.",
+  "patches": [
+    {
+      "op": "add",
+      "collection": "unknowns",
+      "record": {
+        "id": "unk.currency-default",
+        "question": "What currency do orders placed before the currency field existed have, and what does an absent currency mean on a new order?",
+        "affects": [
+          {
+            "kind": "property",
+            "id": "order.currency"
+          },
+          {
+            "kind": "consumerBinding",
+            "id": "cb.storefront-orders"
+          },
+          {
+            "kind": "storage",
+            "id": "orders.orders"
+          }
+        ],
+        "concerns": [
+          {
+            "record": {
+              "kind": "property",
+              "id": "order.currency"
+            },
+            "concern": "property.default"
+          }
+        ],
+        "blocks": [
+          "release"
+        ],
+        "owner": "team-orders",
+        "resolution": "Decision by the pricing owner, recorded as a decision record.",
+        "status": "open"
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "description": "The shared request, response, domain and storage contracts are accepted; no model change.",
+  "patches": []
+}

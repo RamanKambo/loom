@@ -1,0 +1,919 @@
+{
+  "version": 1,
+  "systemProfile": {
+    "kind": "service",
+    "traits": [
+      "persistent-storage",
+      "public-api"
+    ]
+  },
+  "components": [
+    {
+      "id": "orders-api",
+      "purpose": "HTTP API for placing and reading orders.",
+      "responsibilities": [
+        "Request validation.",
+        "Authorization."
+      ],
+      "owner": "team-orders",
+      "kind": "service",
+      "implementations": [
+        {
+          "language": "csharp",
+          "module": "Orders.Api.Contracts"
+        }
+      ]
+    },
+    {
+      "id": "orders-store",
+      "purpose": "Relational store of orders and the procedure that places them.",
+      "responsibilities": [
+        "Order persistence."
+      ],
+      "owner": "team-orders",
+      "kind": "database",
+      "implementations": [
+        {
+          "language": "sql",
+          "module": "orders"
+        }
+      ]
+    },
+    {
+      "id": "storefront",
+      "purpose": "Web shop that places and displays orders.",
+      "responsibilities": [],
+      "owner": "team-shop",
+      "kind": "external"
+    }
+  ],
+  "types": [
+    {
+      "id": "order",
+      "version": 1,
+      "owner": "orders-store",
+      "representation": "domain",
+      "stateProperty": "status",
+      "key": [
+        "id"
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system",
+          "bounds": {
+            "minLength": 36,
+            "maxLength": 36
+          }
+        },
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "bounds": {
+            "min": 0
+          }
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "placed",
+            "paid"
+          ],
+          "unknownEnumPolicy": "reject"
+        },
+        {
+          "name": "currency",
+          "kind": "string",
+          "required": false,
+          "nullable": true,
+          "immutable": false,
+          "origin": "client",
+          "description": "ISO 4217 alphabetic currency code of the amount.",
+          "bounds": {
+            "minLength": 3,
+            "maxLength": 3,
+            "pattern": "^[A-Z]{3}$"
+          },
+          "default": {
+            "policy": "literal",
+            "value": "EUR",
+            "appliesOn": "read",
+            "description": "An order without a currency reads as EUR, per decision dec.currency-default."
+          }
+        }
+      ]
+    },
+    {
+      "id": "order-request",
+      "version": 1,
+      "owner": "orders-api",
+      "representation": "request",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "bounds": {
+            "min": 0
+          }
+        },
+        {
+          "name": "currencyCode",
+          "kind": "string",
+          "required": false,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "description": "ISO 4217 alphabetic currency code of the amount.",
+          "bounds": {
+            "minLength": 3,
+            "maxLength": 3,
+            "pattern": "^[A-Z]{3}$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "order-response",
+      "version": 1,
+      "owner": "orders-api",
+      "representation": "response",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "id",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system",
+          "bounds": {
+            "minLength": 36,
+            "maxLength": 36
+          }
+        },
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          }
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "placed",
+            "paid"
+          ],
+          "unknownEnumPolicy": "reject"
+        },
+        {
+          "name": "currency",
+          "kind": "string",
+          "required": false,
+          "nullable": true,
+          "immutable": false,
+          "origin": "client",
+          "description": "ISO 4217 alphabetic currency code of the amount.",
+          "bounds": {
+            "minLength": 3,
+            "maxLength": 3,
+            "pattern": "^[A-Z]{3}$"
+          }
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "order.place",
+      "version": 1,
+      "owner": "orders-api",
+      "kind": "command",
+      "request": "order-request",
+      "response": "order-response",
+      "authority": {
+        "permission": "orders.write",
+        "scheme": "bearer"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "POST",
+          "path": "/orders",
+          "requestMediaType": "application/json",
+          "responses": [
+            {
+              "status": 201,
+              "kind": "success",
+              "type": "order-response",
+              "description": "The order was placed."
+            },
+            {
+              "status": 400,
+              "kind": "error",
+              "description": "The request is invalid."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "ORDER_INVALID",
+          "status": 400,
+          "retryable": false,
+          "description": "A member is missing or out of range."
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "routine",
+          "id": "orders.sp_place_order"
+        },
+        {
+          "kind": "mutation",
+          "id": "order.create"
+        }
+      ],
+      "criteria": [
+        "req.place-order.placed"
+      ],
+      "scenarios": [
+        "scn.place-order"
+      ],
+      "enforcement": {
+        "authorization": "orders-api",
+        "validation": "orders-api",
+        "persistence": "orders-store"
+      },
+      "idempotency": {
+        "kind": "idempotency-key",
+        "key": {
+          "in": "header",
+          "name": "Idempotency-Key"
+        },
+        "window": "P1D",
+        "repeatedRequest": "The original response is returned and no second order is placed."
+      },
+      "concurrency": {
+        "control": "none",
+        "onConflict": "Placing a new order cannot conflict with another writer."
+      },
+      "transaction": {
+        "boundary": "single-routine",
+        "routine": "orders.sp_place_order"
+      }
+    },
+    {
+      "id": "order.get",
+      "version": 1,
+      "owner": "orders-api",
+      "kind": "query",
+      "response": "order-response",
+      "authority": {
+        "permission": "orders.read",
+        "scheme": "bearer"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "GET",
+          "path": "/orders/{id}",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "kind": "string",
+              "required": true
+            }
+          ],
+          "responses": [
+            {
+              "status": 200,
+              "kind": "success",
+              "type": "order-response",
+              "description": "The order."
+            },
+            {
+              "status": 404,
+              "kind": "error",
+              "description": "No order has this identifier."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "ORDER_NOT_FOUND",
+          "status": 404,
+          "retryable": false,
+          "description": "No order has this identifier."
+        }
+      ]
+    }
+  ],
+  "routines": [
+    {
+      "id": "orders.sp_place_order",
+      "version": 1,
+      "owner": "orders-store",
+      "host": "sql-procedure",
+      "parameterPassing": "positional",
+      "params": [
+        {
+          "name": "p_amount",
+          "kind": "decimal",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "order.amount"
+        }
+      ],
+      "resultSet": [
+        {
+          "name": "order_id",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 36
+          },
+          "nullable": false,
+          "binds": "order.id"
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "enumValues": [
+            "placed",
+            "paid"
+          ],
+          "nullable": false,
+          "binds": "order.status"
+        }
+      ],
+      "performsMutations": [
+        "order.create"
+      ],
+      "writes": [
+        {
+          "storage": "orders.orders",
+          "columns": [
+            "id",
+            "amount",
+            "status"
+          ]
+        }
+      ],
+      "transactionScope": [
+        "orders.orders"
+      ],
+      "authority": {
+        "permission": "orders.write"
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "id": "order.create",
+      "type": "order",
+      "owner": "orders-store",
+      "from": [
+        "$absent"
+      ],
+      "to": "placed",
+      "writes": [
+        "id",
+        "amount",
+        "status"
+      ],
+      "guard": {
+        "form": "expression",
+        "profile": "loom-predicate-1",
+        "expression": {
+          "op": "ge",
+          "left": {
+            "property": "amount"
+          },
+          "right": {
+            "literal": 0
+          }
+        }
+      },
+      "effect": "A placed order exists.",
+      "requirements": [
+        "req.place-order"
+      ],
+      "criteria": [
+        "req.place-order.placed"
+      ],
+      "scenarios": [
+        "scn.place-order"
+      ]
+    }
+  ],
+  "workflows": [],
+  "edges": [
+    {
+      "from": "orders-api",
+      "to": "orders-store",
+      "kind": "integration",
+      "rationale": "The API places orders through the store procedure.",
+      "readiness": {
+        "claim": "implementation",
+        "maturity": "implemented",
+        "substitutes": [
+          {
+            "kind": "test-double",
+            "permits": [
+              "implementation"
+            ],
+            "limits": "A test double of the order store never satisfies the persistence integration obligation."
+          }
+        ],
+        "evidence": [
+          "integration"
+        ]
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "req.place-order",
+      "revision": 1,
+      "outcome": "A shopper can place an order for an amount.",
+      "owner": "team-orders",
+      "scope": [
+        "orders-api",
+        "orders-store"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "orders-requirements",
+          "revision": "1"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.place-order.placed",
+          "statement": "A valid order request places an order and returns its identifier and status placed.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior",
+            "integration"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "req.order-currency",
+      "revision": 1,
+      "outcome": "An order records the currency of its amount when the shopper names one.",
+      "owner": "team-orders",
+      "scope": [
+        "orders-api",
+        "orders-store"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "pricing-change-request",
+          "revision": "2"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.order-currency.recorded",
+          "statement": "An order request that names a currency stores it and the response returns it unchanged.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior",
+            "integration"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scn.place-order",
+      "requirements": [
+        "req.place-order"
+      ],
+      "criteria": [
+        "req.place-order.placed"
+      ],
+      "kind": "success",
+      "when": "An order for 25.00 is placed.",
+      "expected": "The response is 201 with an identifier and status placed.",
+      "operations": [
+        "order.place"
+      ]
+    },
+    {
+      "id": "scn.order-currency",
+      "requirements": [
+        "req.order-currency"
+      ],
+      "criteria": [
+        "req.order-currency.recorded"
+      ],
+      "kind": "success",
+      "when": "An order for 25.00 with currency CHF is placed.",
+      "expected": "The response returns currency CHF and the stored order has currency CHF.",
+      "operations": [
+        "order.place"
+      ]
+    }
+  ],
+  "constraints": [],
+  "observations": [],
+  "assumptions": [],
+  "unknowns": [
+    {
+      "id": "unk.currency-default",
+      "question": "What currency do orders placed before the currency field existed have, and what does an absent currency mean on a new order?",
+      "affects": [
+        {
+          "kind": "property",
+          "id": "order.currency"
+        },
+        {
+          "kind": "consumerBinding",
+          "id": "cb.storefront-orders"
+        },
+        {
+          "kind": "storage",
+          "id": "orders.orders"
+        }
+      ],
+      "concerns": [
+        {
+          "record": {
+            "kind": "property",
+            "id": "order.currency"
+          },
+          "concern": "property.default"
+        }
+      ],
+      "blocks": [
+        "release"
+      ],
+      "owner": "team-orders",
+      "resolution": "Decision by the pricing owner, recorded as a decision record.",
+      "status": "resolved",
+      "closure": {
+        "note": "Orders without a currency read as EUR.",
+        "refs": [
+          {
+            "kind": "decision",
+            "id": "dec.currency-default"
+          }
+        ]
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "id": "dec.currency-default",
+      "revision": 1,
+      "question": "What currency do orders without a currency have?",
+      "alternatives": [
+        {
+          "id": "eur",
+          "description": "Orders without a currency read as EUR.",
+          "consequences": "Existing orders need no backfill; readers apply the default."
+        },
+        {
+          "id": "reject",
+          "description": "Reject every order without a currency.",
+          "consequences": "Existing orders need a backfill before release.",
+          "rejectedBecause": "A backfill of every historical order is not required to meet the pricing change."
+        }
+      ],
+      "criteria": [
+        "Existing orders keep their meaning."
+      ],
+      "basedOn": [
+        {
+          "kind": "requirement",
+          "id": "req.order-currency"
+        }
+      ],
+      "chosen": "eur",
+      "rationale": "Every historical order was priced in EUR.",
+      "affects": [
+        {
+          "kind": "property",
+          "id": "order.currency"
+        }
+      ],
+      "authority": "team-pricing",
+      "status": "accepted"
+    }
+  ],
+  "inventory": [],
+  "retainedBehaviors": [],
+  "workloads": [],
+  "attachments": [],
+  "mappings": [
+    {
+      "id": "map.order-request-to-order",
+      "from": "order-request",
+      "to": "order",
+      "owner": "orders-api",
+      "fields": [
+        {
+          "from": "amount",
+          "to": "amount",
+          "transform": "copy"
+        },
+        {
+          "from": "currencyCode",
+          "to": "currency",
+          "transform": "convert",
+          "conversion": {
+            "lossy": false,
+            "note": "Lower-case codes are converted to upper case."
+          }
+        }
+      ],
+      "unmapped": [
+        {
+          "side": "to",
+          "property": "id",
+          "reason": "Assigned by the store."
+        },
+        {
+          "side": "to",
+          "property": "status",
+          "reason": "Set to placed on creation."
+        }
+      ]
+    },
+    {
+      "id": "map.order-to-response",
+      "from": "order",
+      "to": "order-response",
+      "owner": "orders-api",
+      "fields": [
+        {
+          "from": "id",
+          "to": "id",
+          "transform": "copy"
+        },
+        {
+          "from": "amount",
+          "to": "amount",
+          "transform": "copy"
+        },
+        {
+          "from": "status",
+          "to": "status",
+          "transform": "copy"
+        },
+        {
+          "from": "currency",
+          "to": "currency",
+          "transform": "copy"
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "id": "orders.orders",
+      "type": "order",
+      "owner": "orders-store",
+      "platform": "sqlserver-2022",
+      "schema": "orders",
+      "table": "orders",
+      "columns": [
+        {
+          "name": "id",
+          "property": "id",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 36
+          },
+          "nullable": false
+        },
+        {
+          "name": "amount",
+          "property": "amount",
+          "sqlType": {
+            "name": "decimal",
+            "precision": 12,
+            "scale": 2
+          },
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "property": "status",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 16
+          },
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "property": "currency",
+          "sqlType": {
+            "name": "nchar",
+            "length": 3
+          },
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ]
+    }
+  ],
+  "migrations": [],
+  "deploymentUnits": [
+    {
+      "id": "du.orders-api",
+      "components": [
+        "orders-api"
+      ],
+      "host": "host.web",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 2,
+        "max": 4
+      },
+      "invocation": {
+        "trigger": "http"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 100
+      },
+      "identity": {
+        "kind": "workload-identity",
+        "name": "orders_api"
+      }
+    },
+    {
+      "id": "du.orders-store",
+      "components": [
+        "orders-store"
+      ],
+      "host": "host.sql",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 1,
+        "max": 1
+      },
+      "invocation": {
+        "trigger": "library-call"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 200
+      },
+      "identity": {
+        "kind": "service-account",
+        "name": "orders_store"
+      }
+    }
+  ],
+  "hosts": [
+    {
+      "id": "host.web",
+      "kind": "web-app",
+      "capabilities": {
+        "triggers": [
+          "http"
+        ],
+        "maxTimeout": "PT230S",
+        "maxConcurrency": 1000,
+        "scaling": "automatic",
+        "state": "stateless",
+        "identities": [
+          "workload-identity"
+        ]
+      },
+      "limits": [
+        "Requests longer than 230 seconds are terminated."
+      ]
+    },
+    {
+      "id": "host.sql",
+      "kind": "database-engine",
+      "capabilities": {
+        "triggers": [
+          "library-call"
+        ],
+        "scaling": "manual",
+        "state": "stateful",
+        "identities": [
+          "service-account"
+        ]
+      },
+      "limits": [
+        "One primary replica."
+      ]
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "id": "tb.private",
+      "kind": "network",
+      "description": "Private network behind the API gateway."
+    }
+  ],
+  "securitySchemes": [
+    {
+      "id": "bearer",
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT"
+    }
+  ],
+  "consumerBindings": [
+    {
+      "id": "cb.storefront-orders",
+      "consumer": {
+        "kind": "component",
+        "id": "storefront"
+      },
+      "contract": {
+        "kind": "type",
+        "id": "order-response"
+      },
+      "version": 1,
+      "compatibility": "compatible",
+      "required": true,
+      "status": "active"
+    },
+    {
+      "id": "cb.storefront-place",
+      "consumer": {
+        "kind": "component",
+        "id": "storefront"
+      },
+      "contract": {
+        "kind": "operation",
+        "id": "order.place"
+      },
+      "version": 1,
+      "compatibility": "compatible",
+      "required": true,
+      "status": "active"
+    }
+  ],
+  "publishedContracts": []
+}

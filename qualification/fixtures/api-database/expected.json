@@ -1,0 +1,264 @@
+{
+  "cases": [
+    {
+      "id": "coexisting-versions-with-pinned-published-contract",
+      "description": "Response version 2 is current, version 1 stays supported for an active required consumer, the payments contract is pinned and resolved, and the storage keeps exact decimals.",
+      "model": "model.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/current-contract.json"
+      ],
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [],
+        "mustExclude": [
+          "VERSION_BINDING_UNSUPPORTED",
+          "VERSION_RETIREMENT_BLOCKED",
+          "VERSION_SUPPORT_INVALID",
+          "PUBLISHED_CONTRACT_DIGEST_MISMATCH",
+          "PUBLISHED_CONTRACT_UNRESOLVED",
+          "PUBLISHED_CONTRACT_REFERENCE_UNKNOWN",
+          "STORAGE_COLUMN_LOSSY",
+          "STORAGE_COLUMN_TYPE_MISMATCH",
+          "MIGRATION_MISSING",
+          "OPERATION_SECURITY_UNDECLARED",
+          "HTTP_PATH_PARAMETER_UNDECLARED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "invoicing-api"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "vertical-slice-across-api-and-database",
+      "description": "A vertical slice for invoice creation spans the API and the store; its work package lists both components and carries the migration evidence obligation.",
+      "model": "model.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/current-contract.json"
+      ],
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "slice",
+              "requirements": [
+                "req.create-invoice"
+              ],
+              "components": [
+                "invoicing-api",
+                "invoicing-store"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [],
+            "workPackage": {
+              "scopeIncludes": [
+                "invoicing-api",
+                "invoicing-store"
+              ],
+              "exitEvidenceIncludes": [
+                {
+                  "claim": {
+                    "kind": "migration",
+                    "ref": "mig.invoice-currency"
+                  },
+                  "kinds": [
+                    "migration"
+                  ]
+                },
+                {
+                  "claim": {
+                    "kind": "criterion",
+                    "ref": "req.create-invoice.created"
+                  },
+                  "kinds": [
+                    "behavior",
+                    "integration"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "unresolved-published-contract-blocks-dependent-work",
+      "description": "The pinned payments contract was not resolved; plain validation reports it and work that depends on it is not ready.",
+      "model": "model.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/current-contract.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "PUBLISHED_CONTRACT_UNRESOLVED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "invoicing-api"
+              ]
+            },
+            "state": "unresolved",
+            "mustIncludeReasons": [
+              "PUBLISHED_CONTRACT_UNRESOLVED"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "pinned-digest-does-not-match-bundle",
+      "description": "The model pins a digest that differs from the resolved bundle by one character.",
+      "model": "counterparts/pinned-digest-mismatch.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "PUBLISHED_CONTRACT_DIGEST_MISMATCH"
+        ]
+      }
+    },
+    {
+      "id": "published-record-reference-unknown",
+      "description": "An operation references 'payments:refund', which the resolved payments bundle does not contain.",
+      "model": "counterparts/published-record-reference-unknown.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "PUBLISHED_CONTRACT_REFERENCE_UNKNOWN"
+        ]
+      }
+    },
+    {
+      "id": "retiring-supported-version-with-active-required-consumer",
+      "description": "Response version 1 support is removed while the reporting system is still an active required consumer of version 1.",
+      "model": "counterparts/retire-version-one-with-active-consumer.json",
+      "baseline": "model.json",
+      "policy": "policy.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "VERSION_RETIREMENT_BLOCKED"
+        ]
+      }
+    },
+    {
+      "id": "retiring-supported-version-after-consumer-retired",
+      "description": "The permitted counterpart: the version 1 consumer binding is retired before version 1 support is removed.",
+      "model": "counterparts/retire-version-one-after-consumer-retired.json",
+      "baseline": "model.json",
+      "policy": "policy.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [],
+        "mustExclude": [
+          "VERSION_RETIREMENT_BLOCKED",
+          "VERSION_BINDING_UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "id": "consumer-bound-to-unsupported-version",
+      "description": "A consumer binds to response version 3, which is neither current nor supported.",
+      "model": "counterparts/consumer-bound-to-unsupported-version.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": "invalid",
+        "qualification": null,
+        "mustInclude": [
+          "VERSION_BINDING_UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "id": "exact-decimal-stored-as-float",
+      "description": "The decimal(12,2) amount is mapped to a float column.",
+      "model": "counterparts/decimal-stored-as-float.json",
+      "publishedBundles": [
+        "published/payments-api@2.json"
+      ],
+      "expect": {
+        "validation": "invalid",
+        "qualification": null,
+        "mustInclude": [
+          "STORAGE_COLUMN_LOSSY"
+        ]
+      }
+    },
+    {
+      "id": "migration-preserves-representative-rows",
+      "description": "Applied to the version 1 table holding the representative rows, the authored migration yields the version 2 shape with every row preserved and currency EUR.",
+      "model": "model.json",
+      "baseline": "baseline/model.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "checks": [
+          {
+            "id": "sql.migration",
+            "result": "PASS",
+            "inputs": {
+              "previousModel": "baseline/model.json",
+              "rows": "migrations/representative-rows-version-1.sql",
+              "migration": "mig.invoice-currency"
+            },
+            "afterwards": {
+              "rows": 3,
+              "currency": "EUR",
+              "amounts": [
+                "120.00",
+                "0.00",
+                "9999999999.99"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

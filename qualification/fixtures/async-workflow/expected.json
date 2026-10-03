@@ -1,0 +1,284 @@
+{
+  "cases": [
+    {
+      "id": "complete-async-workflow-is-valid",
+      "description": "A retrying, event-driven multi-component workflow with a complete asynchronous contract, justified co-hosting, a declared replacement and covered retained behaviors.",
+      "model": "model.json",
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [
+          "BASELINE_EXECUTION_UNKNOWN"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "BASELINE_EXECUTION_UNKNOWN",
+            "ref": {
+              "kind": "inventory",
+              "id": "inv.layout-templates"
+            }
+          }
+        ],
+        "mustExclude": [
+          "CONCERN_UNRESOLVED",
+          "COHOSTING_UNJUSTIFIED",
+          "HOST_CAPABILITY_MISMATCH",
+          "INVENTORY_REPLACEMENT_UNDECLARED",
+          "RETAINED_BEHAVIOR_UNCOVERED",
+          "PREDICATE_UNVERIFIED",
+          "MUTATION_IMMUTABLE_WRITE",
+          "MUTATION_STATE_WRITE_UNDECLARED",
+          "EDGE_RUNTIME_CYCLE_UNDEFINED"
+        ]
+      }
+    },
+    {
+      "id": "component-complete-delivery-after-shared-contracts-accepted",
+      "description": "With the shared contracts accepted, each component is ready for component-complete implementation and its work package names the contracts it consumes.",
+      "model": "model.json",
+      "policy": "policy.json",
+      "acceptance": [
+        "acceptance/shared-contracts.json"
+      ],
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "readiness": [
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "statements-api"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [],
+            "workPackage": {
+              "scopeEquals": [
+                "statements-api"
+              ],
+              "requiredContractsInclude": [
+                {
+                  "kind": "routine",
+                  "id": "statements.sp_accept_job"
+                },
+                {
+                  "kind": "type",
+                  "id": "statement-job"
+                }
+              ]
+            }
+          },
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "render-worker"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [],
+            "workPackage": {
+              "scopeEquals": [
+                "render-worker"
+              ],
+              "requiredContractsInclude": [
+                {
+                  "kind": "type",
+                  "id": "render-command"
+                },
+                {
+                  "kind": "routine",
+                  "id": "statements.sp_complete_job"
+                }
+              ]
+            }
+          },
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "notifier"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [],
+            "workPackage": {
+              "scopeEquals": [
+                "notifier"
+              ],
+              "requiredContractsInclude": [
+                {
+                  "kind": "type",
+                  "id": "statement-result"
+                }
+              ]
+            }
+          },
+          {
+            "task": {
+              "class": "implementation",
+              "mode": "component",
+              "components": [
+                "statements-store"
+              ]
+            },
+            "state": "ready",
+            "mustIncludeReasons": [],
+            "workPackage": {
+              "scopeEquals": [
+                "statements-store"
+              ],
+              "requiredContractsInclude": [
+                {
+                  "kind": "type",
+                  "id": "statement-job"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "host-timeout-shorter-than-unit-timeout",
+      "description": "The workers host terminates work after ten minutes while the unit declares a twenty-minute timeout.",
+      "model": "counterparts/host-timeout-shorter-than-unit.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "HOST_CAPABILITY_MISMATCH"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "HOST_CAPABILITY_MISMATCH",
+            "ref": {
+              "kind": "deploymentUnit",
+              "id": "du.workers"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "cohosting-without-decision",
+      "description": "Two components share a deployment unit without a decision that justifies it.",
+      "model": "counterparts/cohosting-without-decision.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "COHOSTING_UNJUSTIFIED"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "COHOSTING_UNJUSTIFIED",
+            "ref": {
+              "kind": "deploymentUnit",
+              "id": "du.workers"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "replaced-inventory-without-replacement",
+      "description": "An inventory item is marked replaced without naming what replaces it.",
+      "model": "counterparts/replacement-undeclared.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "INVENTORY_REPLACEMENT_UNDECLARED"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "INVENTORY_REPLACEMENT_UNDECLARED",
+            "ref": {
+              "kind": "inventory",
+              "id": "inv.mailer"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "retained-behavior-without-scenario",
+      "description": "A retained behavior has no scenario, so its regression obligation is uncovered.",
+      "model": "counterparts/retained-behavior-without-scenario.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "RETAINED_BEHAVIOR_UNCOVERED"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "RETAINED_BEHAVIOR_UNCOVERED",
+            "ref": {
+              "kind": "retainedBehavior",
+              "id": "rb.archive-copy"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "retrying-async-command-without-deduplication",
+      "description": "The deduplication contract of the retrying asynchronous command is removed and nothing stands in for it.",
+      "model": "counterparts/deduplication-removed.json",
+      "expect": {
+        "validation": null,
+        "qualification": null,
+        "mustInclude": [
+          "CONCERN_UNRESOLVED"
+        ],
+        "mustIncludeFindings": [
+          {
+            "code": "CONCERN_UNRESOLVED",
+            "ref": {
+              "kind": "operation",
+              "id": "statement.generate"
+            },
+            "concern": "operation.async.deduplication"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deduplication-recorded-as-open-unknown",
+      "description": "The permitted counterpart: an open unknown names the deduplication concern, so it is not unresolved, and release stays blocked until the unknown closes.",
+      "model": "counterparts/deduplication-open-unknown.json",
+      "policy": "policy.json",
+      "expect": {
+        "validation": "valid",
+        "qualification": null,
+        "mustInclude": [
+          "UNKNOWN_OPEN"
+        ],
+        "mustExclude": [
+          "CONCERN_UNRESOLVED"
+        ],
+        "readiness": [
+          {
+            "task": {
+              "class": "release",
+              "mode": "component",
+              "components": [
+                "statements-api"
+              ]
+            },
+            "state": "blocked",
+            "mustIncludeReasons": [
+              "READINESS_BLOCKED_BY_UNKNOWN"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

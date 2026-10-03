@@ -1,0 +1,839 @@
+{
+  "version": 1,
+  "systemProfile": {
+    "kind": "service",
+    "traits": [
+      "persistent-storage",
+      "public-api",
+      "external-consumers"
+    ]
+  },
+  "components": [
+    {
+      "id": "invoicing-api",
+      "purpose": "HTTP API for creating and reading invoices.",
+      "responsibilities": [
+        "Request validation.",
+        "Authorization of invoice access."
+      ],
+      "owner": "team-invoicing",
+      "kind": "service",
+      "implementations": [
+        {
+          "language": "csharp",
+          "module": "Invoicing.Api.Contracts"
+        }
+      ]
+    },
+    {
+      "id": "invoicing-store",
+      "purpose": "Relational store of invoices and the procedures that change them.",
+      "responsibilities": [
+        "Invoice persistence.",
+        "Invoice state transitions."
+      ],
+      "owner": "team-invoicing",
+      "kind": "database",
+      "implementations": [
+        {
+          "language": "sql",
+          "module": "invoicing"
+        }
+      ]
+    },
+    {
+      "id": "reporting",
+      "purpose": "Finance reporting system; reads invoices.",
+      "responsibilities": [],
+      "owner": "team-finance",
+      "kind": "external"
+    },
+    {
+      "id": "dunning",
+      "purpose": "Dunning system; reads invoices to send payment reminders.",
+      "responsibilities": [],
+      "owner": "team-finance",
+      "kind": "external"
+    }
+  ],
+  "types": [
+    {
+      "id": "invoice",
+      "version": 1,
+      "owner": "invoicing-store",
+      "representation": "domain",
+      "stateProperty": "status",
+      "key": [
+        "id"
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system",
+          "bounds": {
+            "minLength": 36,
+            "maxLength": 36
+          }
+        },
+        {
+          "name": "customerId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "units": "invoice currency",
+          "bounds": {
+            "min": 0
+          }
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "draft",
+            "issued",
+            "settled"
+          ],
+          "unknownEnumPolicy": "reject"
+        }
+      ]
+    },
+    {
+      "id": "invoice-request",
+      "version": 1,
+      "owner": "invoicing-api",
+      "representation": "request",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "customerId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "bounds": {
+            "min": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "invoice-response",
+      "version": 1,
+      "owner": "invoicing-api",
+      "representation": "response",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "id",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system",
+          "bounds": {
+            "minLength": 36,
+            "maxLength": 36
+          }
+        },
+        {
+          "name": "customerId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        {
+          "name": "amount",
+          "kind": "decimal",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          }
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "draft",
+            "issued",
+            "settled"
+          ],
+          "unknownEnumPolicy": "reject"
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "invoice.submit",
+      "version": 1,
+      "owner": "invoicing-api",
+      "kind": "command",
+      "request": "invoice-request",
+      "response": "invoice-response",
+      "authority": {
+        "permission": "invoice.write",
+        "scheme": "oauth"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "POST",
+          "path": "/invoices",
+          "responses": [
+            {
+              "status": 201,
+              "kind": "success",
+              "type": "invoice-response",
+              "description": "The invoice was created as a draft."
+            },
+            {
+              "status": 400,
+              "kind": "error",
+              "description": "The request is invalid."
+            }
+          ],
+          "requestMediaType": "application/json"
+        }
+      ],
+      "errors": [
+        {
+          "code": "INVOICE_INVALID",
+          "status": 400,
+          "retryable": false,
+          "description": "A member is missing or out of range."
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "routine",
+          "id": "invoicing.sp_create_invoice"
+        },
+        {
+          "kind": "mutation",
+          "id": "invoice.create"
+        }
+      ],
+      "criteria": [
+        "req.create-invoice.created"
+      ],
+      "scenarios": [
+        "scn.create-invoice"
+      ],
+      "enforcement": {
+        "authorization": "invoicing-api",
+        "validation": "invoicing-api",
+        "persistence": "invoicing-store"
+      },
+      "idempotency": {
+        "kind": "idempotency-key",
+        "key": {
+          "in": "header",
+          "name": "Idempotency-Key"
+        },
+        "window": "P1D",
+        "repeatedRequest": "The original response is returned and no second invoice is created."
+      },
+      "concurrency": {
+        "control": "none",
+        "onConflict": "Creation of a new invoice cannot conflict with another writer."
+      },
+      "transaction": {
+        "boundary": "single-routine",
+        "routine": "invoicing.sp_create_invoice"
+      }
+    },
+    {
+      "id": "invoice.get",
+      "version": 1,
+      "owner": "invoicing-api",
+      "kind": "query",
+      "response": "invoice-response",
+      "authority": {
+        "permission": "invoice.read",
+        "scheme": "oauth"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "GET",
+          "path": "/invoices/{id}",
+          "responses": [
+            {
+              "status": 200,
+              "kind": "success",
+              "type": "invoice-response",
+              "description": "The invoice."
+            },
+            {
+              "status": 404,
+              "kind": "error",
+              "description": "No invoice has this identifier."
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "kind": "string",
+              "required": true,
+              "description": "Invoice identifier."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "INVOICE_NOT_FOUND",
+          "status": 404,
+          "retryable": false,
+          "description": "No invoice has this identifier."
+        }
+      ]
+    }
+  ],
+  "routines": [
+    {
+      "id": "invoicing.sp_create_invoice",
+      "version": 1,
+      "owner": "invoicing-store",
+      "host": "sql-procedure",
+      "parameterPassing": "positional",
+      "params": [
+        {
+          "name": "p_customer_id",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 64
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "invoice.customerId"
+        },
+        {
+          "name": "p_amount",
+          "kind": "decimal",
+          "decimal": {
+            "precision": 12,
+            "scale": 2
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "invoice.amount"
+        }
+      ],
+      "resultSet": [
+        {
+          "name": "invoice_id",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 36
+          },
+          "nullable": false,
+          "binds": "invoice.id"
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "enumValues": [
+            "draft",
+            "issued",
+            "settled"
+          ],
+          "nullable": false,
+          "binds": "invoice.status"
+        }
+      ],
+      "performsMutations": [
+        "invoice.create"
+      ],
+      "writes": [
+        {
+          "storage": "invoicing.invoices",
+          "columns": [
+            "id",
+            "customer_id",
+            "amount",
+            "status"
+          ]
+        }
+      ],
+      "transactionScope": [
+        "invoicing.invoices"
+      ],
+      "authority": {
+        "permission": "invoice.write"
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "id": "invoice.create",
+      "type": "invoice",
+      "owner": "invoicing-store",
+      "from": [
+        "$absent"
+      ],
+      "to": "draft",
+      "writes": [
+        "id",
+        "customerId",
+        "amount",
+        "status"
+      ],
+      "guard": {
+        "form": "expression",
+        "profile": "loom-predicate-1",
+        "expression": {
+          "op": "ge",
+          "left": {
+            "property": "amount"
+          },
+          "right": {
+            "literal": 0
+          }
+        }
+      },
+      "effect": "A draft invoice exists for the customer.",
+      "requirements": [
+        "req.create-invoice"
+      ],
+      "criteria": [
+        "req.create-invoice.created"
+      ],
+      "scenarios": [
+        "scn.create-invoice"
+      ]
+    }
+  ],
+  "workflows": [],
+  "edges": [
+    {
+      "from": "invoicing-api",
+      "to": "invoicing-store",
+      "kind": "integration",
+      "rationale": "The API persists invoices through the store procedures.",
+      "readiness": {
+        "claim": "contract",
+        "maturity": "accepted",
+        "substitutes": [
+          {
+            "kind": "test-double",
+            "permits": [
+              "implementation"
+            ],
+            "limits": "A store test double never satisfies the persistence integration obligation."
+          }
+        ],
+        "evidence": [
+          "integration"
+        ]
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "req.create-invoice",
+      "revision": 1,
+      "outcome": "A customer invoice is created from a validated request.",
+      "owner": "team-invoicing",
+      "scope": [
+        "invoicing-api",
+        "invoicing-store"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "invoicing-requirements",
+          "revision": "1"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.create-invoice.created",
+          "statement": "Submitting a valid invoice request creates a draft invoice and returns its identifier.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior",
+            "integration"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scn.create-invoice",
+      "requirements": [
+        "req.create-invoice"
+      ],
+      "criteria": [
+        "req.create-invoice.created"
+      ],
+      "kind": "success",
+      "given": "A customer with no invoices.",
+      "when": "An invoice request for 120.00 is submitted.",
+      "expected": "A draft invoice exists and the response returns its identifier with status draft.",
+      "operations": [
+        "invoice.submit"
+      ]
+    }
+  ],
+  "constraints": [],
+  "observations": [],
+  "assumptions": [],
+  "unknowns": [],
+  "decisions": [],
+  "inventory": [],
+  "retainedBehaviors": [],
+  "workloads": [],
+  "attachments": [],
+  "mappings": [
+    {
+      "id": "map.invoice-request-to-invoice",
+      "from": "invoice-request",
+      "to": "invoice",
+      "owner": "invoicing-api",
+      "fields": [
+        {
+          "from": "customerId",
+          "to": "customerId",
+          "transform": "copy"
+        },
+        {
+          "from": "amount",
+          "to": "amount",
+          "transform": "copy"
+        }
+      ],
+      "unmapped": [
+        {
+          "side": "to",
+          "property": "id",
+          "reason": "Assigned by the store on creation."
+        },
+        {
+          "side": "to",
+          "property": "status",
+          "reason": "Set to draft on creation."
+        }
+      ]
+    },
+    {
+      "id": "map.invoice-to-response",
+      "from": "invoice",
+      "to": "invoice-response",
+      "owner": "invoicing-api",
+      "fields": [
+        {
+          "from": "id",
+          "to": "id",
+          "transform": "copy"
+        },
+        {
+          "from": "customerId",
+          "to": "customerId",
+          "transform": "copy"
+        },
+        {
+          "from": "amount",
+          "to": "amount",
+          "transform": "copy"
+        },
+        {
+          "from": "status",
+          "to": "status",
+          "transform": "copy"
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "id": "invoicing.invoices",
+      "type": "invoice",
+      "owner": "invoicing-store",
+      "platform": "sqlserver-2022",
+      "schema": "invoicing",
+      "table": "invoices",
+      "columns": [
+        {
+          "name": "id",
+          "property": "id",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 36
+          },
+          "nullable": false
+        },
+        {
+          "name": "customer_id",
+          "property": "customerId",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 64
+          },
+          "nullable": false
+        },
+        {
+          "name": "amount",
+          "property": "amount",
+          "sqlType": {
+            "name": "decimal",
+            "precision": 12,
+            "scale": 2
+          },
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "property": "status",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 16
+          },
+          "nullable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "checks": [
+        {
+          "name": "ck_invoices_amount",
+          "predicate": {
+            "form": "expression",
+            "profile": "loom-predicate-1",
+            "expression": {
+              "op": "ge",
+              "left": {
+                "property": "amount"
+              },
+              "right": {
+                "literal": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "migrations": [],
+  "deploymentUnits": [
+    {
+      "id": "du.invoicing-api",
+      "components": [
+        "invoicing-api"
+      ],
+      "host": "host.web",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 2,
+        "max": 4
+      },
+      "invocation": {
+        "trigger": "http"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 100
+      },
+      "identity": {
+        "kind": "workload-identity",
+        "name": "invoicing_api"
+      },
+      "ingress": [
+        "HTTPS from the API gateway."
+      ],
+      "egress": [
+        "SQL Server."
+      ],
+      "configuration": [
+        {
+          "name": "InvoicingDatabase",
+          "kind": "connection-reference"
+        }
+      ]
+    },
+    {
+      "id": "du.invoicing-store",
+      "components": [
+        "invoicing-store"
+      ],
+      "host": "host.sql",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 1,
+        "max": 1
+      },
+      "invocation": {
+        "trigger": "library-call"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 200
+      },
+      "identity": {
+        "kind": "service-account",
+        "name": "invoicing_store"
+      }
+    }
+  ],
+  "hosts": [
+    {
+      "id": "host.web",
+      "kind": "web-app",
+      "capabilities": {
+        "triggers": [
+          "http"
+        ],
+        "maxTimeout": "PT230S",
+        "maxConcurrency": 1000,
+        "scaling": "automatic",
+        "state": "stateless",
+        "identities": [
+          "workload-identity"
+        ]
+      },
+      "limits": [
+        "Requests longer than 230 seconds are terminated."
+      ]
+    },
+    {
+      "id": "host.sql",
+      "kind": "database-engine",
+      "capabilities": {
+        "triggers": [
+          "library-call"
+        ],
+        "scaling": "manual",
+        "state": "stateful",
+        "identities": [
+          "service-account"
+        ]
+      },
+      "limits": [
+        "One primary replica."
+      ]
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "id": "tb.private",
+      "kind": "network",
+      "description": "Private network behind the API gateway."
+    }
+  ],
+  "securitySchemes": [
+    {
+      "id": "oauth",
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://login.example.com/oauth2/token",
+          "scopes": {
+            "invoice.read": "Read invoices.",
+            "invoice.write": "Create invoices."
+          }
+        }
+      }
+    }
+  ],
+  "consumerBindings": [
+    {
+      "id": "cb.reporting-invoices",
+      "consumer": {
+        "kind": "component",
+        "id": "reporting"
+      },
+      "contract": {
+        "kind": "type",
+        "id": "invoice-response"
+      },
+      "version": 1,
+      "compatibility": "exact",
+      "required": true,
+      "status": "active"
+    },
+    {
+      "id": "cb.dunning-invoices",
+      "consumer": {
+        "kind": "component",
+        "id": "dunning"
+      },
+      "contract": {
+        "kind": "type",
+        "id": "invoice-response"
+      },
+      "version": 1,
+      "compatibility": "exact",
+      "required": true,
+      "status": "active"
+    }
+  ],
+  "publishedContracts": []
+}

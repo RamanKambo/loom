@@ -1,0 +1,4 @@
+{
+  "description": "Provider and consumer implementation proceed in parallel against the accepted contracts, with a test double of the order store; no model change.",
+  "patches": []
+}

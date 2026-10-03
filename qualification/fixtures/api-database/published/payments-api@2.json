@@ -1,0 +1,74 @@
+{
+  "bundleVersion": 1,
+  "publisher": "team-payments",
+  "contract": "payments-api",
+  "version": 2,
+  "schemaVersion": 1,
+  "profiles": [
+    "openapi",
+    "json-schema"
+  ],
+  "digest": "sha256:aac1f0c55f99556b3e059a0936eb588bc4d492ae926b3911990f9b1c41ed9f8f",
+  "content": {
+    "types": [
+      {
+        "id": "payment",
+        "version": 2,
+        "owner": "payments",
+        "representation": "response",
+        "visibility": "public",
+        "properties": [
+          {
+            "name": "id",
+            "kind": "uuid",
+            "required": true,
+            "nullable": false,
+            "immutable": true,
+            "origin": "system"
+          },
+          {
+            "name": "amount",
+            "kind": "decimal",
+            "required": true,
+            "nullable": false,
+            "immutable": false,
+            "origin": "system",
+            "decimal": {
+              "precision": 12,
+              "scale": 2
+            }
+          },
+          {
+            "name": "currency",
+            "kind": "string",
+            "required": true,
+            "nullable": false,
+            "immutable": false,
+            "origin": "system",
+            "bounds": {
+              "minLength": 3,
+              "maxLength": 3
+            }
+          },
+          {
+            "name": "status",
+            "kind": "enum",
+            "required": true,
+            "nullable": false,
+            "immutable": false,
+            "origin": "system",
+            "enumValues": [
+              "authorized",
+              "captured",
+              "refunded"
+            ],
+            "unknownEnumPolicy": "reject"
+          }
+        ]
+      }
+    ],
+    "operations": [],
+    "routines": [],
+    "securitySchemes": []
+  }
+}

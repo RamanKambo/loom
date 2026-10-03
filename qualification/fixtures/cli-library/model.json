@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "systemProfile": {
+    "kind": "cli",
+    "traits": []
+  },
+  "components": [
+    {
+      "id": "csvcheck-cli",
+      "purpose": "Command-line entry point that checks CSV files against a column specification.",
+      "responsibilities": [
+        "Argument parsing.",
+        "Exit status per check outcome."
+      ],
+      "owner": "team-tooling",
+      "kind": "cli",
+      "implementations": [
+        {
+          "language": "typescript",
+          "module": "@fixtures/csvcheck-cli"
+        }
+      ]
+    },
+    {
+      "id": "csvcheck-lib",
+      "purpose": "Library that validates CSV rows against column specifications.",
+      "responsibilities": [
+        "Row validation.",
+        "Violation counting."
+      ],
+      "owner": "team-tooling",
+      "kind": "library",
+      "implementations": [
+        {
+          "language": "typescript",
+          "module": "@fixtures/csvcheck"
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "id": "column-spec",
+      "version": 1,
+      "owner": "csvcheck-lib",
+      "representation": "domain",
+      "properties": [
+        {
+          "name": "name",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        {
+          "name": "columnKind",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "enumValues": [
+            "text",
+            "integer",
+            "decimal",
+            "date"
+          ]
+        },
+        {
+          "name": "mandatory",
+          "kind": "boolean",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client"
+        }
+      ]
+    },
+    {
+      "id": "check-request",
+      "version": 1,
+      "owner": "csvcheck-lib",
+      "representation": "request",
+      "properties": [
+        {
+          "name": "path",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "description": "Path of the file relative to the working directory.",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        {
+          "name": "columns",
+          "kind": "array",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "items": {
+            "kind": "ref",
+            "ref": "column-spec"
+          },
+          "bounds": {
+            "minItems": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "check-report",
+      "version": 1,
+      "owner": "csvcheck-lib",
+      "representation": "response",
+      "properties": [
+        {
+          "name": "valid",
+          "kind": "boolean",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "derived"
+        },
+        {
+          "name": "rows",
+          "kind": "integer",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "derived",
+          "bounds": {
+            "min": 0
+          }
+        },
+        {
+          "name": "errors",
+          "kind": "integer",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "derived",
+          "bounds": {
+            "min": 0
+          }
+        },
+        {
+          "name": "firstError",
+          "kind": "string",
+          "required": false,
+          "nullable": true,
+          "immutable": false,
+          "origin": "derived",
+          "bounds": {
+            "maxLength": 512
+          }
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "csvcheck.check",
+      "version": 1,
+      "owner": "csvcheck-lib",
+      "kind": "query",
+      "request": "check-request",
+      "response": "check-report",
+      "authority": {
+        "permission": "csvcheck.run"
+      },
+      "bindings": [
+        {
+          "transport": "library"
+        }
+      ],
+      "errors": [
+        {
+          "code": "INPUT_UNREADABLE",
+          "retryable": false,
+          "description": "The file cannot be opened or decoded."
+        },
+        {
+          "code": "SPEC_INVALID",
+          "retryable": false,
+          "description": "The column specification is empty or names a column twice."
+        }
+      ],
+      "criteria": [
+        "req.check-rows.valid-file",
+        "req.check-rows.reports-violations",
+        "req.check-rows.unreadable"
+      ],
+      "scenarios": [
+        "scn.check-valid-file",
+        "scn.check-invalid-rows",
+        "scn.check-unreadable-file"
+      ]
+    },
+    {
+      "id": "csvcheck.run",
+      "version": 1,
+      "owner": "csvcheck-cli",
+      "kind": "query",
+      "description": "Exit status 0 for a valid file, 1 for violations, 2 for an unreadable file.",
+      "request": "check-request",
+      "response": "check-report",
+      "authority": {
+        "permission": "csvcheck.run"
+      },
+      "bindings": [
+        {
+          "transport": "cli"
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "operation",
+          "id": "csvcheck.check"
+        }
+      ]
+    }
+  ],
+  "routines": [],
+  "mutations": [],
+  "workflows": [],
+  "edges": [
+    {
+      "from": "csvcheck-cli",
+      "to": "csvcheck-lib",
+      "kind": "build",
+      "rationale": "The command-line tool links the library at build time."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "req.check-rows",
+      "revision": 1,
+      "outcome": "A CSV file is checked against a column specification and every violation is counted.",
+      "owner": "team-tooling",
+      "scope": [
+        "csvcheck-lib",
+        "csvcheck-cli"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "csvcheck-product-brief",
+          "revision": "1"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.check-rows.valid-file",
+          "statement": "A file whose rows satisfy every column is reported valid with its row count.",
+          "verification": "scenario",
+          "evidence": [
+            "unit"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.check-rows.reports-violations",
+          "statement": "A file with a missing mandatory value is reported invalid with the number of violating rows.",
+          "verification": "scenario",
+          "evidence": [
+            "unit"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.check-rows.unreadable",
+          "statement": "An unreadable file yields INPUT_UNREADABLE and exit status 2.",
+          "verification": "scenario",
+          "evidence": [
+            "unit",
+            "e2e"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scn.check-valid-file",
+      "requirements": [
+        "req.check-rows"
+      ],
+      "criteria": [
+        "req.check-rows.valid-file"
+      ],
+      "kind": "success",
+      "given": "A specification with two mandatory text columns and a file of three complete rows.",
+      "expected": "The report is valid with rows 3 and errors 0.",
+      "operations": [
+        "csvcheck.check"
+      ]
+    },
+    {
+      "id": "scn.check-invalid-rows",
+      "requirements": [
+        "req.check-rows"
+      ],
+      "criteria": [
+        "req.check-rows.reports-violations"
+      ],
+      "kind": "failure",
+      "given": "The same specification and a file whose second row leaves a mandatory column empty.",
+      "expected": "The report is invalid with rows 3 and errors 1, and firstError names row 2.",
+      "operations": [
+        "csvcheck.check"
+      ]
+    },
+    {
+      "id": "scn.check-unreadable-file",
+      "requirements": [
+        "req.check-rows"
+      ],
+      "criteria": [
+        "req.check-rows.unreadable"
+      ],
+      "kind": "failure",
+      "given": "A path that does not exist.",
+      "expected": "The command exits with status 2 and reports INPUT_UNREADABLE.",
+      "operations": [
+        "csvcheck.run"
+      ]
+    }
+  ],
+  "constraints": [],
+  "observations": [],
+  "assumptions": [],
+  "unknowns": [],
+  "decisions": [],
+  "inventory": [],
+  "retainedBehaviors": [],
+  "workloads": [],
+  "attachments": [],
+  "mappings": [],
+  "storage": [],
+  "migrations": [],
+  "deploymentUnits": [],
+  "hosts": [],
+  "trustBoundaries": [],
+  "securitySchemes": [],
+  "consumerBindings": [],
+  "publishedContracts": []
+}

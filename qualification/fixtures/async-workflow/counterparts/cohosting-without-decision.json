@@ -1,0 +1,1881 @@
+{
+  "version": 1,
+  "systemProfile": {
+    "kind": "distributed-system",
+    "traits": [
+      "asynchronous",
+      "retrying",
+      "event-driven",
+      "multi-component"
+    ]
+  },
+  "components": [
+    {
+      "id": "statements-api",
+      "purpose": "Accepts statement generation requests and reports job status.",
+      "responsibilities": [
+        "Request validation.",
+        "Job acceptance."
+      ],
+      "owner": "team-statements",
+      "kind": "service",
+      "implementations": [
+        {
+          "language": "typescript",
+          "module": "@fixtures/statements-api"
+        }
+      ]
+    },
+    {
+      "id": "render-worker",
+      "purpose": "Renders statement documents for accepted jobs.",
+      "responsibilities": [
+        "Rendering.",
+        "Archiving rendered statements."
+      ],
+      "owner": "team-statements",
+      "kind": "worker",
+      "implementations": [
+        {
+          "language": "csharp",
+          "module": "Statements.Render"
+        }
+      ]
+    },
+    {
+      "id": "notifier",
+      "purpose": "Notifies account holders when a statement is ready.",
+      "responsibilities": [
+        "Notification delivery."
+      ],
+      "owner": "team-statements",
+      "kind": "worker",
+      "implementations": [
+        {
+          "language": "typescript",
+          "module": "@fixtures/notifier"
+        }
+      ]
+    },
+    {
+      "id": "statements-store",
+      "purpose": "Stores statement jobs and their state.",
+      "responsibilities": [
+        "Job persistence.",
+        "Job state transitions."
+      ],
+      "owner": "team-statements",
+      "kind": "database",
+      "implementations": [
+        {
+          "language": "sql",
+          "module": "statements"
+        }
+      ]
+    }
+  ],
+  "types": [
+    {
+      "id": "statement-job",
+      "version": 1,
+      "owner": "statements-store",
+      "representation": "domain",
+      "stateProperty": "status",
+      "key": [
+        "id"
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "kind": "uuid",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system"
+        },
+        {
+          "name": "accountId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 32
+          }
+        },
+        {
+          "name": "period",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "client",
+          "bounds": {
+            "minLength": 7,
+            "maxLength": 7,
+            "pattern": "^\\d{4}-\\d{2}$"
+          }
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "accepted",
+            "rendering",
+            "rendered",
+            "failed",
+            "cancelled"
+          ],
+          "unknownEnumPolicy": "reject"
+        },
+        {
+          "name": "documentUri",
+          "kind": "string",
+          "required": false,
+          "nullable": true,
+          "immutable": false,
+          "origin": "system",
+          "bounds": {
+            "maxLength": 2048
+          },
+          "default": {
+            "policy": "none",
+            "appliesOn": "read",
+            "description": "Absent until the job is rendered."
+          }
+        }
+      ]
+    },
+    {
+      "id": "statement-request",
+      "version": 1,
+      "owner": "statements-api",
+      "representation": "request",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "accountId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 1,
+            "maxLength": 32
+          }
+        },
+        {
+          "name": "period",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "client",
+          "bounds": {
+            "minLength": 7,
+            "maxLength": 7,
+            "pattern": "^\\d{4}-\\d{2}$"
+          }
+        }
+      ]
+    },
+    {
+      "id": "statement-accepted",
+      "version": 1,
+      "owner": "statements-api",
+      "representation": "response",
+      "visibility": "public",
+      "properties": [
+        {
+          "name": "jobId",
+          "kind": "uuid",
+          "required": true,
+          "nullable": false,
+          "immutable": true,
+          "origin": "system"
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "accepted",
+            "rendering",
+            "rendered",
+            "failed",
+            "cancelled"
+          ],
+          "unknownEnumPolicy": "preserve"
+        }
+      ]
+    },
+    {
+      "id": "render-command",
+      "version": 1,
+      "owner": "statements-api",
+      "representation": "event",
+      "properties": [
+        {
+          "name": "jobId",
+          "kind": "uuid",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system"
+        },
+        {
+          "name": "accountId",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "bounds": {
+            "maxLength": 32
+          }
+        },
+        {
+          "name": "period",
+          "kind": "string",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "bounds": {
+            "maxLength": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "statement-result",
+      "version": 1,
+      "owner": "render-worker",
+      "representation": "event",
+      "properties": [
+        {
+          "name": "jobId",
+          "kind": "uuid",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system"
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "required": true,
+          "nullable": false,
+          "immutable": false,
+          "origin": "system",
+          "enumValues": [
+            "rendered",
+            "failed"
+          ],
+          "unknownEnumPolicy": "reject"
+        },
+        {
+          "name": "documentUri",
+          "kind": "string",
+          "required": false,
+          "nullable": true,
+          "immutable": false,
+          "origin": "system",
+          "bounds": {
+            "maxLength": 2048
+          }
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "statement.generate",
+      "version": 1,
+      "owner": "statements-api",
+      "kind": "async-command",
+      "request": "statement-request",
+      "response": "statement-accepted",
+      "result": "statement-result",
+      "authority": {
+        "permission": "statements.write",
+        "scheme": "bearer"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "POST",
+          "path": "/statements",
+          "requestMediaType": "application/json",
+          "responses": [
+            {
+              "status": 202,
+              "kind": "accepted",
+              "type": "statement-accepted",
+              "description": "The job is accepted; the result arrives as an event."
+            },
+            {
+              "status": 400,
+              "kind": "error",
+              "description": "The request is invalid."
+            },
+            {
+              "status": 409,
+              "kind": "error",
+              "description": "A job for the same account and period is already in flight."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "STATEMENT_INVALID",
+          "status": 400,
+          "retryable": false,
+          "description": "A member is missing or malformed."
+        },
+        {
+          "code": "STATEMENT_IN_FLIGHT",
+          "status": 409,
+          "retryable": false,
+          "description": "A job for the same account and period is already in flight."
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "routine",
+          "id": "statements.sp_accept_job"
+        },
+        {
+          "kind": "mutation",
+          "id": "job.accept"
+        }
+      ],
+      "criteria": [
+        "req.generate-statement.accepted",
+        "req.generate-statement.no-resubmit"
+      ],
+      "scenarios": [
+        "scn.accept-statement",
+        "scn.timeout-after-commit"
+      ],
+      "enforcement": {
+        "authorization": "statements-api",
+        "validation": "statements-api",
+        "persistence": "statements-store",
+        "orchestration": "render-worker"
+      },
+      "idempotency": {
+        "kind": "idempotency-key",
+        "key": {
+          "in": "header",
+          "name": "Idempotency-Key"
+        },
+        "window": "PT24H",
+        "repeatedRequest": "The original 202 response and job identity are returned; no second job is accepted."
+      },
+      "concurrency": {
+        "control": "serialized",
+        "onConflict": "A second request for the same account and period while a job is in flight returns 409 STATEMENT_IN_FLIGHT."
+      },
+      "transaction": {
+        "boundary": "outbox",
+        "compensation": "A job whose render command was not published is published again by the outbox relay."
+      },
+      "async": {
+        "accepted": {
+          "status": 202,
+          "type": "statement-accepted"
+        },
+        "completion": {
+          "result": "statement-result",
+          "via": "event",
+          "event": "statements.results"
+        },
+        "jobIdentity": "jobId",
+        "timeout": {
+          "after": "PT15M",
+          "ambiguity": "A job that times out after it committed may still complete; consumers wait for the result event or query the job and never resubmit."
+        },
+        "cancellation": {
+          "supported": true,
+          "operation": "statement.cancel",
+          "semantics": "Only an accepted job that has not started rendering can be cancelled."
+        },
+        "retry": {
+          "owner": "provider",
+          "policy": "The render worker retries a failed render up to three times with exponential backoff, then fails the job."
+        },
+        "deduplication": {
+          "window": "PT24H",
+          "key": "jobId"
+        },
+        "partialFailure": "If rendering succeeds but the result event is not published, the outbox relay publishes it again; the notifier deduplicates by job identity."
+      }
+    },
+    {
+      "id": "statement.cancel",
+      "version": 1,
+      "owner": "statements-api",
+      "kind": "command",
+      "authority": {
+        "permission": "statements.write",
+        "scheme": "bearer"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "POST",
+          "path": "/statements/{jobId}/cancel",
+          "parameters": [
+            {
+              "name": "jobId",
+              "in": "path",
+              "kind": "uuid",
+              "required": true
+            }
+          ],
+          "responses": [
+            {
+              "status": 200,
+              "kind": "success",
+              "description": "The job is cancelled."
+            },
+            {
+              "status": 409,
+              "kind": "error",
+              "description": "The job has already started rendering."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "STATEMENT_NOT_CANCELLABLE",
+          "status": 409,
+          "retryable": false,
+          "description": "The job has already started rendering."
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "mutation",
+          "id": "job.cancel"
+        }
+      ],
+      "criteria": [
+        "req.cancel-statement.cancel",
+        "req.cancel-statement.cancel-refused"
+      ],
+      "scenarios": [
+        "scn.cancel-accepted",
+        "scn.cancel-rendering"
+      ],
+      "enforcement": {
+        "authorization": "statements-api",
+        "validation": "statements-api",
+        "persistence": "statements-store",
+        "orchestration": "render-worker"
+      },
+      "idempotency": {
+        "kind": "naturally-idempotent",
+        "repeatedRequest": "Cancelling an already cancelled job returns 200 with no further effect."
+      },
+      "concurrency": {
+        "control": "serialized",
+        "onConflict": "A cancellation that races a render start returns 409 STATEMENT_NOT_CANCELLABLE."
+      },
+      "transaction": {
+        "boundary": "none",
+        "compensation": "A single row transition needs no compensation."
+      }
+    },
+    {
+      "id": "statement.status",
+      "version": 1,
+      "owner": "statements-api",
+      "kind": "query",
+      "response": "statement-accepted",
+      "authority": {
+        "permission": "statements.read",
+        "scheme": "bearer"
+      },
+      "bindings": [
+        {
+          "transport": "http",
+          "method": "GET",
+          "path": "/statements/{jobId}",
+          "parameters": [
+            {
+              "name": "jobId",
+              "in": "path",
+              "kind": "uuid",
+              "required": true
+            }
+          ],
+          "responses": [
+            {
+              "status": 200,
+              "kind": "success",
+              "type": "statement-accepted",
+              "description": "The job and its status."
+            },
+            {
+              "status": 404,
+              "kind": "error",
+              "description": "No job has this identity."
+            }
+          ]
+        }
+      ],
+      "errors": [
+        {
+          "code": "STATEMENT_NOT_FOUND",
+          "status": 404,
+          "retryable": false,
+          "description": "No job has this identity."
+        }
+      ]
+    },
+    {
+      "id": "statement.render",
+      "version": 1,
+      "owner": "render-worker",
+      "kind": "command",
+      "request": "render-command",
+      "authority": {
+        "permission": "statements.render"
+      },
+      "bindings": [
+        {
+          "transport": "message",
+          "channel": "statements.render-requests"
+        }
+      ],
+      "invokes": [
+        {
+          "kind": "mutation",
+          "id": "job.start-render"
+        },
+        {
+          "kind": "routine",
+          "id": "statements.sp_complete_job"
+        },
+        {
+          "kind": "mutation",
+          "id": "job.complete"
+        },
+        {
+          "kind": "mutation",
+          "id": "job.fail"
+        }
+      ],
+      "criteria": [
+        "req.generate-statement.single-render",
+        "req.generate-statement.render-failure"
+      ],
+      "scenarios": [
+        "scn.duplicate-delivery",
+        "scn.render-failure"
+      ],
+      "enforcement": {
+        "authorization": "render-worker",
+        "validation": "render-worker",
+        "persistence": "statements-store"
+      },
+      "idempotency": {
+        "kind": "idempotency-key",
+        "key": {
+          "in": "body",
+          "name": "jobId"
+        },
+        "window": "PT24H",
+        "repeatedRequest": "A repeated delivery for a job that is already rendering or rendered is acknowledged without rendering again."
+      },
+      "concurrency": {
+        "control": "serialized",
+        "onConflict": "Deliveries for one job are processed one at a time through the job status transition."
+      },
+      "transaction": {
+        "boundary": "saga",
+        "compensation": "A failed render moves the job to failed; no document is published."
+      }
+    },
+    {
+      "id": "statement.notify",
+      "version": 1,
+      "owner": "notifier",
+      "kind": "command",
+      "request": "statement-result",
+      "authority": {
+        "permission": "statements.notify"
+      },
+      "bindings": [
+        {
+          "transport": "message",
+          "channel": "statements.results"
+        }
+      ],
+      "criteria": [
+        "req.generate-statement.single-render"
+      ],
+      "scenarios": [
+        "scn.duplicate-delivery"
+      ],
+      "enforcement": {
+        "authorization": "notifier",
+        "validation": "notifier"
+      },
+      "idempotency": {
+        "kind": "idempotency-key",
+        "key": {
+          "in": "body",
+          "name": "jobId"
+        },
+        "window": "P7D",
+        "repeatedRequest": "A repeated result event for an already notified job sends no second notification."
+      }
+    }
+  ],
+  "routines": [
+    {
+      "id": "statements.sp_accept_job",
+      "version": 1,
+      "owner": "statements-store",
+      "host": "sql-procedure",
+      "parameterPassing": "positional",
+      "params": [
+        {
+          "name": "p_account_id",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 32
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "statement-job.accountId"
+        },
+        {
+          "name": "p_period",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 7
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "statement-job.period"
+        }
+      ],
+      "resultSet": [
+        {
+          "name": "job_id",
+          "kind": "uuid",
+          "nullable": false,
+          "binds": "statement-job.id"
+        },
+        {
+          "name": "status",
+          "kind": "enum",
+          "enumValues": [
+            "accepted",
+            "rendering",
+            "rendered",
+            "failed",
+            "cancelled"
+          ],
+          "nullable": false,
+          "binds": "statement-job.status"
+        }
+      ],
+      "performsMutations": [
+        "job.accept"
+      ],
+      "writes": [
+        {
+          "storage": "statements.jobs",
+          "columns": [
+            "id",
+            "account_id",
+            "period",
+            "status"
+          ]
+        }
+      ],
+      "transactionScope": [
+        "statements.jobs"
+      ],
+      "authority": {
+        "permission": "statements.write"
+      }
+    },
+    {
+      "id": "statements.sp_complete_job",
+      "version": 1,
+      "owner": "statements-store",
+      "host": "sql-procedure",
+      "parameterPassing": "positional",
+      "params": [
+        {
+          "name": "p_job_id",
+          "kind": "uuid",
+          "required": true,
+          "nullable": false,
+          "binds": "statement-job.id"
+        },
+        {
+          "name": "p_document_uri",
+          "kind": "string",
+          "bounds": {
+            "maxLength": 2048
+          },
+          "required": true,
+          "nullable": false,
+          "binds": "statement-job.documentUri"
+        }
+      ],
+      "resultSet": [
+        {
+          "name": "status",
+          "kind": "enum",
+          "enumValues": [
+            "accepted",
+            "rendering",
+            "rendered",
+            "failed",
+            "cancelled"
+          ],
+          "nullable": false,
+          "binds": "statement-job.status"
+        }
+      ],
+      "performsMutations": [
+        "job.complete"
+      ],
+      "writes": [
+        {
+          "storage": "statements.jobs",
+          "columns": [
+            "status",
+            "document_uri"
+          ]
+        }
+      ],
+      "transactionScope": [
+        "statements.jobs"
+      ],
+      "authority": {
+        "permission": "statements.render"
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "id": "job.accept",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "from": [
+        "$absent"
+      ],
+      "to": "accepted",
+      "writes": [
+        "id",
+        "accountId",
+        "period",
+        "status"
+      ],
+      "guard": {
+        "form": "prose",
+        "text": "The account exists and no job for the same account and period is in flight."
+      },
+      "effect": "An accepted job exists for the account and period.",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.accepted"
+      ],
+      "scenarios": [
+        "scn.accept-statement"
+      ]
+    },
+    {
+      "id": "job.start-render",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "from": [
+        "accepted"
+      ],
+      "to": "rendering",
+      "writes": [
+        "status"
+      ],
+      "guard": {
+        "form": "expression",
+        "profile": "loom-predicate-1",
+        "expression": {
+          "op": "eq",
+          "left": {
+            "property": "status"
+          },
+          "right": {
+            "literal": "accepted"
+          }
+        }
+      },
+      "effect": "The job is being rendered.",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.single-render"
+      ],
+      "scenarios": [
+        "scn.duplicate-delivery"
+      ]
+    },
+    {
+      "id": "job.complete",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "from": [
+        "rendering"
+      ],
+      "to": "rendered",
+      "writes": [
+        "status",
+        "documentUri"
+      ],
+      "guard": {
+        "form": "expression",
+        "profile": "loom-predicate-1",
+        "expression": {
+          "op": "eq",
+          "left": {
+            "property": "status"
+          },
+          "right": {
+            "literal": "rendering"
+          }
+        }
+      },
+      "effect": "The rendered document is recorded.",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.single-render"
+      ],
+      "scenarios": [
+        "scn.duplicate-delivery"
+      ]
+    },
+    {
+      "id": "job.fail",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "from": [
+        "rendering"
+      ],
+      "to": "failed",
+      "writes": [
+        "status"
+      ],
+      "guard": {
+        "form": "prose",
+        "text": "Rendering failed after the last retry."
+      },
+      "effect": "The job is failed and no document is published.",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.render-failure"
+      ],
+      "scenarios": [
+        "scn.render-failure"
+      ]
+    },
+    {
+      "id": "job.cancel",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "from": [
+        "accepted"
+      ],
+      "to": "cancelled",
+      "writes": [
+        "status"
+      ],
+      "guard": {
+        "form": "expression",
+        "profile": "loom-predicate-1",
+        "expression": {
+          "op": "eq",
+          "left": {
+            "property": "status"
+          },
+          "right": {
+            "literal": "accepted"
+          }
+        }
+      },
+      "effect": "The job is cancelled before rendering starts.",
+      "requirements": [
+        "req.cancel-statement"
+      ],
+      "criteria": [
+        "req.cancel-statement.cancel"
+      ],
+      "scenarios": [
+        "scn.cancel-accepted",
+        "scn.cancel-rendering"
+      ]
+    }
+  ],
+  "workflows": [],
+  "edges": [
+    {
+      "from": "render-worker",
+      "to": "statements-api",
+      "kind": "integration",
+      "rationale": "The worker consumes render commands the API publishes.",
+      "readiness": {
+        "claim": "contract",
+        "maturity": "accepted",
+        "substitutes": [
+          {
+            "kind": "fixture",
+            "permits": [
+              "implementation"
+            ],
+            "limits": "A recorded render-command fixture never satisfies the message integration obligation."
+          }
+        ],
+        "evidence": [
+          "integration"
+        ]
+      }
+    },
+    {
+      "from": "notifier",
+      "to": "render-worker",
+      "kind": "runtime",
+      "rationale": "The notifier consumes result events."
+    },
+    {
+      "from": "statements-api",
+      "to": "statements-store",
+      "kind": "runtime",
+      "rationale": "The API accepts jobs through the store procedures."
+    },
+    {
+      "from": "render-worker",
+      "to": "statements-store",
+      "kind": "runtime",
+      "rationale": "The worker records job transitions in the store."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "req.generate-statement",
+      "revision": 1,
+      "outcome": "An account holder can request a monthly statement and is notified when it is ready.",
+      "owner": "team-statements",
+      "scope": [
+        "statements-api",
+        "render-worker",
+        "notifier",
+        "statements-store"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "statements-requirements",
+          "revision": "4"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.generate-statement.accepted",
+          "statement": "A valid request is accepted with 202 and a job identity before rendering starts.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior",
+            "integration"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.generate-statement.single-render",
+          "statement": "A render command delivered twice renders and notifies once.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.generate-statement.no-resubmit",
+          "statement": "A request that times out after its job committed is completed by the original job; no second job is created.",
+          "verification": "scenario",
+          "evidence": [
+            "e2e"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.generate-statement.render-failure",
+          "statement": "A render that fails after the last retry leaves the job failed and publishes no document.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "req.cancel-statement",
+      "revision": 1,
+      "outcome": "An accepted statement job can be cancelled before rendering starts.",
+      "owner": "team-statements",
+      "scope": [
+        "statements-api",
+        "statements-store"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "statements-requirements",
+          "revision": "4"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "should",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.cancel-statement.cancel",
+          "statement": "Cancelling an accepted job moves it to cancelled.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.cancel-statement.cancel-refused",
+          "statement": "Cancelling a job that is rendering returns 409 STATEMENT_NOT_CANCELLABLE.",
+          "verification": "scenario",
+          "evidence": [
+            "behavior"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "req.keep-archive",
+      "revision": 1,
+      "outcome": "Rendered statements keep being archived and keep their layout.",
+      "owner": "team-statements",
+      "scope": [
+        "render-worker"
+      ],
+      "source": [
+        {
+          "kind": "document",
+          "ref": "statements-requirements",
+          "revision": "4"
+        }
+      ],
+      "basis": "sourced",
+      "priority": "must",
+      "status": "active",
+      "criteria": [
+        {
+          "id": "req.keep-archive.archive",
+          "statement": "Every rendered statement is written to the archive.",
+          "verification": "scenario",
+          "evidence": [
+            "integration"
+          ],
+          "required": true
+        },
+        {
+          "id": "req.keep-archive.layout",
+          "statement": "Rendered statements keep the current page layout and section order.",
+          "verification": "review",
+          "evidence": [
+            "review"
+          ],
+          "required": true
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scn.accept-statement",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.accepted"
+      ],
+      "kind": "success",
+      "expected": "The response is 202 with a job identity and status accepted; rendering has not started.",
+      "when": "A request for account A-1 and period 2026-09 is submitted.",
+      "operations": [
+        "statement.generate"
+      ]
+    },
+    {
+      "id": "scn.duplicate-delivery",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.single-render"
+      ],
+      "kind": "duplicate-delivery",
+      "expected": "One document is rendered and one notification is sent.",
+      "given": "An accepted job.",
+      "when": "The render command for the job is delivered twice.",
+      "operations": [
+        "statement.render",
+        "statement.notify"
+      ]
+    },
+    {
+      "id": "scn.timeout-after-commit",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.no-resubmit"
+      ],
+      "kind": "timeout",
+      "expected": "The caller receives the result event of the original job; exactly one job exists for the account and period.",
+      "given": "The acceptance committed but the 202 response was lost to a client timeout.",
+      "when": "The caller polls the job status instead of resubmitting.",
+      "operations": [
+        "statement.generate",
+        "statement.status"
+      ]
+    },
+    {
+      "id": "scn.render-failure",
+      "requirements": [
+        "req.generate-statement"
+      ],
+      "criteria": [
+        "req.generate-statement.render-failure"
+      ],
+      "kind": "failure",
+      "expected": "After three failed renders the job is failed and no document exists.",
+      "operations": [
+        "statement.render"
+      ]
+    },
+    {
+      "id": "scn.cancel-accepted",
+      "requirements": [
+        "req.cancel-statement"
+      ],
+      "criteria": [
+        "req.cancel-statement.cancel"
+      ],
+      "kind": "success",
+      "expected": "The job is cancelled and never rendered.",
+      "operations": [
+        "statement.cancel"
+      ]
+    },
+    {
+      "id": "scn.cancel-rendering",
+      "requirements": [
+        "req.cancel-statement"
+      ],
+      "criteria": [
+        "req.cancel-statement.cancel-refused"
+      ],
+      "kind": "failure",
+      "expected": "The cancellation returns 409 STATEMENT_NOT_CANCELLABLE and rendering continues.",
+      "operations": [
+        "statement.cancel"
+      ]
+    },
+    {
+      "id": "scn.retained-archive",
+      "requirements": [
+        "req.keep-archive"
+      ],
+      "criteria": [
+        "req.keep-archive.archive"
+      ],
+      "kind": "retained",
+      "expected": "The rendered document is present in the archive for its account and period.",
+      "retainedBehaviors": [
+        "rb.archive-copy"
+      ]
+    },
+    {
+      "id": "scn.retained-layout",
+      "requirements": [
+        "req.keep-archive"
+      ],
+      "criteria": [
+        "req.keep-archive.layout"
+      ],
+      "kind": "retained",
+      "expected": "A statement rendered for a reference account matches the current layout and section order.",
+      "retainedBehaviors": [
+        "rb.layout"
+      ]
+    }
+  ],
+  "constraints": [],
+  "observations": [],
+  "assumptions": [],
+  "unknowns": [],
+  "decisions": [
+    {
+      "id": "dec.cohost-workers",
+      "revision": 1,
+      "question": "Do the render worker and the notifier share a deployment unit?",
+      "alternatives": [
+        {
+          "id": "shared",
+          "description": "One container group runs both workers.",
+          "consequences": "One scaling rule and one identity for both; a heavy render load can delay notifications."
+        },
+        {
+          "id": "separate",
+          "description": "Each worker has its own unit.",
+          "consequences": "Two units to operate; independent scaling.",
+          "rejectedBecause": "Notification volume does not justify a separate unit; process isolation separates render failures."
+        }
+      ],
+      "criteria": [
+        "Operating cost.",
+        "Isolation of notification delivery from render failures."
+      ],
+      "basedOn": [
+        {
+          "kind": "workload",
+          "id": "wl.month-end"
+        },
+        {
+          "kind": "inventory",
+          "id": "inv.container-platform"
+        }
+      ],
+      "chosen": "shared",
+      "tradeoffs": "Shared scaling in exchange for one fewer unit.",
+      "rationale": "Month-end volume fits one container group with headroom.",
+      "affects": [
+        {
+          "kind": "deploymentUnit",
+          "id": "du.workers"
+        }
+      ],
+      "authority": "team-statements",
+      "status": "accepted"
+    },
+    {
+      "id": "dec.replace-mailer",
+      "revision": 1,
+      "question": "Is the batch mailer kept for statement notifications?",
+      "alternatives": [
+        {
+          "id": "replace",
+          "description": "Use the platform notification service.",
+          "consequences": "Delivery receipts become available; the notifier is rewritten against a new API."
+        },
+        {
+          "id": "keep",
+          "description": "Keep the batch mailer.",
+          "consequences": "No change for the notifier.",
+          "rejectedBecause": "The mailer is end-of-life and has no delivery receipts."
+        }
+      ],
+      "criteria": [
+        "Delivery receipts.",
+        "Supported product."
+      ],
+      "basedOn": [
+        {
+          "kind": "inventory",
+          "id": "inv.mailer"
+        },
+        {
+          "kind": "inventory",
+          "id": "inv.notification-service"
+        },
+        {
+          "kind": "requirement",
+          "id": "req.generate-statement"
+        }
+      ],
+      "chosen": "replace",
+      "rationale": "The notification service is supported and reports delivery.",
+      "affects": [
+        {
+          "kind": "component",
+          "id": "notifier"
+        }
+      ],
+      "authority": "team-statements",
+      "status": "proposed"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "inv.archive",
+      "product": "Statement archive",
+      "version": "4.2",
+      "role": "Stores every rendered statement for seven years.",
+      "capabilities": [
+        "Write-once storage.",
+        "Retrieval by account and period."
+      ],
+      "limits": [
+        "No deletion before the retention expires."
+      ],
+      "compatibility": "Accepts PDF/A documents.",
+      "license": "Internal.",
+      "support": "supported",
+      "source": [
+        {
+          "kind": "document",
+          "ref": "archive-service-guide",
+          "revision": "4.2"
+        }
+      ],
+      "disposition": "retained",
+      "components": [
+        "render-worker"
+      ],
+      "executableBaseline": {
+        "status": "captured",
+        "evidence": [
+          "ev.archive-baseline"
+        ]
+      }
+    },
+    {
+      "id": "inv.mailer",
+      "product": "Batch mailer",
+      "version": "2.1",
+      "role": "Sends notification e-mails in nightly batches.",
+      "capabilities": [
+        "Bulk e-mail."
+      ],
+      "limits": [
+        "No delivery receipts."
+      ],
+      "compatibility": "SMTP relay only.",
+      "license": "Internal.",
+      "support": "end-of-life",
+      "source": [
+        {
+          "kind": "document",
+          "ref": "mailer-runbook",
+          "revision": "2.1"
+        }
+      ],
+      "disposition": "replaced",
+      "replacedBy": "inv.notification-service",
+      "components": [
+        "notifier"
+      ]
+    },
+    {
+      "id": "inv.notification-service",
+      "product": "Platform notification service",
+      "version": "1",
+      "role": "Delivers notifications with receipts.",
+      "capabilities": [
+        "E-mail and push delivery.",
+        "Delivery receipts."
+      ],
+      "limits": [
+        "At-least-once delivery."
+      ],
+      "compatibility": "HTTPS API.",
+      "license": "Internal.",
+      "support": "supported",
+      "source": [
+        {
+          "kind": "document",
+          "ref": "notification-service-guide",
+          "revision": "1"
+        }
+      ],
+      "disposition": "candidate",
+      "components": [
+        "notifier"
+      ]
+    },
+    {
+      "id": "inv.layout-templates",
+      "product": "Statement layout templates",
+      "version": "set 2019",
+      "role": "Defines the statement page layout.",
+      "capabilities": [
+        "Page layout.",
+        "Section order."
+      ],
+      "limits": [
+        "One layout per statement type."
+      ],
+      "compatibility": "Rendered by the template engine.",
+      "license": "Internal.",
+      "support": "unknown",
+      "source": [
+        {
+          "kind": "document",
+          "ref": "layout-template-inventory",
+          "revision": "1"
+        }
+      ],
+      "disposition": "adapted",
+      "components": [
+        "render-worker"
+      ],
+      "executableBaseline": {
+        "status": "unavailable",
+        "reason": "No recorded rendering of the current templates exists to compare against."
+      }
+    },
+    {
+      "id": "inv.container-platform",
+      "product": "Container runtime",
+      "version": "1.31",
+      "role": "Hosts the render worker and notifier containers.",
+      "capabilities": [
+        "Queue-triggered containers with automatic scaling.",
+        "One workload identity per container group."
+      ],
+      "limits": [
+        "Ten-minute maximum execution per message.",
+        "One scaling rule per container group."
+      ],
+      "compatibility": "Linux containers only.",
+      "license": "Commercial platform subscription.",
+      "support": "supported",
+      "source": [
+        {
+          "kind": "vendor-documentation",
+          "ref": "container runtime limits page",
+          "retrieved": "2026-10-01T00:00:00Z"
+        }
+      ],
+      "disposition": "retained",
+      "components": [
+        "render-worker",
+        "notifier"
+      ],
+      "executableBaseline": {
+        "status": "not-applicable",
+        "reason": "Platform, not adopting code."
+      }
+    }
+  ],
+  "retainedBehaviors": [
+    {
+      "id": "rb.archive-copy",
+      "description": "Each rendered statement is written to the archive.",
+      "from": "inv.archive",
+      "criteria": [
+        "req.keep-archive.archive"
+      ],
+      "scenarios": [
+        "scn.retained-archive"
+      ],
+      "evidence": [
+        "integration"
+      ],
+      "status": "retained"
+    },
+    {
+      "id": "rb.layout",
+      "description": "Statements keep the current page layout and section order.",
+      "from": "inv.layout-templates",
+      "criteria": [
+        "req.keep-archive.layout"
+      ],
+      "scenarios": [
+        "scn.retained-layout"
+      ],
+      "evidence": [
+        "review"
+      ],
+      "status": "retained"
+    }
+  ],
+  "workloads": [
+    {
+      "id": "wl.month-end",
+      "actors": [
+        "Account holders.",
+        "Month-end batch."
+      ],
+      "operations": [
+        {
+          "operation": "statement.generate",
+          "rate": {
+            "value": 50000,
+            "unit": "requests per day",
+            "estimate": true
+          }
+        }
+      ],
+      "latency": [
+        {
+          "operation": "statement.generate",
+          "percentile": 95,
+          "target": {
+            "value": 500,
+            "unit": "milliseconds",
+            "estimate": true
+          }
+        }
+      ],
+      "failureExpectations": "Render failures stay below one percent of jobs.",
+      "source": [
+        {
+          "kind": "document",
+          "ref": "statements-capacity-notes",
+          "revision": "3"
+        }
+      ],
+      "basis": "assumed"
+    }
+  ],
+  "attachments": [],
+  "mappings": [
+    {
+      "id": "map.request-to-job",
+      "from": "statement-request",
+      "to": "statement-job",
+      "owner": "statements-api",
+      "fields": [
+        {
+          "from": "accountId",
+          "to": "accountId",
+          "transform": "copy"
+        },
+        {
+          "from": "period",
+          "to": "period",
+          "transform": "copy"
+        }
+      ],
+      "unmapped": [
+        {
+          "side": "to",
+          "property": "id",
+          "reason": "Assigned by the store on acceptance."
+        },
+        {
+          "side": "to",
+          "property": "status",
+          "reason": "Set to accepted on creation."
+        },
+        {
+          "side": "to",
+          "property": "documentUri",
+          "reason": "Set by the render worker."
+        }
+      ]
+    },
+    {
+      "id": "map.job-to-accepted",
+      "from": "statement-job",
+      "to": "statement-accepted",
+      "owner": "statements-api",
+      "fields": [
+        {
+          "from": "id",
+          "to": "jobId",
+          "transform": "rename"
+        },
+        {
+          "from": "status",
+          "to": "status",
+          "transform": "copy"
+        }
+      ],
+      "unmapped": [
+        {
+          "side": "from",
+          "property": "accountId",
+          "reason": "Not returned to the caller."
+        },
+        {
+          "side": "from",
+          "property": "period",
+          "reason": "Echoed by the caller already."
+        },
+        {
+          "side": "from",
+          "property": "documentUri",
+          "reason": "Delivered by the result event."
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "id": "statements.jobs",
+      "type": "statement-job",
+      "owner": "statements-store",
+      "platform": "sqlserver-2022",
+      "schema": "statements",
+      "table": "jobs",
+      "columns": [
+        {
+          "name": "id",
+          "property": "id",
+          "sqlType": {
+            "name": "uniqueidentifier"
+          },
+          "nullable": false
+        },
+        {
+          "name": "account_id",
+          "property": "accountId",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 32
+          },
+          "nullable": false
+        },
+        {
+          "name": "period",
+          "property": "period",
+          "sqlType": {
+            "name": "char",
+            "length": 7
+          },
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "property": "status",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 16
+          },
+          "nullable": false
+        },
+        {
+          "name": "document_uri",
+          "property": "documentUri",
+          "sqlType": {
+            "name": "nvarchar",
+            "length": 2048
+          },
+          "nullable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "uq_jobs_account_period_active",
+          "columns": [
+            "account_id",
+            "period",
+            "status"
+          ]
+        }
+      ]
+    }
+  ],
+  "migrations": [],
+  "deploymentUnits": [
+    {
+      "id": "du.api",
+      "components": [
+        "statements-api"
+      ],
+      "host": "host.api",
+      "trustBoundary": "tb.edge",
+      "instances": {
+        "min": 2,
+        "max": 10
+      },
+      "invocation": {
+        "trigger": "http"
+      },
+      "lifetime": "request",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 500
+      },
+      "identity": {
+        "kind": "workload-identity",
+        "name": "statements_api"
+      },
+      "ingress": [
+        "HTTPS from the API gateway."
+      ],
+      "egress": [
+        "SQL Server.",
+        "Message broker."
+      ]
+    },
+    {
+      "id": "du.workers",
+      "components": [
+        "render-worker",
+        "notifier"
+      ],
+      "host": "host.workers",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 1,
+        "max": 8
+      },
+      "invocation": {
+        "trigger": "queue"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT20M",
+      "concurrency": {
+        "model": "bounded",
+        "max": 16
+      },
+      "identity": {
+        "kind": "workload-identity",
+        "name": "statements_workers"
+      },
+      "isolation": "Separate processes in one container group; a render crash does not stop notification delivery."
+    },
+    {
+      "id": "du.store",
+      "components": [
+        "statements-store"
+      ],
+      "host": "host.sql",
+      "trustBoundary": "tb.private",
+      "instances": {
+        "min": 1,
+        "max": 1
+      },
+      "invocation": {
+        "trigger": "library-call"
+      },
+      "lifetime": "long-running",
+      "timeout": "PT30S",
+      "concurrency": {
+        "model": "bounded",
+        "max": 200
+      },
+      "identity": {
+        "kind": "service-account",
+        "name": "statements_store"
+      }
+    }
+  ],
+  "hosts": [
+    {
+      "id": "host.api",
+      "kind": "web-app",
+      "capabilities": {
+        "triggers": [
+          "http"
+        ],
+        "maxTimeout": "PT230S",
+        "maxConcurrency": 1000,
+        "scaling": "automatic",
+        "state": "stateless",
+        "identities": [
+          "workload-identity"
+        ]
+      },
+      "limits": [
+        "Requests longer than 230 seconds are terminated."
+      ]
+    },
+    {
+      "id": "host.workers",
+      "kind": "container",
+      "capabilities": {
+        "triggers": [
+          "queue",
+          "event"
+        ],
+        "maxTimeout": "PT30M",
+        "maxConcurrency": 64,
+        "scaling": "automatic",
+        "state": "stateless",
+        "identities": [
+          "workload-identity",
+          "service-account"
+        ]
+      },
+      "limits": [
+        "No local durable state."
+      ],
+      "inventory": "inv.container-platform"
+    },
+    {
+      "id": "host.sql",
+      "kind": "database-engine",
+      "capabilities": {
+        "triggers": [
+          "library-call"
+        ],
+        "scaling": "manual",
+        "state": "stateful",
+        "identities": [
+          "service-account"
+        ]
+      },
+      "limits": [
+        "One primary replica."
+      ]
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "id": "tb.edge",
+      "kind": "network",
+      "description": "Internet-facing ingress through the API gateway."
+    },
+    {
+      "id": "tb.private",
+      "kind": "network",
+      "description": "Private network of the statements platform."
+    }
+  ],
+  "securitySchemes": [
+    {
+      "id": "bearer",
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT"
+    }
+  ],
+  "consumerBindings": [],
+  "publishedContracts": []
+}
