@@ -24,6 +24,25 @@ export const scaffoldConfig = (): LoomConfig => ({ configVersion: 1, model: MODE
 
 export const scaffoldState = (): WorkflowState => ({ stateVersion: 1, phase: 'unplanned', sealed: false });
 
+/** What init installs and the filesystem steps that install it; a test replaces one to force the failure init must survive. */
+export interface InitSteps {
+  scaffold(): { model: Model; config: LoomConfig; state: WorkflowState };
+  /** Creates an empty staging directory inside `parent` and returns its path. */
+  stage(parent: string): string;
+  write(path: string, text: string): void;
+  /** Renames the staging directory to the .loom path. */
+  install(staging: string, loomDir: string): void;
+  discard(staging: string): void;
+}
+
+export const INIT_STEPS: InitSteps = {
+  scaffold: () => ({ model: scaffoldModel(), config: scaffoldConfig(), state: scaffoldState() }),
+  stage: (parent) => mkdtempSync(join(parent, '.loom-staging-')),
+  write: (path, text) => writeFileSync(path, text),
+  install: (staging, loomDir) => renameSync(staging, loomDir),
+  discard: (staging) => rmSync(staging, { recursive: true, force: true }),
+};
+
 export interface InitOptions {
   /** Restore missing non-authoritative scaffolding (.gitignore) in an existing .loom; never replaces an authority file. */
   force?: boolean;
@@ -57,7 +76,7 @@ function overlapWith(proposedRoot: string, others: readonly Descriptor[]): Findi
  * or phase completion, never touches a child repository, and never stages or
  * commits: the four files are left for their owner to review and track.
  */
-export function initWorkspace(cwd: string, options: InitOptions = {}): ResultEnvelope {
+export function initWorkspace(cwd: string, options: InitOptions = {}, steps: InitSteps = INIT_STEPS): ResultEnvelope {
   const dir = resolve(cwd);
   const repoRoot = findRepositoryRoot(dir);
   if (!repoRoot || !samePath(repoRoot, dir)) {
@@ -67,9 +86,7 @@ export function initWorkspace(cwd: string, options: InitOptions = {}): ResultEnv
   const loomDir = join(dir, LOOM_DIR);
   if (existsSync(loomDir)) return reinit(dir, loomDir, options);
 
-  const model = scaffoldModel();
-  const config = scaffoldConfig();
-  const state = scaffoldState();
+  const { model, config, state } = steps.scaffold();
   const findings: Finding[] = [];
   findings.push(...validate(model).filter((f) => f.severity === 'error'));
   for (const e of schemaErrors('LoomConfig', config)) findings.push(finding('CONFIG_INVALID', `${LOOM_DIR}/${CONFIG_FILE}#${e.pointer}`, e.message, 'correct the scaffold'));
@@ -82,16 +99,24 @@ export function initWorkspace(cwd: string, options: InitOptions = {}): ResultEnv
   findings.push(...overlapWith(dir, [...ancestors, ...descendants]));
   if (hasErrors(findings)) return result(findings, { written: [] }, model, { cause: findings.some((f) => f.code === 'SCOPE_OVERLAP' || f.code === 'SCOPE_UNRESOLVED') ? 'policy-failure' : 'invalid-input', message: 'the scaffold was not installed' });
 
-  const staging = mkdtempSync(join(dir, '.loom-staging-'));
+  let staging: string | undefined;
   try {
-    writeFileSync(join(staging, MODEL_FILE), documentText(model));
-    writeFileSync(join(staging, CONFIG_FILE), documentText(config));
-    writeFileSync(join(staging, STATE_FILE), documentText(state));
-    writeFileSync(join(staging, GITIGNORE), GITIGNORE_TEXT);
-    renameSync(staging, loomDir);
+    staging = steps.stage(dir);
+    steps.write(join(staging, MODEL_FILE), documentText(model));
+    steps.write(join(staging, CONFIG_FILE), documentText(config));
+    steps.write(join(staging, STATE_FILE), documentText(state));
+    steps.write(join(staging, GITIGNORE), GITIGNORE_TEXT);
+    steps.install(staging, loomDir);
   } catch (err) {
-    rmSync(staging, { recursive: true, force: true });
-    return result([finding('INIT_REPAIR_REQUIRED', LOOM_DIR, `installing the scaffold failed: ${(err as Error).message}`, 'resolve the filesystem error and run init again')], { written: [] }, model, { cause: 'unresolved-context', message: 'installation failed; nothing was installed' });
+    let left = '';
+    if (staging !== undefined) {
+      try {
+        steps.discard(staging);
+      } catch (discardErr) {
+        left = `; the staging directory ${toPosix(relativeTo(dir, staging))} could not be removed: ${(discardErr as Error).message}`;
+      }
+    }
+    return result([finding('INIT_REPAIR_REQUIRED', LOOM_DIR, `installing the scaffold failed: ${(err as Error).message}${left}`, 'resolve the filesystem error and run init again')], { written: [] }, model, { cause: 'unresolved-context', message: 'installation failed; nothing was installed' });
   }
   const written = [MODEL_FILE, CONFIG_FILE, STATE_FILE, GITIGNORE].map((f) => `${LOOM_DIR}/${f}`);
   return envelope('workspace.init', { model, findings, data: { written }, revisions: revisionsOf(model) });

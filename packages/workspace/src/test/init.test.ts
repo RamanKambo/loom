@@ -3,8 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { validate } from '@loom/core';
-import { initWorkspace } from '../init.js';
+import { schemaErrors, validate } from '@loom/core';
+import type { FindingCode, Refusal, ResultEnvelope, WorkflowState } from '@loom/core';
+import { INIT_STEPS, initWorkspace, type InitSteps } from '../init.js';
 import { openWorkspace } from '../config.js';
 import { codes, fileHash, gitInit, scratch, withCode } from '../testing/helpers.js';
 
@@ -97,6 +98,56 @@ test('an incomplete .loom needs repair by its owner; force never invents an auth
   assert.ok(codes(env.findings).every((c) => c === 'INIT_REPAIR_REQUIRED'));
   assert.ok(env.findings.length >= 1);
   assert.equal(existsSync(join(root, '.loom', 'state.json')), false);
+});
+
+const injected = (step: string): never => {
+  throw new Error(`EPERM: ${step} failed for the test`);
+};
+
+/** Init with one step replaced; the result, and every entry the repository root holds afterwards. */
+function initWith(steps: Partial<InitSteps>): { env: ResultEnvelope; left: string[]; staged: number } {
+  const root = gitInit(scratch());
+  let staged = 0;
+  const env = initWorkspace(root, {}, { ...INIT_STEPS, stage: (parent) => (staged++, INIT_STEPS.stage(parent)), ...steps });
+  return { env, left: readdirSync(root).sort(), staged };
+}
+
+/** Typed: a refusal with its cause and finding code, in an envelope that satisfies the result contract. */
+function assertTypedRefusal(env: ResultEnvelope, cause: Refusal['cause'], code: FindingCode): void {
+  assert.equal(env.outcome, 'refused');
+  assert.equal(env.refusal?.cause, cause, JSON.stringify(env.refusal));
+  assert.ok(codes(env.findings).includes(code), JSON.stringify(env.findings));
+  assert.deepEqual(schemaErrors('ResultEnvelope', env), []);
+  assert.deepEqual((env.data as { written: string[] }).written, []);
+}
+
+test('a staging failure leaves no .loom and nothing staged, and is refused as typed', () => {
+  const { env, left } = initWith({ stage: () => injected('creating the staging directory') });
+  assertTypedRefusal(env, 'unresolved-context', 'INIT_REPAIR_REQUIRED');
+  assert.match(env.findings[0]?.message ?? '', /creating the staging directory failed/);
+  assert.deepEqual(left, ['.git'], 'the repository root holds nothing of the failed init');
+});
+
+test('a write failure part-way through staging leaves no .loom and no partial scaffold, and is refused as typed', () => {
+  let writes = 0;
+  const { env, left } = initWith({ write: (path, text) => (++writes === 3 ? injected(`writing ${path}`) : INIT_STEPS.write(path, text)) });
+  assertTypedRefusal(env, 'unresolved-context', 'INIT_REPAIR_REQUIRED');
+  assert.equal(writes, 3, 'the failure struck after two files were staged');
+  assert.deepEqual(left, ['.git'], 'no staging directory with an unsealed state or a model is left');
+});
+
+test('an installation failure leaves no .loom and no staging directory, and is refused as typed', () => {
+  const { env, left } = initWith({ install: () => injected('renaming the staging directory into place') });
+  assertTypedRefusal(env, 'unresolved-context', 'INIT_REPAIR_REQUIRED');
+  assert.deepEqual(left, ['.git'], 'the repository root holds nothing of the failed init');
+});
+
+test('a scaffold that fails validation is refused as typed before anything is staged', () => {
+  const sealed = { stateVersion: 1, phase: 'release', sealed: true, accepted: true } as unknown as WorkflowState;
+  const { env, left, staged } = initWith({ scaffold: () => ({ ...INIT_STEPS.scaffold(), state: sealed }) });
+  assertTypedRefusal(env, 'invalid-input', 'CONFIG_INVALID');
+  assert.equal(staged, 0, 'nothing was staged');
+  assert.deepEqual(left, ['.git'], 'no state claiming a sealed, accepted release reaches the disk');
 });
 
 test('init outside any repository is refused', () => {

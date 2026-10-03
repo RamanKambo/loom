@@ -774,9 +774,9 @@
     {
       "id": "workspace.init.staged-install",
       "description": "init validates the scaffold, stages it in a sibling directory and renames it into place, so no staging directory and no apparently initialized workspace is left behind, and an incomplete .loom needs repair by its owner.",
-      "code": ["packages/workspace/src/init.ts#initWorkspace"],
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#INIT_STEPS"],
       "contract": ["icd/workspace.json"],
-      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file"]
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file","workspace.init.a-staging-failure-leaves-no-loom-and-nothing-staged-and-is-refused-as-typed","workspace.init.a-write-failure-part-way-through-staging-leaves-no-loom-and-no-partial-scaffold-and-is-refused-as-typed","workspace.init.an-installation-failure-leaves-no-loom-and-no-staging-directory-and-is-refused-as-typed","workspace.init.a-scaffold-that-fails-validation-is-refused-as-typed-before-anything-is-staged"]
     },
     {
       "id": "workspace.outputs.collisions",
