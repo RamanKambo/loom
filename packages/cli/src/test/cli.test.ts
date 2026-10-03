@@ -340,6 +340,40 @@ test('qualify judges the evidence of its own signed run against the artifacts th
   }
 });
 
+/** A committed workspace whose documentation views `loom write` installed. */
+function writtenDocumentation(): string {
+  const dir = workspace({ projectionProfile: 'documentation' });
+  const written = loom(dir, 'write');
+  assert.equal(written.status, 0, written.stdout);
+  commitAll(dir, 'written workspace');
+  return dir;
+}
+
+type QualifyRun = { run: { checks: Array<{ check: string; result: string; reason?: string }> }; evidence: string[] };
+
+/** A storing run in which a check that stores evidence precedes the drift check. */
+const storingRun = (dir: string): { r: Run; drift: QualifyRun['run']['checks'][number] | undefined } => {
+  const r = loom(dir, 'qualify', '--store', '--checks', 'documentation.yaml-roundtrip,documentation.drift');
+  return { r, drift: (r.env.data as QualifyRun).run.checks.find((c) => c.check === 'documentation.drift') };
+};
+
+test('qualify --store in a written workspace stores its evidence after the last check, so the drift check of the run passes', () => {
+  const dir = writtenDocumentation();
+  const { r, drift } = storingRun(dir);
+  assert.equal(r.status, 0, r.stdout);
+  assert.equal(drift?.result, 'PASS', drift?.reason);
+  const stored = (loom(dir, 'evidence', 'list').env.data as { records: Array<{ id: string }> }).records.map((x) => x.id).sort();
+  assert.deepEqual(stored, [...(r.env.data as QualifyRun).evidence].sort(), 'every record of the run is stored');
+});
+
+test('qualify --store reports drift of a hand-edited view and of no other', () => {
+  const dir = writtenDocumentation();
+  writeFileSync(join(dir, 'Docs', 'Loom', 'readiness.md'), 'hand edit\n');
+  const { drift } = storingRun(dir);
+  assert.equal(drift?.result, 'FAIL', drift?.reason);
+  assert.equal(drift?.reason, '1 output finding(s): OUTPUT_DRIFT Docs/Loom/readiness.md');
+});
+
 test('qualify --metrics measures the outcome corpora and --compare reports every measurement beside the recorded one', () => {
   const dir = workspace({ projectionProfile: 'documentation' });
   commitAll(dir, 'workspace');

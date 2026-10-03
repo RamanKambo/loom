@@ -202,6 +202,26 @@ test('a storing run puts every signed record into the workspace evidence store, 
   }
 });
 
+test('a storing run writes its records only after its last check has finished', async () => {
+  const root = gitInit(scratch());
+  assert.equal(initWorkspace(root).outcome, 'ok');
+  commitAll(root, 'workspace');
+  const seen: number[] = [];
+  const observing: Runner = async () => {
+    seen.push((listEvidence(root).value ?? []).length);
+    return outcome('PASS', 'read the store');
+  };
+  const { set, done } = sampleArtifacts();
+  try {
+    const ids = ['t.observe.first', 't.observe.second', 't.observe.third'];
+    const out = await runChecks({ root, model: sampleModel(), checks: ids.map((id) => check(id)), artifacts: set, runners: Object.fromEntries(ids.map((id) => [id, observing])), store: true });
+    assert.deepEqual(seen, [0, 0, 0], 'no check reads a record of its own run');
+    assert.deepEqual((listEvidence(root).value ?? []).map((e) => e.id).sort(), out.evidence.map((e) => e.id).sort());
+  } finally {
+    done();
+  }
+});
+
 test('without a signing key the records are written unsigned', async () => {
   const out = await run([check('t.unsigned')], { 't.unsigned': passing });
   assert.equal(out.evidence[0]!.signature, undefined);

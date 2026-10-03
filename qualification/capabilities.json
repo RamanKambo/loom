@@ -731,10 +731,10 @@
     },
     {
       "id": "workspace.evidence.store",
-      "description": "The evidence store under .loom/evidence is append-only: identical content is idempotent, a rewrite is refused, and an unreadable store is reported rather than read as empty.",
-      "code": ["packages/workspace/src/evidence.ts#putEvidence","packages/workspace/src/evidence.ts#listEvidence","packages/workspace/src/evidence.ts#readEvidence"],
+      "description": "The evidence store under .loom/evidence is append-only: identical content is idempotent, a rewrite is refused, and an unreadable store is reported rather than read as empty. A storing qualification run writes its records once its last check has finished, so no check of the run reads a record of the same run.",
+      "code": ["packages/workspace/src/evidence.ts#putEvidence","packages/workspace/src/evidence.ts#listEvidence","packages/workspace/src/evidence.ts#readEvidence","packages/qualification/src/run.ts#runChecks"],
       "contract": ["assurance.schema.json#/$defs/EvidenceRecord"],
-      "verification": ["workspace.trust.the-evidence-store-is-append-only-and-an-unreadable-store-is-reported","qualification.framework.a-storing-run-puts-every-signed-record-into-the-workspace-evidence-store-where-the-trusted-policy-verifies-it","cli.cli.evidence-lists-the-store-and-refuses-an-unknown-record"]
+      "verification": ["workspace.trust.the-evidence-store-is-append-only-and-an-unreadable-store-is-reported","qualification.framework.a-storing-run-puts-every-signed-record-into-the-workspace-evidence-store-where-the-trusted-policy-verifies-it","cli.cli.evidence-lists-the-store-and-refuses-an-unknown-record","qualification.framework.a-storing-run-writes-its-records-only-after-its-last-check-has-finished","cli.cli.qualify-store-in-a-written-workspace-stores-its-evidence-after-the-last-check-so-the-drift-check-of-the-run-passes","cli.cli.qualify-store-reports-drift-of-a-hand-edited-view-and-of-no-other"]
     },
     {
       "id": "workspace.init.existing-refusal",

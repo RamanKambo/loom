@@ -48,7 +48,7 @@ export interface RunOptions {
   toolLocator?: ToolLocator;
   /** Runner identity recorded in every record. */
   runner?: string;
-  /** Write each evidence record into the workspace evidence store at `root`. */
+  /** Write every evidence record into the workspace evidence store at `root` once the last check has finished. */
   store?: boolean;
   /** Limit for one check; a check still running is stopped and reported UNKNOWN. */
   timeoutMs?: number;
@@ -189,10 +189,6 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
       const record = buildEvidence({ runId, runner, check, required, result, toolRecord, env, artifacts, sources, startedAt: checkStarted, model: options.model, index });
       const signed = sign(record);
       evidence.push(signed);
-      if (options.store) {
-        const stored = putEvidence(options.root, signed);
-        findings.push(...stored.findings);
-      }
       const entry: RunRecord['checks'][number] = { check: check.id, required, result: result.result, evidence: signed.id };
       if (result.reason) entry.reason = result.reason;
       outcomes.push(entry);
@@ -202,6 +198,8 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
     await resources.releaseAll();
     if (!options.keepRunDir) rmSync(runDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
   }
+  // The generated views summarize the store, so a record stored while checks still run would change what a later check of the same run reads.
+  if (options.store) for (const record of evidence) findings.push(...putEvidence(options.root, record).findings);
 
   const profiles = [...new Map(checks.map((c) => profileOf(c)).filter((p) => p !== undefined).map((p) => [p!.id, p!])).values()];
   const run: RunRecord = {
