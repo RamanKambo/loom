@@ -19,7 +19,9 @@
     "self-test": "node packages/cli/dist/index.js --self-test",
     "test:workspace": "node --test \"packages/workspace/dist/test/*.test.js\"",
     "test:qualification": "node --test --test-concurrency=1 \"packages/qualification/dist/test/*.test.js\"",
-    "smoke:mcp": "node packages/mcp-server/dist/smoke.js"
+    "smoke:mcp": "node packages/mcp-server/dist/smoke.js",
+    "test:cli": "node --test --test-concurrency=1 \"packages/cli/dist/test/*.test.js\"",
+    "test:mcp": "node --test --test-concurrency=1 \"packages/mcp-server/dist/test/*.test.js\""
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

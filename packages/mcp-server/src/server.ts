@@ -1,37 +1,64 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { TOOLS, executeTool } from './tools.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { asFinding, canonicalStringify, envelope, refusal } from '@loom/core';
+import type { ResultEnvelope } from '@loom/core';
+import { executeTool, toolDefinitions, type ToolContext } from './tools.js';
+
+/** The first protocol version whose tool results carry outputSchema and structuredContent. */
+export const STRUCTURED_SINCE = '2025-06-18';
+
+export interface LoomServerOptions extends Partial<ToolContext> {}
+
+export interface LoomServer {
+  server: Server;
+  /** Connect to a transport, observing the protocol version the client negotiates. */
+  connect(transport: Transport): Promise<void>;
+  /** The negotiated protocol version, once the client has initialized. */
+  protocolVersion(): string | undefined;
+}
 
 /**
- * Build the Loom MCP server. Uses the low-level Server with JSON-Schema tool
- * input (no Zod dependency). The server is transport-agnostic; the caller
- * connects it to stdio (index.ts) or an in-memory transport (smoke.ts).
+ * Build the Loom MCP server on the low-level SDK Server with JSON Schema tool
+ * contracts. The tool list and every result follow the negotiated protocol
+ * version: a client without structured tool results gets the result envelope
+ * as text plus an explicit compatibility finding.
  */
-export function createLoomServer(): Server {
-  const server = new Server(
-    { name: 'loom', version: '1.0.0' },
-    { capabilities: { tools: {} } },
-  );
+export function createLoomServer(options: LoomServerOptions = {}): LoomServer {
+  const ctx: ToolContext = { workspace: options.workspace ?? process.cwd(), ...(options.trustedRef ? { trustedRef: options.trustedRef } : {}) };
+  let negotiated: string | undefined;
+  const structured = (): boolean => negotiated === undefined || negotiated >= STRUCTURED_SINCE;
+  const server = new Server({ name: 'loom', version: '1.0.0' }, { capabilities: { tools: {} } });
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOLS.map((t) => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-    })),
-  }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolDefinitions(structured()) }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const args = (request.params.arguments ?? {}) as Record<string, unknown>;
-    const result = executeTool(request.params.name, args);
-    return {
-      content: [{ type: 'text' as const, text: result.text }],
-      isError: result.isError,
-    };
+    let env: ResultEnvelope;
+    let isError = false;
+    try {
+      env = executeTool(request.params.name, request.params.arguments ?? {}, ctx);
+    } catch (err) {
+      isError = true;
+      env = envelope(request.params.name.replace(/[^A-Za-z.]/g, '') || 'loom.unknown', { model: null, findings: [], refusal: refusal('unresolved-context', `the tool failed: ${(err as Error).message}`) });
+    }
+    if (!structured()) {
+      env = { ...env, findings: [...env.findings, asFinding('CLIENT_CAPABILITY_UNSUPPORTED', '(protocol)', `protocol version ${negotiated} carries no structured tool results; the result envelope is returned as text only`, `connect with protocol version ${STRUCTURED_SINCE} or later to receive structuredContent validated by each tool's outputSchema`)] };
+      return { content: [{ type: 'text' as const, text: canonicalStringify(env) }], isError };
+    }
+    return { content: [{ type: 'text' as const, text: canonicalStringify(env) }], structuredContent: env as unknown as Record<string, unknown>, isError };
   });
 
-  return server;
+  return {
+    server,
+    protocolVersion: () => negotiated,
+    async connect(transport: Transport): Promise<void> {
+      await server.connect(transport);
+      const inner = transport.onmessage;
+      transport.onmessage = (message, extra) => {
+        const m = message as { method?: string; params?: { protocolVersion?: unknown } };
+        if (m.method === 'initialize' && typeof m.params?.protocolVersion === 'string') negotiated = m.params.protocolVersion;
+        inner?.(message, extra);
+      };
+    },
+  };
 }

@@ -1,13 +1,19 @@
 #!/usr/bin/env node
+import { resolve } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createLoomServer } from './server.js';
 
+function option(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
 async function main(): Promise<void> {
-  const server = createLoomServer();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  // The protocol owns stdout; status goes to stderr so it never corrupts the
-  // JSON-RPC stream.
+  const workspace = option('workspace');
+  const trustedRef = option('trusted-ref');
+  const loom = createLoomServer({ workspace: resolve(workspace ?? process.cwd()), ...(trustedRef ? { trustedRef } : {}) });
+  await loom.connect(new StdioServerTransport());
+  // The protocol owns stdout; status goes to stderr so it never corrupts the JSON-RPC stream.
   console.error('loom MCP server ready on stdio.');
 }
 
