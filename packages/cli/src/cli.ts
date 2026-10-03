@@ -37,7 +37,8 @@ const USAGE = [
   '  check [--model <path>] [--out <dir>]   Ownership, configuration, validity, the trusted-baseline comparison, outputs and manifest.',
   '  check --all [--boundary <dir>]         Every descriptor under the boundary, global disjointness and walk coverage.',
   '  write [--out <dir>] [--draft]          Install every enabled artifact, or write the projections into a directory.',
-  '  docs [--check]                         Install the bundle with evaluated views, or check documents, links, views and history markers.',
+  '  docs [--check [--self]]                Install the bundle with evaluated views, or check documents, links, views and history markers;',
+  '                                         --self checks this Loom installation\'s own repository, release wording included.',
   '  owner [<path>]                         The model that owns a path.',
   '  migrate [--model <path>] [--to <file>] Migrate a model document to the current format into a new file.',
   '  baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]',
@@ -50,13 +51,17 @@ const USAGE = [
   '  context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]',
   '  describe [--sections a,b] [--profile <id>]',
   '  coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>] | coverage --list-cases',
-  '  --self-test                            The engine battery, the drift gate and every profile check against Loom fixtures.',
+  '  --self-test                            The engine battery, the drift gate, the release wording and every profile check against Loom fixtures.',
   '',
   'Common options: --model <path> selects a document (the governing workspace still applies), --boundary <dir>, --trusted-ref <ref>, --as-of <date>.',
   'Exit status: 0 ok, 1 refusal or error finding, 2 usage error.',
 ].join('\n');
 
 function cmdDocsCheck(ctx: Context): CommandResult {
+  if (has(ctx.args, 'self')) {
+    const findings = documentationFindings({ root: ctx.loomRoot, release: true }, null);
+    return { env: envelope('cli.docsCheck', { model: null, findings, states: defaultStates({ state: 'notEvaluated', reasons: [] }), data: { root: ctx.loomRoot } }) };
+  }
   const model = flag(ctx.args, 'model');
   const s = openSession(ctx.cwd, model ? { model } : {});
   const root = s.workspace?.root ?? findRepositoryRoot(resolve(ctx.cwd)) ?? resolve(ctx.cwd);

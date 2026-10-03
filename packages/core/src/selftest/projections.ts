@@ -29,6 +29,7 @@ import {
 } from '../project.js';
 import { pascal } from '../projections/context.js';
 import { sampleModel } from '../sample.js';
+import { prohibitedMarkers, type MarkerKind } from '../wording.js';
 import { assert, assertThrows, codesOf, fresh, observe, pick, type Tally } from './harness.js';
 
 interface Section {
@@ -344,6 +345,26 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       assert(t, codesOf(observe(t, claimed.findings)).every((c) => c === 'PROJECTION_COVERAGE_LOSS'), 'a false location is a coverage loss');
       const honest = renderWithSpec(m, 'json-schema', { ...dropping, scope: (model) => model.types.slice(1).map((x) => ({ kind: 'type', id: x.id })) });
       assert(t, honest.coverage.complete && honest.coverage.items.length === m.types.length - 1, 'a renderer that covers its scope passes the guard');
+    },
+  },
+  {
+    name: 'generated wording',
+    run: (t) => {
+      // Assembled, so the planted markers do not themselves appear in the repository's text.
+      const planted: ReadonlyArray<[string, MarkerKind]> = [
+        [`See ${['REQ', '12'].join('-')} for the rule.`, 'label'],
+        [`Delivered in ${['phase', '2'].join(' ')}.`, 'iteration'],
+        [`The ${['v', '2'].join('')} importer.`, 'iteration'],
+        [`Kept for ${['back', 'ward compatibility'].join('')}.`, 'generation'],
+        [`The ${['leg', 'acy'].join('')} store.`, 'generation'],
+      ];
+      for (const [text, kind] of planted) assert(t, prohibitedMarkers(text).some((x) => x.kind === kind), `a planted ${kind} marker is found in '${text}'`);
+      const legitimate = 'SHA-256 over UTF-8 under MPL-2.0 and RFC 9110, account A-1, a stateDiagram-v2 view, protocol 2025-06-18, release 1.0.0, error FROZEN_COMPONENT_CHANGED';
+      assert(t, prohibitedMarkers(legitimate).length === 0, `standard, domain and interface identifiers are not markers: ${prohibitedMarkers(legitimate).map((x) => x.match).join(', ')}`);
+      for (const f of renderAll(sampleModel()).files) {
+        const found = f.content.split(/\r?\n/).flatMap((line) => prohibitedMarkers(line).map((x) => x.match));
+        assert(t, found.length === 0, `${projectedPath(f)} carries no prohibited marker in its generated text: ${found.join(', ')}`);
+      }
     },
   },
 ];

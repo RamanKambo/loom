@@ -7,6 +7,7 @@ import type { Finding, LoomConfig } from '@loom/core';
 import { selfQualify } from '@loom/qualification';
 import { parseArgs } from './args.js';
 import { cmdCheck, cmdInit, cmdWrite, type Context } from './commands.js';
+import { releaseWordingFindings } from './docs.js';
 import type { Log } from './render.js';
 
 const codes = (findings: readonly Finding[]): string[] => findings.map((f) => f.code);
@@ -64,16 +65,19 @@ function driftChecks(loomRoot: string, log: Log): void {
   }
 }
 
-/** The engine battery, the drift gate, then every profile check against Loom's own fixtures. */
+/** The engine battery, the drift gate, Loom's release wording, then every profile check against Loom's own fixtures. */
 export async function runSelfTest(loomRoot: string, log: Log): Promise<number> {
   selfTest();
   driftChecks(loomRoot, log);
+  const wording = releaseWordingFindings(loomRoot);
+  for (const f of wording) log(`release wording ${f.path}: ${f.message}`);
+  log(`loom cli: release wording - ${wording.length} prohibited markers in Loom's documents, comments and JSON prose.`);
   const q = await selfQualify(loomRoot);
   for (const c of q.run.checks) log(`check ${c.check} (${c.required ? 'required' : 'optional'}): ${c.result} - ${c.reason ?? ''}`);
   for (const id of q.unlisted) log(`check ${id}: the self-qualification policy neither requires it nor marks it optional`);
   const counts = (['PASS', 'FAIL', 'UNKNOWN', 'NOT_APPLICABLE'] as const).map((r) => `${q.run.checks.filter((c) => c.result === r).length} ${r}`).join(', ');
   // A required UNKNOWN keeps the aggregate from PASS, so a missing tool can never read as a qualified self-test.
-  const ok = q.run.aggregate === 'PASS' && q.unlisted.length === 0;
-  log(`loom cli self-test ${ok ? 'PASS' : 'FAIL'}: drift check OK; qualification ${q.run.aggregate} over ${q.run.checks.length} checks (${counts}).`);
+  const ok = q.run.aggregate === 'PASS' && q.unlisted.length === 0 && wording.length === 0;
+  log(`loom cli self-test ${ok ? 'PASS' : 'FAIL'}: drift check OK; release wording ${wording.length === 0 ? 'clean' : `${wording.length} markers`}; qualification ${q.run.aggregate} over ${q.run.checks.length} checks (${counts}).`);
   return ok ? 0 : 1;
 }

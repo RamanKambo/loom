@@ -464,6 +464,13 @@
       "verification": ["cli.cli.docs-installs-the-views-with-evaluated-inputs-and-docs-check-reports-broken-links-unknown-records-and-history-markers","cli.cli.docs-check-flags-a-hand-authored-copy-of-a-generated-register-and-a-comment-narrating-history","cli.cli.docs-check-reports-an-accepted-interface-dropped-from-the-regenerated-documentation"]
     },
     {
+      "id": "docs.release-wording",
+      "description": "Loom's own documents, source comments, JSON descriptions and generated prose name each capability descriptively: `loom docs --check --self` and the CLI self-test report every requirement, task or phase label, release-iteration label and product-generation term, never flag standard, domain or interface identifiers, never read dependencies, and never apply the rule to an adopting repository.",
+      "code": ["packages/core/src/wording.ts#prohibitedMarkers","packages/cli/src/docs.ts#releaseWordingFindings","packages/cli/src/docs.ts#documentationFindings","packages/cli/src/selftest.ts#runSelfTest"],
+      "contract": ["result.schema.json#/$defs/FindingCode","icd/cli.json"],
+      "verification": ["cli.cli.docs-check-self-holds-loom-s-own-repository-to-the-release-wording-which-fires-in-documents-comments-and-json-prose-but-never-in-a-dependency-or-an-adopter-s-text","core.selftest.generated-wording"]
+    },
+    {
       "id": "mcp.context",
       "description": "loom.context returns the required context of a component, record, claim or task within a declared budget, nearest first, with completeness naming what it omitted and a continuation bound to one model revision.",
       "code": ["packages/core/src/retrieval.ts#retrieveContext","packages/core/src/retrieval.ts#continuationToken","packages/core/src/tools.ts#contextTool","packages/mcp-server/src/tools.ts#executeTool"],

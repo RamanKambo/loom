@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
-import { LoomInvalidModelError, asFinding, findRecord, indexModel, renderTarget, schemaErrors } from '@loom/core';
-import type { Finding, Model, RecordKind, RecordRef } from '@loom/core';
+import { LoomInvalidModelError, asFinding, findRecord, indexModel, prohibitedMarkers, renderTarget, schemaErrors } from '@loom/core';
+import type { Finding, MarkerKind, Model, RecordKind, RecordRef } from '@loom/core';
 import { checkOutputs, readManifest, manifestPath, type Session } from '@loom/workspace';
 
 /**
@@ -20,7 +20,7 @@ const HISTORY = [
 /** String literals removed, so a comment marker or a history phrase quoted inside a string is not read as a comment. */
 const withoutStrings = (line: string): string => line.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, "''");
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'generated', '.git', '.angular', 'coverage', 'bin', 'obj', '.loom']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'generated', '.git', '.angular', 'coverage', 'bin', 'obj', '.loom', '.tmp']);
 
 function walk(dir: string, accept: (file: string) => boolean, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;
@@ -113,18 +113,58 @@ const COMMENT_EXT: Record<string, RegExp> = {
   '.sql': /--(.*)$/,
 };
 
-/** History markers inside source comments only; string literals and code are not prose. */
-function historyInComments(root: string, file: string): Finding[] {
+/** Source comments with their line numbers; string literals and code are not prose. */
+function commentLines(file: string): Array<[number, string]> {
   const re = COMMENT_EXT[extname(file).toLowerCase()];
   if (!re) return [];
-  const findings: Finding[] = [];
+  const out: Array<[number, string]> = [];
   readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
     const m = re.exec(withoutStrings(line));
-    if (!m) return;
-    const comment = m.slice(1).find((g) => g !== undefined) ?? '';
-    const hit = HISTORY.find((h) => h.test(comment));
-    if (hit) findings.push(asFinding('DOCUMENT_HISTORY_MARKER', `${rel(root, file)}:${i + 1}`, `comment narrates history: '${(hit.exec(comment) as RegExpExecArray)[0]}'`, 'keep the reason as one clause and move the story to the commit message'));
+    if (m) out.push([i + 1, m.slice(1).find((g) => g !== undefined) ?? '']);
   });
+  return out;
+}
+
+/** History markers inside source comments only. */
+function historyInComments(root: string, file: string): Finding[] {
+  const findings: Finding[] = [];
+  for (const [n, comment] of commentLines(file)) {
+    const hit = HISTORY.find((h) => h.test(comment));
+    if (hit) findings.push(asFinding('DOCUMENT_HISTORY_MARKER', `${rel(root, file)}:${n}`, `comment narrates history: '${(hit.exec(comment) as RegExpExecArray)[0]}'`, 'keep the reason as one clause and move the story to the commit message'));
+  }
+  return findings;
+}
+
+/** The string values of a JSON file that hold prose; a value without whitespace is an identifier, a pattern or a digest. */
+function jsonProse(file: string): Array<[number, string]> {
+  const out: Array<[number, string]> = [];
+  readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+    for (const m of line.matchAll(/"((?:\\.|[^"\\])*)"/g)) if (/\s/.test(m[1] as string)) out.push([i + 1, m[1] as string]);
+  });
+  return out;
+}
+
+const MARKER_TEXT: Record<MarkerKind, string> = {
+  label: 'an internal requirement, task or phase label',
+  iteration: 'a release-iteration label',
+  generation: 'a product-generation term',
+};
+
+/**
+ * Loom's own release wording: every document, source comment and JSON prose
+ * string under the root names each capability descriptively. Dependencies and
+ * build output are never read.
+ */
+export function releaseWordingFindings(root: string): Finding[] {
+  const findings: Finding[] = [];
+  const report = (file: string, lines: Array<[number, string]>): void => {
+    for (const [n, text] of lines) {
+      for (const m of prohibitedMarkers(text)) findings.push(asFinding('DOCUMENT_PROHIBITED_MARKER', `${rel(root, file)}:${n}`, `'${m.match}' is ${MARKER_TEXT[m.kind]}`, 'name the capability descriptively, as the current release states it'));
+    }
+  };
+  for (const file of walk(root, (n) => n.toLowerCase().endsWith('.md'))) report(file, proseLines(readFileSync(file, 'utf8')));
+  for (const file of walk(root, (n) => extname(n).toLowerCase() in COMMENT_EXT)) report(file, commentLines(file));
+  for (const file of walk(root, (n) => n.toLowerCase().endsWith('.json') && n !== 'package-lock.json')) report(file, jsonProse(file));
   return findings;
 }
 
@@ -173,22 +213,30 @@ function cumulativeFindings(model: Model, baseline: Model): Finding[] {
 
 export interface DocumentationScope {
   root: string;
-  /** Directories whose source comments are scanned; defaults to every package and app source tree under the root. */
+  /** Directories whose source comments are scanned; defaults to every package and app source tree under the root, or the whole root for a release check. */
   sources?: string[];
+  /**
+   * Loom's own repository: every document and comment under the root is
+   * checked, and the release wording applies. An adopting repository's text is
+   * its own, so the release wording is never applied to it.
+   */
+  release?: boolean;
 }
 
 /**
  * Every documentation check: links and record references, history markers in
  * documents and comments, hand-authored copies of generated registers, the
  * installed views against their manifest, the cumulative accepted contract
- * set, and the separation of durable records from transient workflow state.
+ * set, the separation of durable records from transient workflow state and,
+ * for Loom's own repository, the release wording.
  */
 export function documentationFindings(scope: DocumentationScope, s: Session | null): Finding[] {
   const root = scope.root;
   const generated = new Set<string>();
   const ws = s?.workspace ?? null;
   if (ws) for (const a of readManifest(manifestPath(ws))?.artifacts ?? []) generated.add(resolve(ws.root, ...a.path.split('/')));
-  const docs = [join(root, 'README.md'), ...walk(join(root, 'Docs'), (n) => n.toLowerCase().endsWith('.md'))].filter((p) => existsSync(p));
+  const isDoc = (n: string): boolean => n.toLowerCase().endsWith('.md');
+  const docs = scope.release ? walk(root, isDoc) : [join(root, 'README.md'), ...walk(join(root, 'Docs'), isDoc)].filter((p) => existsSync(p));
   const model = s?.model ?? null;
   const findings: Finding[] = [];
   for (const file of docs) {
@@ -197,8 +245,9 @@ export function documentationFindings(scope: DocumentationScope, s: Session | nu
     findings.push(...historyInProse(root, file));
     if (model) findings.push(...duplicatesGenerated(root, file, model));
   }
-  const sources = scope.sources ?? ['packages', 'apps'].flatMap((b) => (existsSync(join(root, b)) ? readdirSync(join(root, b), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => join(root, b, d.name, 'src')) : []));
+  const sources = scope.sources ?? (scope.release ? [root] : ['packages', 'apps'].flatMap((b) => (existsSync(join(root, b)) ? readdirSync(join(root, b), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => join(root, b, d.name, 'src')) : [])));
   for (const dir of sources) for (const file of walk(dir, (n) => extname(n).toLowerCase() in COMMENT_EXT)) findings.push(...historyInComments(root, file));
+  if (scope.release) findings.push(...releaseWordingFindings(root));
   if (ws && s) {
     findings.push(...checkOutputs(ws, { inputs: s.inputs }).findings);
     if (s.inputs.baseline && model) findings.push(...cumulativeFindings(model, s.inputs.baseline.model));

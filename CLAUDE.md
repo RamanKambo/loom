@@ -15,9 +15,10 @@ the open-items register. Workspace scripts: @package.json
   `packages/*/dist`, never the sources.
 - `npm run generate` regenerates `packages/core/schema/patch.schema.json` and
   `packages/core/src/generated/*` from the authored schemas; never edit those files by hand.
-- `npm run self-test` is the whole proof: the engine battery, the CLI's drift check, then every
-  profile check run by `packages/qualification` against Loom's own fixtures under
-  `qualification/policy.json`. The core has no per-test runner; `selfTest()` throws on the first
+- `npm run self-test` is the whole proof: the engine battery, the CLI's drift check, the release
+  wording of Loom's own documents, comments and JSON descriptions (`docs --check --self` reports
+  it with the other documentation checks), then every profile check run by
+  `packages/qualification` against Loom's own fixtures under `qualification/policy.json`. The core has no per-test runner; `selfTest()` throws on the first
   failed assertion and names it. `npm run test:workspace`, `npm run test:qualification`,
   `npm run test:cli` and `npm run test:mcp` run the adapters' node:test suites,
   `npm run test:fixtures` runs every case of `qualification/fixtures` against its authored

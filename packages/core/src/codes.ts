@@ -195,6 +195,7 @@ export const FINDING_RULES = {
   DOCUMENT_HISTORY_MARKER: { severity: 'warning', rule: 'A document or comment states the current fact; its change history belongs to version control.' },
   DOCUMENT_DUPLICATES_GENERATED: { severity: 'warning', rule: 'A hand-authored document cites a generated register rather than restating the records it owns.' },
   DOCUMENT_INTERFACE_DROPPED: { severity: 'error', rule: 'Regenerated documentation keeps every interface and retained behavior the cumulative accepted contract set still supports.' },
+  DOCUMENT_PROHIBITED_MARKER: { severity: 'error', rule: "Loom's own explanatory text names each capability descriptively, never by a requirement, task or phase label, a release-iteration label or a product-generation term." },
   CAPABILITY_CODE_UNRESOLVED: { severity: 'error', rule: 'Every capability names owning code that exists.' },
   CAPABILITY_CONTRACT_UNRESOLVED: { severity: 'error', rule: 'Every capability names a contract definition, profile or interface control document that exists.' },
   CAPABILITY_CASE_UNKNOWN: { severity: 'error', rule: 'Every capability names verification cases that exist.' },

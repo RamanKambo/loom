@@ -97,6 +97,8 @@ export type { ContextRequest, ContextResult } from './retrieval.js';
 export { describe, TOOL_EFFECTS } from './describe.js';
 export { describeTool, contextTool, checkReadinessTool, planChangeTool, compareBaselineTool, evaluateEvidenceTool } from './tools.js';
 export type { PlanChangeToolInput } from './tools.js';
+export { prohibitedMarkers } from './wording.js';
+export type { MarkerKind, ProhibitedMarker } from './wording.js';
 export { sampleModel } from './sample.js';
 export { selfTest } from './selftest/index.js';
 export { seededRegressions, declaredContradictions } from './selftest/corpus.js';

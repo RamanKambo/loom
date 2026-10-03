@@ -65,6 +65,7 @@ const RAISED_ELSEWHERE: Partial<Record<FindingCode, string>> = {
   DOCUMENT_HISTORY_MARKER: 'CLI documentation check',
   DOCUMENT_DUPLICATES_GENERATED: 'CLI documentation check',
   DOCUMENT_INTERFACE_DROPPED: 'CLI documentation check',
+  DOCUMENT_PROHIBITED_MARKER: 'CLI documentation check',
   CAPABILITY_CODE_UNRESOLVED: 'CLI capability check',
   CAPABILITY_CONTRACT_UNRESOLVED: 'CLI capability check',
   CAPABILITY_CASE_UNKNOWN: 'CLI capability check',

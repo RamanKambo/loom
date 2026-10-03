@@ -93,6 +93,7 @@ The CLI is run by path, as `node packages/cli/dist/index.js <command>`. The work
 | `check`, `check --all` | Ownership, configuration, validation, the trusted-baseline comparison, outputs and manifest; with `--all`, every descriptor under the boundary and global disjointness |
 | `write`, `docs` | Install the enabled artifacts, with the readiness, coverage and evidence views evaluated |
 | `docs --check` | Document links, record references, generated views and history markers |
+| `docs --check --self` | The same checks over this Loom installation's own repository, plus its release wording: no requirement, task or phase label, release-iteration label or product-generation term in a document, comment or JSON description |
 | `owner` | The model that owns a path |
 | `migrate` | Migrate a model document to the current format into a new file |
 | `baseline create`, `accept` | Record a baseline and an acceptance |
@@ -100,7 +101,7 @@ The CLI is run by path, as `node packages/cli/dist/index.js <command>`. The work
 | `qualify`, `evidence` | Run profile checks and inspect the evidence they produced |
 | `context`, `describe` | Bounded record retrieval and the capability description |
 | `coverage --check` | The capability register in `qualification/capabilities.json` |
-| `--self-test` | The engine battery, the drift gate and every profile check |
+| `--self-test` | The engine battery, the drift gate, the release wording and every profile check |
 
 An explicit `--model <path>` selects a document. Inside a governed workspace the configured scope, the trusted-baseline comparison and the qualification policy still apply, so a replacement model cannot evade the accepted-baseline comparison; with no governing descriptor the result reports validation-only mode.
 

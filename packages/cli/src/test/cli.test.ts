@@ -9,6 +9,7 @@ import { exportModel, modelRevision, renderTarget, sampleModel, schemaErrors, te
 import type { EvidenceObligation, EvidenceRecord, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
 import { putEvidence } from '@loom/workspace';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
+import { releaseWordingFindings } from '../docs.js';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
 const LOOM_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -493,6 +494,33 @@ test('docs --check flags a hand-authored copy of a generated register and a comm
   const r = loom(dir, 'docs', '--check');
   assert.ok(codes(r).includes('DOCUMENT_DUPLICATES_GENERATED'), r.stdout);
   assert.ok(codes(r).includes('DOCUMENT_HISTORY_MARKER'), r.stdout);
+});
+
+// Release-wording markers, assembled for the same reason as the history phrases above.
+const LABEL = ['REQ', '12'].join('-');
+const PHASE = ['phase', '2'].join(' ');
+const LEGACY = ['leg', 'acy'].join('');
+const COMPAT = ['back', 'ward compatibility'].join('');
+
+test("docs --check --self holds Loom's own repository to the release wording, which fires in documents, comments and JSON prose but never in a dependency or an adopter's text", () => {
+  const self = loom(scratch(), 'docs', '--check', '--self');
+  assert.equal(self.status, 0, self.stdout);
+  assert.deepEqual(codes(self), [], self.stdout);
+
+  const dir = scratch();
+  writeFileSync(join(dir, 'README.md'), `# Fixture\n\nSee ${LABEL}, built in ${PHASE}.\n\nSHA-256 over UTF-8 under MPL-2.0, account A-1, a stateDiagram-v2 view, protocol 2025-06-18, release 1.0.0.\n`);
+  mkdirSync(join(dir, 'examples'), { recursive: true });
+  writeFileSync(join(dir, 'examples', 'store.sql'), `-- The ${LEGACY} store.\nSELECT 1;\n`);
+  writeFileSync(join(dir, 'examples', 'model.json'), `${JSON.stringify({ description: `Kept for ${COMPAT}.`, pattern: '^[A-Z0-9]-x$', id: 'req.v2' })}\n`);
+  mkdirSync(join(dir, 'node_modules', 'dep'), { recursive: true });
+  writeFileSync(join(dir, 'node_modules', 'dep', 'README.md'), `The ${LEGACY} interface.\n`);
+  const found = releaseWordingFindings(dir);
+  assert.ok(found.every((f) => f.code === 'DOCUMENT_PROHIBITED_MARKER' && f.severity === 'error' && (f.fix ?? '').length > 0), JSON.stringify(found));
+  assert.deepEqual(found.map((f) => f.path).sort(), ['README.md:3', 'README.md:3', 'examples/model.json:1', 'examples/store.sql:1'], JSON.stringify(found));
+
+  const adopter = workspace();
+  writeFileSync(join(adopter, 'README.md'), `# Adopter\n\nThe ${LEGACY} importer stays until ${PHASE}.\n`);
+  assert.ok(!codes(loom(adopter, 'docs', '--check')).includes('DOCUMENT_PROHIBITED_MARKER'));
 });
 
 test('docs --check reports an accepted interface dropped from the regenerated documentation', () => {
