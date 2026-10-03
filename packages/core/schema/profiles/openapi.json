@@ -31,6 +31,10 @@
     {
       "construct": "http.async",
       "description": "Accepted (202) responses distinct from the eventual result, with the status operation."
+    },
+    {
+      "construct": "type.externalSchema",
+      "description": "A type of a pinned published contract, referenced as '<contract>:<type>', when the workspace adapter resolved a bundle that matches the pin's version and digest: the type is rendered under components.schemas as '<contract>.<type>', together with every bundle type it references."
     }
   ],
   "unsupported": [
@@ -56,7 +60,7 @@
     },
     {
       "construct": "type.externalSchema",
-      "reason": "A pinned external schema is referenced, not inlined.",
+      "reason": "Without a resolved bundle that matches its pin, a published-contract type has no schema to render; a type that takes its shape from a pinned external standard schema is referenced, not inlined.",
       "onUse": "draft"
     }
   ],

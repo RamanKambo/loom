@@ -90,8 +90,8 @@ export function unmatchedBreaks(items: readonly OasdiffItem[], changes: readonly
 const openapiCompatibility: Runner = async (ctx) => {
   const pair = ctx.fixtures.compatibility ?? (ctx.fixtures.baseline ? { baseline: ctx.fixtures.baseline, candidate: ctx.model } : null);
   if (!pair) return outcome('NOT_APPLICABLE', 'no accepted baseline document exists to compare the candidate document against');
-  const base = renderTarget(pair.baseline, 'openapi').files[0];
-  const rev = renderTarget(pair.candidate, 'openapi').files[0];
+  const base = renderTarget(pair.baseline, 'openapi', { inputs: ctx.inputs }).files[0];
+  const rev = renderTarget(pair.candidate, 'openapi', { inputs: ctx.inputs }).files[0];
   if (!base || !rev) return outcome('NOT_APPLICABLE', 'one side of the comparison has no HTTP binding');
   const basePath = join(ctx.dir, 'baseline.openapi.json');
   const revPath = join(ctx.dir, 'candidate.openapi.json');

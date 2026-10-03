@@ -1,4 +1,4 @@
-import type { CheckDefinition, CheckResult, EvidenceClaim, EvidenceRecord, Model, ProjectedFile, ProjectionTarget } from '@loom/core';
+import type { CheckDefinition, CheckResult, EvaluationInputs, EvidenceClaim, EvidenceRecord, Model, ProjectedFile, ProjectionTarget } from '@loom/core';
 import type { ToolInfo, ToolLocator } from './tools.js';
 
 /** One rendered artifact file, written into the run directory so native tools can read it. */
@@ -67,6 +67,8 @@ export interface RunnerContext {
   model: Model;
   artifacts: ArtifactSet;
   fixtures: Fixtures;
+  /** The verified inputs the artifacts were rendered with; a runner that renders again renders with the same. */
+  inputs: EvaluationInputs;
   /** The check's primary tool, already resolved within its version policy. */
   tool: ToolInfo;
   tools: ToolLocator;

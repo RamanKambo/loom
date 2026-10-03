@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { sampleModel, validate, type Model } from '@loom/core';
+import { sampleModel, validate, type Model, type PublishedContract } from '@loom/core';
 import { exec } from '../exec.js';
 import { runChecks, type RunOutput } from '../run.js';
 import { selfFixtures, selfQualify } from '../selfqualify.js';
@@ -242,6 +242,30 @@ test('openapi.compatibility passes when every oasdiff break is also a model brea
   assert.match(matched.reason ?? '', /reports [1-9]\d* breaking change/);
   const none = await one('openapi.compatibility', { fixtures: { compatibility: undefined, baseline: undefined } });
   assert.equal(none.result, 'NOT_APPLICABLE', none.reason);
+});
+
+test('a model that consumes a pinned published contract over HTTP qualifies its OpenAPI document with the resolved bundle, outside draft mode', NATIVE, async () => {
+  const dir = 'qualification/fixtures/api-database';
+  const read = <T>(rel: string): T => JSON.parse(readFileSync(join(LOOM_ROOT, dir, rel), 'utf8')) as T;
+  const model = valid(read<Model>('model.json'));
+  const bundle = read<PublishedContract>('published/payments-api@2.json');
+  const out = await runChecks({
+    root: LOOM_ROOT,
+    model,
+    checks: ['openapi.validate', 'openapi.compatibility'],
+    inputs: { publishedContracts: [bundle] },
+    fixtures: { baseline: read<Model>('baseline/model.json') },
+    policy: selfPolicy(),
+  });
+  const byCheck = new Map(out.run.checks.map((c) => [c.check, c]));
+  assert.equal(byCheck.get('openapi.validate')?.result, 'PASS', byCheck.get('openapi.validate')?.reason);
+  assert.equal(byCheck.get('openapi.compatibility')?.result, 'PASS', byCheck.get('openapi.compatibility')?.reason);
+  assert.doesNotMatch(byCheck.get('openapi.validate')?.reason ?? '', /draft/);
+  const withoutBundle = await runChecks({ root: LOOM_ROOT, model, checks: ['openapi.validate'], policy: selfPolicy() }).then(
+    () => 'rendered',
+    (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  );
+  assert.match(withoutBundle, /refusing to project 'openapi'/, 'without the bundle the document is refused rather than qualified');
 });
 
 test('json-schema.compile rejects a schema Ajv cannot compile', NATIVE, async () => {

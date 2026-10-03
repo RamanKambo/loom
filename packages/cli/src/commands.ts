@@ -467,6 +467,7 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
     model: s.model,
     checks,
     fixtures,
+    inputs: s.inputs,
     ...(s.inputs.policy ? { policy: s.inputs.policy } : {}),
     ...(signer ? { signer } : {}),
     ...(has(a, 'store') ? { store: true } : {}),

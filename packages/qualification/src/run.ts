@@ -12,6 +12,7 @@ import {
   recordHash,
   type CheckDefinition,
   type CheckResult,
+  type EvaluationInputs,
   type EvidenceRecord,
   type Finding,
   type Model,
@@ -39,6 +40,8 @@ export interface RunOptions {
   checks: ReadonlyArray<CheckDefinition | string>;
   artifacts?: ArtifactSet;
   fixtures?: Fixtures;
+  /** Verified inputs the artifacts are rendered with, such as the resolved published-contract bundles. */
+  inputs?: EvaluationInputs;
   policy?: Policy;
   environmentId?: string;
   signer?: Signer;
@@ -148,7 +151,9 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
   const evidence: EvidenceRecord[] = [];
   const outcomes: RunRecord['checks'] = [];
   try {
-    const artifacts = options.artifacts ?? materialize(options.model, join(runDir, 'artifacts'));
+    const inputs = options.inputs ?? {};
+    // Absent inputs and empty inputs render different views: 'not evaluated' against 'evaluated with nothing supplied'.
+    const artifacts = options.artifacts ?? materialize(options.model, join(runDir, 'artifacts'), options.inputs ? { inputs } : {});
     const index = indexModel(options.model);
     for (const check of checks) {
       const checkStarted = new Date().toISOString();
@@ -171,7 +176,7 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
         log(`check ${check.id}: running ${check.runner} with ${resolved.tool.name} ${resolved.tool.version}`);
         try {
           result = await withTimeout(
-            run({ check, runId, dir, root: options.root, model: options.model, artifacts, fixtures: options.fixtures ?? {}, tool: resolved.tool, tools, timeoutMs, resources }),
+            run({ check, runId, dir, root: options.root, model: options.model, artifacts, fixtures: options.fixtures ?? {}, inputs, tool: resolved.tool, tools, timeoutMs, resources }),
             timeoutMs,
             check.id,
           );

@@ -31,17 +31,23 @@ function withNull(schema: Json, nullable: boolean): Json {
   return { anyOf: [schema, { type: 'null' }] };
 }
 
+/** The $ref of the schema of a type id, as one document places it; `owner` is the record that holds the reference. */
+export type RefTarget = (id: string, owner: RecordRef) => string;
+
+/** References into one document under `prefix`, which holds no schema of a published-contract type. */
+export const localRefs = (prefix: string, ctx: RenderContext): RefTarget => (id, owner) => {
+  if (splitQualified(id)) ctx.unsupported('type.externalSchema', owner, `reference '${id}' points into a published contract`);
+  return `${prefix}${id}`;
+};
+
 /**
- * JSON Schema of one value shape. `refPrefix` is '#/$defs/' for the JSON
- * Schema projection and '#/components/schemas/' for OpenAPI, so the two share
- * one mapping and cannot drift.
+ * JSON Schema of one value shape. The JSON Schema and OpenAPI projections
+ * differ only in where `refs` places a referenced type, so the two share one
+ * mapping and cannot drift.
  */
-export function valueSchema(s: ValueShape, nullable: boolean, refPrefix: string, owner: RecordRef, ctx: RenderContext, openapi: boolean): Json {
+export function valueSchema(s: ValueShape, nullable: boolean, refs: RefTarget, owner: RecordRef, ctx: RenderContext, openapi: boolean): Json {
   const b = s.bounds ?? {};
-  const ref = (id: string): Json => {
-    if (splitQualified(id)) ctx.unsupported('type.externalSchema', owner, `reference '${id}' points into a published contract`);
-    return { $ref: `${refPrefix}${id}` };
-  };
+  const ref = (id: string): Json => ({ $ref: refs(id, owner) });
   let schema: Json;
   switch (s.kind) {
     case 'enum': {
@@ -87,7 +93,7 @@ export function valueSchema(s: ValueShape, nullable: boolean, refPrefix: string,
       schema = ref(s.ref ?? '');
       break;
     case 'array':
-      schema = { type: 'array', items: s.items ? valueSchema(s.items, false, refPrefix, owner, ctx, openapi) : {} };
+      schema = { type: 'array', items: s.items ? valueSchema(s.items, false, refs, owner, ctx, openapi) : {} };
       if (b.minItems !== undefined) schema['minItems'] = b.minItems;
       if (b.maxItems !== undefined) schema['maxItems'] = b.maxItems;
       break;
@@ -99,8 +105,8 @@ export function valueSchema(s: ValueShape, nullable: boolean, refPrefix: string,
   return withNull(schema, nullable);
 }
 
-function propertySchema(t: TypeDef, p: Property, refPrefix: string, ctx: RenderContext, openapi: boolean): Json {
-  const schema = valueSchema(p, p.nullable, refPrefix, { kind: 'type', id: t.id }, ctx, openapi);
+function propertySchema(p: Property, refs: RefTarget, owner: RecordRef, ctx: RenderContext, openapi: boolean): Json {
+  const schema = valueSchema(p, p.nullable, refs, owner, ctx, openapi);
   if (p.description !== undefined) schema['description'] = p.units ? `${p.description} (${p.units})` : p.description;
   else if (p.units !== undefined) schema['description'] = `In ${p.units}.`;
   if (p.origin === 'system' || p.origin === 'derived') schema['readOnly'] = true;
@@ -108,18 +114,22 @@ function propertySchema(t: TypeDef, p: Property, refPrefix: string, ctx: RenderC
   return schema;
 }
 
-/** Object schema of a type: every property, the required set, nothing undeclared. */
-export function typeSchema(t: TypeDef, refPrefix: string, ctx: RenderContext, openapi: boolean): Json {
+/**
+ * Object schema of a type: every property, the required set, nothing
+ * undeclared. `owner` is the in-scope record an unsupported construct is
+ * reported against; a type of a published contract is no record of the model.
+ */
+export function typeSchema(t: TypeDef, refs: RefTarget, ctx: RenderContext, openapi: boolean, owner: RecordRef = { kind: 'type', id: t.id }): Json {
   const properties: Json = {};
   const required: string[] = [];
   for (const p of t.properties) {
-    properties[p.name] = propertySchema(t, p, refPrefix, ctx, openapi);
+    properties[p.name] = propertySchema(p, refs, owner, ctx, openapi);
     if (p.required) required.push(p.name);
   }
   const schema: Json = { type: 'object', properties, additionalProperties: false };
   if (t.description !== undefined) schema['description'] = t.description;
   if (required.length) schema['required'] = required;
-  if (t.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'type', id: t.id }, `type '${t.id}' takes its shape from a pinned external schema`);
+  if (t.externalSchema) ctx.unsupported('type.externalSchema', owner, `type '${t.id}' takes its shape from a pinned external schema`);
   return schema;
 }
 
@@ -136,7 +146,8 @@ export function coverTypes(model: Model, ctx: RenderContext, file: string, base:
 /** JSON Schema 2020-12 document with one $defs entry per type. */
 export function projectJsonSchema(model: Model, ctx: RenderContext): Record<string, Json> {
   const defs: Json = {};
-  for (const t of model.types) defs[t.id] = typeSchema(t, '#/$defs/', ctx, false);
+  const refs = localRefs('#/$defs/', ctx);
+  for (const t of model.types) defs[t.id] = typeSchema(t, refs, ctx, false);
   coverTypes(model, ctx, JSON_SCHEMA_FILE, ['$defs']);
   return {
     [JSON_SCHEMA_FILE]: {

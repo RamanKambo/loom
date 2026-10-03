@@ -64,6 +64,13 @@ export const versionRules: Rule = (ctx) => {
 export const bundleFor = (pin: PublishedContractRef, bundles: readonly PublishedContract[]): PublishedContract | undefined =>
   bundles.find((b) => b.publisher === pin.publisher && b.contract === pin.contract && b.version === pin.version) ?? bundles.find((b) => b.publisher === pin.publisher && b.contract === pin.contract);
 
+/** The resolved bundle only when it is exactly what the pin names: version, supported schema version and digest of its content. */
+export function pinnedBundle(pin: PublishedContractRef, bundles: readonly PublishedContract[]): PublishedContract | undefined {
+  const b = bundleFor(pin, bundles);
+  if (!b || b.version !== pin.version || b.schemaVersion !== MODEL_FORMAT || pin.schemaVersion !== MODEL_FORMAT) return undefined;
+  return b.digest === pin.digest && canonicalHash(b.content) === pin.digest ? b : undefined;
+}
+
 /** Resolved published contracts: identity, digest, schema version and the records referenced inside them. */
 export const publishedRules: Rule = (ctx) => {
   const bundles = ctx.inputs.publishedContracts;

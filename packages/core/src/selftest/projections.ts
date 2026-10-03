@@ -1,9 +1,12 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
-import type { CoverageManifest, Model, ProjectedFile, ProjectionTarget, RecordRef } from '../generated/types.js';
+import type { CoverageManifest, Model, ProjectedFile, ProjectionTarget, Property, PublishedContract, RecordRef } from '../generated/types.js';
 import { SCHEMA_BUNDLE } from '../generated/schemas.js';
+import { FINDING_RULES } from '../codes.js';
 import { canonicalStringify, deepEqual } from '../canonical.js';
-import { modelRevision } from '../hash.js';
+import { canonicalHash, modelRevision } from '../hash.js';
+import { validate } from '../validate.js';
+import type { EvaluationInputs } from '../inputs.js';
 import { importModel } from '../exportModel.js';
 import { LoomInvalidModelError } from '../errors.js';
 import { schemaErrors } from '../schema-runtime.js';
@@ -261,8 +264,57 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       const multipart = fresh();
       pick(multipart.operations, 'order.place').bindings![0]!.requestMediaType = 'multipart/form-data';
       assertThrows(t, () => renderTarget(multipart, 'openapi', { draft: true }), 'a multipart body is refused, never drafted', (x) => x instanceof LoomInvalidModelError && x.findings.some((f) => f.code === 'PROFILE_UNSUPPORTED_CONSTRUCT'));
-      for (const [target, construct] of [['sql', 'check.prose'], ['csharp-contract-tests', 'type.union'], ['typescript-contract-tests', 'type.union'], ['openapi', 'http.multipart'], ['openapi', 'type.decimalRange'], ['json-schema', 'type.externalSchema']] as const) {
+      for (const [target, construct] of [['sql', 'check.prose'], ['csharp-contract-tests', 'type.union'], ['typescript-contract-tests', 'type.union'], ['openapi', 'http.multipart'], ['openapi', 'type.decimalRange'], ['openapi', 'type.externalSchema'], ['json-schema', 'type.externalSchema']] as const) {
         assert(t, unsupportedConstructs(target).includes(construct), `${target}'s profile declares ${construct}, which its renderer can report`);
+      }
+    },
+  },
+  {
+    name: 'published-contract types',
+    run: (t) => {
+      const field = (name: string, extra: Partial<Property> = {}): Property => ({ name, kind: 'string', required: true, nullable: false, immutable: false, origin: 'system', ...extra });
+      const content: PublishedContract['content'] = {
+        types: [
+          { id: 'payment', version: 2, owner: 'payments', representation: 'response', properties: [field('id', { kind: 'uuid', immutable: true }), field('amount', { kind: 'ref', ref: 'money' })] },
+          { id: 'money', version: 1, owner: 'payments', representation: 'response', properties: [field('value', { kind: 'decimal', decimal: { precision: 12, scale: 2 } }), field('currency')] },
+          { id: 'problem', version: 1, owner: 'payments', representation: 'response', properties: [field('title')] },
+          { id: 'refund', version: 1, owner: 'payments', representation: 'response', properties: [field('id', { kind: 'uuid' })] },
+        ],
+        operations: [],
+        routines: [],
+        securitySchemes: [],
+      };
+      const digest = canonicalHash(content);
+      const bundle: PublishedContract = { bundleVersion: 1, publisher: 'team-payments', contract: 'payments-api', version: 2, schemaVersion: 1, profiles: ['openapi'], digest, content };
+      const m = fresh();
+      m.publishedContracts.push({ id: 'payments', publisher: 'team-payments', contract: 'payments-api', version: 2, digest, schemaVersion: 1, consumers: ['billing', 'ordering'] });
+      pick(m.types, 'invoice').properties.push({ name: 'payment', kind: 'ref', ref: 'payments:payment', required: false, nullable: true, immutable: false, origin: 'external' });
+      pick(m.operations, 'order.get').bindings![0]!.responses!.find((r) => r.status === 404)!.type = 'payments:problem';
+      assert(t, !codesOf(validate(m, { publishedContracts: [bundle] })).some((c) => FINDING_RULES[c].severity === 'error'), 'the model that consumes the pinned types is valid with its bundle');
+
+      const resolved = renderTarget(m, 'openapi', { inputs: { publishedContracts: [bundle] } });
+      const doc = JSON.parse(resolved.files[0]!.content) as { components: { schemas: Record<string, { properties?: Record<string, unknown> }> } };
+      const published = Object.keys(doc.components.schemas).filter((k) => k.startsWith('payments.')).sort();
+      assert(t, !resolved.draft && resolved.coverage.complete && resolved.findings.length === 0, `with the resolved bundle the document is complete, not a draft: ${codesOf(resolved.findings).join(', ')}`);
+      assert(t, deepEqual(published, ['payments.money', 'payments.payment', 'payments.problem']), `each referenced bundle type is a component '<contract>.<type>', its own references followed and nothing unreferenced added: ${published.join(', ')}`);
+      assert(t, JSON.stringify(doc.components.schemas['invoice']!.properties!['payment']).includes('#/components/schemas/payments.payment'), 'the model type refers to the pinned type by its component key');
+      const refs: string[] = [];
+      const walk = (v: unknown): void => {
+        if (Array.isArray(v)) v.forEach(walk);
+        else if (v !== null && typeof v === 'object') for (const [k, x] of Object.entries(v)) k === '$ref' ? refs.push(String(x).replace('#/components/schemas/', '')) : walk(x);
+      };
+      walk(doc);
+      const dangling = refs.filter((r) => !(r in doc.components.schemas));
+      assert(t, refs.length > 0 && dangling.length === 0, `every $ref resolves inside the document: ${dangling.join(', ')}`);
+      assert(t, resolved.files[0]!.content === renderTarget(m, 'openapi', { inputs: { publishedContracts: [bundle] } }).files[0]!.content, 'the document with published types renders deterministically');
+
+      const tampered: PublishedContract = { ...bundle, content: { ...content, types: content.types.slice(0, 3) } };
+      for (const [label, inputs] of [['without a resolved bundle', {}], ['with a bundle that does not match the pin', { publishedContracts: [tampered] }]] as Array<[string, EvaluationInputs]>) {
+        const refused = assertThrows(t, () => renderTarget(m, 'openapi', { inputs }), `${label} the pinned types are unsupported and the document is refused outside draft mode`, (e) => e instanceof LoomInvalidModelError) as LoomInvalidModelError;
+        assert(t, refused.findings.length > 0 && codesOf(observe(t, refused.findings)).every((c) => c === 'PROFILE_UNSUPPORTED_CONSTRUCT') && refused.findings.every((f) => f.message.includes('type.externalSchema')), `${label} the refusal names the published-contract construct`);
+        const draft = renderTarget(m, 'openapi', { draft: true, inputs });
+        const unsupported = draft.coverage.items.filter((i) => i.status === 'unsupported').map((i) => key(i.ref)).sort();
+        assert(t, draft.draft && !draft.coverage.complete && deepEqual(unsupported, ['operation:order.get', 'type:invoice']), `${label} only a draft renders, naming each record that carries a pinned type: ${unsupported.join(', ')}`);
       }
     },
   },
