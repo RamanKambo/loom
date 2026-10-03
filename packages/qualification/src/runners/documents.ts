@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 import { exportModel, importModel, indexModel, renderAll, sampleObject } from '@loom/core';
-import { openWorkspace, checkOutputs } from '@loom/workspace';
+import { checkOutputs, openSession, openWorkspace } from '@loom/workspace';
 import { filesOfTarget } from '../artifacts.js';
 import { outcome, type Runner } from '../types.js';
 
@@ -148,13 +148,15 @@ const mermaidParseRunner: Runner = async (ctx) => {
 
 /**
  * Generated files equal a fresh projection. In a workspace the installed
- * bundle and its manifest are checked; otherwise the run's own artifacts are
- * re-rendered and compared byte for byte, CRLF read as LF.
+ * bundle and its manifest are checked, rendered with the verified inputs of
+ * the workspace session that `loom write` installs with; otherwise the run's
+ * own artifacts are re-rendered and compared byte for byte, CRLF read as LF.
  */
 const projectionDrift: Runner = async (ctx) => {
   const ws = openWorkspace(ctx.root);
   if (ws.value) {
-    const r = checkOutputs(ws.value);
+    // The readiness, coverage and evidence views summarize these inputs, so without them every such view reads as drift.
+    const r = checkOutputs(ws.value, { inputs: openSession(ctx.root).inputs });
     const errors = r.findings.filter((f) => f.severity === 'error');
     return errors.length
       ? outcome('FAIL', `${errors.length} output finding(s): ${errors.slice(0, 5).map((f) => `${f.code} ${f.path}`).join('; ')}`)
