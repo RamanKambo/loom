@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Tool input contracts and the tool-specific 'data' payloads of the result envelope. The MCP input and output schemas, the CLI JSON output and the designer's adapter calls are all derived from these definitions.",
+  "$comment": "Tool input contracts, the tool-specific 'data' payloads of the result envelope and the shape of the operation catalogue. The MCP input and output schemas, the CLI JSON output and the designer's adapter calls are all derived from these definitions; the tool descriptions, the CLI usage text and the operation reference are generated from the catalogue in operations.json beside this file.",
   "$defs": {
     "ProjectionTarget": {
       "enum": [
@@ -679,6 +679,164 @@
         "obligations": { "type": "array", "items": { "$ref": "#/$defs/EvidenceObligation" } },
         "acceptanceRequired": { "type": "boolean" },
         "changeClasses": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+      }
+    },
+    "OperationCatalogue": {
+      "description": "Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalogueVersion", "cli", "presenceRules", "operations"],
+      "properties": {
+        "catalogueVersion": { "const": 1 },
+        "cli": {
+          "description": "The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "synopsis", "invocation", "commonOptions", "exitStatus"],
+          "properties": {
+            "title": { "$ref": "common.schema.json#/$defs/Text" },
+            "synopsis": { "$ref": "common.schema.json#/$defs/Text" },
+            "invocation": { "description": "The command line that runs the CLI from the Loom root.", "$ref": "common.schema.json#/$defs/Text" },
+            "commonOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["usage"],
+                "properties": {
+                  "usage": { "type": "string", "pattern": "^--[a-z][a-z-]*( <[a-z]+>)?$" },
+                  "purpose": { "$ref": "common.schema.json#/$defs/Text" }
+                }
+              }
+            },
+            "exitStatus": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        },
+        "presenceRules": { "type": "array", "items": { "$ref": "#/$defs/CataloguePresenceRule" } },
+        "operations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/CatalogueOperation" } }
+      }
+    },
+    "CatalogueOperation": {
+      "description": "One operation: what it does, what it needs, what it changes, when it is refused, the next useful action and how the MCP server and the command line expose it. 'none' marks an interface that does not expose the operation, and 'reason' then says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "prerequisites", "effects", "refusals", "nextAction", "exposure"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][A-Za-z]*$" },
+        "purpose": { "description": "One sentence.", "type": "string", "pattern": "^[A-Z].*[.]$" },
+        "prerequisites": { "description": "Clauses, each without a closing period.", "type": "array", "items": { "type": "string", "pattern": "^[a-z'(].*[^.;]$" } },
+        "effects": { "description": "The effect on persisted state, named in the vocabulary of DescribeData tools.", "type": "string", "pattern": "^[a-z]+$" },
+        "refusals": {
+          "description": "The important refusals: a cause of the result envelope's Refusal and when it is given.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cause", "when"],
+            "properties": {
+              "cause": { "type": "string", "pattern": "^[a-z]+(-[a-z]+)*$" },
+              "when": { "type": "string", "pattern": "^[a-z'(].*[^.;]$" }
+            }
+          }
+        },
+        "nextAction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action"],
+          "properties": {
+            "action": { "type": "string", "pattern": "^[a-z'(].*[^.;]$" },
+            "operation": { "description": "The operation that performs the action.", "type": "string", "pattern": "^[a-z][A-Za-z]*$" }
+          }
+        },
+        "exposure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mcp", "cli"],
+          "properties": {
+            "mcp": {
+              "oneOf": [
+                { "const": "none" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["tool", "input", "data", "presence", "examples"],
+                  "properties": {
+                    "tool": { "type": "string", "pattern": "^loom\\.[a-z][A-Za-z]*$" },
+                    "input": { "description": "The contract definition of the tool's arguments.", "type": "string", "pattern": "^[A-Z][A-Za-z]*$" },
+                    "data": { "description": "The contract definition of the result's 'data'.", "type": "string", "pattern": "^[A-Z][A-Za-z]*$" },
+                    "presence": { "description": "The presence rules of the input, by id, in the order the server checks them.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["description", "input"],
+                        "properties": {
+                          "description": { "$ref": "common.schema.json#/$defs/Text" },
+                          "input": { "description": "Arguments that satisfy the input definition.", "type": "object" }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "cli": {
+              "oneOf": [
+                { "const": "none" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["command", "usage", "examples"],
+                  "properties": {
+                    "command": { "description": "The command and the switches that select this operation, as typed after the program.", "type": "string", "pattern": "^(--)?[a-z][a-z-]*( [a-z-]+)*$" },
+                    "usage": { "description": "The usage alternatives, printed joined by ' | '.", "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } },
+                    "examples": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["description", "command"],
+                        "properties": {
+                          "description": { "$ref": "common.schema.json#/$defs/Text" },
+                          "command": { "description": "The exact command line after the program, starting with the exposure's command.", "$ref": "common.schema.json#/$defs/Text" }
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "reason": { "description": "Why an interface does not expose the operation; present exactly when one of them is 'none'.", "$ref": "common.schema.json#/$defs/Text" }
+          }
+        }
+      }
+    },
+    "CataloguePresenceRule": {
+      "description": "A presence rule of an MCP tool input: the member combinations it accepts. The advertised input schema leaves root presence combinators out, so the server checks these rules before anything runs, refuses a request matching no accepted combination with the finding below, and the tool description states each rule.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "accept", "code", "path", "message", "fix"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "accept": {
+          "description": "A combination holds when every member it lists as present is sent and every member it lists as absent is not.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["present", "absent"],
+            "properties": {
+              "present": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" } },
+              "absent": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" } }
+            }
+          }
+        },
+        "code": { "$ref": "result.schema.json#/$defs/FindingCode" },
+        "path": { "type": "string", "minLength": 1 },
+        "message": { "$ref": "common.schema.json#/$defs/Text" },
+        "fix": { "$ref": "common.schema.json#/$defs/Text" }
       }
     }
   }

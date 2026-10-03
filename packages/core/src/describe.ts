@@ -3,25 +3,13 @@ import { CONTRACT_DIGEST } from './generated/digest.js';
 import { SCHEMA_BUNDLE } from './generated/schemas.js';
 import { COLLECTIONS, PATCH_VARIANTS } from './generated/registry.js';
 import { PROFILES } from './generated/contracts.js';
+import { MCP_TOOLS, TOOL_EXAMPLES } from './generated/operations.js';
 import { FINDING_RULES } from './codes.js';
 import { DIFF_RULES } from './field-policy.js';
 import { PROJECTION_FILES, PROJECTION_TARGETS } from './project.js';
 
-/** Every tool the shared services expose, with its effect on persisted state. */
-export const TOOL_EFFECTS: DescribeData['tools'] = [
-  { name: 'loom.validate', effects: 'none' },
-  { name: 'loom.mutate', effects: 'writes' },
-  { name: 'loom.diff', effects: 'none' },
-  { name: 'loom.project', effects: 'none' },
-  { name: 'loom.projectAll', effects: 'none' },
-  { name: 'loom.export', effects: 'none' },
-  { name: 'loom.import', effects: 'none' },
-  { name: 'loom.selftest', effects: 'none' },
-  { name: 'loom.describe', effects: 'none' },
-  { name: 'loom.context', effects: 'reads' },
-  { name: 'loom.checkReadiness', effects: 'reads' },
-  { name: 'loom.planChange', effects: 'none' },
-];
+/** Every tool the shared services expose, in the order the MCP server lists them, with its effect on persisted state. */
+export const TOOL_EFFECTS: DescribeData['tools'] = MCP_TOOLS.map((t) => ({ name: t.name, effects: t.effects }));
 
 const LIMITS: readonly string[] = [
   'Model validation establishes conformance to the declared rule set; it does not establish that the requirements are correct or complete.',
@@ -30,22 +18,10 @@ const LIMITS: readonly string[] = [
   'A prose predicate is never evaluated; an expression predicate is type-checked, never run against live data.',
 ];
 
-const EXAMPLES: DescribeData['examples'] = [
-  { tool: 'loom.describe', description: 'List the patch operations only.', input: { sections: ['patches'] } },
-  {
-    tool: 'loom.mutate',
-    description: 'Preview changing a mutation guard in the workspace model; nothing persists on a dry run.',
-    input: { workspace: true, expectedRevision: 'sha256:<current model revision>', patch: { op: 'update', collection: 'mutations', id: 'order.pay', set: { guard: { form: 'prose', text: 'Payment for the order total has been captured.' } } }, dryRun: true },
-  },
-  { tool: 'loom.checkReadiness', description: 'Is the billing component ready for implementation?', input: { workspace: true, task: { class: 'implementation', mode: 'component', components: ['billing'] } } },
-  { tool: 'loom.context', description: 'The required context of one component within 50 records.', input: { workspace: true, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 50 } } },
-  { tool: 'loom.planChange', description: 'Preview adding an optional property against a base revision.', input: { workspace: true, baseRevision: 'sha256:<current model revision>', patch: { op: 'addItem', collection: 'types', id: 'order', field: 'properties', item: { name: 'currency', kind: 'string', required: false, nullable: true, immutable: false, origin: 'client' } } } },
-];
-
 /**
  * The capabilities this build supports, read from the generated contract, the
- * rule tables and the renderer registry, so the description cannot disagree
- * with what runs.
+ * operation catalogue, the rule tables and the renderer registry, so the
+ * description cannot disagree with what runs.
  */
 export function describe(input: DescribeInput = {}): DescribeData {
   const want = (section: NonNullable<DescribeInput['sections']>[number]): boolean => !input.sections || input.sections.includes(section);
@@ -71,7 +47,7 @@ export function describe(input: DescribeInput = {}): DescribeData {
       : [],
     profiles: want('profiles') ? [...profiles] : [],
     tools: want('tools') ? TOOL_EFFECTS : [],
-    examples: want('examples') ? EXAMPLES : [],
+    examples: want('examples') ? TOOL_EXAMPLES : [],
     unavailable: targets.filter((t) => !PROJECTION_TARGETS.includes(t)).map((t) => ({ feature: `projection target '${t}'`, reason: 'No renderer for this target is registered in this build.' })),
     proofLimits: want('limits') ? [...LIMITS, ...PROFILES.flatMap((p) => p.proofLimits)] : [],
   };

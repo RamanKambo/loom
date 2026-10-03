@@ -15,7 +15,6 @@ import {
   exportModel,
   migrateModel,
   modelRevision,
-  mutateTool,
   planChangeTool,
   projectToFiles,
   refusal,
@@ -53,6 +52,7 @@ import {
   installOutputs,
   listEvidence,
   loomDirOf,
+  mutateWorkspace,
   openSession,
   readConfig,
   readEvidence,
@@ -61,7 +61,6 @@ import {
   signRecord,
   stampSession,
   verifyRecord,
-  writeModel,
   type Session,
   type Workspace,
 } from '@loom/workspace';
@@ -411,26 +410,19 @@ export function cmdPlan(ctx: Context): CommandResult {
 }
 
 /**
- * A persistent mutation: refused unless the workspace model is still at the
- * expected revision, computed by the pure core, then written by the workspace
- * adapter under its lock, which rechecks the base revision.
+ * A persistent mutation through the workspace adapter, the one the MCP server
+ * performs too: refused unless the workspace model is still at the expected
+ * revision, computed by the pure core, then written under the workspace lock,
+ * which rechecks the base revision. The patch file is read only once the
+ * revision holds.
  */
 export function cmdMutate(ctx: Context): CommandResult {
   const s = session(ctx);
   if (!s.workspace || !s.model || s.mode !== 'workspace') return noWorkspace('loom.mutate', s);
   const expected = required(ctx.args, 'expected');
-  const current = modelRevision(s.model);
-  if (current !== expected) {
-    const f = asFinding('STALE_BASE_REVISION', '(root)', `the model is at ${current}, not the expected ${expected}`, 're-read the model, re-apply the change against it and send the new expected revision');
-    return { env: stampSession(envelope('loom.mutate', { model: s.model, findings: [f], refusal: refusal('stale-base', 'the model changed since the expected revision; nothing was written') }), s) };
-  }
-  const dryRun = has(ctx.args, 'dry-run');
-  const env = mutateTool({ model: s.model, ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun }, s.inputs);
-  if (env.outcome === 'refused' || dryRun) return { env: stampSession(env, s) };
-  const data = env.data as MutateData;
-  const written = writeModel(s.workspace.root, data.model as Model, expected);
-  if (written.outcome === 'refused') return { env: stampSession({ ...written, tool: 'loom.mutate' }, s) };
-  return { env: stampSession({ ...env, data: { ...data, committed: true } }, s), detail: [`committed revision ${data.revision ?? ''}`] };
+  const env = mutateWorkspace(s, expected, () => ({ ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun: has(ctx.args, 'dry-run') }));
+  const data = env.data as MutateData | undefined;
+  return data?.committed === true ? { env, detail: [`committed revision ${data.revision ?? ''}`] } : { env };
 }
 
 const qualificationOf = (aggregate: string): QualificationState =>

@@ -21,12 +21,13 @@
     { "name": "installOutputs", "kind": "function", "input": "tools.schema.json#/$defs/ProjectData", "output": "workspace.schema.json#/$defs/OutputManifest", "refusals": ["policy-failure"], "effects": "writes", "concurrency": "Per-file atomic replacement; an interrupted bundle stays visibly incomplete in the journal and the manifest." },
     { "name": "readTrustedBaseline", "kind": "function", "input": "none", "output": "assurance.schema.json#/$defs/Baseline", "refusals": ["unresolved-context", "policy-failure"], "effects": "reads", "concurrency": "Reads committed content of the trusted ref only." },
     { "name": "readPolicy", "kind": "function", "input": "none", "output": "assurance.schema.json#/$defs/Policy", "refusals": ["unresolved-context", "policy-failure"], "effects": "reads", "concurrency": "Reads committed content of the trusted ref only." },
-    { "name": "writeModel", "kind": "function", "input": "tools.schema.json#/$defs/MutateInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "stale-base", "policy-failure"], "effects": "writes", "concurrency": "Compare-and-swap on the expected base revision under an exclusive lock file; a stale base is refused and nothing is written." },
+    { "name": "writeModel", "kind": "function", "input": "tools.schema.json#/$defs/MutateInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "stale-base", "policy-failure"], "effects": "writes", "concurrency": "The persistent mutation the CLI and the MCP server share: the expected base revision is checked before the core computes the change and again, as a compare-and-swap, under an exclusive lock file while writing; a stale base, a refused change and a dry run write nothing." },
     { "name": "evidenceStore", "kind": "record", "input": "assurance.schema.json#/$defs/EvidenceRecord", "output": "assurance.schema.json#/$defs/EvidenceRecord", "refusals": ["unresolved-context"], "effects": "writes", "concurrency": "Append-only; records are content-addressed and never rewritten." },
     { "name": "resolvePublishedContracts", "kind": "function", "input": "none", "output": "workspace.schema.json#/$defs/PublishedContract", "refusals": ["unresolved-context"], "effects": "reads", "concurrency": "Reads explicitly pinned bundles only; never a network import." }
   ],
   "consumes": [
     { "component": "core", "interface": "validate" },
+    { "component": "core", "interface": "mutate" },
     { "component": "core", "interface": "compareBaseline" },
     { "component": "core", "interface": "evaluateEvidence" },
     { "component": "core", "interface": "checkRevision" },

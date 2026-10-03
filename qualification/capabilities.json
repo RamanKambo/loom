@@ -17,7 +17,7 @@
     },
     {
       "id": "contract.digest",
-      "description": "The contract digest is the SHA-256 of the canonical schema bundle, profiles, projection profiles and interface control documents, regenerated with the contract and named in every result and every baseline.",
+      "description": "The contract digest is the SHA-256 of the canonical schema bundle, profiles, projection profiles, interface control documents and operation catalogue, regenerated with the contract and named in every result and every baseline.",
       "code": ["packages/core/scripts/generate.mjs#generate","packages/core/scripts/generate.mjs#sha256","packages/core/scripts/generate.mjs#canonical","packages/core/src/generated/digest.ts#CONTRACT_DIGEST","packages/core/src/envelope.ts#revisionsOf"],
       "contract": ["result.schema.json#/$defs/RevisionSet","assurance.schema.json#/$defs/Baseline/properties/generator"],
       "verification": ["cli.contract.the-contract-digest-is-regenerated-from-every-authored-schema-profile-and-interface-control-document","core.selftest.contract","core.selftest.result-envelopes","mcp-server.mcp.a-workspace-result-names-the-model-configuration-profile-policy-and-baseline-revisions-it-was-evaluated-against-and-an-inline-result-only-its-own"]
@@ -42,6 +42,13 @@
       "code": ["packages/core/scripts/generate.mjs#checkIcdBoundaries","packages/core/scripts/generate.mjs#loadData"],
       "contract": ["profile.schema.json#/$defs/Icd","icd/core.json","icd/workspace.json","icd/qualification.json","icd/cli.json","icd/mcp.json","icd/designer.json"],
       "verification": ["cli.contract.an-interface-control-document-that-consumes-an-interface-no-component-provides-fails-generation","cli.contract.generate-check-accepts-the-authored-contract-and-refuses-a-generated-artifact-edited-by-hand"]
+    },
+    {
+      "id": "contract.operations",
+      "description": "Every operation is authored once in the operation catalogue with its purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP and command-line exposures; generation checks its references, vocabularies and examples and derives the MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md, the build fails on drift, and a test fails on a catalogued tool or command without a handler or a handler without a catalogue entry.",
+      "code": ["packages/core/scripts/generate.mjs#catalogueProblems","packages/core/scripts/generate.mjs#operationViews","packages/core/scripts/generate.mjs#toolDescription","packages/core/scripts/generate.mjs#cliUsage","packages/core/scripts/generate.mjs#operationReference","packages/core/src/generated/operations.ts#MCP_TOOLS","packages/core/src/generated/operations.ts#CLI_USAGE","packages/core/src/operations.ts#handlerGaps","packages/core/src/describe.ts#TOOL_EFFECTS","packages/mcp-server/src/tools.ts#presenceFindings","packages/mcp-server/src/tools.ts#HANDLED_TOOLS","packages/cli/src/cli.ts#HANDLED_COMMANDS"],
+      "contract": ["operations.json","tools.schema.json#/$defs/OperationCatalogue","tools.schema.json#/$defs/CatalogueOperation","tools.schema.json#/$defs/CataloguePresenceRule","fixtures/operation-catalogue.json","fixtures/catalogue-operation.json","fixtures/catalogue-presence-rule.json","Docs/operations.md","icd/schema.json"],
+      "verification": ["cli.contract.every-mcp-example-of-the-operation-catalogue-satisfies-the-input-definition-of-its-tool","cli.contract.generation-refuses-an-operation-catalogue-whose-examples-references-vocabularies-or-exposures-do-not-hold","cli.contract.generate-check-refuses-a-hand-edit-of-the-generated-operation-reference","cli.cli.every-command-the-operation-catalogue-exposes-has-a-handler-and-every-handler-a-catalogue-entry","cli.cli.the-cli-without-a-command-prints-usage-and-an-unknown-command-is-a-usage-error","cli.cli.describe-lists-every-tool-and-finding-code","mcp-server.mcp.every-tool-the-operation-catalogue-exposes-has-a-handler-and-every-handler-a-catalogue-entry","mcp-server.mcp.every-tool-lists-the-input-and-output-schemas-generated-from-the-contract-and-a-request-outside-its-input-schema-is-refused-before-anything-runs","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs","core.selftest.generated-wording"]
     },
     {
       "id": "contract.profiles",
@@ -500,10 +507,10 @@
     },
     {
       "id": "mcp.persistent-mutate",
-      "description": "A persistent loom.mutate requires expectedRevision, is refused as stale-base when the model changed since that revision, writes through the workspace lock that rechecks it, and a dry run writes nothing.",
-      "code": ["packages/mcp-server/src/tools.ts#persistentMutate","packages/workspace/src/write.ts#writeModel","packages/workspace/src/lock.ts#withLock"],
-      "contract": ["tools.schema.json#/$defs/MutateInput","icd/mcp.json"],
-      "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs"]
+      "description": "A persistent loom.mutate requires expectedRevision, is refused as stale-base when the model changed since that revision, writes through the workspace lock that rechecks it, and a dry run writes nothing; the CLI's mutate runs the same workspace adapter function.",
+      "code": ["packages/workspace/src/write.ts#mutateWorkspace","packages/workspace/src/write.ts#writeModel","packages/workspace/src/lock.ts#withLock","packages/mcp-server/src/tools.ts#mutateCall","packages/cli/src/commands.ts#cmdMutate"],
+      "contract": ["tools.schema.json#/$defs/MutateInput","icd/mcp.json","icd/workspace.json"],
+      "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs","cli.cli.mutate-persists-only-onto-the-expected-revision-and-a-dry-run-writes-nothing","cli.concurrency.of-two-cli-mutations-against-one-expected-revision-exactly-one-commits-and-the-other-is-refused-as-stale"]
     },
     {
       "id": "mcp.result-states",

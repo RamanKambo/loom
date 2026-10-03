@@ -5,10 +5,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { exportModel, modelRevision, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
+import { CLI_COMMANDS, CLI_USAGE, exportModel, handlerGaps, modelRevision, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
 import type { EvidenceObligation, EvidenceRecord, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
 import { putEvidence } from '@loom/workspace';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
+import { HANDLED_COMMANDS } from '../cli.js';
 import { releaseWordingFindings } from '../docs.js';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
@@ -88,8 +89,15 @@ test('the CLI without a command prints usage and an unknown command is a usage e
   const usage = spawnSync(process.execPath, [CLI], { cwd: dir, encoding: 'utf8' });
   assert.equal(usage.status, 0);
   assert.match(usage.stdout, /Usage: loom <command>/);
+  assert.equal(usage.stdout, `${CLI_USAGE}\n`, 'the usage text is the one generated from the operation catalogue');
   assert.equal(loom(dir, 'frobnicate').status, 2);
   assert.equal(loom(dir, 'readiness', '--class').status, 2);
+});
+
+test('every command the operation catalogue exposes has a handler, and every handler a catalogue entry', () => {
+  assert.deepEqual(handlerGaps(CLI_COMMANDS, HANDLED_COMMANDS), []);
+  assert.deepEqual(handlerGaps([...CLI_COMMANDS, 'frobnicate'], HANDLED_COMMANDS), ["'frobnicate' is catalogued but has no handler"]);
+  assert.deepEqual(handlerGaps(CLI_COMMANDS.filter((c) => c !== 'owner'), HANDLED_COMMANDS), ["'owner' has a handler but no catalogue entry"]);
 });
 
 test('init scaffolds a repository root and refuses a subdirectory and a second run', () => {

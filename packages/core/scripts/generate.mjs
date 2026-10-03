@@ -1,7 +1,8 @@
-// Contract generator. Inputs: schema/*.schema.json (authored once), schema/profiles/*.json and
-// schema/icd/*.json. Outputs: schema/patch.schema.json (derived from the model schema) and
-// src/generated/*. `--check` regenerates in memory and exits 1 on any difference, so CI fails on
-// drift between the authored contract and everything derived from it.
+// Contract generator. Inputs: schema/*.schema.json (authored once), schema/profiles/*.json,
+// schema/icd/*.json and the operation catalogue schema/operations.json. Outputs:
+// schema/patch.schema.json (derived from the model schema), src/generated/* and the operation
+// reference Docs/operations.md. `--check` regenerates in memory and exits 1 on any difference, so CI
+// fails on drift between the authored contract and everything derived from it.
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -15,6 +16,9 @@ const SCHEMA_DIR = join(ROOT, 'schema');
 const OUT_DIR = join(ROOT, 'src', 'generated');
 const CHECK = process.argv.includes('--check');
 const PATCH_FILE = 'patch.schema.json';
+const CATALOGUE_FILE = 'operations.json';
+const REFERENCE_FILE = join(ROOT, '..', '..', 'Docs', 'operations.md');
+const NOTICE_FILE = join(ROOT, 'src', 'projections', 'notice.ts');
 const BUNDLE_ID = 'urn:loom:schema';
 
 // Every keyword the authored schemas may use. 'typed' keywords shape the generated TypeScript;
@@ -330,9 +334,9 @@ function registries(bundled) {
   }
 }
 
-// ---------- data files: profiles and interface control documents ----------
+// ---------- data files: profiles, interface control documents and the operation catalogue ----------
 
-function loadData(ajv) {
+function loadData(ajv, bundled) {
   const read = (dir, def) => {
     const full = join(SCHEMA_DIR, dir);
     if (!existsSync(full)) return [];
@@ -355,7 +359,68 @@ function loadData(ajv) {
     if (dup) fail(`${kind} id '${dup}' is declared twice`);
   }
   checkIcdBoundaries(icds);
-  return { profiles, projectionProfiles, icds };
+  const operations = readJson(join(SCHEMA_DIR, CATALOGUE_FILE));
+  const validateCatalogue = ajv.getSchema(`${BUNDLE_ID}#/$defs/OperationCatalogue`);
+  if (!validateCatalogue(operations)) fail(`${CATALOGUE_FILE}: ${ajv.errorsText(validateCatalogue.errors)}`);
+  const problems = catalogueProblems(operations, bundled, ajv);
+  if (problems.length) fail(`${CATALOGUE_FILE}:\n  ${problems.join('\n  ')}`);
+  return { profiles, projectionProfiles, icds, operations };
+}
+
+// What the catalogue schema cannot state: unique names, references that resolve, vocabularies owned
+// by the result contract, a reason exactly where an interface is 'none', presence rules naming members
+// of their input, and examples that satisfy their input definition or start with their command.
+// Every problem is reported at once, so one run shows the whole repair.
+function catalogueProblems(catalogue, bundled, ajv) {
+  const problems = [];
+  const defs = bundled.$defs;
+  const causes = defs.Refusal.properties.cause.enum;
+  const effects = defs.DescribeData.properties.tools.items.properties.effects.enum;
+  const unique = (kind) => {
+    const seen = new Set();
+    return (name) => {
+      if (seen.has(name)) problems.push(`${kind} '${name}' is declared twice`);
+      seen.add(name);
+    };
+  };
+  const rules = new Map(catalogue.presenceRules.map((r) => [r.id, r]));
+  const operations = new Set(catalogue.operations.map((o) => o.id));
+  const named = new Set();
+  const rule = unique('presence rule');
+  for (const r of catalogue.presenceRules) rule(r.id);
+  const [operation, tool, command] = [unique('operation'), unique('MCP tool'), unique('command')];
+  for (const op of catalogue.operations) {
+    const at = `operation '${op.id}'`;
+    operation(op.id);
+    if (!effects.includes(op.effects)) problems.push(`${at}: effect '${op.effects}' is not one of ${effects.join(', ')}`);
+    for (const r of op.refusals) if (!causes.includes(r.cause)) problems.push(`${at}: refusal cause '${r.cause}' is not a Refusal cause`);
+    if (op.nextAction.operation !== undefined && !operations.has(op.nextAction.operation)) problems.push(`${at}: its next action names no operation '${op.nextAction.operation}'`);
+    const { mcp, cli, reason } = op.exposure;
+    if ((mcp === 'none' || cli === 'none') !== (reason !== undefined)) problems.push(`${at}: a reason is given exactly when an interface does not expose the operation`);
+    if (mcp !== 'none') {
+      tool(mcp.tool);
+      for (const d of [mcp.input, mcp.data]) if (!defs[d]) problems.push(`${at}: the contract defines no '${d}'`);
+      const members = Object.keys(defs[mcp.input]?.properties ?? {});
+      for (const id of mcp.presence) {
+        named.add(id);
+        const r = rules.get(id);
+        if (!r) problems.push(`${at}: names no presence rule '${id}'`);
+        else for (const m of new Set(r.accept.flatMap((a) => [...a.present, ...a.absent]))) if (!members.includes(m)) problems.push(`${at}: presence rule '${id}' names '${m}', which ${mcp.input} does not declare`);
+      }
+      const validate = defs[mcp.input] ? ajv.getSchema(`${BUNDLE_ID}#/$defs/${mcp.input}`) : null;
+      mcp.examples.forEach((ex, i) => {
+        if (validate && !validate(ex.input)) problems.push(`${at}: MCP example ${i} does not satisfy ${mcp.input}: ${ajv.errorsText(validate.errors)}`);
+      });
+    }
+    if (cli !== 'none') {
+      command(cli.command);
+      cli.examples.forEach((ex, i) => {
+        if (ex.command !== cli.command && !ex.command.startsWith(`${cli.command} `)) problems.push(`${at}: CLI example ${i} does not start with '${cli.command}'`);
+      });
+    }
+  }
+  for (const r of catalogue.presenceRules) if (!named.has(r.id)) problems.push(`presence rule '${r.id}' is named by no tool`);
+  return problems;
 }
 
 // Every consumed interface must be provided by the named component, and every provided interface
@@ -464,6 +529,186 @@ function runFixtures(ajv) {
   return cases;
 }
 
+// ---------- views of the operation catalogue ----------
+
+const EFFECT_TEXT = { none: 'persists nothing', reads: 'reads persisted state and persists nothing', writes: 'can persist changes' };
+// The CLI usage layout: a usage line padded to this column, then the purpose wrapped to this width.
+const USAGE_COLUMN = 38;
+const USAGE_WIDTH = 120;
+
+const sentence = (text) => `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+const quoted = (names) => names.map((n) => `'${n}'`);
+const code = (text) => `\`${text}\``;
+const anchor = (op) => `[${op.id}](#${op.id.toLowerCase()})`;
+
+// The word the CLI dispatches on: the first token of the command, or for a switch such as
+// --self-test the name the argument parser gives the command it selects.
+const commandWord = (command) => command.split(' ')[0].replace(/^--/, '');
+
+function presenceSentence(rule) {
+  const combination = (a) =>
+    a.present.length ? `send ${quoted(a.present).join(' and ')}${a.absent.length ? ` without ${quoted(a.absent).join(' or ')}` : ''}` : `omit ${quoted(a.absent).join(' and ')}`;
+  return sentence(rule.accept.map(combination).join(', or '));
+}
+
+function interfaceOf(op) {
+  if (op.exposure.mcp !== 'none') return op.exposure.mcp.tool;
+  return op.exposure.cli !== 'none' ? `the command '${op.exposure.cli.command}'` : `the operation '${op.id}'`;
+}
+
+function toolDescription(op, rules, operations) {
+  const next = op.nextAction.operation === undefined ? op.nextAction.action : `${op.nextAction.action} with ${interfaceOf(operations.get(op.nextAction.operation))}`;
+  return [
+    op.purpose,
+    sentence(`prerequisites: ${op.prerequisites.length ? op.prerequisites.join('; ') : 'none'}`),
+    sentence(`effects: ${EFFECT_TEXT[op.effects]}`),
+    ...(op.refusals.length ? [sentence(`refused as ${op.refusals.map((r) => `${r.cause} when ${r.when}`).join('; as ')}`)] : []),
+    ...op.exposure.mcp.presence.map((id) => presenceSentence(rules.get(id))),
+    sentence(`next: ${next}`),
+  ].join(' ');
+}
+
+function wrap(text, width) {
+  const lines = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && line.length + 1 + word.length > width) {
+      lines.push(line);
+      line = word;
+    } else line = line ? `${line} ${word}` : word;
+  }
+  return line ? [...lines, line] : lines;
+}
+
+function cliUsage(catalogue) {
+  const c = catalogue.cli;
+  const indent = ' '.repeat(USAGE_COLUMN + 3);
+  const lines = [c.title, '', `Usage: ${c.synopsis}`, ''];
+  for (const op of catalogue.operations) {
+    if (op.exposure.cli === 'none') continue;
+    const usage = op.exposure.cli.usage.join(' | ');
+    const purpose = wrap(op.purpose, USAGE_WIDTH - indent.length);
+    if (usage.length <= USAGE_COLUMN) lines.push(`  ${usage.padEnd(USAGE_COLUMN)} ${purpose[0]}`, ...purpose.slice(1).map((l) => `${indent}${l}`));
+    else lines.push(`  ${usage}`, ...purpose.map((l) => `${indent}${l}`));
+  }
+  const options = c.commonOptions.map((o) => (o.purpose ? `${o.usage} ${o.purpose}` : o.usage)).join(', ');
+  lines.push('', `Common options: ${options}.`, `Exit status: ${c.exitStatus}`);
+  return lines.join('\n');
+}
+
+// The notice of a reference generated from the authored contract, in the Markdown form of every projection's notice, read from the module that owns both.
+function markdownNotice() {
+  const text = readFileSync(NOTICE_FILE, 'utf8');
+  const notice = /export const CONTRACT_NOTICE =\s*'([^']+)';/.exec(text)?.[1];
+  const form = /export const MARKDOWN_NOTICE = `([^`]*)`;/.exec(text)?.[1];
+  if (!notice || !form || !form.includes('${SOURCE_NOTICE}')) fail(`${NOTICE_FILE} does not declare CONTRACT_NOTICE and MARKDOWN_NOTICE in the form the generator reads`);
+  return form.replace('${SOURCE_NOTICE}', notice);
+}
+
+function operationReference(catalogue, tools, rules, operations) {
+  const c = catalogue.cli;
+  const options = c.commonOptions.map((o) => (o.purpose ? `${code(o.usage)} ${o.purpose}` : code(o.usage))).join(', ');
+  const L = [
+    markdownNotice(),
+    '# Loom operations',
+    '',
+    `Source: the operation catalogue ${code(`packages/core/schema/${CATALOGUE_FILE}`)}, whose shape is ${code('OperationCatalogue')} in ${code('packages/core/schema/tools.schema.json')}. ${code('npm run generate')} renders this reference, the MCP tool descriptions, the CLI usage text and the tools and examples of ${code('loom.describe')} from it, and ${code('npm run build')} fails when any of them differs from a fresh rendering.`,
+    '',
+    '## Command line',
+    '',
+    `The CLI is run by path, as ${code(`${c.invocation} <command>`)}, and ${code('--help')} prints its usage text, ${code(`Usage: ${c.synopsis}`)}.`,
+    '',
+    `Common options: ${options}.`,
+    '',
+    `Exit status: ${c.exitStatus}`,
+    '',
+    '## MCP server',
+    '',
+    'The server lists these tools in this order, each with the description generated from its operation and the input and output schemas generated from the contract bundle:',
+    '',
+    ...tools.map((t, i) => `${i + 1}. ${code(t.name)}, operation ${anchor(operations.get(t.operation))}`),
+    '',
+    '## Operations',
+    '',
+    '| Operation | MCP tool | Command | Effects |',
+    '| --- | --- | --- | --- |',
+    ...catalogue.operations.map((op) => `| ${anchor(op)} | ${op.exposure.mcp === 'none' ? 'none' : code(op.exposure.mcp.tool)} | ${op.exposure.cli === 'none' ? 'none' : code(op.exposure.cli.command)} | ${code(op.effects)} |`),
+  ];
+  for (const op of catalogue.operations) {
+    const { mcp, cli, reason } = op.exposure;
+    const target = op.nextAction.operation === undefined ? null : operations.get(op.nextAction.operation);
+    L.push('', `### ${op.id}`, '', op.purpose, '');
+    L.push(`- Prerequisites: ${op.prerequisites.length ? `${op.prerequisites.join('; ')}.` : 'none.'}`);
+    L.push(`- Effects: ${code(op.effects)}, ${EFFECT_TEXT[op.effects]}.`);
+    L.push(`- Refusals: ${op.refusals.length ? `${op.refusals.map((r) => `${code(r.cause)} when ${r.when}`).join('; ')}.` : 'none.'}`);
+    L.push(`- Next action: ${op.nextAction.action}${target ? `, through ${anchor(target)}` : ''}.`);
+    L.push(`- MCP tool: ${mcp === 'none' ? 'none.' : `${code(mcp.tool)}, input ${code(mcp.input)}, result data ${code(mcp.data)}.`}`);
+    L.push(`- Command: ${cli === 'none' ? 'none.' : `${cli.usage.map(code).join(' or ')}.`}`);
+    if (reason !== undefined) L.push(`- Not exposed: ${reason}`);
+    if (mcp !== 'none' && mcp.presence.length) {
+      L.push('', `Presence rules of ${code(mcp.tool)}, checked before anything runs:`, '');
+      for (const id of mcp.presence) {
+        const r = rules.get(id);
+        L.push(`- ${presenceSentence(r)} A request matching no combination is refused with ${code(r.code)} at ${code(r.path)}.`);
+      }
+    }
+    if (mcp !== 'none') L.push('', `Description of ${code(mcp.tool)}:`, '', `> ${tools.find((t) => t.name === mcp.tool).description}`);
+    const examples = [
+      ...(mcp === 'none' ? [] : mcp.examples.map((e) => [e.description, 'json', JSON.stringify(e.input, null, 2)])),
+      ...(cli === 'none' ? [] : cli.examples.map((e) => [e.description, 'sh', `${c.invocation} ${e.command}`])),
+    ];
+    if (examples.length) {
+      L.push('', 'Examples:');
+      for (const [description, language, text] of examples) L.push('', `- ${description}`, '', `  \`\`\`${language}`, ...text.split('\n').map((l) => `  ${l}`), '  ```');
+    }
+  }
+  return `${L.join('\n')}\n`;
+}
+
+/** Every view of the catalogue: the generated module the adapters read, and the operation reference. */
+function operationViews(catalogue) {
+  const rules = new Map(catalogue.presenceRules.map((r) => [r.id, r]));
+  const operations = new Map(catalogue.operations.map((o) => [o.id, o]));
+  const exposed = catalogue.operations.filter((o) => o.exposure.mcp !== 'none');
+  const tools = exposed.map((o) => ({
+    name: o.exposure.mcp.tool,
+    operation: o.id,
+    input: o.exposure.mcp.input,
+    data: o.exposure.mcp.data,
+    effects: o.effects,
+    description: toolDescription(o, rules, operations),
+    presence: o.exposure.mcp.presence.map((id) => rules.get(id)),
+  }));
+  const examples = exposed.flatMap((o) => o.exposure.mcp.examples.map((e) => ({ tool: o.exposure.mcp.tool, description: e.description, input: e.input })));
+  const commands = [...new Set(catalogue.operations.filter((o) => o.exposure.cli !== 'none').map((o) => commandWord(o.exposure.cli.command)))];
+  const json = (v) => JSON.stringify(v, null, 2);
+  const module = [
+    BANNER,
+    "import type { CataloguePresenceRule, DescribeData, OperationCatalogue } from './types.js';\n",
+    '/** One MCP tool as the server lists it: its operation, input and result definitions, effect, generated description and presence rules. */',
+    'export interface CatalogueTool {',
+    '  name: string;',
+    '  operation: string;',
+    '  input: string;',
+    '  data: string;',
+    "  effects: DescribeData['tools'][number]['effects'];",
+    '  description: string;',
+    '  presence: readonly CataloguePresenceRule[];',
+    '}\n',
+    '/** The authored operation catalogue, packages/core/schema/operations.json. */',
+    `export const OPERATION_CATALOGUE: OperationCatalogue = ${json(catalogue)};\n`,
+    '/** Every MCP tool, in the order the server lists them. */',
+    `export const MCP_TOOLS: readonly CatalogueTool[] = ${json(tools)};\n`,
+    "/** The MCP examples, in the shape of DescribeData's examples. */",
+    `export const TOOL_EXAMPLES: DescribeData['examples'] = ${json(examples)};\n`,
+    '/** The command words the CLI dispatches on, in catalogue order. */',
+    `export const CLI_COMMANDS: readonly string[] = ${json(commands)};\n`,
+    '/** The CLI usage text. */',
+    `export const CLI_USAGE = ${JSON.stringify(cliUsage(catalogue))};\n`,
+  ].join('\n');
+  return { module, reference: operationReference(catalogue, tools, rules, operations) };
+}
+
 // ---------- emit ----------
 
 const BANNER = '// Generated by packages/core/scripts/generate.mjs from packages/core/schema. Do not edit.\n';
@@ -487,7 +732,7 @@ async function generate() {
   } catch (err) {
     fail(`bundle does not compile under JSON Schema 2020-12: ${err.message}`);
   }
-  const data = loadData(ajv);
+  const data = loadData(ajv, bundled);
   const fixtureCases = runFixtures(ajv);
   await qualifyTypeGenerator();
   const reg = registries(bundled);
@@ -512,6 +757,7 @@ async function generate() {
     .replace(new RegExp(String.raw` \*\n${provenance}`, 'g'), '');
 
   const json = (v) => JSON.stringify(v, null, 2);
+  const views = operationViews(data.operations);
   const outputs = new Map([
     [join(SCHEMA_DIR, PATCH_FILE), `${json(patch.schema)}\n`],
     [join(OUT_DIR, 'types.ts'), `${BANNER}/* eslint-disable */\n${types}`],
@@ -521,7 +767,7 @@ async function generate() {
     ],
     [
       join(OUT_DIR, 'digest.ts'),
-      `${BANNER}\n/** SHA-256 of the canonical JSON of the schema bundle, profiles, projection profiles and ICDs. */\nexport const CONTRACT_DIGEST = ${JSON.stringify(digest)};\n\nexport const SCHEMA_VOCABULARY = ${json(vocabulary)} as const;\n`,
+      `${BANNER}\n/** SHA-256 of the canonical JSON of the schema bundle, profiles, projection profiles, ICDs and operation catalogue. */\nexport const CONTRACT_DIGEST = ${JSON.stringify(digest)};\n\nexport const SCHEMA_VOCABULARY = ${json(vocabulary)} as const;\n`,
     ],
     [
       join(OUT_DIR, 'registry.ts'),
@@ -545,6 +791,8 @@ async function generate() {
         `export const ICDS: readonly Icd[] = ${json(data.icds)};\n`,
       ].join('\n'),
     ],
+    [join(OUT_DIR, 'operations.ts'), views.module],
+    [REFERENCE_FILE, views.reference],
   ]);
 
   if (CHECK) {
@@ -553,8 +801,10 @@ async function generate() {
     console.log(`generate --check: ${outputs.size} artifacts current, ${fixtureCases} fixture cases passed, digest ${digest}`);
     return;
   }
-  mkdirSync(OUT_DIR, { recursive: true });
-  for (const [path, text] of outputs) writeFileSync(path, text);
+  for (const [path, text] of outputs) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, text);
+  }
   console.log(`generate: ${outputs.size} artifacts written, ${fixtureCases} fixture cases passed, digest ${digest}`);
 }
 

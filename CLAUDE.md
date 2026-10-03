@@ -13,8 +13,9 @@ the open-items register. Workspace scripts: @package.json
 - Run from `Tools/loom`. `npm run build` comes first: it checks the generated contract artifacts
   for drift, then compiles. The CLI, the MCP server and the designer all execute the built
   `packages/*/dist`, never the sources.
-- `npm run generate` regenerates `packages/core/schema/patch.schema.json` and
-  `packages/core/src/generated/*` from the authored schemas; never edit those files by hand.
+- `npm run generate` regenerates `packages/core/schema/patch.schema.json`,
+  `packages/core/src/generated/*` and `Docs/operations.md` from the authored schemas and the
+  operation catalogue; never edit those files by hand.
 - `npm run self-test` is the whole proof: the engine battery, the CLI's drift check, the release
   wording of Loom's own documents, comments and JSON descriptions (`docs --check --self` reports
   it with the other documentation checks), then every profile check run by
@@ -38,8 +39,10 @@ the open-items register. Workspace scripts: @package.json
 
 - `packages/core/schema` holds the contract, authored once as JSON Schema 2020-12: the model,
   patches (derived), results, tool inputs, workspace and assurance records, profiles, interface
-  control documents and hand-authored fixtures. `packages/core/scripts/generate.mjs` emits the TypeScript types,
-  the embedded schema bundle, the registries and the contract digest into `src/generated`.
+  control documents, the operation catalogue and hand-authored fixtures. `packages/core/scripts/generate.mjs` emits the TypeScript types,
+  the embedded schema bundle, the registries, the contract digest and the operation views (tool
+  descriptions, CLI usage and dispatch words) into `src/generated`, and the operation reference
+  `Docs/operations.md`.
 - `packages/core` is pure: no Node or browser-only API. The same engine runs in the CLI, the MCP
   server and the browser designer; file IO lives only in the adapters (`packages/workspace`,
   `packages/qualification`, `packages/cli`), stdio only in `packages/mcp-server`.
@@ -64,6 +67,7 @@ the open-items register. Workspace scripts: @package.json
   | Fact | Home |
   | --- | --- |
   | Every record, patch, result and workspace shape | `packages/core/schema/*.schema.json` |
+  | Every operation: purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP tool and CLI command | `packages/core/schema/operations.json`; the MCP tool list and descriptions, the tools and examples of `loom.describe`, the CLI usage and dispatch words and `Docs/operations.md` are generated from it, and the adapters' handler tables are checked against it |
   | The finding-code vocabulary | `FindingCode` in `packages/core/schema/result.schema.json` |
   | Each code's severity and one-line rule | `FINDING_RULES` in `packages/core/src/codes.ts` |
   | Change rules and the comparison decision for every model field | `DIFF_RULES` and `FIELD_POLICY` in `packages/core/src/field-policy.ts` |

@@ -1,0 +1,32 @@
+{
+  "definition": "OperationCatalogue",
+  "valid": [
+    {
+      "catalogueVersion": 1,
+      "cli": {
+        "title": "tool - a command line",
+        "synopsis": "tool <command> [options]",
+        "invocation": "node dist/index.js",
+        "commonOptions": [{ "usage": "--model <path>", "purpose": "selects a document" }, { "usage": "--boundary <dir>" }],
+        "exitStatus": "0 ok, 1 refusal, 2 usage error."
+      },
+      "presenceRules": [],
+      "operations": [
+        {
+          "id": "owner",
+          "purpose": "Name the model that owns a path.",
+          "prerequisites": [],
+          "effects": "reads",
+          "refusals": [],
+          "nextAction": { "action": "check the owning model" },
+          "exposure": { "mcp": "none", "cli": { "command": "owner", "usage": ["owner [<path>]"], "examples": [] }, "reason": "Ownership is a command-line question." }
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a catalogue without operations is rejected", "keyword": "minItems", "path": "/operations", "instance": { "catalogueVersion": 1, "cli": { "title": "t", "synopsis": "t <command>", "invocation": "t", "commonOptions": [], "exitStatus": "0 ok." }, "presenceRules": [], "operations": [] } },
+    { "because": "a common option is named by its switch", "keyword": "pattern", "path": "/cli/commonOptions/0/usage", "instance": { "catalogueVersion": 1, "cli": { "title": "t", "synopsis": "t <command>", "invocation": "t", "commonOptions": [{ "usage": "model" }], "exitStatus": "0 ok." }, "presenceRules": [], "operations": [{ "id": "owner", "purpose": "Name the owner.", "prerequisites": [], "effects": "reads", "refusals": [], "nextAction": { "action": "check it" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." } }] } },
+    { "because": "an unknown catalogue member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "catalogueVersion": 1, "cli": { "title": "t", "synopsis": "t <command>", "invocation": "t", "commonOptions": [], "exitStatus": "0 ok." }, "presenceRules": [], "operations": [{ "id": "owner", "purpose": "Name the owner.", "prerequisites": [], "effects": "reads", "refusals": [], "nextAction": { "action": "check it" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." } }], "tools": [] } }
+  ]
+}

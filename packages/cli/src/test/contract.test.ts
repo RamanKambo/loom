@@ -1,25 +1,32 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CONTRACT_DIGEST } from '@loom/core';
+import { CONTRACT_DIGEST, OPERATION_CATALOGUE, schemaErrors } from '@loom/core';
+import type { OperationCatalogue } from '@loom/core';
 import { scratch } from '@loom/workspace/testing';
 
 const LOOM_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const CORE = join(LOOM_ROOT, 'packages', 'core');
 
 /**
- * A copy of the authored contract, its generated artifacts and the generator,
- * whose dependencies resolve from this installation, so a test can break the
+ * A copy of the authored contract, its generated artifacts, the generator and
+ * the files it reads and writes beside them, laid out as in the repository and
+ * resolving its dependencies from this installation, so a test can break the
  * copy and run the generator on it without touching the repository.
  */
 function contractCopy(t: TestContext): string {
   const dir = scratch();
-  const core = join(dir, 'core');
+  const core = join(dir, 'packages', 'core');
   const modules = join(dir, 'node_modules');
-  for (const part of ['scripts', 'schema', join('src', 'generated')]) cpSync(join(CORE, part), join(core, part), { recursive: true });
+  for (const part of ['scripts', 'schema', join('src', 'generated'), join('src', 'projections', 'notice.ts')]) {
+    mkdirSync(dirname(join(core, part)), { recursive: true });
+    cpSync(join(CORE, part), join(core, part), { recursive: true });
+  }
+  mkdirSync(join(dir, 'Docs'), { recursive: true });
+  cpSync(join(LOOM_ROOT, 'Docs', 'operations.md'), join(dir, 'Docs', 'operations.md'));
   symlinkSync(join(LOOM_ROOT, 'node_modules'), modules, 'junction');
   t.after(() => {
     // The junction goes first, so removing the copy can never reach the installation's modules.
@@ -93,6 +100,63 @@ test('an interface control document that consumes an interface no component prov
   const r = generate(core, '--check');
   assert.equal(r.status, 1, r.output);
   assert.match(r.output, /consumes 'core:undeclaredInterface', which no ICD provides/);
+});
+
+test('generate --check refuses a hand edit of the generated operation reference', (t) => {
+  const core = contractCopy(t);
+  const reference = join(core, '..', '..', 'Docs', 'operations.md');
+  writeFileSync(reference, `${readFileSync(reference, 'utf8')}\nEdited by hand.\n`);
+  const r = generate(core, '--check');
+  assert.equal(r.status, 1, r.output);
+  assert.match(r.output, /stale: .*operations\.md/);
+});
+
+test('every MCP example of the operation catalogue satisfies the input definition of its tool', () => {
+  let checked = 0;
+  for (const op of OPERATION_CATALOGUE.operations) {
+    if (op.exposure.mcp === 'none') continue;
+    for (const example of op.exposure.mcp.examples) {
+      assert.deepEqual(schemaErrors(op.exposure.mcp.input, example.input), [], `${op.id}: ${example.description}`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 5, `checked ${checked} examples`);
+});
+
+test('generation refuses an operation catalogue whose examples, references, vocabularies or exposures do not hold', (t) => {
+  const core = contractCopy(t);
+  editJson(join(core, 'schema', 'operations.json'), (doc) => {
+    const catalogue = doc as unknown as OperationCatalogue;
+    const op = (id: string): OperationCatalogue['operations'][number] => catalogue.operations.find((o) => o.id === id) as OperationCatalogue['operations'][number];
+    const mcp = (id: string): Exclude<OperationCatalogue['operations'][number]['exposure']['mcp'], 'none'> => op(id).exposure.mcp as Exclude<OperationCatalogue['operations'][number]['exposure']['mcp'], 'none'>;
+    mcp('mutate').examples.push({ description: 'A patch and a batch at once.', input: { model: {}, patch: { op: 'clearSystemProfile' }, patches: [{ op: 'clearSystemProfile' }], force: true } });
+    mcp('planChange').presence.push('workspace-revision');
+    mcp('projectAll').input = 'NoSuchInput';
+    mcp('export').tool = 'loom.validate';
+    mcp('import').presence.push('no-such-rule');
+    op('init').nextAction.operation = 'nothing';
+    op('owner').refusals.push({ cause: 'refused-politely', when: 'it would rather not' });
+    op('coverage').effects = 'executes';
+    op('describe').exposure.mcp = 'none';
+    const check = op('check').exposure.cli;
+    if (check !== 'none') check.examples.push({ description: 'Another command.', command: 'write' });
+    catalogue.presenceRules.push({ id: 'unused', accept: [{ present: ['model'], absent: [] }], code: 'STRUCTURAL_INVALID', path: '(root)', message: 'send a model', fix: 'send a model' });
+  });
+  const r = generate(core, '--check');
+  assert.equal(r.status, 1, r.output);
+  for (const problem of [
+    /operation 'mutate': MCP example 1 does not satisfy MutateInput/,
+    /operation 'planChange': presence rule 'workspace-revision' names 'expectedRevision', which PlanChangeInput does not declare/,
+    /operation 'projectAll': the contract defines no 'NoSuchInput'/,
+    /MCP tool 'loom\.validate' is declared twice/,
+    /operation 'import': names no presence rule 'no-such-rule'/,
+    /operation 'init': its next action names no operation 'nothing'/,
+    /operation 'owner': refusal cause 'refused-politely' is not a Refusal cause/,
+    /operation 'coverage': effect 'executes' is not one of none, reads, writes/,
+    /operation 'describe': a reason is given exactly when an interface does not expose the operation/,
+    /operation 'check': CLI example 2 does not start with 'check'/,
+    /presence rule 'unused' is named by no tool/,
+  ]) assert.match(r.output, problem);
 });
 
 const ALLOWED_IMPORTS = /^(?:\.{1,2}\/|ajv(?:\/|$)|ajv-formats$|yaml$)/;

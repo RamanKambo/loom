@@ -60,6 +60,7 @@ Source: `packages/core/schema/icd/core.json`, `qualification.json` and `mcp.json
 | Which artifacts a projection profile enables | `packages/core/schema/projection-profiles/<id>.json` |
 | Projection targets, their file names and instancing | `TARGETS` in `packages/core/src/project.ts` |
 | A component's interfaces and refusals | `packages/core/schema/icd/<component>.json` |
+| Every operation: its purpose, prerequisites, effects, refusals, next action, MCP tool, command, usage and examples | [Docs/operations.md](Docs/operations.md), generated from `packages/core/schema/operations.json` |
 | How workflow integration persists state and obtains acceptance | [Docs/workflow-integration.md](Docs/workflow-integration.md) |
 | The fixture model every test and the designer load | `packages/core/src/sample.ts` |
 | Unresolved questions about Loom | [Docs/ToDo.md](Docs/ToDo.md) |
@@ -73,7 +74,7 @@ The commands below run from the repository root after `npm install`. `npm run bu
 | Command | Proof |
 | --- | --- |
 | `npm run build` | The generated contract artifacts match the authored schemas (`generate --check`), then every package compiles |
-| `npm run generate` | Regenerates `packages/core/schema/patch.schema.json` and `packages/core/src/generated/*`; those files are never edited by hand |
+| `npm run generate` | Regenerates `packages/core/schema/patch.schema.json`, `packages/core/src/generated/*` and `Docs/operations.md`; those files are never edited by hand |
 | `npm run self-test` | The engine battery, the drift gate, and every profile check run against Loom's own fixtures under `qualification/policy.json` |
 | `npm run test:workspace`, `test:qualification`, `test:cli`, `test:mcp` | The adapters' node:test suites |
 | `npm run test:fixtures` | Every case of `qualification/fixtures` meets its authored expectation through the core and, in a governed workspace, the CLI, and its named native checks give their stated results |
@@ -83,33 +84,19 @@ The designer has its own lockfile and commands; see [apps/designer/README.md](ap
 
 ## Command-line interface
 
-Source: the usage text of `packages/cli/src/cli.ts`, printed by `node packages/cli/dist/index.js --help`, which is the home of every option.
+Source: the operation catalogue `packages/core/schema/operations.json`, the home of every command, option and example.
 
 The CLI is run by path, as `node packages/cli/dist/index.js <command>`. The workspace links no `loom` command, and `npx loom` would fetch an unrelated public package of that name. Every command prints the shared result envelope with `--json`, and the usage text states the exit-status convention.
 
-| Command | Purpose |
-| --- | --- |
-| `init` | Scaffold `.loom` at a repository root |
-| `check`, `check --all` | Ownership, configuration, validation, the trusted-baseline comparison, outputs and manifest; with `--all`, every descriptor under the boundary and global disjointness |
-| `write`, `docs` | Install the enabled artifacts, with the readiness, coverage and evidence views evaluated |
-| `docs --check` | Document links, record references, generated views and history markers |
-| `docs --check --self` | The same checks over this Loom installation's own repository, plus its release wording: no requirement, task or phase label, release-iteration label or product-generation term in a document, comment or JSON description |
-| `owner` | The model that owns a path |
-| `migrate` | Migrate a model document to the current format into a new file |
-| `baseline create`, `accept` | Record a baseline and an acceptance |
-| `readiness`, `plan`, `mutate` | Evaluate a task, preview a change, apply a change against an expected revision |
-| `qualify`, `evidence` | Run profile checks and inspect the evidence they produced |
-| `context`, `describe` | Bounded record retrieval and the capability description |
-| `coverage --check` | The capability register in `qualification/capabilities.json` |
-| `--self-test` | The engine battery, the drift gate, the release wording and every profile check |
+Every command, with its purpose, usage, refusals and examples, is listed in [Docs/operations.md](Docs/operations.md), which is generated from the catalogue; `node packages/cli/dist/index.js --help` prints the usage text generated from the same entries.
 
 An explicit `--model <path>` selects a document. Inside a governed workspace the configured scope, the trusted-baseline comparison and the qualification policy still apply, so a replacement model cannot evade the accepted-baseline comparison; with no governing descriptor the result reports validation-only mode.
 
 ## MCP server
 
-Source: `packages/mcp-server/src/server.ts` and `packages/core/schema/icd/mcp.json`.
+Source: `packages/mcp-server/src/server.ts`, `packages/core/schema/icd/mcp.json` and the operation catalogue `packages/core/schema/operations.json`.
 
-The server speaks the Model Context Protocol over stdio. Its tools are `loom.validate`, `loom.mutate`, `loom.diff`, `loom.project`, `loom.projectAll`, `loom.export`, `loom.import`, `loom.selftest`, `loom.describe`, `loom.context`, `loom.checkReadiness` and `loom.planChange`. Each tool's input and output schema is generated from the contract bundle, every input is validated before anything runs, and every result is structured content with a text fallback.
+The server speaks the Model Context Protocol over stdio. Its tools, in the order it lists them and with the descriptions generated from their catalogue entries, are listed in [Docs/operations.md](Docs/operations.md#mcp-server). Each tool's input and output schema is generated from the contract bundle, every input is validated before anything runs, and every result is structured content with a text fallback.
 
 The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectedRevision` and is refused as `stale-base` when the model changed since that revision; `loom.planChange` and a `dryRun` mutation never write.
 

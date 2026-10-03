@@ -6531,6 +6531,135 @@ export interface PlanChangeData {
   changeClasses?: Id[];
 }
 /**
+ * Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
+ */
+export interface OperationCatalogue {
+  catalogueVersion: 1;
+  /**
+   * The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.
+   */
+  cli: {
+    title: Text;
+    synopsis: Text;
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    invocation: string;
+    commonOptions: {
+      usage: string;
+      purpose?: Text;
+    }[];
+    exitStatus: Text;
+  };
+  presenceRules: CataloguePresenceRule[];
+  /**
+   * @minItems 1
+   */
+  operations: CatalogueOperation[];
+}
+/**
+ * A presence rule of an MCP tool input: the member combinations it accepts. The advertised input schema leaves root presence combinators out, so the server checks these rules before anything runs, refuses a request matching no accepted combination with the finding below, and the tool description states each rule.
+ */
+export interface CataloguePresenceRule {
+  id: Id;
+  /**
+   * A combination holds when every member it lists as present is sent and every member it lists as absent is not.
+   *
+   * @minItems 1
+   */
+  accept: {
+    present: Name[];
+    absent: Name[];
+  }[];
+  code: FindingCode;
+  path: string;
+  message: Text;
+  fix: Text;
+}
+/**
+ * One operation: what it does, what it needs, what it changes, when it is refused, the next useful action and how the MCP server and the command line expose it. 'none' marks an interface that does not expose the operation, and 'reason' then says why.
+ */
+export interface CatalogueOperation {
+  id: string;
+  /**
+   * One sentence.
+   */
+  purpose: string;
+  /**
+   * Clauses, each without a closing period.
+   */
+  prerequisites: string[];
+  /**
+   * The effect on persisted state, named in the vocabulary of DescribeData tools.
+   */
+  effects: string;
+  /**
+   * The important refusals: a cause of the result envelope's Refusal and when it is given.
+   */
+  refusals: {
+    cause: string;
+    when: string;
+  }[];
+  nextAction: {
+    action: string;
+    /**
+     * The operation that performs the action.
+     */
+    operation?: string;
+  };
+  exposure: {
+    mcp:
+      | 'none'
+      | {
+          tool: string;
+          /**
+           * The contract definition of the tool's arguments.
+           */
+          input: string;
+          /**
+           * The contract definition of the result's 'data'.
+           */
+          data: string;
+          /**
+           * The presence rules of the input, by id, in the order the server checks them.
+           */
+          presence: Id[];
+          examples: {
+            description: Text;
+            /**
+             * Arguments that satisfy the input definition.
+             */
+            input: {};
+          }[];
+        };
+    cli:
+      | 'none'
+      | {
+          /**
+           * The command and the switches that select this operation, as typed after the program.
+           */
+          command: string;
+          /**
+           * The usage alternatives, printed joined by ' | '.
+           *
+           * @minItems 1
+           */
+          usage: Text[];
+          examples: {
+            description: Text;
+            /**
+             * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+             */
+            command: string;
+          }[];
+        };
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    reason?: string;
+  };
+}
+/**
  * Content of .loom/loom.json: governed path set, output routing and policy bindings.
  */
 export interface LoomConfig {

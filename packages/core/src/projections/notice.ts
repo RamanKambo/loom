@@ -13,6 +13,13 @@ export const SLASH_NOTICE = `// ${SOURCE_NOTICE}`;
 /** Markdown and XML comment form. */
 export const MARKDOWN_NOTICE = `<!-- ${SOURCE_NOTICE} -->`;
 
+/**
+ * The notice of a reference the build generates from Loom's own authored
+ * contract, such as the operations reference, rather than from a model.
+ */
+export const CONTRACT_NOTICE =
+  'Generated from the Loom contract. Do not edit; edit the authored contract and regenerate.';
+
 /** Join lines into text that ends in exactly one newline. */
 export function toText(lines: string[]): string {
   return `${lines.join('\n').replace(/\n+$/, '')}\n`;

@@ -25,7 +25,8 @@ export { JOURNAL_FILE, MANIFEST_FILE, checkOutputs, collisionFindings, enabledTa
 export type { BundlePlan, OutputOptions, OutputStatus, PlannedArtifact } from './outputs.js';
 export { withLock } from './lock.js';
 export type { Locked } from './lock.js';
-export { stateRevision, writeModel, writeState } from './write.js';
+export { mutateWorkspace, stateRevision, writeModel, writeState } from './write.js';
+export type { WorkspaceChange } from './write.js';
 export { EVIDENCE_DIR, listEvidence, putEvidence, readEvidence } from './evidence.js';
 export type { StoreOutcome } from './evidence.js';
 export { CONTRACTS_DIR, bundleLocation, resolvePublishedContracts } from './published.js';

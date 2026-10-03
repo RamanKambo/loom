@@ -1489,10 +1489,6 @@ export const ICDS: readonly Icd[] = [
       },
       {
         "component": "core",
-        "interface": "mutate"
-      },
-      {
-        "component": "core",
         "interface": "diff"
       },
       {
@@ -1962,10 +1958,10 @@ export const ICDS: readonly Icd[] = [
   {
     "icdVersion": 1,
     "id": "schema",
-    "responsibility": "Holds the single authored definition of every record, patch, result, workspace, assurance and profile shape, and everything generated from it.",
+    "responsibility": "Holds the single authored definition of every record, patch, result, workspace, assurance and profile shape and of every operation, and everything generated from them.",
     "owns": [
-      "The JSON Schema 2020-12 sources and the qualified keyword vocabulary.",
-      "The generated TypeScript declarations, embedded runtime schemas, registries, patch schema and contract digest."
+      "The JSON Schema 2020-12 sources, the operation catalogue and the qualified keyword vocabulary.",
+      "The generated TypeScript declarations, embedded runtime schemas, registries, patch schema, contract digest, MCP tool descriptions, CLI usage text and operation reference."
     ],
     "boundary": [
       "No hand-maintained second copy of any shape.",
@@ -2136,7 +2132,7 @@ export const ICDS: readonly Icd[] = [
           "policy-failure"
         ],
         "effects": "writes",
-        "concurrency": "Compare-and-swap on the expected base revision under an exclusive lock file; a stale base is refused and nothing is written."
+        "concurrency": "The persistent mutation the CLI and the MCP server share: the expected base revision is checked before the core computes the change and again, as a compare-and-swap, under an exclusive lock file while writing; a stale base, a refused change and a dry run write nothing."
       },
       {
         "name": "evidenceStore",
@@ -2165,6 +2161,10 @@ export const ICDS: readonly Icd[] = [
       {
         "component": "core",
         "interface": "validate"
+      },
+      {
+        "component": "core",
+        "interface": "mutate"
       },
       {
         "component": "core",

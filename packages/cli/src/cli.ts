@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { canonicalStringify, defaultStates, envelope } from '@loom/core';
+import { CLI_COMMANDS, CLI_USAGE, canonicalStringify, defaultStates, envelope } from '@loom/core';
 import type { ResultEnvelope, RunRecord } from '@loom/core';
 import { findRepositoryRoot, openSession } from '@loom/workspace';
 import { UsageError, flag, has, list, parseArgs } from './args.js';
@@ -27,35 +27,6 @@ import { checkCapabilities, enumerateCases } from './coverage.js';
 import { documentationFindings } from './docs.js';
 import { exitStatus, renderEnvelope, type Log } from './render.js';
 import { runSelfTest } from './selftest.js';
-
-const USAGE = [
-  'loom - schema-driven systems-engineering model',
-  '',
-  'Usage: loom <command> [options]   (every command takes --json to print the result envelope)',
-  '',
-  '  init [--force]                         Scaffold .loom at this repository root.',
-  '  check [--model <path>] [--out <dir>]   Ownership, configuration, validity, the trusted-baseline comparison, outputs and manifest.',
-  '  check --all [--boundary <dir>]         Every descriptor under the boundary, global disjointness and walk coverage.',
-  '  write [--out <dir>] [--draft]          Install every enabled artifact, or write the projections into a directory.',
-  '  docs [--check [--self]]                Install the bundle with evaluated views, or check documents, links, views and history markers;',
-  '                                         --self checks this Loom installation\'s own repository, release wording included.',
-  '  owner [<path>]                         The model that owns a path.',
-  '  migrate [--model <path>] [--to <file>] Migrate a model document to the current format into a new file.',
-  '  baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]',
-  '  accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]',
-  '  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...] | readiness --task <file>',
-  '  plan --patch <file> [--base <revision>] [--ack id,...]',
-  '  mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]',
-  '  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]',
-  '  evidence list | evidence show <id>',
-  '  context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]',
-  '  describe [--sections a,b] [--profile <id>]',
-  '  coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>] | coverage --list-cases',
-  '  --self-test                            The engine battery, the drift gate, the release wording and every profile check against Loom fixtures.',
-  '',
-  'Common options: --model <path> selects a document (the governing workspace still applies), --boundary <dir>, --trusted-ref <ref>, --as-of <date>.',
-  'Exit status: 0 ok, 1 refusal or error finding, 2 usage error.',
-].join('\n');
 
 function cmdDocsCheck(ctx: Context): CommandResult {
   if (has(ctx.args, 'self')) {
@@ -90,6 +61,32 @@ function cmdCoverage(ctx: Context): CommandResult {
   return { env, detail: [`capabilities: ${r.capabilities}; declared cases: ${r.cases}; verified references: ${r.verified}`] };
 }
 
+/** The command the --self-test switch selects; it reports through the log and its own exit status rather than a result envelope. */
+const SELF_TEST = 'self-test';
+
+/** The handler of every command the operation catalogue exposes on the command line, by command word. */
+const COMMANDS: Record<string, (c: Context) => CommandResult | Promise<CommandResult>> = {
+  init: cmdInit,
+  check: cmdCheck,
+  write: cmdWrite,
+  docs: (c) => (has(c.args, 'check') ? cmdDocsCheck(c) : cmdDocs(c)),
+  owner: cmdOwner,
+  migrate: cmdMigrate,
+  baseline: cmdBaseline,
+  accept: cmdAccept,
+  readiness: cmdReadiness,
+  plan: cmdPlan,
+  mutate: cmdMutate,
+  qualify: cmdQualify,
+  evidence: cmdEvidence,
+  context: cmdContext,
+  describe: cmdDescribe,
+  coverage: cmdCoverage,
+};
+
+/** Every command word this CLI handles, for the check that the catalogue and the handlers agree. */
+export const HANDLED_COMMANDS: readonly string[] = [...Object.keys(COMMANDS), SELF_TEST];
+
 /** Run one command line; returns the exit status. Output goes only through `log`. */
 export async function run(argv: readonly string[], cwd: string, loomRoot: string, log: Log): Promise<number> {
   let args;
@@ -103,10 +100,10 @@ export async function run(argv: readonly string[], cwd: string, loomRoot: string
     throw err;
   }
   if (!args.command || has(args, 'help')) {
-    log(USAGE);
+    log(CLI_USAGE);
     return 0;
   }
-  if (args.command === 'self-test') {
+  if (args.command === SELF_TEST) {
     if (has(args, 'list-cases')) {
       for (const c of enumerateCases(loomRoot)) log(c.id);
       return 0;
@@ -114,28 +111,10 @@ export async function run(argv: readonly string[], cwd: string, loomRoot: string
     return runSelfTest(loomRoot, log);
   }
   const ctx: Context = { cwd, args, loomRoot };
-  const commands: Record<string, (c: Context) => CommandResult | Promise<CommandResult>> = {
-    init: cmdInit,
-    check: cmdCheck,
-    write: cmdWrite,
-    docs: (c) => (has(c.args, 'check') ? cmdDocsCheck(c) : cmdDocs(c)),
-    owner: cmdOwner,
-    migrate: cmdMigrate,
-    baseline: cmdBaseline,
-    accept: cmdAccept,
-    readiness: cmdReadiness,
-    plan: cmdPlan,
-    mutate: cmdMutate,
-    qualify: cmdQualify,
-    evidence: cmdEvidence,
-    context: cmdContext,
-    describe: cmdDescribe,
-    coverage: cmdCoverage,
-  };
-  const command = commands[args.command];
+  const command = CLI_COMMANDS.includes(args.command) ? COMMANDS[args.command] : undefined;
   if (!command) {
     log(`error: unknown command '${args.command}'`);
-    log(USAGE);
+    log(CLI_USAGE);
     return 2;
   }
   let result: CommandResult;

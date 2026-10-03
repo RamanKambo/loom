@@ -1,10 +1,11 @@
 import { join } from 'node:path';
-import { canonicalHash, envelope, modelRevision, revisionsOf, schemaErrors, structuralFindings, textHash, validate } from '@loom/core';
-import type { Finding, Model, ResultEnvelope, WorkflowState } from '@loom/core';
-import { CACHE_DIR, LOOM_DIR, STATE_FILE, loomDirOf, readConfig } from './config.js';
+import { canonicalHash, envelope, modelRevision, mutateTool, revisionsOf, schemaErrors, structuralFindings, textHash, validate } from '@loom/core';
+import type { Finding, Model, MutateData, ResultEnvelope, WorkflowState } from '@loom/core';
+import { CACHE_DIR, LOOM_DIR, STATE_FILE, loomDirOf, readConfig, type Workspace } from './config.js';
 import { finding, refusal } from './findings.js';
 import { documentText, readJson, toPosix, writeFileAtomic } from './fsx.js';
 import { withLock } from './lock.js';
+import { stampSession, type Session } from './session.js';
 
 /** Revision of the model document on disk: the model revision when it loads, otherwise the hash of its exact text. */
 function currentModelRevision(path: string): string | null {
@@ -41,6 +42,39 @@ export function writeModel(root: string, model: Model, expectedRevision: string)
     return envelope(tool, { model: null, findings: [f], refusal: refusal('stale-base', 'the model changed since the expected revision; nothing was written') });
   }
   return envelope(tool, { model, findings: [], revisions: revisionsOf(model), data: { baseRevision: expectedRevision, revision: modelRevision(model) } });
+}
+
+/** The change a persistent mutation applies: one patch or a batch, its breaking-change acknowledgements and whether it only previews. */
+export interface WorkspaceChange {
+  patch?: unknown;
+  patches?: unknown;
+  acknowledgeBreaking?: string[];
+  dryRun?: boolean;
+}
+
+/**
+ * A persistent mutation of the workspace model, the one the CLI and the MCP
+ * server both perform: refused as stale unless the model is still at the
+ * expected revision, computed by the pure core, then written by writeModel,
+ * which rechecks the revision under the workspace lock. A refused change or a
+ * dry run writes nothing. The change is read only once the revision holds, so
+ * a stale request is refused before its patch is parsed. The session must hold
+ * a workspace and its model.
+ */
+export function mutateWorkspace(s: Session, expectedRevision: string, change: () => WorkspaceChange): ResultEnvelope {
+  const model = s.model as Model;
+  const current = modelRevision(model);
+  if (current !== expectedRevision) {
+    const stale = finding('STALE_BASE_REVISION', '(root)', `the model is at ${current}, not the expected ${expectedRevision}`, 're-read the model, re-apply the change against it and send the new expected revision');
+    return stampSession(envelope('loom.mutate', { model, findings: [stale], refusal: refusal('stale-base', 'the model changed since the expected revision; nothing was written') }), s);
+  }
+  const request = change();
+  const env = mutateTool({ ...request, model }, s.inputs);
+  if (env.outcome === 'refused' || request.dryRun === true) return stampSession(env, s);
+  const data = env.data as MutateData;
+  const written = writeModel((s.workspace as Workspace).root, data.model as Model, expectedRevision);
+  if (written.outcome === 'refused') return stampSession({ ...written, tool: 'loom.mutate' }, s);
+  return stampSession({ ...env, data: { ...data, committed: true } }, s);
 }
 
 /** Revision of state.json: the canonical hash when it parses, otherwise the hash of its text. */

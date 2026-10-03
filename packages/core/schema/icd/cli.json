@@ -12,7 +12,6 @@
   ],
   "consumes": [
     { "component": "core", "interface": "validate" },
-    { "component": "core", "interface": "mutate" },
     { "component": "core", "interface": "diff" },
     { "component": "core", "interface": "project" },
     { "component": "core", "interface": "export" },

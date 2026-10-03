@@ -2,6 +2,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 import type { CoverageManifest, Model, ProjectedFile, ProjectionTarget, Property, PublishedContract, RecordRef } from '../generated/types.js';
 import { SCHEMA_BUNDLE } from '../generated/schemas.js';
+import { CLI_USAGE, MCP_TOOLS } from '../generated/operations.js';
 import { FINDING_RULES } from '../codes.js';
 import { canonicalStringify, deepEqual } from '../canonical.js';
 import { canonicalHash, modelRevision } from '../hash.js';
@@ -364,6 +365,10 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       for (const f of renderAll(sampleModel()).files) {
         const found = f.content.split(/\r?\n/).flatMap((line) => prohibitedMarkers(line).map((x) => x.match));
         assert(t, found.length === 0, `${projectedPath(f)} carries no prohibited marker in its generated text: ${found.join(', ')}`);
+      }
+      for (const [where, text] of [...MCP_TOOLS.map((tool) => [`the description of ${tool.name}`, tool.description] as const), ['the CLI usage text', CLI_USAGE] as const]) {
+        const found = text.split(/\r?\n/).flatMap((line) => prohibitedMarkers(line).map((x) => x.match));
+        assert(t, found.length === 0, `${where} carries no prohibited marker: ${found.join(', ')}`);
       }
     },
   },

@@ -1,10 +1,10 @@
 {
   "icdVersion": 1,
   "id": "schema",
-  "responsibility": "Holds the single authored definition of every record, patch, result, workspace, assurance and profile shape, and everything generated from it.",
+  "responsibility": "Holds the single authored definition of every record, patch, result, workspace, assurance and profile shape and of every operation, and everything generated from them.",
   "owns": [
-    "The JSON Schema 2020-12 sources and the qualified keyword vocabulary.",
-    "The generated TypeScript declarations, embedded runtime schemas, registries, patch schema and contract digest."
+    "The JSON Schema 2020-12 sources, the operation catalogue and the qualified keyword vocabulary.",
+    "The generated TypeScript declarations, embedded runtime schemas, registries, patch schema, contract digest, MCP tool descriptions, CLI usage text and operation reference."
   ],
   "boundary": [
     "No hand-maintained second copy of any shape.",
