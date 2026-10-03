@@ -1,360 +1,166 @@
 # Loom
 
-Loom is a free, schema-driven systems-engineering tool. One portable model is the single source
-of truth; every artifact is projected from it; mutations cascade. Its purpose is to catch the
-cross-cutting mutation errors that are easy to introduce when editing a system piecemeal — a
-renamed field that a consumer still imports, a state transition to a state that no longer
-exists, a routine that writes a table it does not own, a mutation that loses its traceability.
-A bad mutation is rejected with a precise finding, and the model refuses to serialize or project
-until it is valid again (fail-closed).
+Loom is a schema-driven engineering model: one portable model declares a system's components, contracts, knowledge records and deployment facts, every interface artifact is projected from it, and every change is checked against an accepted baseline before it lands.
 
-## Design
+## What Loom establishes, and what it does not
 
-- **One model, many projections.** The model is plain data, authored as JSON or YAML. Schemas,
-  APIs, DDL, conformance checks, diagrams and the reference are *projected* from it and are never
-  edited by hand; the CLI's `--check` reports any projected file that has drifted.
-- **Pure, isomorphic core.** `@loom/core` has no filesystem, network, or Node-only
-  dependency, so the same engine runs in the CLI, the MCP server and the browser designer. File IO
-  lives only in the CLI; process/stdio IO only in the MCP server.
-- **Deterministic output.** Serialization is canonical (object keys sorted, array order
-  preserved). The same model always produces byte-identical output — no timestamps, no
-  random values, no machine paths. Every projection opens with a source notice in its own syntax.
-- **Fail-closed.** `project()`, `projectToFiles()` and `exportModel()` throw if the model has any
-  error finding, so an invalid model can never leak into a downstream artifact.
-- **Declared contracts only.** The engine (`@loom/core`) never executes SQL or PowerShell and never
-  calls a live service. Routine contracts project to conformance checks that the adopting pipeline
-  runs against its own real artifacts; the CLI self-test additionally proves the SQL check
-  end-to-end against a disposable database it creates and drops itself (probe (f), see
-  [Conformance checks](#conformance-checks)).
+Source: the result contract, `packages/core/schema/result.schema.json`.
 
-## Layout
+Loom rejects declared contradictions, exposes unknowns, enforces prerequisites, controls accepted changes and requires relevant execution evidence. It does not prove that the declared requirements are correct or complete; a consistent model can still describe the wrong system, so independent acceptance and qualification remain necessary.
 
-An npm-workspaces monorepo:
+Every result reports four independent states, and none of them implies another:
 
-| Package | Role |
+| State | Values | Meaning |
+| --- | --- | --- |
+| Validation | `valid`, `invalid`, `notEvaluated` | The model satisfies the structural and semantic rules of its profile |
+| Readiness | `ready`, `blocked`, `unresolved`, `notEvaluated` | A named task's prerequisites, permitted substitutes and policy are satisfied |
+| Qualification | `qualified`, `unqualified`, `unknown`, `notEvaluated` | The required claims have current, trusted execution evidence for the exact revisions |
+| Acceptance | `accepted`, `unaccepted`, `notEvaluated` | The configured authority, or a pre-authorized change class, accepted the baseline or change |
+
+A valid empty skeleton is not ready for implementation. A qualified earlier revision does not qualify a new one. **An agent acknowledging a breaking change (`acknowledgeBreaking`) never constitutes acceptance.** A missing input is reported as `notEvaluated` or `unresolved`, never as success.
+
+## Components
+
+Source: the interface control documents in `packages/core/schema/icd`, one per component.
+
+| Component | Package | Responsibility |
+| --- | --- | --- |
+| Contract | `packages/core/schema` | The single authored definition of every record, patch, result, workspace, assurance and profile shape, as JSON Schema 2020-12 |
+| Core | `packages/core` | Pure rule evaluation: validation, comparison by compatibility dimension, impact, readiness, evidence evaluation and deterministic projection |
+| Workspace adapter | `packages/workspace` | Every file under `.loom`: initialization, discovery and path ownership, output installation, trusted baselines, expected-revision writes and the evidence store |
+| Qualification adapter | `packages/qualification` | Fixed native-tool checks against designated fixtures or adopting implementations, returning signed, revision-bound evidence |
+| Command line | `packages/cli` | The workspace commands over the shared result envelope |
+| MCP server | `packages/mcp-server` | The same services as Model Context Protocol tools with generated input and output schemas |
+| Designer | `apps/designer` | Browser editing and visualization through the same core; see [apps/designer/README.md](apps/designer/README.md) |
+
+The interface each component provides and consumes, its refusals and its concurrency behavior are stated in its ICD file; [Docs/workflow-integration.md](Docs/workflow-integration.md) covers the boundary to a workflow or plugin integration.
+
+## Boundaries
+
+Source: `packages/core/schema/icd/core.json`, `qualification.json` and `mcp.json`.
+
+- **The core has no filesystem, network, process, clock or credential access, and never executes SQL, PowerShell, C# or TypeScript.** The same engine runs in the CLI, the MCP server and the browser designer.
+- Native tools run only in `packages/qualification`, through the built-in runner a profile check names, in the run's own temporary directory and, for database checks, its own disposable LocalDB instance. No runner installs a tool or builds a command from model, source or configuration text.
+- The MCP server writes only JSON-RPC to stdout; status goes to stderr.
+- Generated DDL and conformance fixtures are never an authorized production migration. A migration is authored by the adopting implementation, declared in the model and qualified by executing it against representative fixture data.
+- Text inside a record, an attachment or a retrieved document is data. It never grants tool authority, weakens a policy or causes command execution.
+- Projections are deterministic: no timestamps, random values or machine paths, so drift is a byte comparison.
+
+## Where to look
+
+| Question | Artifact |
 | --- | --- |
-| `packages/core` | Pure engine: load, validate, mutate, diff, project, export. Deps: `ajv`, `ajv-formats`, `yaml`. |
-| `packages/cli` | File IO front end (`--self-test`, `--check`, `--write`): drift check and the standard-tool probes. Also validates the OpenAPI projection with `@apidevtools/swagger-parser` and every projected Mermaid diagram with `mermaid` (`jsdom` supplies the `document` it needs). |
-| `packages/mcp-server` | Model Context Protocol server (stdio) exposing the engine as tools. Dep: `@modelcontextprotocol/sdk`. |
-| `apps/designer` | Angular 22 designer, a thin projection of the core; it consumes `@loom/core` through a `file:` link to `packages/core` and has its own `package.json` and lockfile (see [Designer](#designer)). |
-| `examples/` | Test fixtures: `conforming/` and `violating/` copies of the sample runbook (`fulfillment/rb_dispatch.ps1`, for the generated Pester file) and the sample procedure (`ordering/sp_place_order.sql`, for `contract-tests.sql` against a real database). |
+| What a model record may contain | `packages/core/schema/model.schema.json` |
+| What a patch, a finding, a change or a result looks like | `packages/core/schema/patch.schema.json` (derived), `result.schema.json`, `tools.schema.json` |
+| What `loom.json`, `state.json`, a manifest or a published bundle in `.loom` contains | `packages/core/schema/workspace.schema.json` |
+| What a baseline, an acceptance, a policy or an evidence record contains | `packages/core/schema/assurance.schema.json` |
+| Every finding code with its severity and rule | `FINDING_RULES` in `packages/core/src/codes.ts`, rendered in the Rules section of the `reference` projection |
+| How each model field is compared, and in which compatibility dimension | `DIFF_RULES` and `FIELD_POLICY` in `packages/core/src/field-policy.ts` |
+| What a language or interface profile supports, requires and cannot prove | `packages/core/schema/profiles/<id>.json` |
+| Which artifacts a projection profile enables | `packages/core/schema/projection-profiles/<id>.json` |
+| Projection targets, their file names and instancing | `TARGETS` in `packages/core/src/project.ts` |
+| A component's interfaces and refusals | `packages/core/schema/icd/<component>.json` |
+| How workflow integration persists state and obtains acceptance | [Docs/workflow-integration.md](Docs/workflow-integration.md) |
+| The fixture model every test and the designer load | `packages/core/src/sample.ts` |
+| Unresolved questions about Loom | [Docs/ToDo.md](Docs/ToDo.md) |
 
 ## Build and test
 
-```sh
-npm install          # install workspace dependencies
-npm run build        # tsc -b across all packages
-npm run self-test    # engine self-test, drift check and standard-tool probes via the CLI
-npm run smoke:mcp    # in-memory MCP smoke test (enumerate + call tools)
-```
+Source: the `scripts` of `package.json`.
 
-The engine self-test (`packages/core/src/selftest.ts`) passes the sample model, then breaks it
-on purpose: every validate rule has a deliberate contradiction that must yield its finding code,
-at its path and severity, with a fix, and every breaking-diff rule one that must yield a breaking
-change with consumers. It also proves the mutation gate (refused without a version bump, without
-acknowledgment, with a stale bound consumer or referencing property, or with a stale workflow pin;
-accepted as the complete batch, including the Walkthrough's), determinism and fail-closed refusal
-for every projection target, and lossless JSON and YAML round-trips. Every code in `FINDING` must
-have its rule in `FINDING_RULES` and be raised by a contradiction or a mutate refusal, and every
-rule in `DIFF_RULES` must be emitted by a diff case, so the generated rule list names only rules
-the engine applies.
+The commands below run from the repository root after `npm install`. `npm run build` comes first; every other command executes the built `packages/*/dist`.
 
-The CLI self-test then proves the drift check and validates the OpenAPI projection with
-`swagger-parser`, and runs the standard-tool probes. A probe reports `PASS` or `FAIL` only when its
-tool ran; an absent tool, a load failure or an unreadable result is `UNKNOWN`, never a pass.
-Probes (a)-(c) and (f) use external tools that nothing in this repository installs; (f) is
-`UNKNOWN` if `SqlLocalDB.exe` or `sqlcmd` is absent, or the instance will not start. Probes (d) and
-(e) use declared dependencies, `yaml` through `importModel` and `mermaid` with `jsdom`; (e) is
-`UNKNOWN` only if `mermaid` or `jsdom` fails to load.
-
-| Probe | Proof | Tool |
-| --- | --- | --- |
-| (a) | `Routines.Contract.Tests.ps1` parses with zero errors | `pwsh` and `[System.Management.Automation.Language.Parser]::ParseFile` |
-| (b) | The generated tests pass on `examples/conforming` and fail on `examples/violating` | Pester, the newest installed release of each major from 5, one process per release |
-| (c) | `schema.sql` and `contract-tests.sql` parse with zero errors | `Microsoft.SqlServer.TransactSql.ScriptDom`, the newest `TSqlNNNParser`, from `PSModulePath` or a NuGet, DacFx, SSMS, Visual Studio or Azure Data Studio install |
-| (d) | `model.yaml` parses back to the identical canonical model | `importModel` (the `yaml` package) |
-| (e) | Every `stateDiagram-v2` and `flowchart` Mermaid block in `workflows.md` and `reference.md` parses, and a deliberately malformed diagram is rejected | `mermaid.parse()`, with `jsdom` supplying the `document` it needs |
-| (f) | On a disposable database, the conforming `ordering.sp_place_order` fixture passes every check in `contract-tests.sql` (exit 0) and the violating fixture raises exactly `THROW 50005` | `sqlcmd -b` against a `SqlLocalDB` instance (`SqlLocalDB.exe`, on PATH or the newest under `%ProgramFiles%\Microsoft SQL Server\*\Tools\Binn`) |
-
-## CLI
-
-The CLI is `packages/cli/dist/index.js`, run with `node`. Its usage text calls it `loom`, but run
-it by path: the workspace does not link a `loom` command, and `npx loom` resolves the unscoped name
-on the public npm registry, where `loom` is an unrelated package.
-
-```sh
-node packages/cli/dist/index.js --self-test              # engine self-test, drift check and probes
-node packages/cli/dist/index.js --check <model> [dir]    # validate; with <dir>, also check every projected file for drift
-node packages/cli/dist/index.js --write <model> <dir>    # write every projection into <dir>
-```
-
-`<model>` is a JSON or YAML model file. `--check` prints each finding with its fix and the finding
-count, and exits non-zero on any error finding. With `<dir>` it compares each expected file
-byte-for-byte with the file on disk, reading CRLF as LF. It prints `DRIFT <file>: missing` or
-`DRIFT <file>: stale` per drifted file, warns on files that are not projections, never writes,
-and exits non-zero on any drift. Committing the `--write` output and running `--check <model> <dir>`
-in CI therefore fails the build whenever a projected file and the model disagree.
-
-## Walkthrough
-
-The sample model shows the loop end to end. Shell commands run under the repository root after
-`npm install` and `npm run build`; `loom.*` steps are MCP tool calls.
-
-1. Write and validate the sample model.
-
-   ```sh
-   node --input-type=module -e "import { writeFileSync } from 'node:fs'; import { exportModel, sampleModel } from '@loom/core'; writeFileSync('model.json', exportModel(sampleModel()) + '\n')"
-   node packages/cli/dist/index.js --check model.json
-   # loom check: 0 finding(s) - 0 error, 0 warning.
-   ```
-
-2. Attempt `order.id` from string to integer as a single patch. `loom.mutate` with
-   `{ "model": <model.json>, "patch": { "op": "changeProperty", "typeId": "order", "propertyName": "id", "set": { "kind": "integer" } } }`
-   returns `"refused": true` and these error findings, which name the two bound routines and
-   `shipment.orderId`, the property that references `order.id`:
-
-   | Code | Fix |
-   | --- | --- |
-   | `BOUNDS_KIND_MISMATCH` | remove maxLength from the bounds of 'order.id' |
-   | `BINDING_KIND_MISMATCH` | set property 'orderId' kind to 'integer' and remove maxLength from its bounds, then bump type 'shipment' version and list 'shipment' in acknowledgeBreaking |
-   | `BINDING_KIND_MISMATCH` | set result column 'order_id' kind to 'integer', then bump routine 'ordering.sp_place_order' version and list 'ordering.sp_place_order' in acknowledgeBreaking |
-   | `BINDING_KIND_MISMATCH` | set param 'OrderId' kind to 'integer', then bump routine 'fulfillment.rb_dispatch' version and list 'fulfillment.rb_dispatch' in acknowledgeBreaking |
-   | `BREAKING_CHANGE_WITHOUT_VERSION_BUMP` | bump type 'order' version above 1 and list 'order' in acknowledgeBreaking |
-   | `BREAKING_CHANGE_UNACKNOWLEDGED` | list 'order' in acknowledgeBreaking to confirm the breaking change is intended |
-
-3. Apply the fixes as one atomic batch. Bumping `order` and `shipment` to version 2 also makes
-   their workflow pins stale (`WORKFLOW_IMPORT_VERSION_MISMATCH`), two of `order` and one of
-   `shipment`, so the batch moves all three. `loom.mutate` with `model` plus:
-
-   ```json
-   {
-     "patches": [
-       { "op": "setVersion", "target": "type", "id": "order", "version": 2 },
-       { "op": "changeProperty", "typeId": "order", "propertyName": "id", "set": { "kind": "integer", "bounds": null } },
-       { "op": "changeRoutine", "routineId": "ordering.sp_place_order", "set": { "version": 2, "resultSet": [
-         { "name": "order_id", "kind": "integer", "nullable": false, "binds": "order.id" },
-         { "name": "status", "kind": "enum", "nullable": false, "binds": "order.status" } ] } },
-       { "op": "changeRoutine", "routineId": "fulfillment.rb_dispatch", "set": { "version": 2, "params": [
-         { "name": "OrderId", "kind": "integer", "required": true, "nullable": false, "binds": "order.id" },
-         { "name": "InitialState", "kind": "enum", "required": false, "nullable": false, "binds": "shipment.state" },
-         { "name": "Notify", "kind": "boolean", "required": false, "nullable": false } ] } },
-       { "op": "setVersion", "target": "type", "id": "shipment", "version": 2 },
-       { "op": "changeProperty", "typeId": "shipment", "propertyName": "orderId", "set": { "kind": "integer", "bounds": null } },
-       { "op": "changeWorkflowImport", "workflowId": "wf.checkout", "typeId": "order", "version": 2 },
-       { "op": "changeWorkflowImport", "workflowId": "wf.reporting", "typeId": "order", "version": 2 },
-       { "op": "changeWorkflowImport", "workflowId": "wf.fulfil", "typeId": "shipment", "version": 2 }
-     ],
-     "acknowledgeBreaking": ["order", "ordering.sp_place_order", "fulfillment.rb_dispatch", "shipment"]
-   }
-   ```
-
-   The result is `"refused": false` with four breaking changes, one per acknowledged element.
-   Write the returned `model` back to `model.json` (`loom.export` renders it as canonical JSON).
-
-4. Project every artifact: `loom.projectAll` returns the file map, and the CLI writes it.
-
-   ```sh
-   node packages/cli/dist/index.js --write model.json generated
-   # writes one file per entry in PROJECTION_FILES into generated/
-   ```
-
-5. Gate drift. A fresh projection checks clean; a hand edit to a projected file fails the check.
-
-   ```sh
-   node packages/cli/dist/index.js --check model.json generated
-   # every projected file matches the model                                     (exit 0)
-   # after editing generated/schema.sql:
-   # DRIFT schema.sql: stale                                                     (exit 1)
-   ```
-
-6. Run the conformance checks in the pipeline, against the real scripts and the database the
-   pipeline owns; the engine itself connects to neither. Probe (f) of the CLI self-test proves
-   `contract-tests.sql` the same way already, but against a disposable `loom_selftest_*` database
-   it creates and drops itself, never the pipeline's own.
-
-   ```powershell
-   Invoke-Pester -Container (New-PesterContainer -Path ./generated/Routines.Contract.Tests.ps1 -Data @{ RoutineRoot = '<repository root>' })
-   Invoke-Sqlcmd -ServerInstance '<server>' -Database '<database>' -InputFile ./generated/contract-tests.sql -AbortOnError
-   ```
-
-   ```sh
-   sqlcmd -b -S <server> -d <database> -i generated/contract-tests.sql
-   ```
-
-   `sqlcmd -b` exits with `ERRORLEVEL` 1 on an error above severity 10, and a contract `THROW`
-   raises severity 16 (Microsoft Learn, *sqlcmd utility*, `-b`; *THROW*). After step 3 the unchanged
-   `examples/conforming` runbook, which still declares `[string] $OrderId`, fails
-   `parameter OrderId is typed for kind integer` (9 passed, 1 failed) until the script declares
-   `[long]`.
-
-## The model
-
-A model is a single object with: `version`, `components`, `types`, `operations`, `routines`,
-`mutations`, `workflows`, `edges`, `requirements`, `scenarios`. Types, operations and routines
-are versioned contracts: each carries a required `version`. A type may name its backing `table`
-and must then name the `key` properties that identify a row. A property may declare
-`binds: 'typeId.propertyName'`, the key it references (a foreign key). A routine may name its
-`source` file (repository-relative), list the `writesColumns` it writes as `<table>.<column>`, and
-declare on a param or result column `binds: 'typeId.propertyName'`, the producer property it
-expects. Ids may contain dots, so bindings, table qualifiers and written columns resolve by the
-longest known id or table prefix.
-
-Each model is first checked against a structural meta-schema (via Ajv), then against the
-semantic rules. Every finding carries a stable code, the path of the offending element, its impact
-set and a one-line `fix`. `diff()` classifies each change as breaking or compatible under a named
-rule, attributes it to the element that changed, and lists the consumers of a breaking change by
-reverse reachability. The Rules section of the projected `reference.md` lists every finding code
-and change rule with its one-line rule, generated from `FINDING_RULES` in
-`packages/core/src/codes.ts` and `DIFF_RULES` in `packages/core/src/diff.ts`.
-
-## Projections
-
-Every target is a pure function of a valid model. `projectToFiles()` and `loom --write` emit them
-all under these file names.
-
-| Target | File | Content |
-| --- | --- | --- |
-| `json-schema` | `schema.json` | JSON Schema 2020-12, one `$defs` entry per type. |
-| `openapi` | `openapi.json` | OpenAPI 3.1 paths from the operations' HTTP bindings, with the types as component schemas. |
-| `sql` | `schema.sql` | T-SQL DDL: one `CREATE SCHEMA` per component that owns a table (`dbo` excepted) and one `CREATE TABLE` per table-backed type, with `PRIMARY KEY` from `key` and a `CHECK` per enum. After every table, one `ALTER TABLE ... ADD CONSTRAINT [FK_<table>_<column>] FOREIGN KEY` per property whose `binds` references a table-backed type, so table order, reference cycles and self-references never matter. Procedure bodies are outside the model. |
-| `sql-contract-tests` | `contract-tests.sql` | T-SQL conformance checks, one batch per `sql-procedure` routine and per table-backed type. |
-| `pester-contract-tests` | `Routines.Contract.Tests.ps1` | One Pester 5 test file for the `runbook` and `function` routines that declare a `source`; it also runs under Pester 6. |
-| `yaml` | `model.yaml` | The canonical model as YAML 1.2, keys sorted. `importModel()` reads it back losslessly. |
-| `workflow` | `workflows.md` | Mermaid: a `stateDiagram-v2` per stateful type (transitions from its mutations, `[*]` for `$absent`) and a flowchart of workflows with their dependencies, operations and mutations. |
-| `reference` | `reference.md` | Markdown reference by component (types, operations, routines, mutations), then workflows, a consumers index by reverse reachability, the workflow diagrams, and the Rules: every finding code with its severity and rule, and every change rule with what it applies to and whether it is breaking. |
-
-The SQL kind mapping is: string → `NVARCHAR(maxLength)`, or `NVARCHAR(MAX)` when there is no
-`maxLength` or it exceeds 4,000; integer → `BIGINT`; number → `FLOAT`; boolean → `BIT`; enum →
-`NVARCHAR(longest value)` plus a `CHECK (col IN (...))`. `NULL` / `NOT NULL` follows `nullable`.
-A table's schema is its owning component (`ordering.orders` → `[ordering].[orders]`). A procedure's
-SQL name is `[owner].[routine id without its "<owner>." prefix]` (`ordering.sp_place_order` →
-`[ordering].[sp_place_order]`).
-
-## Conformance checks
-
-Loom models declared contracts; the two contract-test projections let a pipeline prove that the
-real procedures, tables and scripts still match them. Both are read-only and idempotent:
-`contract-tests.sql` holds only `SELECT` (inside `IF` predicates) and `THROW`, and the Pester file
-parses each script without executing it. Each `.sql` block is one batch, so run the file with
-`sqlcmd -b` to fail the pipeline on the first broken contract.
-
-Loom's own live SQL check (probe (f)) runs on SQL Server Express LocalDB: it runs under the
-invoking user's account with no Windows service and starts on demand (Microsoft Learn, *SQL Server
-Express LocalDB instance APIs*). It carries Express's limits — no SQL Server Agent, no Database
-Mail, Service Broker client-only, no FILESTREAM (Microsoft Learn, *Editions and supported features
-of SQL Server 2022*; *SQL Server Express LocalDB*, Restrictions). A check that depends on one of
-those features needs a fuller edition.
-
-| Contract | Checked by | Failure |
-| --- | --- | --- |
-| The procedure exists | `OBJECT_ID(..., N'P')` | `THROW 50001` |
-| Parameter names, order and count | `sys.parameters` against the contract list | `THROW 50002` |
-| Each parameter's type family | `TYPE_NAME(system_type_id)` | `THROW 50003` |
-| The first result set can be described | `sys.dm_exec_describe_first_result_set_for_object` | `THROW 50004` |
-| Result column names, order and count | same DMF, `column_ordinal` and `name` | `THROW 50005` |
-| Each result column's nullability | same DMF, `is_nullable` | `THROW 50006` |
-| Each result column's type family | same DMF, `TYPE_NAME(system_type_id)` | `THROW 50007` |
-| The table exists | `OBJECT_ID(..., N'U')` | `THROW 50011` |
-| Each property column exists | `INFORMATION_SCHEMA.COLUMNS` | `THROW 50012` |
-| Each column's nullability | `INFORMATION_SCHEMA.COLUMNS.IS_NULLABLE` | `THROW 50013` |
-| Each column's type family | `INFORMATION_SCHEMA.COLUMNS.DATA_TYPE` | `THROW 50014` |
-| Each property `binds` between table-backed types: an enabled, single-column foreign key from its column to the referenced table's key column | `sys.foreign_keys` and `sys.foreign_key_columns` | `THROW 50015` |
-| Script parameter names and order | `ParamBlock.Parameters` of the parsed script | failed `It` |
-| Script parameter `Mandatory` equals `required` | the `[Parameter(Mandatory)]` attribute | failed `It` |
-| Script parameter type fits the kind | the type constraint's resolved .NET type | failed `It` |
-| An enum param bound to an enum property allows exactly its values | the `[ValidateSet(...)]` attribute | failed `It` |
-
-Type families: string → `char`, `varchar`, `nchar`, `nvarchar`, `text`, `ntext`,
-`uniqueidentifier`; integer → `tinyint`, `smallint`, `int`, `bigint`; number → `decimal`, `numeric`,
-`float`, `real`, `money`, `smallmoney`; boolean → `bit`; enum → `char`, `varchar`, `nchar`,
-`nvarchar`. PowerShell types: string and enum → `[string]`; integer → `[int]` or `[long]`; number →
-`[double]`, `[decimal]` or `[single]`; boolean → `[bool]` or `[switch]`. The Pester file takes the
-script root as `-Data @{ RoutineRoot = '<repository root>' }` (default: the current directory) and
-resolves each script as `Join-Path $RoutineRoot <source>`.
-
-Not verified, by design or by limit of the platform:
-
-| Not checked | Reason |
+| Command | Proof |
 | --- | --- |
-| A runbook's or function's output shape | It exists only at run time; a static parse cannot see it, so no test is emitted for it. |
-| Whether a SQL parameter is required or nullable | `sys.parameters.has_default_value` is `0` for Transact-SQL objects and `is_nullable` applies to natively compiled procedures only (Microsoft Learn, *sys.parameters*). |
-| Procedure and script bodies: what they read, write or compute | The body is outside the model; `writesTables` and `writesColumns` are declarations. |
-| Result sets after the first | `sys.dm_exec_describe_first_result_set_for_object` describes the first result set only. |
-| Live primary keys and `CHECK` constraints; a foreign key's name, referential actions and trust (`WITH NOCHECK`); constraints and columns the model does not declare | The table checks cover the declared property columns and one enabled foreign key per property `binds`. |
-| Live HTTP services | The OpenAPI projection is validated as a document, never against a running service. |
+| `npm run build` | The generated contract artifacts match the authored schemas (`generate --check`), then every package compiles |
+| `npm run generate` | Regenerates `packages/core/schema/patch.schema.json` and `packages/core/src/generated/*`; those files are never edited by hand |
+| `npm run self-test` | The engine battery, the drift gate, and every profile check run against Loom's own fixtures under `qualification/policy.json` |
+| `npm run test:workspace`, `test:qualification`, `test:cli`, `test:mcp` | The adapters' node:test suites |
+| `npm run smoke:mcp` | Every MCP tool result and typed refusal conforms to its declared output schema |
 
-## Engine API (`@loom/core`)
+The designer has its own lockfile and commands; see [apps/designer/README.md](apps/designer/README.md).
 
-The exported functions and types are `packages/core/src/index.ts`. `mutate(model, patchOrPatches,
-{ acknowledgeBreaking })` applies one patch or an atomic batch to a copy, re-validates and diffs
-against the input; it returns `model: null` (refused) when any patch misses its target, the result
-has an error finding, or a breaking change fails the gate below. `project()`, `projectToFiles()`
-and `exportModel()` throw on an invalid model.
+## Command-line interface
 
-### The breaking-change gate
+Source: the usage text of `packages/cli/src/cli.ts`, printed by `node packages/cli/dist/index.js --help`, which is the home of every option.
 
-A breaking change cannot land silently. For every element with a breaking change, `mutate()`
-requires that a still-present type, operation or routine carries a higher `version`
-(`BREAKING_CHANGE_WITHOUT_VERSION_BUMP`), and that the element is listed in
-`acknowledgeBreaking` (`BREAKING_CHANGE_UNACKNOWLEDGED`). Because every intermediate state of a
-correct breaking change is invalid, it must be submitted as one batch: bump the version, change
-the contract, update every bound consumer (itself a breaking change on the consumer, so bump and
-acknowledge it too) and every pinned workflow import, then acknowledge each broken element.
+The CLI is run by path, as `node packages/cli/dist/index.js <command>`. The workspace links no `loom` command, and `npx loom` would fetch an unrelated public package of that name. Every command prints the shared result envelope with `--json`, and the usage text states the exit-status convention.
 
-The patch operations and the fields each `change*` op may set are the `Patch` union in
-`packages/core/src/mutate.ts`. A `change*` op rejects any other field, and a `null` value removes
-an optional field.
+| Command | Purpose |
+| --- | --- |
+| `init` | Scaffold `.loom` at a repository root |
+| `check`, `check --all` | Ownership, configuration, validation, the trusted-baseline comparison, outputs and manifest; with `--all`, every descriptor under the boundary and global disjointness |
+| `write`, `docs` | Install the enabled artifacts, with the readiness, coverage and evidence views evaluated |
+| `docs --check` | Document links, record references, generated views and history markers |
+| `owner` | The model that owns a path |
+| `migrate` | Migrate a model document to the current format into a new file |
+| `baseline create`, `accept` | Record a baseline and an acceptance |
+| `readiness`, `plan`, `mutate` | Evaluate a task, preview a change, apply a change against an expected revision |
+| `qualify`, `evidence` | Run profile checks and inspect the evidence they produced |
+| `context`, `describe` | Bounded record retrieval and the capability description |
+| `coverage --check` | The capability register in `qualification/capabilities.json` |
+| `--self-test` | The engine battery, the drift gate and every profile check |
+
+An explicit `--model <path>` selects a document. Inside a governed workspace the configured scope, the trusted-baseline comparison and the qualification policy still apply, so a replacement model cannot evade the accepted-baseline comparison; with no governing descriptor the result reports validation-only mode.
 
 ## MCP server
 
-The server speaks the Model Context Protocol over stdio; its tools, each wrapping the core, are
-`loom.validate`, `loom.mutate`, `loom.diff`, `loom.project`, `loom.projectAll`, `loom.export`,
-`loom.import` and `loom.selftest`. `loom.mutate` takes `model` plus exactly one of
-`patch` (an object) or `patches` (an atomic batch), and an optional `acknowledgeBreaking` list of
-element ids; it returns `refused`, `findings`, `impact`, `changes` and the new `model`.
-`loom.project` accepts any target in `PROJECTION_TARGETS` and returns text targets verbatim;
-`loom.projectAll` returns the `projectToFiles` map.
+Source: `packages/mcp-server/src/server.ts` and `packages/core/schema/icd/mcp.json`.
 
-### Registering with a Claude Code client
+The server speaks the Model Context Protocol over stdio. Its tools are `loom.validate`, `loom.mutate`, `loom.diff`, `loom.project`, `loom.projectAll`, `loom.export`, `loom.import`, `loom.selftest`, `loom.describe`, `loom.context`, `loom.checkReadiness` and `loom.planChange`. Each tool's input and output schema is generated from the contract bundle, every input is validated before anything runs, and every result is structured content with a text fallback.
 
-After `npm run build`, register the server for every project of the current user:
+The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectedRevision` and is refused as `stale-base` when the model changed since that revision; `loom.planChange` and a `dryRun` mutation never write.
+
+After `npm run build`, the server is registered for every project of the current user with:
 
 ```sh
 claude mcp add --scope user loom -- node <absolute path to packages/mcp-server/dist/index.js>
 ```
 
-Options such as `--scope` precede the server name, and everything after `--` is the command that
-starts the server. Alternatively, add the entry in [`mcp-config-entry.json`](./mcp-config-entry.json)
-to an `.mcp.json` or `~/.claude.json` server list. Claude Code expands its `${USERPROFILE}` in
-`command` and `args` (Claude Code docs, *MCP*, "Environment variable expansion in `.mcp.json`"); the
-entry assumes the repository is checked out at `${USERPROFILE}/Codebase`, so adjust that prefix to
-the actual checkout.
+Alternatively, the entry in [mcp-config-entry.json](mcp-config-entry.json) can be added to an `.mcp.json` server list, with its path prefix adjusted to the actual checkout.
 
-Then restart the client (or reload its MCP configuration) so it launches the server and the
-`loom.*` tools appear.
+## Adopting Loom in a repository
 
-The server writes only JSON-RPC to stdout; status messages go to stderr. A non-interactive
-smoke test (`npm run smoke:mcp`) constructs the server, enumerates its tools over an in-memory
-transport, runs the self-test, calls `loom.mutate` with a breaking patch (refused) and a complete
-acknowledged batch (accepted), and calls `loom.projectAll` and `loom.project`, so the integration
-can be verified without a live client.
+Source: `packages/workspace/src` and `packages/core/schema/workspace.schema.json`.
+
+1. It would be necessary first to decide whether the repository is a component of a larger modeled system or a system in its own right. A component gets no `.loom`; its code roots are claimed by the system model in the lowest repository that contains all of them.
+2. `init`, run at that repository root, scaffolds `model.json`, `loom.json`, `state.json` and `.gitignore` in a new `.loom` directory. It refuses a subdirectory, an existing `.loom` and any overlap with an ancestor's or a descendant's claims, and it never stages or commits.
+3. The placeholder component and its `"."` root are replaced in one edit by the named components and their repository-relative roots in `loom.json` `scope`. Overlapping roots, within one model or across descriptors, fail with `SCOPE_OVERLAP` or `SCOPE_COMPONENT_ROOT_OVERLAP`.
+4. `projectionProfile` selects the enabled artifacts, and `outputs` routes each artifact instance to a directory; an unmapped artifact goes to `Docs/Loom`, and an unmapped per-component instance to a subdirectory of it named by its component. An output never overwrites an authority file, source code or another model's artifact.
+5. `gates.policyRef` names a policy committed as `<id>.json` in the `policies` directory of `.loom`. Policy, baselines and acceptance records are read only from the trusted Git ref, never from the working tree, so a candidate change cannot authorize itself; `loom.json` gates can only strengthen the policy.
+6. `baseline create` and `accept` record the accepted state; the acceptance becomes trusted when it reaches the trusted ref through review, or when it carries a signature by a key the policy lists.
+7. `qualify` runs the profile checks; evidence is trusted only when signed by a runner key the policy lists. `check` in CI then enforces the accepted baseline, the outputs and the qualification policy regardless of how an edit was made.
+
+## Model format and migration
+
+Source: `packages/core/src/migrate.ts`.
+
+A model document carries its format version in `version`, separately from every contract version, record revision, configuration version and generator version inside it. A document whose format version is not supported is refused with `MODEL_FORMAT_UNSUPPORTED` and is never reinterpreted. `migrateModel` applies the deterministic steps registered in `MODEL_MIGRATIONS` and returns the unchanged source, the candidate result, the applied steps, the findings and the semantic changes for review; it never modifies its input, and `migrate` writes the result to a new file. Format 1 is the only format, so the registry is empty; the self-test qualifies the mechanism with a step it defines itself.
+
+## Profiles and proof limits
+
+Source: `packages/core/schema/profiles` and `packages/core/schema/projection-profiles`.
+
+Each profile file states its supported constructs, its unsupported constructs and whether using one refuses the projection or permits only a marked draft, the native tools it requires with their version policy, its proof limits and its fixed check definitions. The adoption conventions of the C#, TypeScript, SQL and PowerShell conformance artifacts are stated in the `supports` entries of `csharp.json`, `typescript.json`, `sql.json`, `powershell.json` and `powershell-pester6.json`.
+
+The required native tools are provisioned by the developer or the pipeline; no adapter installs one. A check whose tool is absent, outside its version policy, unreadable or interrupted reports `UNKNOWN`, and a required `UNKNOWN` never yields a qualified result.
+
+## Qualification of Loom
+
+Source: `packages/qualification/src/selfqualify.ts` and `qualification/policy.json`.
+
+`npm run self-test` runs every profile check against the fixtures in `examples/` and `qualification/fixtures/`. `examples/conforming` must pass and `examples/violating` must fail every conformance check that runs them, and the violating SQL fixture breaks exactly the contract named by the `negativeControl` of `sql.behavior` in `packages/core/schema/profiles/sql.json`. `qualification/fixtures` holds adoption cases whose expected outcomes are authored independently of the engine. `qualification/capabilities.json` maps each capability to its code, contract and verification cases, and `coverage --check` fails on any entry that does not resolve.
+
+Evidence and run records are signed with Ed25519 when the private key is supplied through the environment variable `qualify --key-env` names (by default `LOOM_EVIDENCE_KEY`); an unsigned record is kept and reported untrusted.
 
 ## Designer
 
-`apps/designer` is an Angular 22 designer, a thin projection of the core. Its build, run and test
-commands and its behaviour are in [`apps/designer/README.md`](./apps/designer/README.md). Build the
-core first: the designer links `@loom/core` from `packages/core`. Because `@loom/core` declares
-`"sideEffects": false`, the designer's production build leaves out the core modules it does not
-import, such as the self-test.
+`apps/designer` is the browser designer; its build, run and test commands are in [apps/designer/README.md](apps/designer/README.md).
 
 ## Open items
 
-Proposed extensions that are not yet decided are open items in [`Docs/ToDo.md`](./Docs/ToDo.md),
-each with what would close it.
+Unresolved questions about Loom are in [Docs/ToDo.md](Docs/ToDo.md), each with what would close it.
 
 ## License
 
-MIT. Direct runtime dependencies are MIT or ISC: `ajv`, `ajv-formats`,
-`@apidevtools/swagger-parser`, `mermaid`, `jsdom`, `@modelcontextprotocol/sdk` (MIT) and `yaml`
-(ISC). Through `mermaid`, the transitive tree also includes `elkjs` (EPL-2.0) and `dompurify`
-(MPL-2.0 OR Apache-2.0).
+Loom is MIT licensed. Each dependency's license is declared in `package-lock.json`. Through `mermaid`, the qualification adapter's dependency tree includes `elkjs` (EPL-2.0) and `dompurify` (MPL-2.0 OR Apache-2.0), as read from their `package.json` on 2026-10-03.

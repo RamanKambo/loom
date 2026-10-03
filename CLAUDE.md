@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 It loads on top of `~/.claude/CLAUDE.md` and the superproject's `../../CLAUDE.md` and carries only
 what is specific to Loom. The designer's conventions are in `apps/designer/CLAUDE.md`. `README.md`
-routes to the model contract, the projections and the conformance-check boundary. Workspace
-scripts: @package.json
+is the entry point and routes to the contract, the components and their boundaries;
+`Docs/workflow-integration.md` is the workflow-integration interface contract and `Docs/ToDo.md`
+the open-items register. Workspace scripts: @package.json
 
 ## Commands
 
@@ -17,14 +18,15 @@ scripts: @package.json
 - `npm run self-test` is the whole proof: the engine battery, the CLI's drift check, then every
   profile check run by `packages/qualification` against Loom's own fixtures under
   `qualification/policy.json`. The core has no per-test runner; `selfTest()` throws on the first
-  failed assertion and names it. `npm run test:workspace` and `npm run test:qualification` run the
-  adapters' node:test suites.
+  failed assertion and names it. `npm run test:workspace`, `npm run test:qualification`,
+  `npm run test:cli` and `npm run test:mcp` run the adapters' node:test suites, and
+  `npm run smoke:mcp` checks every MCP result against its output schema.
 - A check reports `PASS` or `FAIL` only when its tool ran. `UNKNOWN` means the tool was absent,
   outside its profile's version policy, unreadable, crashed or timed out, and is never a pass; a
   required `UNKNOWN` fails the self-test.
 - Running `packages/cli/dist/index.js` with node and no arguments prints the CLI usage. Its
-  `--check <model> <dir>` mode is the drift gate: it compares committed projections with a fresh
-  projection and never writes.
+  `check` command is the drift gate: it compares the installed outputs and the manifest with a
+  fresh projection, and with `--out <dir>` a directory of projections, and never writes.
 - Never run `npx loom` or install `loom` from the registry. The workspace links no `loom` command,
   so npx fetches the unrelated public package of that name. Run the CLI by path.
 - After a core change, also build and test `apps/designer`, because it executes the built core
@@ -73,7 +75,7 @@ scripts: @package.json
 ## Rules
 
 - **Edit the model, never a projection.** Every projected file opens with a source notice, and
-  `--check <model> <dir>` reports a hand edit as drift.
+  `check` reports a hand edit as drift.
 - **Keep projection output deterministic:** no timestamps, random values or machine paths. Drift
   detection compares bytes, and `selfTest()` renders every target twice and compares.
 - **A new semantic rule** adds its code to `FindingCode` in `packages/core/schema/result.schema.json`
