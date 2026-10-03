@@ -4,7 +4,7 @@
   "subject": {
     "kind": "baseline",
     "baseline": "bl-statements-1",
-    "candidate": "sha256:58359953b7d3a3e5e90fbb723856617260b6bae67b253bc957446718445206e0"
+    "candidate": "sha256:1dbd8daa9238d718e42327dedaef814b16929ffbacf5319644b08c6b6a816e66"
   },
   "decision": "accepted",
   "authority": "team-architecture",

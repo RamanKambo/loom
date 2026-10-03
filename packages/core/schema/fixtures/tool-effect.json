@@ -1,0 +1,7 @@
+{
+  "definition": "ToolEffect",
+  "valid": ["none", "reads", "writes"],
+  "invalid": [
+    { "because": "an effect outside none, reads and writes is rejected", "keyword": "enum", "path": "", "instance": "executes" }
+  ]
+}

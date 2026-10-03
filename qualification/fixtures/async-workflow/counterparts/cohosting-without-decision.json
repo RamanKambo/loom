@@ -1877,5 +1877,6 @@
     }
   ],
   "consumerBindings": [],
-  "publishedContracts": []
+  "publishedContracts": [],
+  "agreements": []
 }

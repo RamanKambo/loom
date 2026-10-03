@@ -200,7 +200,7 @@ const SECTIONS: readonly Section[] = [
       const dotted = deepClone(base);
       const { stateProperty: _state, ...orderShape } = deepClone(pick(dotted.types, 'order'));
       dotted.types.push({ ...orderShape, id: 'order.part' });
-      dotted.unknowns.push({ id: 'unk.part-note', question: 'What does the note of a part hold?', affects: [{ kind: 'property', id: 'order.note' }, { kind: 'property', id: 'order.part.note' }], blocks: ['release'], owner: 'team-ordering', resolution: 'A decision.', status: 'open' });
+      dotted.unknowns.push({ id: 'unk.part-note', question: 'What does the note of a part hold?', affects: [{ kind: 'property', id: 'order.note' }, { kind: 'property', id: 'order.part.note' }], blocks: ['release'], owner: 'team-ordering', evidenceNeeded: 'A decision on what the note holds.', recommendedAction: { action: 'Keep the note free text.', reversible: true }, resolution: 'A decision.', status: 'open' });
       pick(dotted.types, 'order').id = 'order-renamed';
       renameReferences(dotted, 'type', 'order', 'order-renamed');
       const affects = pick(dotted.unknowns, 'unk.part-note').affects.map((a) => a.id);

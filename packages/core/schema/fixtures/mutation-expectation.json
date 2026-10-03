@@ -1,0 +1,10 @@
+{
+  "definition": "MutationExpectation",
+  "valid": [
+    { "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "imports": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    { "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "imports": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+  ],
+  "invalid": [
+    { "because": "an expectation covers every input that affects interpretation, not only the model", "keyword": "required", "path": "", "instance": { "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } }
+  ]
+}

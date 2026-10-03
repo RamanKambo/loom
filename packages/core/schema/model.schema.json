@@ -9,7 +9,7 @@
         "version", "components", "types", "operations", "routines", "mutations", "workflows", "edges",
         "requirements", "scenarios", "constraints", "observations", "assumptions", "unknowns", "decisions",
         "inventory", "retainedBehaviors", "workloads", "attachments", "mappings", "storage", "migrations",
-        "deploymentUnits", "hosts", "trustBoundaries", "securitySchemes", "consumerBindings", "publishedContracts"
+        "deploymentUnits", "hosts", "trustBoundaries", "securitySchemes", "consumerBindings", "publishedContracts", "agreements"
       ],
       "properties": {
         "version": { "description": "Model format version. Distinct from every contract version inside the model.", "const": 1 },
@@ -40,7 +40,8 @@
         "trustBoundaries": { "type": "array", "items": { "$ref": "#/$defs/TrustBoundary" }, "x-loom-kind": "trustBoundary", "x-loom-key": "id" },
         "securitySchemes": { "type": "array", "items": { "$ref": "#/$defs/SecurityScheme" }, "x-loom-kind": "securityScheme", "x-loom-key": "id" },
         "consumerBindings": { "type": "array", "items": { "$ref": "#/$defs/ConsumerBinding" }, "x-loom-kind": "consumerBinding", "x-loom-key": "id" },
-        "publishedContracts": { "type": "array", "items": { "$ref": "#/$defs/PublishedContractRef" }, "x-loom-kind": "publishedContract", "x-loom-key": "id" }
+        "publishedContracts": { "type": "array", "items": { "$ref": "#/$defs/PublishedContractRef" }, "x-loom-kind": "publishedContract", "x-loom-key": "id" },
+        "agreements": { "type": "array", "items": { "$ref": "#/$defs/Agreement" }, "x-loom-kind": "agreement", "x-loom-key": "id" }
       }
     },
     "SystemProfile": {
@@ -904,11 +905,11 @@
     "Unknown": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "question", "affects", "blocks", "owner", "resolution", "status"],
+      "required": ["id", "question", "affects", "blocks", "owner", "evidenceNeeded", "recommendedAction", "resolution", "status"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/Id" },
         "question": { "$ref": "common.schema.json#/$defs/Text" },
-        "affects": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "affects": { "description": "The scope the unknown affects.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
         "concerns": {
           "description": "Applicable concerns this unknown stands in for until resolved.",
           "type": "array",
@@ -924,6 +925,17 @@
         },
         "blocks": { "description": "Task classes this unknown blocks while open.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/TaskClass" } },
         "owner": { "$ref": "common.schema.json#/$defs/Alias" },
+        "evidenceNeeded": { "description": "The evidence that would answer the question.", "$ref": "common.schema.json#/$defs/Text" },
+        "recommendedAction": {
+          "description": "The action recommended while the unknown is open, and whether it can be undone once the answer arrives.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "reversible"],
+          "properties": {
+            "action": { "$ref": "common.schema.json#/$defs/Text" },
+            "reversible": { "type": "boolean" }
+          }
+        },
         "resolution": { "description": "Method that would resolve the question.", "$ref": "common.schema.json#/$defs/Text" },
         "status": { "enum": ["open", "resolved"] },
         "closure": {
@@ -1430,6 +1442,20 @@
         "digest": { "$ref": "common.schema.json#/$defs/Hash" },
         "schemaVersion": { "type": "integer", "minimum": 1 },
         "consumers": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" } }
+      }
+    },
+    "Agreement": {
+      "description": "A boundary agreement a composition or mixed model owns: a constraint across owners such as required caller identity, result publication semantics or cross-API timeout allocation. Each provider's export declares how it satisfies the agreement and each consumer binds to that export; the agreement never copies their contracts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "constraint", "providers", "consumers", "owner"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "kind": { "enum": ["caller-identity", "result-publication", "timeout-allocation", "other"] },
+        "constraint": { "$ref": "common.schema.json#/$defs/Text" },
+        "providers": { "description": "The records whose owners satisfy the agreement.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordAddress" } },
+        "consumers": { "description": "The records that rely on it.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordAddress" } },
+        "owner": { "$ref": "common.schema.json#/$defs/Alias" }
       }
     }
   }

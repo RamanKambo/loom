@@ -1,0 +1,20 @@
+{
+  "definition": "SourceSnapshot",
+  "valid": [
+    {
+      "modelId": "payments",
+      "repositoryIdentity": "git.example.com/shop/payments",
+      "commit": "a9ce204",
+      "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dirty": false,
+      "inputFiles": [
+        { "path": ".loom/model.json", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        { "path": ".loom/loom.json", "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a repository identity is never a local absolute path", "keyword": "pattern", "path": "/repositoryIdentity", "instance": { "modelId": "payments", "repositoryIdentity": "C:/repos/payments", "commit": "a9ce204", "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "dirty": true, "inputFiles": [] } },
+    { "because": "a snapshot states whether its content was dirty", "keyword": "required", "path": "", "instance": { "modelId": "payments", "repositoryIdentity": "git.example.com/shop/payments", "commit": "a9ce204", "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "inputFiles": [] } }
+  ]
+}

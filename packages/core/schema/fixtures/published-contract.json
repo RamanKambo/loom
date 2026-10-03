@@ -15,9 +15,23 @@
         "routines": [],
         "securitySchemes": []
       }
+    },
+    {
+      "bundleVersion": 1,
+      "publisher": "team-payments",
+      "contract": "payments-export",
+      "version": 1,
+      "schemaVersion": 1,
+      "profiles": [],
+      "modelId": "payments",
+      "sourceCommit": "a9ce204",
+      "agreementBundle": { "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "77d0e1f" },
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [], "mutations": [], "deploymentUnits": [], "hosts": [], "evidenceObligations": [] }
     }
   ],
   "invalid": [
+    { "because": "a source commit is a commit id", "keyword": "pattern", "path": "/sourceCommit", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-api", "version": 2, "schemaVersion": 1, "profiles": [], "sourceCommit": "main", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [] } } },
     { "because": "a bundle without a digest is rejected", "keyword": "required", "path": "", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-api", "version": 2, "schemaVersion": 1, "profiles": [], "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [] } } }
   ]
 }

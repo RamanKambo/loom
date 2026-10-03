@@ -1,0 +1,16 @@
+{
+  "definition": "RevisionVector",
+  "valid": [
+    {
+      "vectorVersion": 1,
+      "models": [
+        { "modelId": "payments", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "imports": [{ "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "schemaVersion": 1, "sourceCommit": "77d0e1f" }] },
+        { "modelId": "shop", "model": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "config": "sha256:abababababababababababababababababababababababababababababababab", "policy": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "imports": [] }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a vector names at least one participating model", "keyword": "minItems", "path": "/models", "instance": { "vectorVersion": 1, "models": [] } },
+    { "because": "a vector carries hashes and pins, never a time", "keyword": "additionalProperties", "path": "/models/0", "instance": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "config": "sha256:abababababababababababababababababababababababababababababababab", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "imports": [], "readAt": "2026-10-03T10:00:00Z" }] } }
+  ]
+}

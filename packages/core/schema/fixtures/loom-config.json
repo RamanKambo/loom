@@ -9,9 +9,29 @@
       "scope": { "sql": ["GMJobsOperator/GMJobsSQL/Schema", "GMJobsOperator/GMJobsSQL/Scripts"], "api": ["GlobalMail-Azure-Infrastructure/Modules/APIManagement"] },
       "outputs": { "openapi.json": "GlobalMail-Azure-Infrastructure/Contracts/JobControlApi/", "contract-tests.sql#sql": "GMJobsOperator/GMJobsSQL/tests/contract/", "reference.md": "Docs/Loom/" },
       "gates": { "policyRef": "engineering", "implementationRequires": "accepted-contract", "releaseRequires": ["integration", "e2e"] }
+    },
+    {
+      "configVersion": 1,
+      "modelId": "globalmail",
+      "modelKind": "mixed",
+      "composition": {
+        "members": [
+          { "memberId": "jobs", "modelId": "gmjobs", "repositoryPath": "GMJobsOperator", "relationship": "implementation", "exports": [] },
+          { "memberId": "mail", "modelId": "gmmail", "repositoryPath": "GlobalMail-Azure-Infrastructure", "relationship": "implementation", "exports": [{ "publisher": "team-mail", "contract": "mail-api", "version": 1, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" }] }
+        ],
+        "delegatedRoots": [{ "memberId": "jobs", "roots": ["GMJobsOperator"] }],
+        "outputClaims": ["Docs/System"]
+      },
+      "model": "model.json",
+      "projectionProfile": "documentation",
+      "scope": { "portal": ["Portal"] },
+      "outputs": {},
+      "gates": {}
     }
   ],
   "invalid": [
+    { "because": "a model kind outside the vocabulary is rejected", "keyword": "enum", "path": "/modelKind", "instance": { "configVersion": 1, "modelId": "m", "modelKind": "library", "model": "model.json", "scope": {}, "outputs": {}, "gates": {} } },
+    { "because": "a composition member's repository path is repository-relative", "keyword": "pattern", "path": "/composition/members/0/repositoryPath", "instance": { "configVersion": 1, "modelId": "m", "modelKind": "composition", "composition": { "members": [{ "memberId": "a", "modelId": "a", "repositoryPath": "C:/repos/a", "relationship": "implementation", "exports": [] }], "delegatedRoots": [], "outputClaims": [] }, "model": "model.json", "scope": {}, "outputs": {}, "gates": {} } },
     { "because": "an unknown field is rejected", "keyword": "additionalProperties", "path": "", "instance": { "configVersion": 1, "model": "model.json", "scope": {}, "outputs": {}, "gates": {}, "extra": 1 } },
     { "because": "gates are required", "keyword": "required", "path": "", "instance": { "configVersion": 1, "model": "model.json", "scope": {}, "outputs": {} } },
     { "because": "an absolute scope root is rejected", "keyword": "pattern", "path": "/scope/sql/0", "instance": { "configVersion": 1, "model": "model.json", "scope": { "sql": ["C:/repo/sql"] }, "outputs": {}, "gates": {} } },

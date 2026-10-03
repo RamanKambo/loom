@@ -38,7 +38,8 @@ export type RecordKind =
   | 'securityScheme'
   | 'consumerBinding'
   | 'publishedContract'
-  | 'systemProfile';
+  | 'systemProfile'
+  | 'agreement';
 /**
  * Contract version of a versioned record. Distinct from the model format version, the configuration version and the record revision.
  */
@@ -51,6 +52,10 @@ export type ArtifactInstanceName = string;
  * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
  */
 export type RelativePath = string;
+/**
+ * A Git commit id in lower-case hexadecimal, abbreviated or full.
+ */
+export type CommitId = string;
 /**
  * Accountable owner or authority, named by team or role alias, never by a person.
  */
@@ -93,6 +98,10 @@ export type TaskClass = 'discovery' | 'specification' | 'implementation' | 'inte
  */
 export type CheckResult = 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
 /**
+ * Declared stable identity of a persistent model, the same wherever its repository is checked out; never a path.
+ */
+export type ModelId = string;
+/**
  * A record id, optionally prefixed by a published-contract id and a colon to reference a record inside a pinned published contract.
  */
 export type QualifiedId = string;
@@ -122,6 +131,10 @@ export type Maturity = 'proposed' | 'accepted' | 'implemented' | 'qualified';
  * Identifier of an applicable design concern from the behavior profile, for example 'operation.idempotency'.
  */
 export type ConcernId = string;
+/**
+ * What a model owns: a composition owns system outcomes, cross-component constraints, interaction workflows, boundary agreements, integration scenarios and release assembly; an implementation owns its claimed source roots and their contracts; a mixed model owns explicitly listed local implementation roots plus composition records.
+ */
+export type ModelKind = 'composition' | 'implementation' | 'mixed';
 /**
  * Logical value kind. 'number' is binary floating point; 'decimal' is exact with declared precision and scale.
  */
@@ -423,6 +436,11 @@ export type Patch =
   | PatchRemovePublishedContracts
   | PatchUpdatePublishedContracts
   | PatchRenamePublishedContracts
+  | PatchAddAgreements
+  | PatchReplaceAgreements
+  | PatchRemoveAgreements
+  | PatchUpdateAgreements
+  | PatchRenameAgreements
   | PatchSetSystemProfile
   | PatchClearSystemProfile;
 export type ToolName =
@@ -642,6 +660,23 @@ export type FindingCode =
   | 'CAPABILITY_CASE_UNKNOWN'
   | 'CAPABILITY_CASE_FAILED';
 export type Severity = 'error' | 'warning' | 'info';
+/**
+ * A tool's effect on persisted state.
+ */
+export type ToolEffect = 'none' | 'reads' | 'writes';
+/**
+ * Opaque identity of one open workspace handle, valid only in the session that opened it; never a path, a credential or acceptance evidence.
+ */
+export type WorkspaceId = string;
+/**
+ * The stage of work a workspace is in.
+ */
+export type WorkflowPhase =
+  'unplanned' | 'discovery' | 'specification' | 'implementation' | 'integration' | 'release' | 'operations';
+/**
+ * The bundle a composition member publishes upward: a published contract that names its model and source commit, pins the agreement bundle it satisfies and carries the full required record closure of its exports, namely types, operations with their errors and authority, routines, mutations, security schemes, hosting requirements and evidence obligations. An export that omits a required behavior cannot qualify its consumer. PublishedContract rejects every unknown member.
+ */
+export type ExportBundle = PublishedContract;
 
 /**
  * Content of .loom/baselines/<id>.json: an accepted baseline. Model format, config version, contract versions, source revisions and generator version are recorded separately.
@@ -708,7 +743,7 @@ export interface RecordRef {
 }
 export interface SourceRevision {
   repository: RelativePath;
-  revision: string;
+  revision: CommitId;
   dirty?: boolean;
 }
 /**
@@ -1032,6 +1067,98 @@ export interface CapabilityRegister {
     verification: string[];
   }[];
 }
+/**
+ * A complete qualified selection of a composition: the exact member exports and agreement bindings at one revision vector, with the evidence and acceptance that qualify it. A release selects; it never deploys.
+ */
+export interface CompositionRelease {
+  releaseVersion: 1;
+  releaseId: Id;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revisionVectorDigest: string;
+  /**
+   * @minItems 1
+   */
+  members: CompositionMember[];
+  agreements: AgreementBinding[];
+  evidenceRefs: Id[];
+  acceptanceRefs: Id[];
+}
+/**
+ * A direct member of a composition: a repository inside the parent's tree that holds its own .loom. Its exports are exact pins and may be empty while the member is discovered; a task that depends on a missing export stays unresolved.
+ */
+export interface CompositionMember {
+  memberId: Id;
+  modelId: ModelId;
+  /**
+   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   */
+  repositoryPath: string;
+  relationship: 'implementation' | 'composition';
+  exports: ContractPin[];
+}
+/**
+ * An exact pin of immutable published content. A version alone does not identify content; the digest and the source commit do.
+ */
+export interface ContractPin {
+  publisher: Alias;
+  contract: Id;
+  version: ContractVersion;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest: string;
+  /**
+   * Model format version of the content.
+   */
+  schemaVersion: number;
+  /**
+   * A Git commit id in lower-case hexadecimal, abbreviated or full.
+   */
+  sourceCommit: string;
+}
+/**
+ * How one provider's export satisfies one boundary agreement and how its consumers bind to that exact export: the agreement with the digest of the agreement bundle that published it, the provider's exported record, the consumers and the mappings that convert between their representations.
+ */
+export interface AgreementBinding {
+  agreementRef: RecordAddress;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  agreementDigest: string;
+  providerRef: ResolvedReference;
+  consumerRefs: RecordAddress1[];
+  /**
+   * The mapping records that convert between the provider's and each consumer's representations.
+   */
+  mappingRefs: RecordAddress1[];
+}
+/**
+ * The agreement, a record of kind 'agreement'.
+ */
+export interface RecordAddress {
+  modelId: ModelId;
+  kind: RecordKind;
+  id: string;
+}
+/**
+ * The provider's exported record, resolved against its export bundle.
+ */
+export interface ResolvedReference {
+  modelId: ModelId;
+  kind: RecordKind;
+  id: string;
+  bundleDigest: Hash;
+}
+/**
+ * The address of a record owned by one model: the owning model's id, the record kind and the record id. Another model's record resolves only through that model's published bundle.
+ */
+export interface RecordAddress1 {
+  modelId: ModelId;
+  kind: RecordKind;
+  id: string;
+}
 export interface Quantity {
   value: number;
   unit: Text;
@@ -1059,6 +1186,15 @@ export interface SourceRef {
 export interface NotApplicable {
   concern: ConcernId;
   reason: Text;
+}
+/**
+ * A record address resolved against one exact published bundle, naming that bundle's digest.
+ */
+export interface ResolvedReference1 {
+  modelId: ModelId;
+  kind: RecordKind;
+  id: string;
+  bundleDigest: Hash;
 }
 export interface Model {
   /**
@@ -1093,6 +1229,7 @@ export interface Model {
   securitySchemes: SecurityScheme[];
   consumerBindings: ConsumerBinding[];
   publishedContracts: PublishedContractRef[];
+  agreements: Agreement[];
 }
 /**
  * Declared system kind and traits. Completeness rules apply only the concerns these make applicable.
@@ -1772,6 +1909,9 @@ export interface Assumption {
 export interface Unknown {
   id: Id;
   question: Text;
+  /**
+   * The scope the unknown affects.
+   */
   affects: RecordRef[];
   /**
    * Applicable concerns this unknown stands in for until resolved.
@@ -1785,6 +1925,17 @@ export interface Unknown {
    */
   blocks: TaskClass[];
   owner: Alias;
+  /**
+   * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+   */
+  evidenceNeeded: string;
+  /**
+   * The action recommended while the unknown is open, and whether it can be undone once the answer arrives.
+   */
+  recommendedAction: {
+    action: Text;
+    reversible: boolean;
+  };
   /**
    * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
    */
@@ -2254,6 +2405,23 @@ export interface PublishedContractRef {
    * Items: Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
   consumers: string[];
+}
+/**
+ * A boundary agreement a composition or mixed model owns: a constraint across owners such as required caller identity, result publication semantics or cross-API timeout allocation. Each provider's export declares how it satisfies the agreement and each consumer binds to that export; the agreement never copies their contracts.
+ */
+export interface Agreement {
+  id: Id;
+  kind: 'caller-identity' | 'result-publication' | 'timeout-allocation' | 'other';
+  constraint: Text;
+  /**
+   * The records whose owners satisfy the agreement.
+   */
+  providers: RecordAddress1[];
+  /**
+   * The records that rely on it.
+   */
+  consumers: RecordAddress1[];
+  owner: Alias;
 }
 export interface PatchAddComponents {
   op: 'add';
@@ -4146,6 +4314,9 @@ export interface PatchUpdateUnknowns {
   id: string;
   set?: {
     question?: Text;
+    /**
+     * The scope the unknown affects.
+     */
     affects?: RecordRef[];
     /**
      * Applicable concerns this unknown stands in for until resolved.
@@ -4159,6 +4330,17 @@ export interface PatchUpdateUnknowns {
      */
     blocks?: TaskClass[];
     owner?: Alias;
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    evidenceNeeded?: string;
+    /**
+     * The action recommended while the unknown is open, and whether it can be undone once the answer arrives.
+     */
+    recommendedAction?: {
+      action: Text;
+      reversible: boolean;
+    };
     /**
      * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
      */
@@ -5835,6 +6017,58 @@ export interface PatchRenamePublishedContracts {
   id: string;
   to: Id;
 }
+export interface PatchAddAgreements {
+  op: 'add';
+  collection: 'agreements';
+  record: Agreement;
+}
+export interface PatchReplaceAgreements {
+  op: 'replace';
+  collection: 'agreements';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  record: Agreement;
+}
+export interface PatchRemoveAgreements {
+  op: 'remove';
+  collection: 'agreements';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+}
+export interface PatchUpdateAgreements {
+  op: 'update';
+  collection: 'agreements';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  set?: {
+    kind?: 'caller-identity' | 'result-publication' | 'timeout-allocation' | 'other';
+    constraint?: Text;
+    /**
+     * The records whose owners satisfy the agreement.
+     */
+    providers?: RecordAddress1[];
+    /**
+     * The records that rely on it.
+     */
+    consumers?: RecordAddress1[];
+    owner?: Alias;
+  };
+}
+export interface PatchRenameAgreements {
+  op: 'rename';
+  collection: 'agreements';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  to: Id;
+}
 export interface PatchSetSystemProfile {
   op: 'setSystemProfile';
   profile: SystemProfile;
@@ -6113,6 +6347,53 @@ export interface RevisionSet {
     version: number;
   };
   sources?: SourceRevision[];
+}
+/**
+ * The exact source one model was read from: its repository identity, commit, the digest of its content, whether the working tree was dirty and every input file with its hash. Dirty content is exploratory and never committed release evidence.
+ */
+export interface SourceSnapshot {
+  modelId: ModelId;
+  /**
+   * Opaque or descriptive identity of the repository, such as its remote host and path; never a local absolute path.
+   */
+  repositoryIdentity: string;
+  commit: CommitId;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  contentDigest: string;
+  dirty: boolean;
+  inputFiles: {
+    path: RelativePath;
+    hash: Hash;
+  }[];
+}
+/**
+ * The deterministic identity of a composition's inputs: for each participating model, ordered by model id, its model, configuration, policy, contract and generator hashes and its import pins. It holds no time and no local absolute path, so its digest is the same on every machine.
+ */
+export interface RevisionVector {
+  vectorVersion: 1;
+  /**
+   * @minItems 1
+   */
+  models: {
+    modelId: ModelId;
+    model: Hash;
+    config: Hash;
+    /**
+     * Hash of the trusted policy, or null when the model names none.
+     */
+    policy: Hash | null;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    contract: string;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    generator: string;
+    imports: ContractPin[];
+  }[];
 }
 export interface Completeness {
   complete: boolean;
@@ -6465,7 +6746,7 @@ export interface DescribeData {
   profiles: ProfileDefinition[];
   tools: {
     name: string;
-    effects: 'none' | 'reads' | 'writes';
+    effects: ToolEffect;
   }[];
   examples: {
     tool: string;
@@ -6529,6 +6810,129 @@ export interface PlanChangeData {
   obligations: EvidenceObligation[];
   acceptanceRequired: boolean;
   changeClasses?: Id[];
+}
+/**
+ * One session's handle on an opened workspace. It exists only for that session, a capability is an authorized effect and never domain acceptance, and neither the handle nor its view URL grants trusted acceptance or qualification.
+ */
+export interface WorkspaceHandle {
+  workspaceId: WorkspaceId;
+  modelId: ModelId;
+  modelKind: ModelKind;
+  displayName: Text;
+  /**
+   * The effects this session is authorized to perform through the handle.
+   */
+  capabilities: ('read' | 'edit' | 'qualify' | 'publish')[];
+  revisions: RevisionSet;
+  /**
+   * The composition this workspace is a direct member of.
+   */
+  parent?: {
+    modelId: ModelId;
+    memberId: Id;
+  };
+  /**
+   * Loopback address of the browser view: a runtime convenience, excluded from model exports, signatures, source notices and deterministic projections.
+   */
+  viewUrl?: string;
+}
+/**
+ * A next step offered to the caller: its purpose, the tool and the arguments that perform it, what it needs, what it changes and what blocks it. The arguments satisfy that tool's input, and an action never invents authorization.
+ */
+export interface NextAction {
+  purpose: Text;
+  tool: string;
+  arguments: {};
+  prerequisites: Text[];
+  effects: ToolEffect;
+  blockedBy: Prerequisite[];
+}
+/**
+ * A bounded summary of one workspace at one revision vector: its handle, phase, scope, imports, open unknowns, pending work and next actions, with completeness naming what it omitted. It never carries credentials or the whole model.
+ */
+export interface WorkspaceSummary {
+  workspace: WorkspaceHandle;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revisionVector: string;
+  phase: WorkflowPhase;
+  /**
+   * The source roots each component claims.
+   */
+  scope: {
+    component: Id;
+    roots: RelativePath[];
+  }[];
+  imports: ContractPin[];
+  unknowns: Unknown[];
+  pendingWork: {
+    workPackage: string;
+    status: 'planned' | 'in-progress' | 'blocked';
+  }[];
+  nextActions: NextAction[];
+  completeness: Completeness;
+}
+/**
+ * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
+ */
+export interface MutationExpectation {
+  model: Hash;
+  config: Hash;
+  /**
+   * Hash of the trusted policy, or null when the workspace names none.
+   */
+  policy: Hash | null;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  imports: string;
+}
+/**
+ * An immutable proposal for a change across one or more models, bound to the revision vector it was planned against: every write with its owner and expected old and new hashes, the impact, the evidence it invalidates and the acceptance it requires.
+ */
+export interface ChangeProposal {
+  proposalId: Id;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  inputDigest: string;
+  revisionVector: RevisionVector;
+  writes: OwnedWrite[];
+  impact: {
+    modelId: ModelId;
+    affected: AffectedElement;
+  }[];
+  invalidatedEvidence: {
+    modelId: ModelId;
+    invalidation: EvidenceInvalidation;
+  }[];
+  /**
+   * Each owner whose trusted policy requires acceptance before the change applies, with the change classes that require it.
+   */
+  requiredAcceptance: {
+    owner: ModelId;
+    changeClasses: Id[];
+  }[];
+}
+/**
+ * One file a change writes, in the repository of the model that owns it, with the hash it must replace and the hash it leaves; a null old hash creates the file.
+ */
+export interface OwnedWrite {
+  /**
+   * Declared stable identity of a persistent model, the same wherever its repository is checked out; never a path.
+   */
+  owner: string;
+  /**
+   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   */
+  repositoryPath: string;
+  /**
+   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   */
+  path: string;
+  expectedOld: Hash | null;
+  expectedNew: Hash;
 }
 /**
  * Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
@@ -6599,7 +7003,7 @@ export interface CatalogueOperation {
    */
   prerequisites: string[];
   /**
-   * The effect on persisted state, named in the vocabulary of DescribeData tools.
+   * The effect on persisted state, named in the vocabulary of ToolEffect.
    */
   effects: string;
   /**
@@ -6669,10 +7073,32 @@ export interface CatalogueOperation {
   };
 }
 /**
- * Content of .loom/loom.json: governed path set, output routing and policy bindings.
+ * Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.
  */
 export interface LoomConfig {
   configVersion: 1;
+  modelId?: ModelId;
+  modelKind?: ModelKind;
+  /**
+   * Explicit composition: the direct members, the roots registered as delegated to them and the output roots this workspace claims. Filesystem nesting alone confers neither membership nor authority, and an unlisted child .loom under this workspace's claims is an overlap.
+   */
+  composition?: {
+    members: CompositionMember[];
+    /**
+     * Repository-relative roots a delegated member owns through its own .loom; this workspace's scope never claims them.
+     */
+    delegatedRoots: {
+      memberId: Id;
+      /**
+       * @minItems 1
+       */
+      roots: RelativePath[];
+    }[];
+    /**
+     * Repository-relative output roots only this workspace installs into, checked separately from source ownership.
+     */
+    outputClaims: RelativePath[];
+  };
   /**
    * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
    */
@@ -6710,7 +7136,15 @@ export interface LoomConfig {
  */
 export interface WorkflowState {
   stateVersion: 1;
-  phase: 'unplanned' | 'discovery' | 'specification' | 'implementation' | 'integration' | 'release' | 'operations';
+  phase: WorkflowPhase;
+  /**
+   * The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.
+   */
+  outcome?: {
+    statement: Text;
+    exclusions: Text[];
+    constraints: Text[];
+  };
   sealed: boolean;
   /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
@@ -6779,7 +7213,7 @@ export interface InstallJournal {
   }[];
 }
 /**
- * A published contract bundle: the records an independent system exposes, pinned by publisher, contract id, version and digest.
+ * A published contract bundle: the records an independent system or a composition member exposes, pinned by publisher, contract id, version and digest. A member's export also names its model and source commit and pins the agreement bundle it satisfies.
  */
 export interface PublishedContract {
   bundleVersion: 1;
@@ -6792,6 +7226,15 @@ export interface PublishedContract {
   schemaVersion: 1;
   profiles: string[];
   /**
+   * Declared stable identity of a persistent model, the same wherever its repository is checked out; never a path.
+   */
+  modelId?: string;
+  /**
+   * A Git commit id in lower-case hexadecimal, abbreviated or full.
+   */
+  sourceCommit?: string;
+  agreementBundle?: ContractPin1;
+  /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
   digest: string;
@@ -6800,8 +7243,80 @@ export interface PublishedContract {
     operations: Operation[];
     routines: Routine[];
     securitySchemes: SecurityScheme[];
+    mutations?: Mutation[];
+    /**
+     * The hosting requirements of the exported records.
+     */
+    deploymentUnits?: DeploymentUnit[];
+    hosts?: Host[];
+    /**
+     * The evidence a consumer can rely on the exporter to hold for the exported records.
+     */
+    evidenceObligations?: EvidenceObligation[];
   };
   signature?: Signature;
+}
+/**
+ * An exact pin of immutable published content. A version alone does not identify content; the digest and the source commit do.
+ */
+export interface ContractPin1 {
+  publisher: Alias;
+  contract: Id;
+  version: ContractVersion;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest: string;
+  /**
+   * Model format version of the content.
+   */
+  schemaVersion: number;
+  /**
+   * A Git commit id in lower-case hexadecimal, abbreviated or full.
+   */
+  sourceCommit: string;
+}
+/**
+ * The bundle a composition publishes downward: only the boundary agreements it owns, never the aggregate of its members' snapshots. Member exports pin it and the parent's composition snapshot pins those exports, so every input is a finite content-addressed bundle.
+ */
+export interface AgreementBundle {
+  bundleVersion: 1;
+  modelId: ModelId;
+  publisher: Alias;
+  contract: Id;
+  version: ContractVersion;
+  /**
+   * Model format version of the agreements.
+   */
+  schemaVersion: 1;
+  sourceCommit: CommitId;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest: string;
+  agreements: Agreement[];
+  signature?: Signature;
+}
+/**
+ * Recoverable record of one change across repositories, whose locks are taken in canonical repository order. There is no atomic transaction across repositories: the change is complete only in state 'complete', and a partially applied one stays visibly incomplete until recovery resumes the staged proposal or restores the journal-owned writes that are still unchanged, never another writer's.
+ */
+export interface FederationJournal {
+  journalVersion: 1;
+  proposalId: Id;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  inputDigest: string;
+  state: 'prepared' | 'applying' | 'complete' | 'recovery-required';
+  /**
+   * Every write of the change in canonical repository order, each with its owner and expected old and new hashes.
+   *
+   * @minItems 1
+   */
+  writes: {
+    write: OwnedWrite;
+    status: 'pending' | 'applied' | 'restored';
+  }[];
 }
 /**
  * Owner of one path. 'ungoverned' only after complete negative resolution; incomplete inspection is 'unresolved'.

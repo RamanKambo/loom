@@ -1,0 +1,32 @@
+{
+  "definition": "ExportBundle",
+  "valid": [
+    {
+      "bundleVersion": 1,
+      "publisher": "team-payments",
+      "contract": "payments-export",
+      "version": 1,
+      "schemaVersion": 1,
+      "profiles": ["openapi"],
+      "modelId": "payments",
+      "sourceCommit": "a9ce204",
+      "agreementBundle": { "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "77d0e1f" },
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "content": {
+        "types": [{ "id": "payment", "version": 1, "owner": "payments", "representation": "response", "properties": [{ "name": "id", "kind": "uuid", "required": true, "nullable": false, "immutable": true, "origin": "system" }] }],
+        "operations": [],
+        "routines": [],
+        "securitySchemes": [],
+        "mutations": [],
+        "deploymentUnits": [],
+        "hosts": [],
+        "evidenceObligations": [{ "id": "check:openapi.validate", "claim": { "kind": "check", "ref": "openapi.validate" }, "kinds": ["conformance"], "required": true, "status": "passing" }]
+      }
+    }
+  ],
+  "invalid": [
+    { "because": "an export names the commit it was published from", "keyword": "required", "path": "", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-export", "version": 1, "schemaVersion": 1, "profiles": [], "modelId": "payments", "agreementBundle": { "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "77d0e1f" }, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [], "mutations": [], "deploymentUnits": [], "hosts": [], "evidenceObligations": [] } } },
+    { "because": "an export carries its full record closure, mutations included", "keyword": "required", "path": "/content", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-export", "version": 1, "schemaVersion": 1, "profiles": [], "modelId": "payments", "sourceCommit": "a9ce204", "agreementBundle": { "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "77d0e1f" }, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [], "deploymentUnits": [], "hosts": [], "evidenceObligations": [] } } },
+    { "because": "an unknown member is rejected through the published-contract shape", "keyword": "additionalProperties", "path": "", "instance": { "bundleVersion": 1, "publisher": "team-payments", "contract": "payments-export", "version": 1, "schemaVersion": 1, "profiles": [], "modelId": "payments", "sourceCommit": "a9ce204", "agreementBundle": { "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "77d0e1f" }, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "content": { "types": [], "operations": [], "routines": [], "securitySchemes": [], "mutations": [], "deploymentUnits": [], "hosts": [], "evidenceObligations": [] }, "snapshot": {} } }
+  ]
+}

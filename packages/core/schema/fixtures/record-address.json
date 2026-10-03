@@ -1,0 +1,8 @@
+{
+  "definition": "RecordAddress",
+  "valid": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture" }],
+  "invalid": [
+    { "because": "an address names the owning model", "keyword": "required", "path": "", "instance": { "kind": "operation", "id": "payment.capture" } },
+    { "because": "the kind is a record kind", "keyword": "enum", "path": "/kind", "instance": { "modelId": "payments", "kind": "widget", "id": "payment.capture" } }
+  ]
+}

@@ -1270,6 +1270,8 @@
         "release"
       ],
       "owner": "team-statements",
+      "evidenceNeeded": "A measurement of the broker's redelivery window under the expected statement load.",
+      "recommendedAction": { "action": "Deduplicate on the statement id for the longest window the broker documents until the measurement decides it.", "reversible": true },
       "resolution": "Measure the broker redelivery window under load and decide.",
       "status": "open"
     }
@@ -1900,5 +1902,6 @@
     }
   ],
   "consumerBindings": [],
-  "publishedContracts": []
+  "publishedContracts": [],
+  "agreements": []
 }

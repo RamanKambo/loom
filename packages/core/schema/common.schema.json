@@ -105,7 +105,7 @@
         "requirement", "criterion", "scenario", "constraint", "observation", "assumption", "unknown",
         "decision", "inventory", "retainedBehavior", "workload", "attachment", "mapping", "storage",
         "migration", "deploymentUnit", "host", "trustBoundary", "securityScheme", "consumerBinding",
-        "publishedContract", "systemProfile"
+        "publishedContract", "systemProfile", "agreement"
       ]
     },
     "RecordRef": {
@@ -168,6 +168,60 @@
         "keyId": { "$ref": "#/$defs/Id" },
         "algorithm": { "const": "ed25519" },
         "value": { "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" }
+      }
+    },
+    "ModelId": {
+      "description": "Declared stable identity of a persistent model, the same wherever its repository is checked out; never a path.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 128
+    },
+    "ModelKind": {
+      "description": "What a model owns: a composition owns system outcomes, cross-component constraints, interaction workflows, boundary agreements, integration scenarios and release assembly; an implementation owns its claimed source roots and their contracts; a mixed model owns explicitly listed local implementation roots plus composition records.",
+      "enum": ["composition", "implementation", "mixed"]
+    },
+    "CommitId": {
+      "description": "A Git commit id in lower-case hexadecimal, abbreviated or full.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "RecordAddress": {
+      "x-loom-atomic": true,
+      "description": "The address of a record owned by one model: the owning model's id, the record kind and the record id. Another model's record resolves only through that model's published bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "kind", "id"],
+      "properties": {
+        "modelId": { "$ref": "#/$defs/ModelId" },
+        "kind": { "$ref": "#/$defs/RecordKind" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "ResolvedReference": {
+      "x-loom-atomic": true,
+      "description": "A record address resolved against one exact published bundle, naming that bundle's digest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "kind", "id", "bundleDigest"],
+      "properties": {
+        "modelId": { "$ref": "#/$defs/ModelId" },
+        "kind": { "$ref": "#/$defs/RecordKind" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "bundleDigest": { "$ref": "#/$defs/Hash" }
+      }
+    },
+    "ContractPin": {
+      "description": "An exact pin of immutable published content. A version alone does not identify content; the digest and the source commit do.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publisher", "contract", "version", "digest", "schemaVersion", "sourceCommit"],
+      "properties": {
+        "publisher": { "$ref": "#/$defs/Alias" },
+        "contract": { "$ref": "#/$defs/Id" },
+        "version": { "$ref": "#/$defs/ContractVersion" },
+        "digest": { "description": "Hash of the canonical JSON of the bundle's content.", "$ref": "#/$defs/Hash" },
+        "schemaVersion": { "description": "Model format version of the content.", "type": "integer", "minimum": 1 },
+        "sourceCommit": { "description": "The commit the bundle was published from.", "$ref": "#/$defs/CommitId" }
       }
     }
   }

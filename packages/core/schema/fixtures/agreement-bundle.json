@@ -1,0 +1,21 @@
+{
+  "definition": "AgreementBundle",
+  "valid": [
+    {
+      "bundleVersion": 1,
+      "modelId": "shop",
+      "publisher": "team-architecture",
+      "contract": "shop-agreements",
+      "version": 1,
+      "schemaVersion": 1,
+      "sourceCommit": "77d0e1f",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "agreements": [
+        { "id": "agr.timeout", "kind": "timeout-allocation", "constraint": "Checkout completes within five seconds, of which payments take at most three.", "providers": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture" }], "consumers": [{ "modelId": "ordering", "kind": "operation", "id": "order.pay" }], "owner": "team-architecture" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "an agreement bundle holds agreements only, never member records", "keyword": "additionalProperties", "path": "", "instance": { "bundleVersion": 1, "modelId": "shop", "publisher": "team-architecture", "contract": "shop-agreements", "version": 1, "schemaVersion": 1, "sourceCommit": "77d0e1f", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "agreements": [], "types": [] } }
+  ]
+}

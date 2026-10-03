@@ -1,0 +1,7 @@
+{
+  "definition": "ModelId",
+  "valid": ["ordering", "shop.payments"],
+  "invalid": [
+    { "because": "a model id is an identity, never a path", "keyword": "pattern", "path": "", "instance": "../payments" }
+  ]
+}

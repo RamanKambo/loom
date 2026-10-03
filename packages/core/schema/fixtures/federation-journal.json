@@ -1,0 +1,18 @@
+{
+  "definition": "FederationJournal",
+  "valid": [
+    {
+      "journalVersion": 1,
+      "proposalId": "prop.timeout",
+      "inputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "state": "applying",
+      "writes": [
+        { "write": { "owner": "shop", "repositoryPath": ".", "path": ".loom/model.json", "expectedOld": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "expectedNew": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }, "status": "applied" },
+        { "write": { "owner": "payments", "repositoryPath": "services/payments", "path": ".loom/model.json", "expectedOld": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "expectedNew": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }, "status": "pending" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a journal state outside prepared, applying, complete and recovery-required is rejected", "keyword": "enum", "path": "/state", "instance": { "journalVersion": 1, "proposalId": "prop.timeout", "inputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "state": "committed", "writes": [{ "write": { "owner": "shop", "repositoryPath": ".", "path": ".loom/model.json", "expectedOld": null, "expectedNew": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }, "status": "pending" }] } }
+  ]
+}

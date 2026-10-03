@@ -1,0 +1,28 @@
+{
+  "definition": "CompositionRelease",
+  "valid": [
+    {
+      "releaseVersion": 1,
+      "releaseId": "rel.shop.1",
+      "revisionVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "members": [
+        { "memberId": "payments", "modelId": "payments", "repositoryPath": "services/payments", "relationship": "implementation", "exports": [{ "publisher": "team-payments", "contract": "payments-export", "version": 1, "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schemaVersion": 1, "sourceCommit": "a9ce204" }] }
+      ],
+      "agreements": [
+        {
+          "agreementRef": { "modelId": "shop", "kind": "agreement", "id": "agr.caller-identity" },
+          "agreementDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "providerRef": { "modelId": "payments", "kind": "operation", "id": "payment.capture", "bundleDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+          "consumerRefs": [{ "modelId": "ordering", "kind": "operation", "id": "order.pay" }],
+          "mappingRefs": []
+        }
+      ],
+      "evidenceRefs": ["ev.integration"],
+      "acceptanceRefs": ["acc.release-1"]
+    }
+  ],
+  "invalid": [
+    { "because": "a release selects at least one member", "keyword": "minItems", "path": "/members", "instance": { "releaseVersion": 1, "releaseId": "rel.shop.1", "revisionVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "members": [], "agreements": [], "evidenceRefs": [], "acceptanceRefs": [] } },
+    { "because": "a release selects; it carries no deployment instruction", "keyword": "additionalProperties", "path": "", "instance": { "releaseVersion": 1, "releaseId": "rel.shop.1", "revisionVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "members": [{ "memberId": "payments", "modelId": "payments", "repositoryPath": "services/payments", "relationship": "implementation", "exports": [] }], "agreements": [], "evidenceRefs": [], "acceptanceRefs": [], "deployTo": "production" } }
+  ]
+}

@@ -22,6 +22,8 @@ import type { Model } from './generated/types.js';
  *   under the 'bearer' scheme; shipment.dispatch is asynchronous.
  * - Every required criterion verified by scenario has a scenario; req.report
  *   is proposed and verified by review.
+ * - agr.payment-identity is a caller-identity agreement whose provider and
+ *   consumer are records of other models, addressed by model id.
  */
 export function sampleModel(): Model {
   return {
@@ -561,6 +563,8 @@ export function sampleModel(): Model {
         affects: [{ kind: 'requirement', id: 'req.report' }],
         blocks: ['specification'],
         owner: 'team-billing',
+        evidenceNeeded: 'The billing product owner names the reporting period the invoice report covers.',
+        recommendedAction: { action: 'Specify the report by calendar month until the period is named.', reversible: true },
         resolution: 'Decision by the billing product owner.',
         status: 'open',
       },
@@ -820,5 +824,15 @@ export function sampleModel(): Model {
       { id: 'cb.fulfillment-order', consumer: { kind: 'component', id: 'fulfillment' }, contract: { kind: 'type', id: 'order' }, version: 1, compatibility: 'compatible', required: true, status: 'active' },
     ],
     publishedContracts: [],
+    agreements: [
+      {
+        id: 'agr.payment-identity',
+        kind: 'caller-identity',
+        constraint: 'Every call that pays an order carries the workload identity of the ordering service.',
+        providers: [{ modelId: 'payments', kind: 'operation', id: 'payment.capture' }],
+        consumers: [{ modelId: 'shop', kind: 'operation', id: 'order.place' }],
+        owner: 'team-architecture',
+      },
+    ],
   };
 }

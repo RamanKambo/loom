@@ -1,0 +1,17 @@
+{
+  "definition": "Agreement",
+  "valid": [
+    {
+      "id": "agr.caller-identity",
+      "kind": "caller-identity",
+      "constraint": "Every call into payments carries the workload identity of the calling service.",
+      "providers": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture" }],
+      "consumers": [{ "modelId": "ordering", "kind": "operation", "id": "order.pay" }],
+      "owner": "team-architecture"
+    }
+  ],
+  "invalid": [
+    { "because": "an agreement kind outside the vocabulary is rejected", "keyword": "enum", "path": "/kind", "instance": { "id": "agr.x", "kind": "retry-budget", "constraint": "x", "providers": [], "consumers": [], "owner": "team-architecture" } },
+    { "because": "an agreement references records, it never copies their contracts", "keyword": "additionalProperties", "path": "", "instance": { "id": "agr.x", "kind": "other", "constraint": "x", "providers": [], "consumers": [], "owner": "team-architecture", "operation": { "id": "payment.capture" } } }
+  ]
+}

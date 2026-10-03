@@ -1,0 +1,15 @@
+{
+  "definition": "AgreementBinding",
+  "valid": [
+    {
+      "agreementRef": { "modelId": "shop", "kind": "agreement", "id": "agr.caller-identity" },
+      "agreementDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "providerRef": { "modelId": "payments", "kind": "operation", "id": "payment.capture", "bundleDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      "consumerRefs": [{ "modelId": "ordering", "kind": "operation", "id": "order.pay" }],
+      "mappingRefs": [{ "modelId": "ordering", "kind": "mapping", "id": "map.payment-result" }]
+    }
+  ],
+  "invalid": [
+    { "because": "a provider is bound at the exact export it resolved against", "keyword": "required", "path": "/providerRef", "instance": { "agreementRef": { "modelId": "shop", "kind": "agreement", "id": "agr.caller-identity" }, "agreementDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "providerRef": { "modelId": "payments", "kind": "operation", "id": "payment.capture" }, "consumerRefs": [], "mappingRefs": [] } }
+  ]
+}

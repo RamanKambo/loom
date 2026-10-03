@@ -375,7 +375,7 @@ function catalogueProblems(catalogue, bundled, ajv) {
   const problems = [];
   const defs = bundled.$defs;
   const causes = defs.Refusal.properties.cause.enum;
-  const effects = defs.DescribeData.properties.tools.items.properties.effects.enum;
+  const effects = defs.ToolEffect.enum;
   const unique = (kind) => {
     const seen = new Set();
     return (name) => {
@@ -439,19 +439,23 @@ function checkIcdBoundaries(icds) {
   if (icds.length && orphan.length) fail(`provided interfaces without a consumer: ${orphan.join(', ')}`);
 }
 
-// A combinator whose branches only state which members must be present ("exactly one of patch or
-// patches") constrains presence, not shape. json-schema-to-typescript would turn it into an index
-// signature that erases the declared members, so it is removed from the TypeScript input only; the
-// runtime bundle keeps and enforces it.
+// A combinator branch that only states which members must be present ("exactly one of patch or
+// patches", or a definition that strengthens another by requiring its optional members) constrains
+// presence, not shape. json-schema-to-typescript would turn it into an index signature that erases
+// the declared members, so it is removed from the TypeScript input only; the runtime bundle keeps and
+// enforces it. A oneOf or anyOf goes only when every branch is presence-only, because dropping one of
+// its branches would change which shapes it admits; an allOf loses each presence-only branch.
 function stripPresenceCombinators(node) {
   if (Array.isArray(node)) return node.map(stripPresenceCombinators);
   if (!node || typeof node !== 'object') return node;
   const presenceOnly = (branch) =>
-    branch && typeof branch === 'object' && Object.keys(branch).every((k) => k === 'required' || ((k === 'oneOf' || k === 'anyOf') && branch[k].every(presenceOnly)));
+    branch &&
+    typeof branch === 'object' &&
+    Object.keys(branch).every((k) => k === 'required' || ((k === 'oneOf' || k === 'anyOf') && branch[k].every(presenceOnly)) || (k === 'properties' && Object.values(branch[k]).every(presenceOnly)));
   const out = {};
   for (const [k, v] of Object.entries(node)) {
     if ((k === 'oneOf' || k === 'anyOf' || k === 'allOf') && Array.isArray(v) && v.every(presenceOnly)) continue;
-    out[k] = stripPresenceCombinators(v);
+    out[k] = stripPresenceCombinators(k === 'allOf' && Array.isArray(v) ? v.filter((b) => !presenceOnly(b)) : v);
   }
   return out;
 }

@@ -1,0 +1,19 @@
+{
+  "definition": "WorkspaceHandle",
+  "valid": [
+    {
+      "workspaceId": "ws_3f9a1c7d",
+      "modelId": "payments",
+      "modelKind": "implementation",
+      "displayName": "Payments",
+      "capabilities": ["read", "edit"],
+      "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1, "modelFormat": 1, "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      "parent": { "modelId": "shop", "memberId": "payments" },
+      "viewUrl": "http://127.0.0.1:52144/workspace/ws_3f9a1c7d"
+    }
+  ],
+  "invalid": [
+    { "because": "the view is served on the loopback interface only", "keyword": "pattern", "path": "/viewUrl", "instance": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 }, "viewUrl": "https://loom.example.com/workspace" } },
+    { "because": "a capability is an authorized effect, never acceptance", "keyword": "enum", "path": "/capabilities/0", "instance": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["accept"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } } }
+  ]
+}

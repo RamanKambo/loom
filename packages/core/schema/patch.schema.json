@@ -807,6 +807,21 @@
           "$ref": "#/$defs/PatchRenamePublishedContracts"
         },
         {
+          "$ref": "#/$defs/PatchAddAgreements"
+        },
+        {
+          "$ref": "#/$defs/PatchReplaceAgreements"
+        },
+        {
+          "$ref": "#/$defs/PatchRemoveAgreements"
+        },
+        {
+          "$ref": "#/$defs/PatchUpdateAgreements"
+        },
+        {
+          "$ref": "#/$defs/PatchRenameAgreements"
+        },
+        {
           "$ref": "#/$defs/PatchSetSystemProfile"
         },
         {
@@ -6585,6 +6600,7 @@
               "$ref": "common.schema.json#/$defs/Text"
             },
             "affects": {
+              "description": "The scope the unknown affects.",
               "type": "array",
               "items": {
                 "$ref": "common.schema.json#/$defs/RecordRef"
@@ -6619,6 +6635,27 @@
             },
             "owner": {
               "$ref": "common.schema.json#/$defs/Alias"
+            },
+            "evidenceNeeded": {
+              "description": "The evidence that would answer the question.",
+              "$ref": "common.schema.json#/$defs/Text"
+            },
+            "recommendedAction": {
+              "description": "The action recommended while the unknown is open, and whether it can be undone once the answer arrives.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action",
+                "reversible"
+              ],
+              "properties": {
+                "action": {
+                  "$ref": "common.schema.json#/$defs/Text"
+                },
+                "reversible": {
+                  "type": "boolean"
+                }
+              }
             },
             "resolution": {
               "description": "Method that would resolve the question.",
@@ -11669,6 +11706,160 @@
         },
         "collection": {
           "const": "publishedContracts"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "to": {
+          "$ref": "common.schema.json#/$defs/Id"
+        }
+      }
+    },
+    "PatchAddAgreements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "record"
+      ],
+      "properties": {
+        "op": {
+          "const": "add"
+        },
+        "collection": {
+          "const": "agreements"
+        },
+        "record": {
+          "$ref": "model.schema.json#/$defs/Agreement"
+        }
+      }
+    },
+    "PatchReplaceAgreements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "record"
+      ],
+      "properties": {
+        "op": {
+          "const": "replace"
+        },
+        "collection": {
+          "const": "agreements"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "record": {
+          "$ref": "model.schema.json#/$defs/Agreement"
+        }
+      }
+    },
+    "PatchRemoveAgreements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id"
+      ],
+      "properties": {
+        "op": {
+          "const": "remove"
+        },
+        "collection": {
+          "const": "agreements"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        }
+      }
+    },
+    "PatchUpdateAgreements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id"
+      ],
+      "properties": {
+        "op": {
+          "const": "update"
+        },
+        "collection": {
+          "const": "agreements"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "set": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "caller-identity",
+                "result-publication",
+                "timeout-allocation",
+                "other"
+              ]
+            },
+            "constraint": {
+              "$ref": "common.schema.json#/$defs/Text"
+            },
+            "providers": {
+              "description": "The records whose owners satisfy the agreement.",
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/RecordAddress"
+              }
+            },
+            "consumers": {
+              "description": "The records that rely on it.",
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/RecordAddress"
+              }
+            },
+            "owner": {
+              "$ref": "common.schema.json#/$defs/Alias"
+            }
+          }
+        }
+      }
+    },
+    "PatchRenameAgreements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "to"
+      ],
+      "properties": {
+        "op": {
+          "const": "rename"
+        },
+        "collection": {
+          "const": "agreements"
         },
         "id": {
           "type": "string",

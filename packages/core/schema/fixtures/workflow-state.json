@@ -2,9 +2,11 @@
   "definition": "WorkflowState",
   "valid": [
     { "stateVersion": 1, "phase": "unplanned", "sealed": false },
-    { "stateVersion": 1, "phase": "implementation", "sealed": false, "tasks": [{ "workPackage": "wp.ordering.implementation", "status": "in-progress" }] }
+    { "stateVersion": 1, "phase": "implementation", "sealed": false, "tasks": [{ "workPackage": "wp.ordering.implementation", "status": "in-progress" }] },
+    { "stateVersion": 1, "phase": "specification", "outcome": { "statement": "Orders can be paid in one step.", "exclusions": ["Refunds."], "constraints": ["Amounts are exact decimals."] }, "sealed": false }
   ],
   "invalid": [
+    { "because": "an outcome names its exclusions and constraints, even when there are none", "keyword": "required", "path": "/outcome", "instance": { "stateVersion": 1, "phase": "discovery", "outcome": { "statement": "Orders can be paid." }, "sealed": false } },
     { "because": "an unknown phase is rejected", "keyword": "enum", "path": "/phase", "instance": { "stateVersion": 1, "phase": "done", "sealed": true } },
     { "because": "an acceptance claim cannot be stored in workflow state", "keyword": "additionalProperties", "path": "", "instance": { "stateVersion": 1, "phase": "release", "sealed": true, "accepted": true } }
   ]

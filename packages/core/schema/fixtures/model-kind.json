@@ -1,0 +1,7 @@
+{
+  "definition": "ModelKind",
+  "valid": ["composition", "implementation", "mixed"],
+  "invalid": [
+    { "because": "a kind outside the three model kinds is rejected", "keyword": "enum", "path": "", "instance": "library" }
+  ]
+}

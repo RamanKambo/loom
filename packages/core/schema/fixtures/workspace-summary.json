@@ -1,0 +1,22 @@
+{
+  "definition": "WorkspaceSummary",
+  "valid": [
+    {
+      "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } },
+      "revisionVector": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "phase": "specification",
+      "scope": [{ "component": "payments", "roots": ["src"] }],
+      "imports": [],
+      "unknowns": [
+        { "id": "unk.retry", "question": "How often may a capture be retried?", "affects": [{ "kind": "operation", "id": "payment.capture" }], "blocks": ["implementation"], "owner": "team-payments", "evidenceNeeded": "The provider's documented retry limit.", "recommendedAction": { "action": "Retry once until the limit is known.", "reversible": true }, "resolution": "Read the provider contract.", "status": "open" }
+      ],
+      "pendingWork": [{ "workPackage": "wp.payments.specification", "status": "in-progress" }],
+      "nextActions": [{ "purpose": "Read the context of the capture operation.", "tool": "loom.context", "arguments": { "workspace": true, "target": { "kind": "record", "ref": { "kind": "operation", "id": "payment.capture" } }, "budget": { "maxRecords": 20 } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }],
+      "completeness": { "complete": true, "truncated": false, "omitted": [] }
+    }
+  ],
+  "invalid": [
+    { "because": "a summary is bound to the revision vector its facts refer to", "keyword": "required", "path": "", "instance": { "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } }, "phase": "specification", "scope": [], "imports": [], "unknowns": [], "pendingWork": [], "nextActions": [], "completeness": { "complete": true, "truncated": false, "omitted": [] } } },
+    { "because": "a summary never carries the whole model", "keyword": "additionalProperties", "path": "", "instance": { "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } }, "revisionVector": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "phase": "specification", "scope": [], "imports": [], "unknowns": [], "pendingWork": [], "nextActions": [], "completeness": { "complete": true, "truncated": false, "omitted": [] }, "model": {} } }
+  ]
+}

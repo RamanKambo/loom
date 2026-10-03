@@ -469,5 +469,6 @@
   "trustBoundaries": [],
   "securitySchemes": [],
   "consumerBindings": [],
-  "publishedContracts": []
+  "publishedContracts": [],
+  "agreements": []
 }

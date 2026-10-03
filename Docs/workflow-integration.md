@@ -18,7 +18,7 @@ Each file lives in the adopting repository's `.loom` directory; a record file is
 
 | File in `.loom` | Definition | Written by | Meaning |
 | --- | --- | --- | --- |
-| `state.json` | `WorkflowState` | Integration | Transient execution state: phase, the model revision last written against, and per work package its status, input hashes and evidence ids |
+| `state.json` | `WorkflowState` | Integration | Transient execution state: phase, the outcome a resumed session restates with its exclusions and hard constraints, the model revision last written against, and per work package its status, input hashes and evidence ids |
 | `<id>.json` in the `acceptance` directory | `Acceptance` | Integration, through `accept` | One acceptance or rejection of a baseline or of an exact change, with authority, policy revision, scope and change classes |
 | `<id>.json` in the `baselines` directory, plus its snapshot | `Baseline` | `baseline create` | The accepted state: model, configuration, policy, generator, contract and artifact hashes, frozen components, source revisions and commitments |
 | `<id>.json` in the `policies` directory | `Policy` | Repository owners | Trust, change classes, readiness gates, substitutes, required checks and designated environments |

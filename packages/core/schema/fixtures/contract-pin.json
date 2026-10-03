@@ -1,0 +1,8 @@
+{
+  "definition": "ContractPin",
+  "valid": [{ "publisher": "team-payments", "contract": "payments-api", "version": 2, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" }],
+  "invalid": [
+    { "because": "a version alone does not identify published content", "keyword": "required", "path": "", "instance": { "publisher": "team-payments", "contract": "payments-api", "version": 2, "schemaVersion": 1 } },
+    { "because": "the digest is a canonical SHA-256 hash", "keyword": "pattern", "path": "/digest", "instance": { "publisher": "team-payments", "contract": "payments-api", "version": 2, "digest": "md5:0", "schemaVersion": 1, "sourceCommit": "a9ce204" } }
+  ]
+}

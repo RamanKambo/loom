@@ -3,7 +3,7 @@ import { validate } from '../validate.js';
 import { deriveObligations } from '../evidence.js';
 import { toText } from './notice.js';
 import type { RenderContext } from './context.js';
-import { cell, code, codes, refText, viewHeader } from './views.js';
+import { agreementLocation, agreementRows, cell, code, codes, refText, viewHeader } from './views.js';
 
 export const REGISTERS_FILE = 'registers.md';
 
@@ -13,8 +13,9 @@ const OPEN_ITEM_CODES = new Set(['CONCERN_UNRESOLVED', 'OPERATION_ENFORCEMENT_MI
 const findingSource = (f: Finding): string => (f.refs?.length ? f.refs.map(refText).join(', ') : code(f.path));
 
 /**
- * Registers generated from their owning records: decisions, unknowns,
- * assumptions, constraints and migrations, then an open-items list derived
+ * Registers generated from their owning records: decisions, unknowns with the
+ * evidence that would answer them and the recommended action, assumptions,
+ * constraints, boundary agreements and migrations, then an open-items list derived
  * from open unknowns, unresolved concerns, review obligations and expired or
  * invalidated premises. Every row names the record that owns it, so the
  * record stays the one editable source.
@@ -30,9 +31,18 @@ export function projectRegisters(model: Model, ctx: RenderContext): Record<strin
   for (const d of model.decisions) row('decision', d.id, `${d.status} | ${cell(d.question)} | ${d.chosen ? code(d.chosen) : '(none)'} | ${code(d.authority)} | ${d.affects.map(refText).join(', ') || '(none)'}`);
   if (!model.decisions.length) L.push('| (none) | | | | | |');
 
-  L.push('', '## Unknowns', '', '| Unknown | Status | Question | Blocks | Owner | Resolution |', '| --- | --- | --- | --- | --- | --- |');
-  for (const u of model.unknowns) row('unknown', u.id, `${u.status} | ${cell(u.question)} | ${u.blocks.join(', ') || '(none)'} | ${code(u.owner)} | ${cell(u.resolution)}`);
-  if (!model.unknowns.length) L.push('| (none) | | | | | |');
+  L.push(
+    '',
+    '## Unknowns',
+    '',
+    '| Unknown | Status | Question | Affects | Blocks | Owner | Evidence needed | Recommended action | Resolution |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  for (const u of model.unknowns) {
+    const action = `${cell(u.recommendedAction.action)} (${u.recommendedAction.reversible ? 'reversible' : 'not reversible'})`;
+    row('unknown', u.id, `${u.status} | ${cell(u.question)} | ${u.affects.map(refText).join(', ') || '(none)'} | ${u.blocks.join(', ') || '(none)'} | ${code(u.owner)} | ${cell(u.evidenceNeeded)} | ${action} | ${cell(u.resolution)}`);
+  }
+  if (!model.unknowns.length) L.push('| (none) | | | | | | | | |');
 
   L.push('', '## Assumptions', '', '| Assumption | Status | Claim | Expires | Owner | Validation |', '| --- | --- | --- | --- | --- | --- |');
   for (const a of model.assumptions) row('assumption', a.id, `${a.status} | ${cell(a.claim)} | ${a.expires ?? ''} | ${code(a.owner)} | ${cell(a.validation)}`);
@@ -41,6 +51,9 @@ export function projectRegisters(model: Model, ctx: RenderContext): Record<strin
   L.push('', '## Constraints', '', '| Constraint | Hard | Rule | Verification | Applies to |', '| --- | --- | --- | --- | --- |');
   for (const c of model.constraints) row('constraint', c.id, `${c.hard ? 'yes' : 'no'} | ${cell(c.rule)} | ${c.verification} | ${c.appliesTo.map(refText).join(', ') || '(none)'}`);
   if (!model.constraints.length) L.push('| (none) | | | | |');
+
+  L.push('', '## Agreements', '', ...agreementRows(model.agreements));
+  for (const a of model.agreements) ctx.covered({ kind: 'agreement', id: a.id }, REGISTERS_FILE, agreementLocation(a));
 
   // Migrations are authored by the implementation; the register lists each with the evidence it owes.
   const obligations = deriveObligations(model, undefined, ctx.inputs ?? {});

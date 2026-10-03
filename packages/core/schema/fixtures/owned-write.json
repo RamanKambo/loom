@@ -1,0 +1,11 @@
+{
+  "definition": "OwnedWrite",
+  "valid": [
+    { "owner": "payments", "repositoryPath": "services/payments", "path": ".loom/model.json", "expectedOld": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expectedNew": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    { "owner": "shop", "repositoryPath": ".", "path": ".loom/contracts/team-payments/payments-export@2.json", "expectedOld": null, "expectedNew": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+  ],
+  "invalid": [
+    { "because": "a written file is repository-relative, never an absolute path", "keyword": "pattern", "path": "/path", "instance": { "owner": "payments", "repositoryPath": "services/payments", "path": "/srv/payments/.loom/model.json", "expectedOld": null, "expectedNew": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    { "because": "a write names the hash it replaces, null when it creates the file", "keyword": "required", "path": "", "instance": { "owner": "payments", "repositoryPath": "services/payments", "path": ".loom/model.json", "expectedNew": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+  ]
+}

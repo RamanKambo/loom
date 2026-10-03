@@ -165,4 +165,7 @@ export const DIFF_CASES: readonly DiffCase[] = [
   { rule: 'CONSUMER_BINDING_CHANGED', kind: 'breaking', edit: (m) => (pick(m.consumerBindings, 'cb.billing-order').version = 2) },
   { rule: 'PUBLISHED_CONTRACT_PIN_CHANGED', kind: 'breaking', prepare: pinned, edit: (m) => (pick(m.publishedContracts, 'payments').version = 2) },
   { rule: 'PUBLISHED_CONTRACT_CONSUMERS_CHANGED', kind: 'compatible', prepare: pinned, edit: (m) => pick(m.publishedContracts, 'payments').consumers.push('ordering') },
+  { rule: 'KNOWLEDGE_METADATA_CHANGED', kind: 'compatible', edit: (m) => (pick(m.unknowns, 'unk.report-period').evidenceNeeded = 'The billing contract names the reporting period.') },
+  { rule: 'KNOWLEDGE_CHANGED', kind: 'breaking', edit: (m) => (pick(m.unknowns, 'unk.report-period').recommendedAction.reversible = false) },
+  { rule: 'AGREEMENT_CHANGED', kind: 'breaking', edit: (m) => (pick(m.agreements, 'agr.payment-identity').constraint = 'Every call that pays an order carries the identity of the paying customer.') },
 ];

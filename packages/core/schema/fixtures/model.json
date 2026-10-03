@@ -7,7 +7,7 @@
       "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [],
       "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [],
       "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [],
-      "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": []
+      "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": []
     },
     {
       "version": 1,
@@ -39,7 +39,7 @@
       ],
       "scenarios": [{ "id": "scn.pay", "requirements": ["req.pay"], "criteria": ["req.pay.paid"], "kind": "success", "expected": "The order status is paid." }],
       "constraints": [], "observations": [], "assumptions": [],
-      "unknowns": [{ "id": "unk.currency", "question": "Which currency applies to existing orders?", "affects": [{ "kind": "type", "id": "order" }], "concerns": [{ "record": { "kind": "property", "id": "order.note" }, "concern": "property.default" }], "blocks": ["release"], "owner": "team-ordering", "resolution": "Decision by the product owner.", "status": "open" }],
+      "unknowns": [{ "id": "unk.currency", "question": "Which currency applies to existing orders?", "affects": [{ "kind": "type", "id": "order" }], "concerns": [{ "record": { "kind": "property", "id": "order.note" }, "concern": "property.default" }], "blocks": ["release"], "owner": "team-ordering", "evidenceNeeded": "The product owner's decision on the currency of existing orders.", "recommendedAction": { "action": "Leave the note without a default until the currency is decided.", "reversible": true }, "resolution": "Decision by the product owner.", "status": "open" }],
       "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [],
       "storage": [
         {
@@ -53,54 +53,67 @@
           "primaryKey": ["id"]
         }
       ],
-      "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": []
+      "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [],
+      "agreements": [
+        { "id": "agr.payment-timeout", "kind": "timeout-allocation", "constraint": "Paying an order completes within five seconds, of which the payment provider takes at most three.", "providers": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture" }], "consumers": [{ "modelId": "ordering", "kind": "mutation", "id": "order.pay" }], "owner": "team-architecture" }
+      ]
     }
   ],
   "invalid": [
     {
+      "because": "a model without its agreements collection is rejected",
+      "keyword": "required", "path": "",
+      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+    },
+    {
+      "because": "an unknown without the evidence that would answer it and a recommended action is rejected",
+      "keyword": "required", "path": "/unknowns/0",
+      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [{ "id": "unk.x", "question": "Which?", "affects": [], "blocks": [], "owner": "team-x", "resolution": "A decision.", "status": "open" }], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
+    },
+    {
       "because": "an unknown top-level field is rejected",
       "keyword": "additionalProperties", "path": "",
-      "instance": { "version": 1, "extra": true, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "extra": true, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "an unsupported model format version is rejected",
       "keyword": "const", "path": "/version",
-      "instance": { "version": 2, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 2, "components": [], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "an identifier with a reserved reference character is rejected",
       "keyword": "pattern", "path": "/components/0/id",
-      "instance": { "version": 1, "components": [{ "id": "a/b", "purpose": "x", "responsibilities": [] }], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [{ "id": "a/b", "purpose": "x", "responsibilities": [] }], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "an empty required declaration is rejected; an unknown is a typed record",
       "keyword": "minLength", "path": "/components/0/purpose",
-      "instance": { "version": 1, "components": [{ "id": "a", "purpose": "", "responsibilities": [] }], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [{ "id": "a", "purpose": "", "responsibilities": [] }], "types": [], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "a negative string length is rejected",
       "keyword": "minimum", "path": "/types/0/properties/0/bounds/maxLength",
-      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 1, "owner": "c", "representation": "domain", "properties": [{ "name": "p", "kind": "string", "required": true, "nullable": false, "immutable": false, "origin": "client", "bounds": { "maxLength": -1 } }] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 1, "owner": "c", "representation": "domain", "properties": [{ "name": "p", "kind": "string", "required": true, "nullable": false, "immutable": false, "origin": "client", "bounds": { "maxLength": -1 } }] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "a fractional string length is rejected",
       "keyword": "type", "path": "/types/0/properties/0/bounds/maxLength",
-      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 1, "owner": "c", "representation": "domain", "properties": [{ "name": "p", "kind": "string", "required": true, "nullable": false, "immutable": false, "origin": "client", "bounds": { "maxLength": 1.5 } }] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 1, "owner": "c", "representation": "domain", "properties": [{ "name": "p", "kind": "string", "required": true, "nullable": false, "immutable": false, "origin": "client", "bounds": { "maxLength": 1.5 } }] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "a contract version below 1 is rejected",
       "keyword": "minimum", "path": "/types/0/version",
-      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 0, "owner": "c", "representation": "domain", "properties": [] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [], "types": [{ "id": "t", "version": 0, "owner": "c", "representation": "domain", "properties": [] }], "operations": [], "routines": [], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "a routine source path that escapes the repository is rejected",
       "keyword": "pattern", "path": "/routines/0/source",
-      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [{ "id": "r", "version": 1, "owner": "c", "host": "runbook", "source": "../outside.ps1", "parameterPassing": "named", "params": [], "resultSet": [], "performsMutations": [], "authority": { "permission": "x" } }], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [{ "id": "r", "version": 1, "owner": "c", "host": "runbook", "source": "../outside.ps1", "parameterPassing": "named", "params": [], "resultSet": [], "performsMutations": [], "authority": { "permission": "x" } }], "mutations": [], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     },
     {
       "because": "a predicate outside the loom-predicate-1 grammar is rejected",
       "keyword": "oneOf", "path": "/mutations/0/guard",
-      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [], "mutations": [{ "id": "m", "type": "t", "owner": "c", "from": ["a"], "to": "b", "writes": [], "guard": { "form": "expression", "profile": "loom-predicate-1", "expression": { "op": "call", "fn": "now" } }, "effect": "x", "requirements": [], "scenarios": [] }], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [] }
+      "instance": { "version": 1, "components": [], "types": [], "operations": [], "routines": [], "mutations": [{ "id": "m", "type": "t", "owner": "c", "from": ["a"], "to": "b", "writes": [], "guard": { "form": "expression", "profile": "loom-predicate-1", "expression": { "op": "call", "fn": "now" } }, "effect": "x", "requirements": [], "scenarios": [] }], "workflows": [], "edges": [], "requirements": [], "scenarios": [], "constraints": [], "observations": [], "assumptions": [], "unknowns": [], "decisions": [], "inventory": [], "retainedBehaviors": [], "workloads": [], "attachments": [], "mappings": [], "storage": [], "migrations": [], "deploymentUnits": [], "hosts": [], "trustBoundaries": [], "securitySchemes": [], "consumerBindings": [], "publishedContracts": [], "agreements": [] }
     }
   ]
 }

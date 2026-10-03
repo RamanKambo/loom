@@ -120,6 +120,7 @@ const TARGETS: Readonly<Record<ProjectionTarget, TargetSpec>> = {
       ...m.deploymentUnits.map((u) => ref('deploymentUnit', u.id)),
       ...m.hosts.map((h) => ref('host', h.id)),
       ...m.trustBoundaries.map((b) => ref('trustBoundary', b.id)),
+      ...m.agreements.map((a) => ref('agreement', a.id)),
     ],
   },
   registers: {
@@ -130,6 +131,7 @@ const TARGETS: Readonly<Record<ProjectionTarget, TargetSpec>> = {
       ...m.unknowns.map((u) => ref('unknown', u.id)),
       ...m.assumptions.map((a) => ref('assumption', a.id)),
       ...m.constraints.map((c) => ref('constraint', c.id)),
+      ...m.agreements.map((a) => ref('agreement', a.id)),
       ...m.migrations.map((x) => ref('migration', x.id)),
     ],
   },

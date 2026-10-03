@@ -8,12 +8,38 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(#[A-Za-z0-9][A-Za-z0-9._-]*)?$"
     },
     "LoomConfig": {
-      "description": "Content of .loom/loom.json: governed path set, output routing and policy bindings.",
+      "description": "Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.",
       "type": "object",
       "additionalProperties": false,
       "required": ["configVersion", "model", "scope", "outputs", "gates"],
       "properties": {
         "configVersion": { "const": 1 },
+        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+        "modelKind": { "$ref": "common.schema.json#/$defs/ModelKind" },
+        "composition": {
+          "description": "Explicit composition: the direct members, the roots registered as delegated to them and the output roots this workspace claims. Filesystem nesting alone confers neither membership nor authority, and an unlisted child .loom under this workspace's claims is an overlap.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["members", "delegatedRoots", "outputClaims"],
+          "properties": {
+            "members": { "type": "array", "items": { "$ref": "#/$defs/CompositionMember" }, "x-loom-key": "memberId" },
+            "delegatedRoots": {
+              "description": "Repository-relative roots a delegated member owns through its own .loom; this workspace's scope never claims them.",
+              "type": "array",
+              "x-loom-key": "memberId",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["memberId", "roots"],
+                "properties": {
+                  "memberId": { "$ref": "common.schema.json#/$defs/Id" },
+                  "roots": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/RelativePath" } }
+                }
+              }
+            },
+            "outputClaims": { "description": "Repository-relative output roots only this workspace installs into, checked separately from source ownership.", "type": "array", "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/RelativePath" } }
+          }
+        },
         "model": { "description": "Model document path, relative to .loom/.", "$ref": "common.schema.json#/$defs/RelativePath" },
         "projectionProfile": { "description": "Projection profile id; 'none' enables no artifacts and is permitted only for an unplanned workspace.", "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
         "scope": {
@@ -45,6 +71,23 @@
         }
       }
     },
+    "CompositionMember": {
+      "description": "A direct member of a composition: a repository inside the parent's tree that holds its own .loom. Its exports are exact pins and may be empty while the member is discovered; a task that depends on a missing export stays unresolved.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memberId", "modelId", "repositoryPath", "relationship", "exports"],
+      "properties": {
+        "memberId": { "$ref": "common.schema.json#/$defs/Id" },
+        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+        "repositoryPath": { "description": "The member repository, relative to the parent repository root.", "$ref": "common.schema.json#/$defs/RelativePath" },
+        "relationship": { "enum": ["implementation", "composition"] },
+        "exports": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ContractPin" } }
+      }
+    },
+    "WorkflowPhase": {
+      "description": "The stage of work a workspace is in.",
+      "enum": ["unplanned", "discovery", "specification", "implementation", "integration", "release", "operations"]
+    },
     "WorkflowState": {
       "description": "Content of .loom/state.json: transient workflow state. 'sealed' is a derived view of acceptance for the current revision and carries no authority.",
       "type": "object",
@@ -52,7 +95,18 @@
       "required": ["stateVersion", "phase", "sealed"],
       "properties": {
         "stateVersion": { "const": 1 },
-        "phase": { "enum": ["unplanned", "discovery", "specification", "implementation", "integration", "release", "operations"] },
+        "phase": { "$ref": "#/$defs/WorkflowPhase" },
+        "outcome": {
+          "description": "The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement", "exclusions", "constraints"],
+          "properties": {
+            "statement": { "$ref": "common.schema.json#/$defs/Text" },
+            "exclusions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+            "constraints": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } }
+          }
+        },
         "sealed": { "type": "boolean" },
         "revision": { "description": "Model revision the state was last written against.", "$ref": "common.schema.json#/$defs/Hash" },
         "tasks": {
@@ -166,7 +220,7 @@
       }
     },
     "PublishedContract": {
-      "description": "A published contract bundle: the records an independent system exposes, pinned by publisher, contract id, version and digest.",
+      "description": "A published contract bundle: the records an independent system or a composition member exposes, pinned by publisher, contract id, version and digest. A member's export also names its model and source commit and pins the agreement bundle it satisfies.",
       "type": "object",
       "additionalProperties": false,
       "required": ["bundleVersion", "publisher", "contract", "version", "schemaVersion", "profiles", "digest", "content"],
@@ -177,6 +231,9 @@
         "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
         "schemaVersion": { "description": "Model format version of the content.", "const": 1 },
         "profiles": { "type": "array", "items": { "type": "string" } },
+        "modelId": { "description": "The model that published the bundle.", "$ref": "common.schema.json#/$defs/ModelId" },
+        "sourceCommit": { "description": "The commit the bundle was published from.", "$ref": "common.schema.json#/$defs/CommitId" },
+        "agreementBundle": { "description": "The agreement bundle whose agreements the exported records satisfy.", "$ref": "common.schema.json#/$defs/ContractPin" },
         "digest": { "description": "Hash of the canonical JSON of 'content'.", "$ref": "common.schema.json#/$defs/Hash" },
         "content": {
           "type": "object",
@@ -186,10 +243,95 @@
             "types": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/TypeDef" }, "x-loom-key": "id" },
             "operations": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Operation" }, "x-loom-key": "id" },
             "routines": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Routine" }, "x-loom-key": "id" },
-            "securitySchemes": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/SecurityScheme" }, "x-loom-key": "id" }
+            "securitySchemes": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/SecurityScheme" }, "x-loom-key": "id" },
+            "mutations": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Mutation" }, "x-loom-key": "id" },
+            "deploymentUnits": { "description": "The hosting requirements of the exported records.", "type": "array", "items": { "$ref": "model.schema.json#/$defs/DeploymentUnit" }, "x-loom-key": "id" },
+            "hosts": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Host" }, "x-loom-key": "id" },
+            "evidenceObligations": { "description": "The evidence a consumer can rely on the exporter to hold for the exported records.", "type": "array", "items": { "$ref": "tools.schema.json#/$defs/EvidenceObligation" }, "x-loom-key": "id" }
           }
         },
         "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "ExportBundle": {
+      "description": "The bundle a composition member publishes upward: a published contract that names its model and source commit, pins the agreement bundle it satisfies and carries the full required record closure of its exports, namely types, operations with their errors and authority, routines, mutations, security schemes, hosting requirements and evidence obligations. An export that omits a required behavior cannot qualify its consumer. PublishedContract rejects every unknown member.",
+      "allOf": [
+        { "$ref": "#/$defs/PublishedContract" },
+        {
+          "required": ["modelId", "sourceCommit", "agreementBundle"],
+          "properties": { "content": { "required": ["types", "operations", "routines", "securitySchemes", "mutations", "deploymentUnits", "hosts", "evidenceObligations"] } }
+        }
+      ]
+    },
+    "AgreementBundle": {
+      "description": "The bundle a composition publishes downward: only the boundary agreements it owns, never the aggregate of its members' snapshots. Member exports pin it and the parent's composition snapshot pins those exports, so every input is a finite content-addressed bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleVersion", "modelId", "publisher", "contract", "version", "schemaVersion", "sourceCommit", "digest", "agreements"],
+      "properties": {
+        "bundleVersion": { "const": 1 },
+        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+        "publisher": { "$ref": "common.schema.json#/$defs/Alias" },
+        "contract": { "$ref": "common.schema.json#/$defs/Id" },
+        "version": { "$ref": "common.schema.json#/$defs/ContractVersion" },
+        "schemaVersion": { "description": "Model format version of the agreements.", "const": 1 },
+        "sourceCommit": { "$ref": "common.schema.json#/$defs/CommitId" },
+        "digest": { "description": "Hash of the canonical JSON of 'agreements'.", "$ref": "common.schema.json#/$defs/Hash" },
+        "agreements": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Agreement" }, "x-loom-key": "id" },
+        "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "AgreementBinding": {
+      "description": "How one provider's export satisfies one boundary agreement and how its consumers bind to that exact export: the agreement with the digest of the agreement bundle that published it, the provider's exported record, the consumers and the mappings that convert between their representations.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agreementRef", "agreementDigest", "providerRef", "consumerRefs", "mappingRefs"],
+      "properties": {
+        "agreementRef": { "description": "The agreement, a record of kind 'agreement'.", "$ref": "common.schema.json#/$defs/RecordAddress" },
+        "agreementDigest": { "description": "Digest of the agreement bundle the agreement was published in.", "$ref": "common.schema.json#/$defs/Hash" },
+        "providerRef": { "description": "The provider's exported record, resolved against its export bundle.", "$ref": "common.schema.json#/$defs/ResolvedReference" },
+        "consumerRefs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordAddress" } },
+        "mappingRefs": { "description": "The mapping records that convert between the provider's and each consumer's representations.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordAddress" } }
+      }
+    },
+    "OwnedWrite": {
+      "description": "One file a change writes, in the repository of the model that owns it, with the hash it must replace and the hash it leaves; a null old hash creates the file.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "repositoryPath", "path", "expectedOld", "expectedNew"],
+      "properties": {
+        "owner": { "description": "The model that owns the file.", "$ref": "common.schema.json#/$defs/ModelId" },
+        "repositoryPath": { "description": "The owning repository, relative to the root of the composition.", "$ref": "common.schema.json#/$defs/RelativePath" },
+        "path": { "description": "The file, relative to its repository root.", "$ref": "common.schema.json#/$defs/RelativePath" },
+        "expectedOld": { "anyOf": [{ "$ref": "common.schema.json#/$defs/Hash" }, { "type": "null" }] },
+        "expectedNew": { "$ref": "common.schema.json#/$defs/Hash" }
+      }
+    },
+    "FederationJournal": {
+      "description": "Recoverable record of one change across repositories, whose locks are taken in canonical repository order. There is no atomic transaction across repositories: the change is complete only in state 'complete', and a partially applied one stays visibly incomplete until recovery resumes the staged proposal or restores the journal-owned writes that are still unchanged, never another writer's.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journalVersion", "proposalId", "inputDigest", "state", "writes"],
+      "properties": {
+        "journalVersion": { "const": 1 },
+        "proposalId": { "$ref": "common.schema.json#/$defs/Id" },
+        "inputDigest": { "description": "Input digest of the proposal being applied.", "$ref": "common.schema.json#/$defs/Hash" },
+        "state": { "enum": ["prepared", "applying", "complete", "recovery-required"] },
+        "writes": {
+          "description": "Every write of the change in canonical repository order, each with its owner and expected old and new hashes.",
+          "type": "array",
+          "minItems": 1,
+          "x-loom-ordered": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["write", "status"],
+            "properties": {
+              "write": { "$ref": "#/$defs/OwnedWrite" },
+              "status": { "enum": ["pending", "applied", "restored"] }
+            }
+          }
+        }
       }
     },
     "OwnershipResult": {

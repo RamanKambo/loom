@@ -1,0 +1,16 @@
+{
+  "definition": "NextAction",
+  "valid": [
+    {
+      "purpose": "Check whether the billing component is ready for implementation.",
+      "tool": "loom.checkReadiness",
+      "arguments": { "workspace": true, "task": { "class": "implementation", "mode": "component", "components": ["billing"] } },
+      "prerequisites": ["an accepted baseline of the billing contracts"],
+      "effects": "reads",
+      "blockedBy": [{ "ref": { "kind": "type", "id": "invoice" }, "requirement": "baseline", "code": "READINESS_PREREQUISITE_UNMET", "message": "The invoice contract has no accepted baseline." }]
+    }
+  ],
+  "invalid": [
+    { "because": "a next action names a Loom tool, never a shell command", "keyword": "pattern", "path": "/tool", "instance": { "purpose": "Push the change.", "tool": "git push", "arguments": {}, "prerequisites": [], "effects": "writes", "blockedBy": [] } }
+  ]
+}

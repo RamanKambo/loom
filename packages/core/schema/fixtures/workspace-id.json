@@ -1,0 +1,7 @@
+{
+  "definition": "WorkspaceId",
+  "valid": ["ws_3f9a1c7d", "c0ffee00-1234-5678-9abc-def012345678"],
+  "invalid": [
+    { "because": "a workspace handle is opaque, never a path", "keyword": "pattern", "path": "", "instance": "services/payments" }
+  ]
+}

@@ -716,5 +716,6 @@
       "status": "active"
     }
   ],
-  "publishedContracts": []
+  "publishedContracts": [],
+  "agreements": []
 }

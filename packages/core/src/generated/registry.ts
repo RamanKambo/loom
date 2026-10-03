@@ -218,6 +218,14 @@ export const COLLECTIONS = [
     "key": [
       "id"
     ]
+  },
+  {
+    "collection": "agreements",
+    "kind": "agreement",
+    "definition": "model.schema.json#/$defs/Agreement",
+    "key": [
+      "id"
+    ]
   }
 ] as const;
 
@@ -529,6 +537,9 @@ export const FIELD_PATHS = [
   "unknowns[].concerns[].concern",
   "unknowns[].blocks[]",
   "unknowns[].owner",
+  "unknowns[].evidenceNeeded",
+  "unknowns[].recommendedAction.action",
+  "unknowns[].recommendedAction.reversible",
   "unknowns[].resolution",
   "unknowns[].status",
   "unknowns[].closure.note",
@@ -728,7 +739,13 @@ export const FIELD_PATHS = [
   "publishedContracts[].version",
   "publishedContracts[].digest",
   "publishedContracts[].schemaVersion",
-  "publishedContracts[].consumers[]"
+  "publishedContracts[].consumers[]",
+  "agreements[].id",
+  "agreements[].kind",
+  "agreements[].constraint",
+  "agreements[].providers[]",
+  "agreements[].consumers[]",
+  "agreements[].owner"
 ] as const;
 
 export const REFERENCE_FIELDS = [
@@ -1490,6 +1507,12 @@ export const KEYED_ARRAYS = [
   },
   {
     "path": "publishedContracts[]",
+    "key": [
+      "id"
+    ]
+  },
+  {
+    "path": "agreements[]",
     "key": [
       "id"
     ]
@@ -3115,6 +3138,36 @@ export const PATCH_VARIANTS = [
     "collection": "publishedContracts",
     "field": null,
     "definition": "PatchRenamePublishedContracts"
+  },
+  {
+    "op": "add",
+    "collection": "agreements",
+    "field": null,
+    "definition": "PatchAddAgreements"
+  },
+  {
+    "op": "replace",
+    "collection": "agreements",
+    "field": null,
+    "definition": "PatchReplaceAgreements"
+  },
+  {
+    "op": "remove",
+    "collection": "agreements",
+    "field": null,
+    "definition": "PatchRemoveAgreements"
+  },
+  {
+    "op": "update",
+    "collection": "agreements",
+    "field": null,
+    "definition": "PatchUpdateAgreements"
+  },
+  {
+    "op": "rename",
+    "collection": "agreements",
+    "field": null,
+    "definition": "PatchRenameAgreements"
   },
   {
     "op": "setSystemProfile",

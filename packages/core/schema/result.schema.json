@@ -244,8 +244,63 @@
       "required": ["repository", "revision"],
       "properties": {
         "repository": { "$ref": "common.schema.json#/$defs/RelativePath" },
-        "revision": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+        "revision": { "$ref": "common.schema.json#/$defs/CommitId" },
         "dirty": { "type": "boolean" }
+      }
+    },
+    "SourceSnapshot": {
+      "description": "The exact source one model was read from: its repository identity, commit, the digest of its content, whether the working tree was dirty and every input file with its hash. Dirty content is exploratory and never committed release evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "repositoryIdentity", "commit", "contentDigest", "dirty", "inputFiles"],
+      "properties": {
+        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+        "repositoryIdentity": { "description": "Opaque or descriptive identity of the repository, such as its remote host and path; never a local absolute path.", "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?![A-Za-z]:)(?![/\\\\])[^\\s\\\\]+$" },
+        "commit": { "$ref": "common.schema.json#/$defs/CommitId" },
+        "contentDigest": { "description": "Hash of the canonical JSON of the input files and their hashes.", "$ref": "common.schema.json#/$defs/Hash" },
+        "dirty": { "type": "boolean" },
+        "inputFiles": {
+          "type": "array",
+          "x-loom-key": "path",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "hash"],
+            "properties": {
+              "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        }
+      }
+    },
+    "RevisionVector": {
+      "description": "The deterministic identity of a composition's inputs: for each participating model, ordered by model id, its model, configuration, policy, contract and generator hashes and its import pins. It holds no time and no local absolute path, so its digest is the same on every machine.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vectorVersion", "models"],
+      "properties": {
+        "vectorVersion": { "const": 1 },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "x-loom-key": "modelId",
+          "x-loom-ordered": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["modelId", "model", "config", "policy", "contract", "generator", "imports"],
+            "properties": {
+              "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+              "model": { "$ref": "common.schema.json#/$defs/Hash" },
+              "config": { "$ref": "common.schema.json#/$defs/Hash" },
+              "policy": { "description": "Hash of the trusted policy, or null when the model names none.", "anyOf": [{ "$ref": "common.schema.json#/$defs/Hash" }, { "type": "null" }] },
+              "contract": { "description": "The contract digest the model was evaluated under.", "$ref": "common.schema.json#/$defs/Hash" },
+              "generator": { "description": "Hash of the identity of the generator that renders its artifacts.", "$ref": "common.schema.json#/$defs/Hash" },
+              "imports": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ContractPin" } }
+            }
+          }
+        }
       }
     },
     "Completeness": {

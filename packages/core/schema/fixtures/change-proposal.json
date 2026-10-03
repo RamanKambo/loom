@@ -1,0 +1,17 @@
+{
+  "definition": "ChangeProposal",
+  "valid": [
+    {
+      "proposalId": "prop.timeout",
+      "inputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "config": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "policy": null, "contract": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "generator": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "imports": [] }] },
+      "writes": [{ "owner": "shop", "repositoryPath": ".", "path": ".loom/model.json", "expectedOld": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "expectedNew": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }],
+      "impact": [{ "modelId": "payments", "affected": { "ref": { "kind": "operation", "id": "payment.capture" }, "reason": "depends-on", "path": ["agr.timeout", "payment.capture"] } }],
+      "invalidatedEvidence": [{ "modelId": "payments", "invalidation": { "evidence": "ev.capture-latency", "reason": "The timeout allocation it measured changed.", "inputs": ["agreement:agr.timeout"] } }],
+      "requiredAcceptance": [{ "owner": "shop", "changeClasses": ["boundary"] }]
+    }
+  ],
+  "invalid": [
+    { "because": "every write names the hash it replaces", "keyword": "required", "path": "/writes/0", "instance": { "proposalId": "prop.timeout", "inputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "config": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "policy": null, "contract": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "generator": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "imports": [] }] }, "writes": [{ "owner": "shop", "repositoryPath": ".", "path": ".loom/model.json", "expectedNew": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }], "impact": [], "invalidatedEvidence": [], "requiredAcceptance": [] } }
+  ]
+}

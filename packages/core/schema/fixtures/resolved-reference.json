@@ -1,0 +1,7 @@
+{
+  "definition": "ResolvedReference",
+  "valid": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture", "bundleDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }],
+  "invalid": [
+    { "because": "a resolved reference names the digest of the bundle it resolved against", "keyword": "required", "path": "", "instance": { "modelId": "payments", "kind": "operation", "id": "payment.capture" } }
+  ]
+}

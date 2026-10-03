@@ -1,0 +1,11 @@
+{
+  "definition": "CompositionMember",
+  "valid": [
+    { "memberId": "payments", "modelId": "payments", "repositoryPath": "services/payments", "relationship": "implementation", "exports": [] },
+    { "memberId": "checkout", "modelId": "checkout", "repositoryPath": "checkout", "relationship": "composition", "exports": [{ "publisher": "team-checkout", "contract": "checkout-api", "version": 1, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" }] }
+  ],
+  "invalid": [
+    { "because": "a member is an implementation or a composition", "keyword": "enum", "path": "/relationship", "instance": { "memberId": "payments", "modelId": "payments", "repositoryPath": "payments", "relationship": "library", "exports": [] } },
+    { "because": "a member path is relative to the parent and never leaves it", "keyword": "pattern", "path": "/repositoryPath", "instance": { "memberId": "payments", "modelId": "payments", "repositoryPath": "../payments", "relationship": "implementation", "exports": [] } }
+  ]
+}

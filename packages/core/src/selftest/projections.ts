@@ -29,6 +29,7 @@ import {
   type TargetSpec,
 } from '../project.js';
 import { pascal } from '../projections/context.js';
+import { ARCHITECTURE_FILE, projectArchitecture } from '../projections/architecture.js';
 import { sampleModel } from '../sample.js';
 import { prohibitedMarkers, type MarkerKind } from '../wording.js';
 import { assert, assertThrows, codesOf, fresh, observe, pick, type Tally } from './harness.js';
@@ -147,6 +148,7 @@ function presentRecords(model: Model, target: ProjectionTarget, files: readonly 
         ...model.unknowns.map((x) => ['unknown', x.id] as [RecordRef['kind'], string]),
         ...model.assumptions.map((x) => ['assumption', x.id] as [RecordRef['kind'], string]),
         ...model.constraints.map((x) => ['constraint', x.id] as [RecordRef['kind'], string]),
+        ...model.agreements.map((x) => ['agreement', x.id] as [RecordRef['kind'], string]),
         ...model.migrations.map((x) => ['migration', x.id] as [RecordRef['kind'], string]),
         ...model.retainedBehaviors.map((x) => ['retainedBehavior', x.id] as [RecordRef['kind'], string]),
         ...model.deploymentUnits.map((x) => ['deploymentUnit', x.id] as [RecordRef['kind'], string]),
@@ -189,6 +191,21 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       assert(t, deepEqual(bundle.files.map(projectedPath), expected), `every target writes one file per instance and file: ${bundle.files.map(projectedPath).join(', ')}`);
       assert(t, deepEqual(Object.keys(projectToFiles(sampleModel())).sort(), expected), 'projectToFiles keys each file by its instance path');
       for (const m of bundle.coverage) verifyManifest(t, sampleModel(), m.target, bundle.files.filter((f) => PROJECTION_FILES[f.file] === m.target), m);
+      const view = (file: string): string => bundle.files.find((f) => f.file === file)?.content ?? '';
+      for (const u of sampleModel().unknowns) {
+        const action = `${u.recommendedAction.action} (${u.recommendedAction.reversible ? 'reversible' : 'not reversible'})`;
+        assert(t, view('registers.md').includes(`| ${u.evidenceNeeded} | ${action} |`), `registers.md renders unknown ${u.id} with the evidence that would answer it and its recommended action with its reversibility`);
+      }
+      assert(t, sampleModel().agreements.length > 0, 'the sample model declares a boundary agreement for the views to render');
+      for (const a of sampleModel().agreements) {
+        const parties = (list: typeof a.providers): string => list.map((x) => `${x.kind} ${tick(x.id)} of model ${tick(x.modelId)}`).join(', ');
+        const row = `| ${tick(a.id)} | ${a.kind} | ${a.constraint} | ${parties(a.providers)} | ${parties(a.consumers)} | ${tick(a.owner)} |`;
+        for (const file of ['registers.md', 'architecture.md']) assert(t, view(file).includes(row), `${file} renders agreement ${a.id} with its kind, constraint, providers, consumers and owner`);
+        for (const target of ['registers', 'architecture'] as const) {
+          const item = bundle.coverage.find((c) => c.target === target)?.items.find((i) => i.ref.kind === 'agreement' && i.ref.id === a.id);
+          assert(t, item?.status === 'projected', `the ${target} coverage manifest accounts for agreement ${a.id} as projected: ${JSON.stringify(item)}`);
+        }
+      }
       for (const f of bundle.files) {
         if (!f.file.endsWith('.md') || ['workflows.md', 'reference.md'].includes(f.file)) continue;
         assert(t, f.content.includes(modelRevision(sampleModel())), `${projectedPath(f)} names the model revision it was rendered from`);
@@ -346,6 +363,13 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       assert(t, codesOf(observe(t, claimed.findings)).every((c) => c === 'PROJECTION_COVERAGE_LOSS'), 'a false location is a coverage loss');
       const honest = renderWithSpec(m, 'json-schema', { ...dropping, scope: (model) => model.types.slice(1).map((x) => ({ kind: 'type', id: x.id })) });
       assert(t, honest.coverage.complete && honest.coverage.items.length === m.types.length - 1, 'a renderer that covers its scope passes the guard');
+      const withoutAgreements: TargetSpec = {
+        files: [ARCHITECTURE_FILE],
+        render: (model, ctx) => projectArchitecture({ ...model, agreements: [] }, ctx),
+        scope: (model) => model.agreements.map((a) => ({ kind: 'agreement', id: a.id })),
+      };
+      const dropped = assertThrows(t, () => renderWithSpec(m, 'architecture', withoutAgreements), 'a view that drops a boundary agreement in its scope is refused', (e) => e instanceof LoomInvalidModelError) as LoomInvalidModelError;
+      assert(t, dropped.findings.length === m.agreements.length && observe(t, dropped.findings).every((f) => f.code === 'PROJECTION_COVERAGE_LOSS' && f.refs?.[0]?.kind === 'agreement'), 'each dropped agreement is a coverage loss that names it');
     },
   },
   {

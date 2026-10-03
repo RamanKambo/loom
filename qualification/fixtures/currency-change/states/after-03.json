@@ -599,6 +599,8 @@
         "release"
       ],
       "owner": "team-orders",
+      "evidenceNeeded": "The pricing owner's decision on the currency of existing orders and on the meaning of an absent currency.",
+      "recommendedAction": { "action": "Keep the currency optional and without a default until the pricing owner decides.", "reversible": true },
       "resolution": "Decision by the pricing owner, recorded as a decision record.",
       "status": "open"
     }
@@ -858,5 +860,6 @@
       "status": "active"
     }
   ],
-  "publishedContracts": []
+  "publishedContracts": [],
+  "agreements": []
 }

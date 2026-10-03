@@ -2,7 +2,7 @@ import type { Model } from '../generated/types.js';
 import { indexModel } from '../records.js';
 import { toText } from './notice.js';
 import type { RenderContext } from './context.js';
-import { cell, code, label, ownersOfId, viewHeader } from './views.js';
+import { agreementLocation, agreementRows, cell, code, label, ownersOfId, viewHeader } from './views.js';
 
 export const ARCHITECTURE_FILE = 'architecture.md';
 
@@ -10,7 +10,8 @@ export const ARCHITECTURE_FILE = 'architecture.md';
  * Architecture view: component dependencies (model edges lifted to the
  * components that own their endpoints, labelled by edge kind), ownership
  * (each component and the records it owns) and hosting (deployment units on
- * hosts inside trust boundaries, co-hosting marked). Node ids are positional,
+ * hosts inside trust boundaries, co-hosting marked), then the boundary
+ * agreements across owners. Node ids are positional,
  * so a label may hold any character; the tables beneath each diagram list
  * every element the diagram shows.
  */
@@ -99,5 +100,8 @@ export function projectArchitecture(model: Model, ctx: RenderContext): Record<st
     L.push(`| ${code(b.id)} | ${b.kind} | ${cell(b.description)} |`);
     ctx.covered({ kind: 'trustBoundary', id: b.id }, ARCHITECTURE_FILE, `| ${code(b.id)} | ${b.kind} |`);
   }
+
+  L.push('', '## Boundary agreements', '', ...agreementRows(model.agreements));
+  for (const a of model.agreements) ctx.covered({ kind: 'agreement', id: a.id }, ARCHITECTURE_FILE, agreementLocation(a));
   return { [ARCHITECTURE_FILE]: toText(L) };
 }

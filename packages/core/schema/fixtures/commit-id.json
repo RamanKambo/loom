@@ -1,0 +1,7 @@
+{
+  "definition": "CommitId",
+  "valid": ["a9ce204", "61b5b0a3c2d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5"],
+  "invalid": [
+    { "because": "a branch name does not identify a commit", "keyword": "pattern", "path": "", "instance": "main" }
+  ]
+}

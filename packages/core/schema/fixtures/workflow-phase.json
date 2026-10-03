@@ -1,0 +1,7 @@
+{
+  "definition": "WorkflowPhase",
+  "valid": ["unplanned", "discovery", "operations"],
+  "invalid": [
+    { "because": "an unknown phase is rejected", "keyword": "enum", "path": "", "instance": "done" }
+  ]
+}

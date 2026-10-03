@@ -4,7 +4,7 @@
   "subject": {
     "kind": "baseline",
     "baseline": "bl-currency-1",
-    "candidate": "sha256:e5ffd197ffcc56250b9e4a0340b9f437f813b290d2b4fc24dda7fa1858a9cf96"
+    "candidate": "sha256:f730d636f84dbe5cf8f9e7085533d21166b3011da0ce03b52ce8a27f5f4cb63a"
   },
   "decision": "accepted",
   "authority": "team-architecture",

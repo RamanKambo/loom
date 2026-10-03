@@ -570,7 +570,7 @@
             "required": ["name", "effects"],
             "properties": {
               "name": { "type": "string" },
-              "effects": { "enum": ["none", "reads", "writes"] }
+              "effects": { "$ref": "#/$defs/ToolEffect" }
             }
           }
         },
@@ -681,6 +681,157 @@
         "changeClasses": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
       }
     },
+    "ToolEffect": {
+      "description": "A tool's effect on persisted state.",
+      "enum": ["none", "reads", "writes"]
+    },
+    "WorkspaceId": {
+      "description": "Opaque identity of one open workspace handle, valid only in the session that opened it; never a path, a credential or acceptance evidence.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,128}$"
+    },
+    "WorkspaceHandle": {
+      "description": "One session's handle on an opened workspace. It exists only for that session, a capability is an authorized effect and never domain acceptance, and neither the handle nor its view URL grants trusted acceptance or qualification.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspaceId", "modelId", "modelKind", "displayName", "capabilities", "revisions"],
+      "properties": {
+        "workspaceId": { "$ref": "#/$defs/WorkspaceId" },
+        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+        "modelKind": { "$ref": "common.schema.json#/$defs/ModelKind" },
+        "displayName": { "$ref": "common.schema.json#/$defs/Text" },
+        "capabilities": { "description": "The effects this session is authorized to perform through the handle.", "type": "array", "uniqueItems": true, "items": { "enum": ["read", "edit", "qualify", "publish"] } },
+        "revisions": { "$ref": "result.schema.json#/$defs/RevisionSet" },
+        "parent": {
+          "description": "The composition this workspace is a direct member of.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["modelId", "memberId"],
+          "properties": {
+            "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+            "memberId": { "$ref": "common.schema.json#/$defs/Id" }
+          }
+        },
+        "viewUrl": { "description": "Loopback address of the browser view: a runtime convenience, excluded from model exports, signatures, source notices and deterministic projections.", "type": "string", "format": "uri", "pattern": "^http://(127\\.0\\.0\\.1|\\[::1\\]|localhost):[0-9]{1,5}/" }
+      }
+    },
+    "NextAction": {
+      "description": "A next step offered to the caller: its purpose, the tool and the arguments that perform it, what it needs, what it changes and what blocks it. The arguments satisfy that tool's input, and an action never invents authorization.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "tool", "arguments", "prerequisites", "effects", "blockedBy"],
+      "properties": {
+        "purpose": { "$ref": "common.schema.json#/$defs/Text" },
+        "tool": { "type": "string", "pattern": "^loom\\.[a-z][A-Za-z]*$" },
+        "arguments": { "type": "object" },
+        "prerequisites": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "effects": { "$ref": "#/$defs/ToolEffect" },
+        "blockedBy": { "type": "array", "items": { "$ref": "#/$defs/Prerequisite" } }
+      }
+    },
+    "WorkspaceSummary": {
+      "description": "A bounded summary of one workspace at one revision vector: its handle, phase, scope, imports, open unknowns, pending work and next actions, with completeness naming what it omitted. It never carries credentials or the whole model.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "revisionVector", "phase", "scope", "imports", "unknowns", "pendingWork", "nextActions", "completeness"],
+      "properties": {
+        "workspace": { "$ref": "#/$defs/WorkspaceHandle" },
+        "revisionVector": { "description": "Digest of the revision vector every fact of the summary refers to.", "$ref": "common.schema.json#/$defs/Hash" },
+        "phase": { "$ref": "workspace.schema.json#/$defs/WorkflowPhase" },
+        "scope": {
+          "description": "The source roots each component claims.",
+          "type": "array",
+          "x-loom-key": "component",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component", "roots"],
+            "properties": {
+              "component": { "$ref": "common.schema.json#/$defs/Id" },
+              "roots": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RelativePath" } }
+            }
+          }
+        },
+        "imports": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ContractPin" } },
+        "unknowns": { "type": "array", "items": { "$ref": "model.schema.json#/$defs/Unknown" } },
+        "pendingWork": {
+          "type": "array",
+          "x-loom-key": "workPackage",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["workPackage", "status"],
+            "properties": {
+              "workPackage": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["planned", "in-progress", "blocked"] }
+            }
+          }
+        },
+        "nextActions": { "type": "array", "items": { "$ref": "#/$defs/NextAction" } },
+        "completeness": { "$ref": "result.schema.json#/$defs/Completeness" }
+      }
+    },
+    "MutationExpectation": {
+      "description": "The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "config", "policy", "imports"],
+      "properties": {
+        "model": { "$ref": "common.schema.json#/$defs/Hash" },
+        "config": { "$ref": "common.schema.json#/$defs/Hash" },
+        "policy": { "description": "Hash of the trusted policy, or null when the workspace names none.", "anyOf": [{ "$ref": "common.schema.json#/$defs/Hash" }, { "type": "null" }] },
+        "imports": { "description": "Hash of the canonical JSON of the workspace's import pins.", "$ref": "common.schema.json#/$defs/Hash" }
+      }
+    },
+    "ChangeProposal": {
+      "description": "An immutable proposal for a change across one or more models, bound to the revision vector it was planned against: every write with its owner and expected old and new hashes, the impact, the evidence it invalidates and the acceptance it requires.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposalId", "inputDigest", "revisionVector", "writes", "impact", "invalidatedEvidence", "requiredAcceptance"],
+      "properties": {
+        "proposalId": { "$ref": "common.schema.json#/$defs/Id" },
+        "inputDigest": { "description": "Hash of the canonical JSON of the request the proposal answers.", "$ref": "common.schema.json#/$defs/Hash" },
+        "revisionVector": { "$ref": "result.schema.json#/$defs/RevisionVector" },
+        "writes": { "type": "array", "items": { "$ref": "workspace.schema.json#/$defs/OwnedWrite" } },
+        "impact": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["modelId", "affected"],
+            "properties": {
+              "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+              "affected": { "$ref": "result.schema.json#/$defs/AffectedElement" }
+            }
+          }
+        },
+        "invalidatedEvidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["modelId", "invalidation"],
+            "properties": {
+              "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+              "invalidation": { "$ref": "#/$defs/EvidenceInvalidation" }
+            }
+          }
+        },
+        "requiredAcceptance": {
+          "description": "Each owner whose trusted policy requires acceptance before the change applies, with the change classes that require it.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["owner", "changeClasses"],
+            "properties": {
+              "owner": { "$ref": "common.schema.json#/$defs/ModelId" },
+              "changeClasses": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+            }
+          }
+        }
+      }
+    },
     "OperationCatalogue": {
       "description": "Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.",
       "type": "object",
@@ -734,7 +885,7 @@
         "id": { "type": "string", "pattern": "^[a-z][A-Za-z]*$" },
         "purpose": { "description": "One sentence.", "type": "string", "pattern": "^[A-Z].*[.]$" },
         "prerequisites": { "description": "Clauses, each without a closing period.", "type": "array", "items": { "type": "string", "pattern": "^[a-z'(].*[^.;]$" } },
-        "effects": { "description": "The effect on persisted state, named in the vocabulary of DescribeData tools.", "type": "string", "pattern": "^[a-z]+$" },
+        "effects": { "description": "The effect on persisted state, named in the vocabulary of ToolEffect.", "type": "string", "pattern": "^[a-z]+$" },
         "refusals": {
           "description": "The important refusals: a cause of the result envelope's Refusal and when it is given.",
           "type": "array",

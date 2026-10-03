@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loom Engineering"
+  short_description: "Engineer coherent systems through Loom contracts"
+  default_prompt: "Use $loom-engineering to establish the scope, model the solution in Loom, and qualify the requested engineering work."

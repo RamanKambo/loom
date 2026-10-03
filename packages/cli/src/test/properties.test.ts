@@ -145,6 +145,8 @@ function unknownNaming(m: Model, pick: number, suffix: number): Patch | null {
       affects: [{ kind: 'property', id: `${t.id}.${p.name}` }],
       blocks: ['release'],
       owner: 'team-generated',
+      evidenceNeeded: 'A decision on what the property holds.',
+      recommendedAction: { action: 'Keep the property as it is declared.', reversible: true },
       resolution: 'A decision.',
       status: 'open',
     },
@@ -287,7 +289,7 @@ function withDottedSibling(m: Model, pick: number, suffix: number, prop: number)
   next = applyIntended(next, {
     op: 'add',
     collection: 'unknowns',
-    record: { id: `unk.sibling-${suffix}`, question: `What does ${name} hold?`, affects: [{ kind: 'property', id: `${base.id}.${name}` }, { kind: 'property', id: `${sibling}.${name}` }], blocks: ['release'], owner: 'team-generated', resolution: 'A decision.', status: 'open' },
+    record: { id: `unk.sibling-${suffix}`, question: `What does ${name} hold?`, affects: [{ kind: 'property', id: `${base.id}.${name}` }, { kind: 'property', id: `${sibling}.${name}` }], blocks: ['release'], owner: 'team-generated', evidenceNeeded: 'A decision on what the property holds.', recommendedAction: { action: 'Keep the property as it is declared.', reversible: true }, resolution: 'A decision.', status: 'open' },
   } as unknown as Patch);
   return next.unknowns.some((u) => u.id === `unk.sibling-${suffix}`) ? { model: next, base: base.id, sibling, name } : null;
 }
@@ -387,9 +389,9 @@ const MUST_ACCOUNT: Partial<Record<ProjectionTarget, (m: Model) => RecordRef[]>>
   sql: (m) => m.storage.map((s) => ref('storage', s.id)),
   'csharp-contract-tests': typesAndProperties,
   'typescript-contract-tests': typesAndProperties,
-  registers: (m) => [...m.decisions.map((d) => ref('decision', d.id)), ...m.unknowns.map((u) => ref('unknown', u.id)), ...m.assumptions.map((a) => ref('assumption', a.id))],
+  registers: (m) => [...m.decisions.map((d) => ref('decision', d.id)), ...m.unknowns.map((u) => ref('unknown', u.id)), ...m.assumptions.map((a) => ref('assumption', a.id)), ...m.agreements.map((a) => ref('agreement', a.id))],
   'coverage-matrix': (m) => [...m.requirements.map((r) => ref('requirement', r.id)), ...m.scenarios.map((s) => ref('scenario', s.id))],
-  architecture: (m) => [...m.components.map((c) => ref('component', c.id)), ...m.deploymentUnits.map((u) => ref('deploymentUnit', u.id))],
+  architecture: (m) => [...m.components.map((c) => ref('component', c.id)), ...m.deploymentUnits.map((u) => ref('deploymentUnit', u.id)), ...m.agreements.map((a) => ref('agreement', a.id))],
 };
 
 test('every record a target is responsible for appears in its coverage manifest, and no target drops a record silently', () => {

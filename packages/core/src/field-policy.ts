@@ -169,6 +169,7 @@ export const DIFF_RULES = {
   CONSUMER_BINDING_CHANGED: { subject: 'consumer binding', change: 'The contract, version, compatibility policy, required flag or status a consumer binds changed.', kind: 'breaking', dimension: 'shape-consumer' },
   PUBLISHED_CONTRACT_PIN_CHANGED: { subject: 'published contract', change: 'The publisher, contract, version, digest or schema version of a pinned contract changed.', kind: 'breaking', dimension: 'shape-consumer' },
   PUBLISHED_CONTRACT_CONSUMERS_CHANGED: { subject: 'published contract', change: 'The components consuming a pinned contract changed.', kind: 'compatible', dimension: 'intent' },
+  AGREEMENT_CHANGED: { subject: 'agreement', change: 'The kind, constraint, providers or consumers of a boundary agreement changed; every binding to it must be established again.', kind: 'breaking', dimension: 'behavior' },
 } as const satisfies Record<string, DiffRule>;
 
 export type DiffRuleId = keyof typeof DIFF_RULES;
@@ -332,7 +333,7 @@ const RECORD_DIMENSION: Record<string, Dimension> = {
   edge: 'intent', requirement: 'intent', scenario: 'intent', constraint: 'intent', observation: 'intent', assumption: 'intent', unknown: 'intent',
   decision: 'intent', inventory: 'intent', retainedBehavior: 'intent', workload: 'intent', attachment: 'intent', mapping: 'shape-provider',
   storage: 'storage', migration: 'storage', deploymentUnit: 'deployment', host: 'deployment', trustBoundary: 'security', securityScheme: 'security',
-  consumerBinding: 'shape-consumer', publishedContract: 'shape-consumer',
+  consumerBinding: 'shape-consumer', publishedContract: 'shape-consumer', agreement: 'behavior',
 };
 const collection = cls((d) => ({
   rule: d.event === 'added' ? 'RECORD_ADDED' : 'RECORD_REMOVED',
@@ -380,7 +381,7 @@ export const FIELD_POLICY: Readonly<Record<string, FieldPolicy>> = {
   'SystemProfile.kind': as('SYSTEM_PROFILE_CHANGED'),
   'SystemProfile.traits[]': as('SYSTEM_PROFILE_CHANGED'),
   ...Object.fromEntries(
-    ['components', 'types', 'operations', 'routines', 'mutations', 'workflows', 'edges', 'requirements', 'scenarios', 'constraints', 'observations', 'assumptions', 'unknowns', 'decisions', 'inventory', 'retainedBehaviors', 'workloads', 'attachments', 'mappings', 'storage', 'migrations', 'deploymentUnits', 'hosts', 'trustBoundaries', 'securitySchemes', 'consumerBindings', 'publishedContracts'].map(
+    ['components', 'types', 'operations', 'routines', 'mutations', 'workflows', 'edges', 'requirements', 'scenarios', 'constraints', 'observations', 'assumptions', 'unknowns', 'decisions', 'inventory', 'retainedBehaviors', 'workloads', 'attachments', 'mappings', 'storage', 'migrations', 'deploymentUnits', 'hosts', 'trustBoundaries', 'securitySchemes', 'consumerBindings', 'publishedContracts', 'agreements'].map(
       (c) => [`Model.${c}[]`, collection],
     ),
   ),
@@ -688,6 +689,9 @@ export const FIELD_POLICY: Readonly<Record<string, FieldPolicy>> = {
   'Unknown.concerns[]': knowledge,
   'Unknown.blocks[]': knowledge,
   'Unknown.owner': as('ACCOUNTABLE_OWNER_CHANGED'),
+  'Unknown.evidenceNeeded': knowledgeNote,
+  'Unknown.recommendedAction.action': knowledgeNote,
+  'Unknown.recommendedAction.reversible': knowledge,
   'Unknown.resolution': knowledgeNote,
   'Unknown.status': knowledge,
   'Unknown.closure.note': knowledgeNote,
@@ -879,4 +883,11 @@ export const FIELD_POLICY: Readonly<Record<string, FieldPolicy>> = {
   'PublishedContractRef.digest': as('PUBLISHED_CONTRACT_PIN_CHANGED'),
   'PublishedContractRef.schemaVersion': as('PUBLISHED_CONTRACT_PIN_CHANGED'),
   'PublishedContractRef.consumers[]': as('PUBLISHED_CONTRACT_CONSUMERS_CHANGED'),
+
+  'Agreement.id': keyField,
+  'Agreement.kind': as('AGREEMENT_CHANGED'),
+  'Agreement.constraint': as('AGREEMENT_CHANGED'),
+  'Agreement.providers[]': as('AGREEMENT_CHANGED'),
+  'Agreement.consumers[]': as('AGREEMENT_CHANGED'),
+  'Agreement.owner': as('ACCOUNTABLE_OWNER_CHANGED'),
 };

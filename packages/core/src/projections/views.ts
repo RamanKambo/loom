@@ -1,4 +1,4 @@
-import type { Model, RecordKind, RecordRef } from '../generated/types.js';
+import type { Agreement, Model, RecordAddress, RecordKind, RecordRef } from '../generated/types.js';
 import type { EvaluationInputs } from '../inputs.js';
 import { canonicalHash, modelRevision } from '../hash.js';
 import { indexModel, type ModelIndex } from '../records.js';
@@ -10,6 +10,17 @@ import { MARKDOWN_NOTICE } from './notice.js';
 export const cell = (s: string): string => s.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|').replace(/[<>]/g, '\\$&');
 export const codes = (values: readonly string[]): string => (values.length ? values.map(code).join(', ') : '(none)');
 export const refText = (r: RecordRef): string => `${r.kind} ${code(r.id)}`;
+/** A record of another model, named with the model that owns it. */
+export const addressText = (a: RecordAddress): string => `${a.kind} ${code(a.id)} of model ${code(a.modelId)}`;
+
+/** The table of boundary agreements every view that lists them shares: one row per agreement, its kind, constraint, providers, consumers and owner. */
+export function agreementRows(agreements: readonly Agreement[]): string[] {
+  const rows = agreements.map((a) => `| ${code(a.id)} | ${a.kind} | ${cell(a.constraint)} | ${a.providers.map(addressText).join(', ') || '(none)'} | ${a.consumers.map(addressText).join(', ') || '(none)'} | ${code(a.owner)} |`);
+  return ['| Agreement | Kind | Constraint | Providers | Consumers | Owner |', '| --- | --- | --- | --- | --- | --- |', ...(rows.length ? rows : ['| (none) | | | | | |'])];
+}
+
+/** The coverage location of an agreement's row in a table built by agreementRows. */
+export const agreementLocation = (a: Agreement): string => `| ${code(a.id)} | ${a.kind} |`;
 
 /**
  * The heading lines every generated view opens with: the source notice, the
