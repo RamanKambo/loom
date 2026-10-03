@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.tsbuildinfo
 .tmp/
+examples/**/bin/
+examples/**/obj/
