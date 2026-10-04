@@ -36,6 +36,7 @@ const RAISED_ELSEWHERE: Partial<Record<FindingCode, string>> = {
   POLICY_UNTRUSTED: 'workspace adapter',
   EVIDENCE_STORE_UNAVAILABLE: 'workspace adapter',
   PROJECTION_INVALID: 'qualification adapter',
+  DIAGRAM_TERMINAL_UNFAITHFUL: 'terminal renderer adapter',
   SCOPE_OVERLAP: 'workspace adapter',
   SCOPE_COMPONENT_UNKNOWN: 'workspace adapter',
   SCOPE_ROOT_INVALID: 'workspace adapter',

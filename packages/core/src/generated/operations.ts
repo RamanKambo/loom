@@ -2182,7 +2182,7 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
                 }
               },
               "scope": {
-                "kind": "dependency",
+                "kind": "component-dependency",
                 "depth": 1
               },
               "formats": [
@@ -2390,6 +2390,14 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
       "uri": "loom://workspaces/{workspaceId}/records/{kind}/{id}",
       "purpose": "One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page.",
       "contents": "RecordResource",
+      "scope": "session",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://workspaces/{workspaceId}/diagrams/{diagramId}",
+      "purpose": "One diagram of an open workspace, structured and as Mermaid text, which a render result points to when the diagram is too large to carry inline.",
+      "contents": "DiagramResource",
       "scope": "session",
       "exposure": "none",
       "reason": "Catalogued before it is listed; the server rebuild serves it."

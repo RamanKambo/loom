@@ -1,0 +1,11 @@
+{
+  "definition": "DiagramLimits",
+  "valid": [
+    { "budget": { "maxNodes": 200, "maxBytes": 16384 }, "reached": [], "boundaryEdges": [] },
+    { "budget": { "maxNodes": 2, "maxBytes": 4096, "maxWidth": 80, "maxDurationMs": 10000, "maxMemoryBytes": 268435456 }, "reached": ["nodes"], "boundaryEdges": ["edge:billing|ordering|integration"] }
+  ],
+  "invalid": [
+    { "because": "a reached limit is one of the budget's limits", "keyword": "enum", "path": "/reached/0", "instance": { "budget": { "maxNodes": 2, "maxBytes": 4096 }, "reached": ["patience"], "boundaryEdges": [] } },
+    { "because": "limits name the boundary edges a page shows", "keyword": "required", "path": "", "instance": { "budget": { "maxNodes": 2, "maxBytes": 4096 }, "reached": [] } }
+  ]
+}

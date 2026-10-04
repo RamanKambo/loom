@@ -48,6 +48,7 @@ Besides the schema resources, the catalogue defines these resources. A `session`
 | `loom://guide/capabilities` | `GuideResource` | server | no | What this build supports and what each kind of proof does not establish. |
 | `loom://workspaces/{workspaceId}/status` | `WorkspaceStatus` | session | no | The status of one open workspace, for the session that holds its handle. |
 | `loom://workspaces/{workspaceId}/records/{kind}/{id}` | `RecordResource` | session | no | One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page. |
+| `loom://workspaces/{workspaceId}/diagrams/{diagramId}` | `DiagramResource` | session | no | One diagram of an open workspace, structured and as Mermaid text, which a render result points to when the diagram is too large to carry inline. |
 
 Not listed:
 
@@ -56,6 +57,19 @@ Not listed:
 - `loom://guide/capabilities`: Catalogued before it is listed; the server rebuild serves it.
 - `loom://workspaces/{workspaceId}/status`: Catalogued before it is listed; the server rebuild serves it.
 - `loom://workspaces/{workspaceId}/records/{kind}/{id}`: Catalogued before it is listed; the server rebuild serves it.
+- `loom://workspaces/{workspaceId}/diagrams/{diagramId}`: Catalogued before it is listed; the server rebuild serves it.
+
+## Rendering budget
+
+A diagram request takes the default for each budget member it leaves out, and schema validation of the request refuses a member below its minimum or above its maximum. The numbers are the `default`, `minimum` and `maximum` keywords of `RenderingBudget` in `packages/core/schema/diagram.schema.json`, chosen rather than measured.
+
+| Member | Minimum | Default | Maximum |
+| --- | --- | --- | --- |
+| `maxNodes` | 1 | 200 | 2000 |
+| `maxBytes` | 1024 | 16384 | 65536 |
+| `maxWidth` | 40 | 120 | 400 |
+| `maxDurationMs` | 100 | 10000 | 60000 |
+| `maxMemoryBytes` | 1048576 | 268435456 | 1073741824 |
 
 ## Operations
 
@@ -1180,7 +1194,7 @@ Examples:
       }
     },
     "scope": {
-      "kind": "dependency",
+      "kind": "component-dependency",
       "depth": 1
     },
     "formats": [

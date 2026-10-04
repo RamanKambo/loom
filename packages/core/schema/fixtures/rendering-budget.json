@@ -1,0 +1,22 @@
+{
+  "definition": "RenderingBudget",
+  "valid": [
+    {},
+    { "maxNodes": 200, "maxBytes": 16384, "maxWidth": 120, "maxDurationMs": 10000, "maxMemoryBytes": 268435456 },
+    { "maxNodes": 2000, "maxBytes": 65536, "maxWidth": 400, "maxDurationMs": 60000, "maxMemoryBytes": 1073741824 },
+    { "maxNodes": 1, "maxBytes": 1024, "maxWidth": 40, "maxDurationMs": 100, "maxMemoryBytes": 1048576 }
+  ],
+  "invalid": [
+    { "because": "a rendering draws at most 2000 nodes", "keyword": "maximum", "path": "/maxNodes", "instance": { "maxNodes": 2001 } },
+    { "because": "a rendering writes at most 64 KiB", "keyword": "maximum", "path": "/maxBytes", "instance": { "maxBytes": 65537 } },
+    { "because": "a terminal rendering is at most 400 columns wide", "keyword": "maximum", "path": "/maxWidth", "instance": { "maxWidth": 401 } },
+    { "because": "a render takes at most 60000 milliseconds", "keyword": "maximum", "path": "/maxDurationMs", "instance": { "maxDurationMs": 60001 } },
+    { "because": "a renderer uses at most 1 GiB of memory", "keyword": "maximum", "path": "/maxMemoryBytes", "instance": { "maxMemoryBytes": 1073741825 } },
+    { "because": "a rendering draws at least one node", "keyword": "minimum", "path": "/maxNodes", "instance": { "maxNodes": 0 } },
+    { "because": "a rendering may write at least 1 KiB", "keyword": "minimum", "path": "/maxBytes", "instance": { "maxBytes": 1023 } },
+    { "because": "a terminal rendering is at least 40 columns wide", "keyword": "minimum", "path": "/maxWidth", "instance": { "maxWidth": 39 } },
+    { "because": "a render may take at least 100 milliseconds", "keyword": "minimum", "path": "/maxDurationMs", "instance": { "maxDurationMs": 99 } },
+    { "because": "a renderer may use at least 1 MiB of memory", "keyword": "minimum", "path": "/maxMemoryBytes", "instance": { "maxMemoryBytes": 1048575 } },
+    { "because": "a duration is a whole number of milliseconds, never an ISO duration text", "keyword": "additionalProperties", "path": "", "instance": { "maxDuration": "PT10S" } }
+  ]
+}

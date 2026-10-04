@@ -933,7 +933,7 @@
         "examples": [
           {
             "description": "Draw the dependencies of the ordering component as Mermaid text.",
-            "input": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } }
+            "input": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } }
           }
         ]
       }
@@ -1043,6 +1043,14 @@
       "uri": "loom://workspaces/{workspaceId}/records/{kind}/{id}",
       "purpose": "One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page.",
       "contents": "RecordResource",
+      "scope": "session",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://workspaces/{workspaceId}/diagrams/{diagramId}",
+      "purpose": "One diagram of an open workspace, structured and as Mermaid text, which a render result points to when the diagram is too large to carry inline.",
+      "contents": "DiagramResource",
       "scope": "session",
       "exposure": "none",
       "reason": "Catalogued before it is listed; the server rebuild serves it."

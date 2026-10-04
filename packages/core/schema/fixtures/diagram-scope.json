@@ -1,0 +1,11 @@
+{
+  "definition": "DiagramScope",
+  "valid": [
+    { "target": { "kind": "workspace" }, "depth": 0 },
+    { "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "depth": 2, "page": { "index": 1, "count": 3 } }
+  ],
+  "invalid": [
+    { "because": "a scope follows at most eight relationship steps", "keyword": "maximum", "path": "/depth", "instance": { "target": { "kind": "workspace" }, "depth": 9 } },
+    { "because": "a page names its index and the page count", "keyword": "required", "path": "/page", "instance": { "target": { "kind": "workspace" }, "depth": 1, "page": { "index": 2 } } }
+  ]
+}

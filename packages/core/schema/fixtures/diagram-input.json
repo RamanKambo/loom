@@ -4,7 +4,7 @@
     {
       "workspaceId": "ws_3f9a1c7d",
       "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } },
-      "scope": { "kind": "dependency", "depth": 1 },
+      "scope": { "kind": "component-dependency", "depth": 1 },
       "formats": ["mermaid", "terminal-unicode"],
       "budget": { "maxNodes": 50, "maxBytes": 8192, "maxWidth": 120 }
     },
@@ -13,14 +13,23 @@
       "target": { "kind": "workspace" },
       "scope": { "kind": "hosting", "depth": 0 },
       "formats": ["graph"],
-      "budget": { "maxNodes": 200, "maxBytes": 65536 },
+      "budget": { "maxNodes": 200, "maxBytes": 65536, "maxDurationMs": 20000, "maxMemoryBytes": 268435456 },
       "snapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "workspaceId": "ws_3f9a1c7d",
+      "target": { "kind": "record", "ref": { "kind": "type", "id": "order" } },
+      "scope": { "kind": "state", "depth": 0 },
+      "formats": ["graph", "mermaid", "terminal-ascii"],
+      "budget": { "maxNodes": 50, "maxBytes": 8192 }
     }
   ],
   "invalid": [
-    { "because": "the renderer is provisioned, never an executable path the caller names", "keyword": "additionalProperties", "path": "", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 }, "renderer": "C:/tools/mermaid-ascii.exe" } },
-    { "because": "a format names a rendering, never a URL", "keyword": "enum", "path": "/formats/0", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["https://render.example.com/svg"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
-    { "because": "a target names a record, never a connection string", "keyword": "pattern", "path": "/target/ref/id", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "storage", "id": "Server=tcp:db.example.com;Database=shop" } }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
-    { "because": "a budget bounds the rendering", "keyword": "maximum", "path": "/budget/maxNodes", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 100000, "maxBytes": 8192 } } }
+    { "because": "the renderer is provisioned, never an executable path the caller names", "keyword": "additionalProperties", "path": "", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 }, "renderer": "C:/tools/mermaid-ascii.exe" } },
+    { "because": "a format names a rendering, never a URL", "keyword": "enum", "path": "/formats/0", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["https://render.example.com/svg"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
+    { "because": "a target names a record, never a connection string", "keyword": "pattern", "path": "/target/ref/id", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "storage", "id": "Server=tcp:db.example.com;Database=shop" } }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
+    { "because": "a diagram kind is one of the built-in kinds", "keyword": "enum", "path": "/scope/kind", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "gantt", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
+    { "because": "a request asks for at most the maximum node count", "keyword": "maximum", "path": "/budget/maxNodes", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 2001 } } },
+    { "because": "a budget draws at least one node", "keyword": "minimum", "path": "/budget/maxNodes", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 0, "maxBytes": 8192 } } }
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "definition": "DiagramGroup",
+  "valid": [
+    { "key": "boundary:tb.internal", "meaning": "trust-boundary", "label": "tb.internal (network)", "members": ["unit:du.dispatch-worker"], "owner": { "modelId": "shop", "kind": "trustBoundary", "id": "tb.internal" } },
+    { "key": "boundary:tb.ordering-process", "meaning": "trust-boundary", "label": "tb.ordering-process (process)", "members": ["unit:du.ordering-api"], "parent": "boundary:tb.internal", "owner": { "modelId": "shop", "kind": "trustBoundary", "id": "tb.ordering-process" } }
+  ],
+  "invalid": [
+    { "because": "a group keeps a hosting, trust-boundary or ownership meaning", "keyword": "enum", "path": "/meaning", "instance": { "key": "g", "meaning": "colour", "label": "g", "members": [], "owner": { "modelId": "shop", "kind": "component", "id": "ordering" } } },
+    { "because": "a group lists each member once", "keyword": "uniqueItems", "path": "/members", "instance": { "key": "g", "meaning": "hosting", "label": "g", "members": ["a", "a"], "owner": { "modelId": "shop", "kind": "deploymentUnit", "id": "du.ordering-api" } } }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "definition": "DiagramCoverage",
+  "valid": [
+    { "complete": true, "items": [{ "ref": { "modelId": "shop", "kind": "component", "id": "ordering" }, "status": "drawn", "elements": ["component:ordering"] }] },
+    { "complete": false, "items": [{ "ref": { "modelId": "shop", "kind": "edge", "id": "billing|ordering|integration" }, "status": "omitted", "elements": [], "reason": "The node budget was reached before billing." }] }
+  ],
+  "invalid": [
+    { "because": "an item is drawn, omitted or out of scope, never hidden", "keyword": "enum", "path": "/items/0/status", "instance": { "complete": true, "items": [{ "ref": { "modelId": "shop", "kind": "component", "id": "ordering" }, "status": "hidden", "elements": [] }] } },
+    { "because": "an item names the elements that show it", "keyword": "required", "path": "/items/0", "instance": { "complete": true, "items": [{ "ref": { "modelId": "shop", "kind": "component", "id": "ordering" }, "status": "drawn" }] } }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "definition": "Diagram",
+  "valid": [
+    {
+      "diagramId": "dgm.component-dependency.ordering",
+      "kind": "component-dependency",
+      "scope": { "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "depth": 1 },
+      "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "nodes": [
+        { "key": "component:fulfillment", "label": "fulfillment (worker)", "kind": "component", "owner": { "modelId": "shop", "kind": "component", "id": "fulfillment" } },
+        { "key": "component:ordering", "label": "ordering (service)", "kind": "component", "owner": { "modelId": "shop", "kind": "component", "id": "ordering" } }
+      ],
+      "edges": [
+        { "key": "edge:fulfillment|ordering|runtime", "source": "component:fulfillment", "target": "component:ordering", "direction": "directed", "relationship": "runtime", "label": "runtime", "owners": [{ "modelId": "shop", "kind": "edge", "id": "fulfillment|ordering|runtime" }] }
+      ],
+      "groups": [],
+      "coverage": {
+        "complete": true,
+        "items": [
+          { "ref": { "modelId": "shop", "kind": "component", "id": "fulfillment" }, "status": "drawn", "elements": ["component:fulfillment"] },
+          { "ref": { "modelId": "shop", "kind": "component", "id": "ordering" }, "status": "drawn", "elements": ["component:ordering"] },
+          { "ref": { "modelId": "shop", "kind": "edge", "id": "fulfillment|ordering|runtime" }, "status": "drawn", "elements": ["edge:fulfillment|ordering|runtime"] }
+        ]
+      },
+      "limits": { "budget": { "maxNodes": 200, "maxBytes": 16384 }, "reached": [], "boundaryEdges": [] }
+    }
+  ],
+  "invalid": [
+    { "because": "a diagram carries its coverage and limits", "keyword": "required", "path": "", "instance": { "diagramId": "dgm.empty", "kind": "hosting", "scope": { "target": { "kind": "workspace" }, "depth": 0 }, "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nodes": [], "edges": [], "groups": [] } },
+    { "because": "layout coordinates are not part of the semantic representation", "keyword": "additionalProperties", "path": "/nodes/0", "instance": { "diagramId": "dgm.one", "kind": "hosting", "scope": { "target": { "kind": "workspace" }, "depth": 0 }, "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "nodes": [{ "key": "host:h", "label": "h", "kind": "host", "owner": { "modelId": "shop", "kind": "host", "id": "h" }, "x": 10 }], "edges": [], "groups": [], "coverage": { "complete": true, "items": [] }, "limits": { "budget": { "maxNodes": 10, "maxBytes": 2048 }, "reached": [], "boundaryEdges": [] } } }
+  ]
+}

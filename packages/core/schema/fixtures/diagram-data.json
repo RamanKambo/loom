@@ -2,14 +2,20 @@
   "definition": "DiagramData",
   "valid": [
     {
-      "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "renderings": [
-        { "format": "mermaid", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "content": "flowchart LR\n    c0[\"ordering\"] -->|runtime| c1[\"billing\"]\n" }
-      ]
+      "result": {
+        "diagram": { "uri": "loom://workspaces/ws_3f9a1c7d/diagrams/dgm.component-dependency.ordering", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 4096 },
+        "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "graphDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mermaidDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "mermaid": "flowchart LR\n    c0[\"fulfillment (worker)\"]\n    c1[\"ordering (service)\"]\n    c0 -->|runtime| c1\n",
+        "fidelity": { "level": "exact-semantics", "transformations": [] },
+        "coverage": { "complete": true, "items": [{ "ref": { "modelId": "shop", "kind": "edge", "id": "fulfillment|ordering|runtime" }, "status": "drawn", "elements": ["edge:fulfillment|ordering|runtime"] }] },
+        "completeness": { "complete": true, "truncated": false, "omitted": [] }
+      }
     }
   ],
   "invalid": [
-    { "because": "a rendering carries the digest of its content", "keyword": "required", "path": "/renderings/0", "instance": { "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "renderings": [{ "format": "mermaid", "content": "flowchart LR" }] } },
-    { "because": "a diagram result has at least one rendering", "keyword": "minItems", "path": "/renderings", "instance": { "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "renderings": [] } }
+    { "because": "diagram data carries a render result", "keyword": "required", "path": "", "instance": {} },
+    { "because": "a render result rejects an unknown member", "keyword": "additionalProperties", "path": "/result", "instance": { "result": { "diagram": { "uri": "loom://workspaces/ws_3f9a1c7d/diagrams/d", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 1 }, "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "graphDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "mermaidDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "mermaid": "flowchart LR", "fidelity": { "level": "exact-semantics", "transformations": [] }, "coverage": { "complete": true, "items": [] }, "completeness": { "complete": true, "truncated": false, "omitted": [] }, "renderings": [] } } }
   ]
 }

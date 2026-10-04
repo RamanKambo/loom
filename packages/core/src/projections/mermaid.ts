@@ -1,4 +1,4 @@
-import type { Model } from '../generated/types.js';
+import type { Model, WorkflowStep } from '../generated/types.js';
 import { ABSENT_STATE } from '../records.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
 import type { RenderContext } from './context.js';
@@ -10,11 +10,18 @@ export function label(s: string): string {
 
 export const code = (s: string): string => `\`${s.replace(/`/g, "'")}\``;
 
+/** How a step's failure is handled, the compensating action named by kind and id in the given form. */
+export function failureText(f: WorkflowStep['failure'], name: (id: string) => string = (id) => id): string {
+  return f.handling === 'compensate' && f.compensation ? `compensate by ${f.compensation.kind} ${name(f.compensation.id)}` : f.handling;
+}
+
 /**
  * Markdown sections holding the Mermaid diagrams: one stateDiagram-v2 per
- * stateful type (transitions from its mutations, [*] for $absent, labelled by
- * mutation id) and one flowchart of workflows (dependsOn edges plus the
- * operations and mutations each uses). Node ids are positional, so a label may
+ * stateful type (transitions from its mutations, [*] for $absent and for each
+ * terminal state, labelled by mutation id), one flowchart of workflows
+ * (dependsOn edges plus the operations and mutations each uses) and one
+ * sequence diagram of each workflow's ordered steps, each message naming the
+ * action and its failure handling. Node ids are positional, so a label may
  * hold any character.
  */
 export function workflowSections(model: Model, level: number): string[] {
@@ -36,6 +43,10 @@ export function workflowSections(model: Model, level: number): string[] {
         const from = f === ABSENT_STATE ? '[*]' : idOf.get(f);
         if (from !== undefined) lines.push(`    ${from} --> ${to} : ${label(m.id)}`);
       }
+    }
+    for (const s of t.terminalStates ?? []) {
+      const end = idOf.get(s);
+      if (end !== undefined) lines.push(`    ${end} --> [*]`);
     }
     lines.push('```', '');
   }
@@ -70,6 +81,24 @@ export function workflowSections(model: Model, level: number): string[] {
     }
   }
   lines.push('```', '');
+
+  lines.push(`${h} Workflow steps`, '');
+  for (const w of model.workflows) {
+    lines.push(`${h}# Steps of workflow ${code(w.id)}`, '');
+    if (w.steps.length === 0) {
+      lines.push('No steps are declared.', '');
+      continue;
+    }
+    const participants = [...new Set(w.steps.flatMap((s) => [s.actor, s.target]))];
+    const participant = new Map(participants.map((p, i) => [p, `p${i}`]));
+    lines.push('```mermaid', 'sequenceDiagram');
+    participants.forEach((p, i) => lines.push(`    participant p${i} as ${label(p)}`));
+    w.steps.forEach((s, i) => {
+      const text = `${i + 1} ${s.id}: ${s.action.kind} ${s.action.id}, on failure ${failureText(s.failure)}`;
+      lines.push(`    ${participant.get(s.actor)}->>${participant.get(s.target)}: ${label(text)}`);
+    });
+    lines.push('```', '');
+  }
   return lines;
 }
 

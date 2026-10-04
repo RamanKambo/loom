@@ -238,6 +238,19 @@ test('generation refuses agent tools and resources whose actions, conditions, ex
   ]) assert.match(r.output, problem);
 });
 
+test('generation refuses a default that its own schema rejects, such as a rendering default above its maximum', (t) => {
+  const core = contractCopy(t);
+  editJson(join(core, 'schema', 'diagram.schema.json'), (s) => {
+    const budget = (s['$defs'] as Record<string, { properties: Record<string, Record<string, unknown>> }>)['RenderingBudget']!;
+    budget.properties['maxNodes']!['default'] = 5000;
+    budget.properties['maxDurationMs']!['default'] = 50;
+  });
+  const r = generate(core, '--check');
+  assert.equal(r.status, 1, r.output);
+  assert.match(r.output, /\/\$defs\/RenderingBudget\/properties\/maxNodes: the default 5000 does not satisfy its own schema/);
+  assert.match(r.output, /\/\$defs\/RenderingBudget\/properties\/maxDurationMs: the default 50 does not satisfy its own schema/);
+});
+
 const ALLOWED_IMPORTS = /^(?:\.{1,2}\/|ajv(?:\/|$)|ajv-formats$|yaml$)/;
 const IMPURE = /\bprocess\.(?:env|argv|exit|cwd|platform)\b|\bDate\.now\(|\bnew Date\(|\bMath\.random\(|\bfetch\(|\brequire\(|\bsetTimeout\(|\bsetInterval\(|\bwindow\.|\blocalStorage\b|\bXMLHttpRequest\b/;
 

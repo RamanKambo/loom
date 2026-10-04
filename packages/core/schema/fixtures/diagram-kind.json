@@ -1,0 +1,7 @@
+{
+  "definition": "DiagramKind",
+  "valid": ["state", "state-flowchart", "workflow-dependency", "component-dependency", "ownership", "hosting", "sequence"],
+  "invalid": [
+    { "because": "a diagram kind is one of the built-in kinds", "keyword": "enum", "path": "", "instance": "gantt" }
+  ]
+}

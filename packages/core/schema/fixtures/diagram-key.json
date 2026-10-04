@@ -1,0 +1,8 @@
+{
+  "definition": "DiagramKey",
+  "valid": ["component:ordering", "edge:fulfillment|ordering|runtime", "state:order:paid", "start:order", "step:wf.checkout#pay"],
+  "invalid": [
+    { "because": "a key is semantic text without spaces, never a layout position", "keyword": "pattern", "path": "", "instance": "node at 3, 4" },
+    { "because": "a key names something", "keyword": "minLength", "path": "", "instance": "" }
+  ]
+}

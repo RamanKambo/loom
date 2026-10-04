@@ -1,0 +1,13 @@
+{
+  "definition": "WorkflowStep",
+  "valid": [
+    { "id": "confirm", "actor": "fulfillment", "action": { "kind": "operation", "id": "order.get" }, "target": "ordering", "failure": { "handling": "retry" } },
+    { "id": "pay", "actor": "ordering", "action": { "kind": "mutation", "id": "order.pay" }, "target": "ordering", "failure": { "handling": "compensate", "compensation": { "kind": "mutation", "id": "order.cancel" } } },
+    { "id": "create", "actor": "ordering", "action": { "kind": "mutation", "id": "order.create" }, "target": "ordering", "failure": { "handling": "abort" } }
+  ],
+  "invalid": [
+    { "because": "a step states how its failure is handled", "keyword": "required", "path": "", "instance": { "id": "pay", "actor": "ordering", "action": { "kind": "mutation", "id": "order.pay" }, "target": "ordering" } },
+    { "because": "failure handling is retry, compensate or abort", "keyword": "enum", "path": "/failure/handling", "instance": { "id": "pay", "actor": "ordering", "action": { "kind": "mutation", "id": "order.pay" }, "target": "ordering", "failure": { "handling": "ignore" } } },
+    { "because": "a trust crossing is derived from deployment units, never authored on a step", "keyword": "additionalProperties", "path": "", "instance": { "id": "confirm", "actor": "fulfillment", "action": { "kind": "operation", "id": "order.get" }, "target": "ordering", "failure": { "handling": "retry" }, "crosses": "tb.internal" } }
+  ]
+}

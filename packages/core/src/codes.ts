@@ -166,6 +166,7 @@ export const FINDING_RULES = {
   PROJECTION_DRAFT: { severity: 'warning', rule: 'A draft artifact is incomplete and can neither qualify nor publish a contract.' },
   PROJECTION_COVERAGE_LOSS: { severity: 'error', rule: 'Every in-scope record survives projection.' },
   PROJECTION_INVALID: { severity: 'error', rule: "A projected artifact passes its format's independent validator." },
+  DIAGRAM_TERMINAL_UNFAITHFUL: { severity: 'warning', rule: 'A terminal rendering that cannot show the diagram faithfully is left out and reported; the structured graph and the Mermaid text stay complete, and the omission never passes terminal-rendering qualification.' },
   SCOPE_OVERLAP: { severity: 'error', rule: 'No path is claimed by two models.' },
   SCOPE_COMPONENT_UNKNOWN: { severity: 'error', rule: 'Every scope component id exists in the model.' },
   SCOPE_ROOT_INVALID: { severity: 'error', rule: 'A scope root is repository-relative and stays inside the declared workspace.' },

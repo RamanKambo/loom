@@ -1,0 +1,12 @@
+{
+  "definition": "StepAction",
+  "valid": [
+    { "kind": "operation", "id": "order.get" },
+    { "kind": "mutation", "id": "order.cancel" },
+    { "kind": "routine", "id": "payments:payment.capture" }
+  ],
+  "invalid": [
+    { "because": "a step performs an operation, a mutation or a routine", "keyword": "enum", "path": "/kind", "instance": { "kind": "script", "id": "deploy.ps1" } },
+    { "because": "an action is named by its record id, never by a command", "keyword": "pattern", "path": "/id", "instance": { "kind": "routine", "id": "pwsh -File deploy.ps1" } }
+  ]
+}

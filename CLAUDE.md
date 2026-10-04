@@ -72,6 +72,8 @@ the open-items register. Workspace scripts: @package.json
   | The size budget of one advertised MCP tool definition | `mcp.toolBudget` in `packages/core/schema/operations.json`; the smoke test holds every tool and tools/list to it |
   | The URI forms of the server's resources (guides, workspace status, records) | `resources` in `packages/core/schema/operations.json` |
   | Discovery page defaults and maxima (bytes and records) | `DiscoveryBudget` in `packages/core/schema/tools.schema.json`: its `default` and `maximum` keywords |
+  | Diagram rendering budget defaults, minima and maxima (nodes, bytes, width, duration in ms, memory) | `RenderingBudget` in `packages/core/schema/diagram.schema.json`: its `default`, `minimum` and `maximum` keywords |
+  | The diagram kinds | `DiagramKind` in `packages/core/schema/diagram.schema.json` |
   | How an advertised tool schema is compacted and which schema resources the server lists | `inputSchemaOf`, `outputSchemaOf` and `advertisedDefinitions` in `packages/mcp-server/src/tools.ts` |
   | The finding-code vocabulary | `FindingCode` in `packages/core/schema/result.schema.json` |
   | Each code's severity and one-line rule | `FINDING_RULES` in `packages/core/src/codes.ts` |

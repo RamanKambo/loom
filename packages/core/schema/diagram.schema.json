@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "The structured diagram representation, its render result and the rendering budget. Mermaid text and terminal renderer input are generated from the representation, which is the single semantic source of every diagram; layout never changes what it records.",
+  "$defs": {
+    "DiagramKind": {
+      "description": "The kind of a diagram. 'state-flowchart' is the flowchart of a state machine's states and transitions, the view a terminal shows for a state diagram.",
+      "enum": ["state", "state-flowchart", "workflow-dependency", "component-dependency", "ownership", "hosting", "sequence"]
+    },
+    "DiagramKey": {
+      "description": "The stable semantic key of a diagram element, derived from the records it shows and never from layout or position, so one model yields the same keys on every rendering.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:|#$-]*$"
+    },
+    "DiagramNode": {
+      "description": "One node: its key, its label, its kind and the record that owns it, named with its model so a cross-model reference keeps its owner.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "kind", "owner"],
+      "properties": {
+        "key": { "$ref": "#/$defs/DiagramKey" },
+        "label": { "description": "Display text: data every renderer escapes, never markup or renderer configuration.", "type": "string", "minLength": 1, "maxLength": 512 },
+        "kind": { "description": "The record kind the node shows, or a state, start or end of a state machine.", "anyOf": [{ "$ref": "common.schema.json#/$defs/RecordKind" }, { "enum": ["state", "start", "end"] }] },
+        "owner": { "$ref": "common.schema.json#/$defs/RecordAddress" }
+      }
+    },
+    "DiagramEdge": {
+      "description": "One edge: its own key, its source and target nodes, its direction, the relationship it shows, its label and the records that own the relationship. Parallel edges and self-loops are kept.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "source", "target", "direction", "relationship", "label", "owners"],
+      "properties": {
+        "key": { "$ref": "#/$defs/DiagramKey" },
+        "source": { "$ref": "#/$defs/DiagramKey" },
+        "target": { "$ref": "#/$defs/DiagramKey" },
+        "direction": { "enum": ["directed", "bidirectional", "undirected"] },
+        "relationship": { "enum": ["transition", "depends-on", "uses", "performs", "owns", "hosted-on", "semantic", "structural", "runtime", "build", "integration", "message", "compensates"] },
+        "label": { "description": "Display text, possibly empty; data every renderer escapes.", "type": "string", "maxLength": 512 },
+        "owners": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/RecordAddress" } }
+      }
+    },
+    "DiagramGroup": {
+      "description": "A group of nodes that keeps its hosting, trust-boundary or ownership meaning independently of layout; a renderer that flattens it keeps its membership and meaning in the legend.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "meaning", "label", "members", "owner"],
+      "properties": {
+        "key": { "$ref": "#/$defs/DiagramKey" },
+        "meaning": { "enum": ["hosting", "trust-boundary", "ownership"] },
+        "label": { "description": "Display text; data every renderer escapes.", "type": "string", "minLength": 1, "maxLength": 512 },
+        "members": { "description": "The keys of the nodes the group holds.", "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/DiagramKey" } },
+        "parent": { "description": "The key of the enclosing group, such as the trust boundary another lies within.", "$ref": "#/$defs/DiagramKey" },
+        "owner": { "description": "The record the group stands for: a deployment unit, a trust boundary or a component.", "$ref": "common.schema.json#/$defs/RecordAddress" }
+      }
+    },
+    "DiagramScope": {
+      "description": "What a diagram covers: its target, how many relationship steps it follows and, for a diagram split into pages, which page it is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "depth"],
+      "properties": {
+        "target": { "$ref": "tools.schema.json#/$defs/TargetReference" },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "page": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["index", "count"],
+          "properties": {
+            "index": { "type": "integer", "minimum": 1 },
+            "count": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "DiagramCoverage": {
+      "description": "Every in-scope record and relationship: drawn, with the elements that show it, or omitted or out of scope, with the reason. A relationship is accounted for by the record that owns it, and nothing is dropped silently.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "items"],
+      "properties": {
+        "complete": { "description": "True only when every in-scope item is drawn.", "type": "boolean" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ref", "status", "elements"],
+            "properties": {
+              "ref": { "$ref": "common.schema.json#/$defs/RecordAddress" },
+              "status": { "enum": ["drawn", "omitted", "out-of-scope"] },
+              "elements": { "description": "The keys of the nodes, edges and groups that show the record.", "type": "array", "items": { "$ref": "#/$defs/DiagramKey" } },
+              "reason": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        }
+      }
+    },
+    "DiagramLimits": {
+      "description": "The budget a diagram was built under, with every member stated, which of its limits were reached, and the edges that leave the page to an element another page holds, which a page always shows.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget", "reached", "boundaryEdges"],
+      "properties": {
+        "budget": { "$ref": "#/$defs/RenderingBudget" },
+        "reached": { "type": "array", "uniqueItems": true, "items": { "enum": ["nodes", "bytes", "width", "duration", "memory"] } },
+        "boundaryEdges": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/DiagramKey" } }
+      }
+    },
+    "Diagram": {
+      "description": "The structured semantic representation of one diagram, from which its Mermaid text and terminal renderer input are generated. Nodes, edges and groups are in a stable order, so repeated output is identical; isolated nodes, self-loops, parallel edges and start and end states are kept.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagramId", "kind", "scope", "sourceVectorDigest", "nodes", "edges", "groups", "coverage", "limits"],
+      "properties": {
+        "diagramId": { "description": "Deterministic identity of the diagram, derived from its kind, scope and source vector.", "$ref": "common.schema.json#/$defs/Id" },
+        "kind": { "$ref": "#/$defs/DiagramKind" },
+        "scope": { "$ref": "#/$defs/DiagramScope" },
+        "sourceVectorDigest": { "description": "Digest of the revision vector the diagram was built from.", "$ref": "common.schema.json#/$defs/Hash" },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/DiagramNode" }, "x-loom-key": "key", "x-loom-ordered": true },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/DiagramEdge" }, "x-loom-key": "key", "x-loom-ordered": true },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/DiagramGroup" }, "x-loom-key": "key", "x-loom-ordered": true },
+        "coverage": { "$ref": "#/$defs/DiagramCoverage" },
+        "limits": { "$ref": "#/$defs/DiagramLimits" }
+      }
+    },
+    "RenderingBudget": {
+      "description": "What one rendering may use: nodes, bytes of output, terminal width, duration and memory. A request takes the default of each member it leaves out and may ask for at most its maximum. The defaults and maxima stated here are the only home of those numbers; they are chosen, not measured, and the terminal-rendering qualification measures real renders against them.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxNodes": { "type": "integer", "minimum": 1, "maximum": 2000, "default": 200 },
+        "maxBytes": { "description": "Bytes of rendered output.", "type": "integer", "minimum": 1024, "maximum": 65536, "default": 16384 },
+        "maxWidth": { "description": "The widest terminal rendering, in columns.", "type": "integer", "minimum": 40, "maximum": 400, "default": 120 },
+        "maxDurationMs": { "description": "Wall-clock time of one render, in milliseconds.", "type": "integer", "minimum": 100, "maximum": 60000, "default": 10000 },
+        "maxMemoryBytes": { "description": "Memory of the renderer process, in bytes.", "type": "integer", "minimum": 1048576, "maximum": 1073741824, "default": 268435456 }
+      }
+    },
+    "RendererIdentity": {
+      "description": "The renderer that produced a terminal rendering: the tool, the version it reported, the digest of the binary that ran and the digest of the options it ran with.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "version", "binaryDigest", "optionDigest"],
+      "properties": {
+        "tool": { "$ref": "profile.schema.json#/$defs/ToolName" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^\\S+$" },
+        "binaryDigest": { "$ref": "common.schema.json#/$defs/Hash" },
+        "optionDigest": { "description": "Hash of the canonical JSON of the renderer options.", "$ref": "common.schema.json#/$defs/Hash" }
+      }
+    },
+    "DiagramFidelity": {
+      "description": "How faithfully a rendering shows the diagram: 'exact-semantics' when every element and relationship is shown as recorded, 'annotated-layout' when a declared visual transformation changed the layout but the legend and semantic table keep the meaning, 'unsupported' when the rendering cannot be faithful and is left out.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "transformations"],
+      "properties": {
+        "level": { "enum": ["exact-semantics", "annotated-layout", "unsupported"] },
+        "transformations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "description", "elements"],
+            "properties": {
+              "kind": { "enum": ["state-as-flowchart", "flattened-groups", "wrapped-labels", "abbreviated-labels", "merged-parallel-edges", "split-pages"] },
+              "description": { "$ref": "common.schema.json#/$defs/Text" },
+              "elements": { "description": "The keys of the elements the transformation changed.", "type": "array", "items": { "$ref": "#/$defs/DiagramKey" } }
+            }
+          }
+        }
+      }
+    },
+    "TerminalRendering": {
+      "description": "The terminal text of a diagram in the requested character set, with the view it shows and the digest of its text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["charset", "view", "text", "digest"],
+      "properties": {
+        "charset": { "enum": ["ascii", "unicode"] },
+        "view": { "description": "The view the text shows; a state diagram is shown as its state-flowchart.", "$ref": "#/$defs/DiagramKind" },
+        "text": { "type": "string" },
+        "digest": { "description": "Hash of the exact bytes of 'text'.", "$ref": "common.schema.json#/$defs/Hash" }
+      }
+    },
+    "DiagramCompleteness": {
+      "description": "What a rendering left out: whether it is truncated, every omitted element with the record that owns it and why, the continuation to the next page and where the full artifact is.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "truncated", "omitted"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "omitted": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["owner", "reason"],
+            "properties": {
+              "element": { "$ref": "#/$defs/DiagramKey" },
+              "owner": { "$ref": "common.schema.json#/$defs/RecordAddress" },
+              "reason": { "enum": ["budget", "out-of-scope", "unsupported"] }
+            }
+          }
+        },
+        "continuation": { "$ref": "tools.schema.json#/$defs/Cursor" },
+        "fullArtifact": { "$ref": "tools.schema.json#/$defs/ResourceReference" }
+      }
+    },
+    "RenderResult": {
+      "description": "The result of rendering one diagram: the structured diagram or a revision-bound reference to it, the digests that identify its inputs and outputs, the original Mermaid text or a reference to it, the terminal rendering when one was requested and can be faithful, the renderer that ran, the fidelity, the coverage and the completeness. A terminal rendering that cannot be faithful is absent and reported as DIAGRAM_TERMINAL_UNFAITHFUL; 'renderer' is present whenever a terminal rendering was attempted.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagram", "sourceVectorDigest", "graphDigest", "mermaidDigest", "mermaid", "fidelity", "coverage", "completeness"],
+      "properties": {
+        "diagram": { "oneOf": [{ "$ref": "#/$defs/Diagram" }, { "$ref": "tools.schema.json#/$defs/ResourceReference" }] },
+        "sourceVectorDigest": { "$ref": "common.schema.json#/$defs/Hash" },
+        "graphDigest": { "description": "Hash of the canonical JSON of the structured diagram.", "$ref": "common.schema.json#/$defs/Hash" },
+        "mermaidDigest": { "description": "Hash of the exact bytes of the Mermaid text.", "$ref": "common.schema.json#/$defs/Hash" },
+        "mermaid": { "oneOf": [{ "type": "string" }, { "$ref": "tools.schema.json#/$defs/ResourceReference" }] },
+        "terminal": { "$ref": "#/$defs/TerminalRendering" },
+        "renderer": { "$ref": "#/$defs/RendererIdentity" },
+        "fidelity": { "$ref": "#/$defs/DiagramFidelity" },
+        "coverage": { "description": "The diagram's accounting, carried here so it stays visible when the diagram itself is a reference.", "$ref": "#/$defs/DiagramCoverage" },
+        "completeness": { "$ref": "#/$defs/DiagramCompleteness" }
+      }
+    },
+    "DiagramResource": {
+      "description": "One diagram as the diagram resource returns it: the structured diagram and its Mermaid text for the source vector they were built from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspaceId", "diagramId", "sourceVectorDigest", "diagram", "mermaid"],
+      "properties": {
+        "workspaceId": { "$ref": "tools.schema.json#/$defs/WorkspaceId" },
+        "diagramId": { "$ref": "common.schema.json#/$defs/Id" },
+        "sourceVectorDigest": { "$ref": "common.schema.json#/$defs/Hash" },
+        "diagram": { "$ref": "#/$defs/Diagram" },
+        "mermaid": { "type": "string" }
+      }
+    }
+  }
+}

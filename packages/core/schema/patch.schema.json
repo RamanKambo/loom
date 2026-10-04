@@ -309,6 +309,21 @@
           "$ref": "#/$defs/PatchUpdateItemWorkflowsImports"
         },
         {
+          "$ref": "#/$defs/PatchAddItemWorkflowsSteps"
+        },
+        {
+          "$ref": "#/$defs/PatchReplaceItemWorkflowsSteps"
+        },
+        {
+          "$ref": "#/$defs/PatchRemoveItemWorkflowsSteps"
+        },
+        {
+          "$ref": "#/$defs/PatchMoveItemWorkflowsSteps"
+        },
+        {
+          "$ref": "#/$defs/PatchUpdateItemWorkflowsSteps"
+        },
+        {
           "$ref": "#/$defs/PatchAddEdges"
         },
         {
@@ -1485,6 +1500,14 @@
             "stateProperty": {
               "$ref": "common.schema.json#/$defs/Name"
             },
+            "terminalStates": {
+              "description": "The end states of the state machine: states of the stateProperty from which the type's lifecycle ends. Stated by a type with a stateProperty; an empty list declares that the machine has no end state.",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "model.schema.json#/$defs/StateName"
+              }
+            },
             "key": {
               "type": "array",
               "items": {
@@ -1551,6 +1574,7 @@
               "description",
               "visibility",
               "stateProperty",
+              "terminalStates",
               "key",
               "invariants",
               "externalSchema",
@@ -4911,6 +4935,15 @@
                 "$ref": "common.schema.json#/$defs/Id",
                 "x-loom-ref": "requirement"
               }
+            },
+            "steps": {
+              "description": "The ordered interactions of the workflow; empty while none is declared.",
+              "type": "array",
+              "items": {
+                "$ref": "model.schema.json#/$defs/WorkflowStep"
+              },
+              "x-loom-key": "id",
+              "x-loom-ordered": true
             }
           }
         },
@@ -5134,6 +5167,221 @@
           "properties": {
             "version": {
               "$ref": "common.schema.json#/$defs/ContractVersion"
+            }
+          }
+        }
+      }
+    },
+    "PatchAddItemWorkflowsSteps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "field",
+        "item"
+      ],
+      "properties": {
+        "op": {
+          "const": "addItem"
+        },
+        "collection": {
+          "const": "workflows"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "field": {
+          "const": "steps"
+        },
+        "item": {
+          "$ref": "model.schema.json#/$defs/WorkflowStep"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PatchReplaceItemWorkflowsSteps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "field",
+        "key",
+        "item"
+      ],
+      "properties": {
+        "op": {
+          "const": "replaceItem"
+        },
+        "collection": {
+          "const": "workflows"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "field": {
+          "const": "steps"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "item": {
+          "$ref": "model.schema.json#/$defs/WorkflowStep"
+        }
+      }
+    },
+    "PatchRemoveItemWorkflowsSteps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "field",
+        "key"
+      ],
+      "properties": {
+        "op": {
+          "const": "removeItem"
+        },
+        "collection": {
+          "const": "workflows"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "field": {
+          "const": "steps"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        }
+      }
+    },
+    "PatchMoveItemWorkflowsSteps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "field",
+        "key",
+        "index"
+      ],
+      "properties": {
+        "op": {
+          "const": "moveItem"
+        },
+        "collection": {
+          "const": "workflows"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "field": {
+          "const": "steps"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PatchUpdateItemWorkflowsSteps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "collection",
+        "id",
+        "field",
+        "key"
+      ],
+      "properties": {
+        "op": {
+          "const": "updateItem"
+        },
+        "collection": {
+          "const": "workflows"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400,
+          "description": "Element id; a composite key is its values joined with '|'."
+        },
+        "field": {
+          "const": "steps"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "set": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "actor": {
+              "$ref": "common.schema.json#/$defs/Id",
+              "x-loom-ref": "component"
+            },
+            "action": {
+              "$ref": "model.schema.json#/$defs/StepAction"
+            },
+            "target": {
+              "description": "The component that serves the action; the actor itself for its own work.",
+              "$ref": "common.schema.json#/$defs/Id",
+              "x-loom-ref": "component"
+            },
+            "failure": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "handling"
+              ],
+              "properties": {
+                "handling": {
+                  "description": "'retry' repeats the step, 'compensate' performs the compensation, 'abort' ends the workflow.",
+                  "enum": [
+                    "retry",
+                    "compensate",
+                    "abort"
+                  ]
+                },
+                "compensation": {
+                  "description": "The action that undoes the step; stated when the handling is 'compensate'.",
+                  "$ref": "model.schema.json#/$defs/StepAction"
+                }
+              }
             }
           }
         }
@@ -11187,7 +11435,22 @@
             },
             "description": {
               "$ref": "common.schema.json#/$defs/Text"
+            },
+            "within": {
+              "description": "The boundary that encloses this one; absent for an outermost boundary.",
+              "$ref": "common.schema.json#/$defs/Id",
+              "x-loom-ref": "trustBoundary"
             }
+          }
+        },
+        "unset": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "within"
+            ]
           }
         }
       }

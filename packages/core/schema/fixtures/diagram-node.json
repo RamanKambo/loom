@@ -1,0 +1,12 @@
+{
+  "definition": "DiagramNode",
+  "valid": [
+    { "key": "component:ordering", "label": "ordering (service)", "kind": "component", "owner": { "modelId": "shop", "kind": "component", "id": "ordering" } },
+    { "key": "start:order", "label": "start", "kind": "start", "owner": { "modelId": "shop", "kind": "type", "id": "order" } },
+    { "key": "component:payments", "label": "payments \"capture\" <b>", "kind": "component", "owner": { "modelId": "payments", "kind": "component", "id": "payments" } }
+  ],
+  "invalid": [
+    { "because": "a node names the record that owns it", "keyword": "required", "path": "", "instance": { "key": "component:ordering", "label": "ordering", "kind": "component" } },
+    { "because": "a node kind is a record kind or a state, start or end", "keyword": "anyOf", "path": "/kind", "instance": { "key": "x:y", "label": "y", "kind": "box", "owner": { "modelId": "shop", "kind": "component", "id": "ordering" } } }
+  ]
+}

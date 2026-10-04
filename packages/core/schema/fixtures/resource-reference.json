@@ -1,0 +1,10 @@
+{
+  "definition": "ResourceReference",
+  "valid": [
+    { "uri": "loom://workspaces/ws_3f9a1c7d/diagrams/dgm.hosting", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 120000 }
+  ],
+  "invalid": [
+    { "because": "a reference names a loom resource, never an arbitrary URL", "keyword": "pattern", "path": "/uri", "instance": { "uri": "https://example.com/diagram.json", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 1 } },
+    { "because": "a reference is bound to the revision it answers for", "keyword": "required", "path": "", "instance": { "uri": "loom://workspaces/ws_3f9a1c7d/diagrams/dgm.hosting", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 1 } }
+  ]
+}

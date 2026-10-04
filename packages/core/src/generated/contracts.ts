@@ -383,6 +383,16 @@ export const PROFILES: readonly ProfileDefinition[] = [
         },
         "required": true,
         "purpose": "Parses every diagram block."
+      },
+      {
+        "tool": "mermaid-ascii",
+        "versionPolicy": {
+          "exact": "0.0.0-20260908213847-5f00e3d9ac9f",
+          "digest": "sha256:fd751149989a32ea6b3472aa146ca184936f33268ddc59fb867f1f25c652b02e"
+        },
+        "required": false,
+        "purpose": "Lays out the terminal renderings of diagrams in ASCII or Unicode; the pinned build is the Go module github.com/AlexanderGrooff/mermaid-ascii at that version, and a binary with another digest is not used.",
+        "license": "MIT"
       }
     ],
     "proofLimits": [

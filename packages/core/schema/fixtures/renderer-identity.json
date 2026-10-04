@@ -1,0 +1,10 @@
+{
+  "definition": "RendererIdentity",
+  "valid": [
+    { "tool": "mermaid-ascii", "version": "0.0.0-20260908213847-5f00e3d9ac9f", "binaryDigest": "sha256:fd751149989a32ea6b3472aa146ca184936f33268ddc59fb867f1f25c652b02e", "optionDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+  ],
+  "invalid": [
+    { "because": "a renderer is a tool the profiles name", "keyword": "enum", "path": "/tool", "instance": { "tool": "graphviz", "version": "12.0", "binaryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "optionDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    { "because": "a renderer names the digest of the binary that ran", "keyword": "required", "path": "", "instance": { "tool": "mermaid-ascii", "version": "0.0.0", "optionDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+  ]
+}

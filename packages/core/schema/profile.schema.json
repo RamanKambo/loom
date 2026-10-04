@@ -3,7 +3,7 @@
   "$comment": "Profile definitions (language, interface, behavior and host), projection profiles, fixed native-tool check definitions and component interface control documents. Instances live in ../profiles and ../icd and are validated by the generator.",
   "$defs": {
     "ToolName": {
-      "enum": ["node", "tsc", "dotnet", "pwsh", "pester", "sqlcmd", "sqllocaldb", "dacfx", "scriptdom", "swagger-parser", "oasdiff", "ajv", "mermaid", "git"]
+      "enum": ["node", "tsc", "dotnet", "pwsh", "pester", "sqlcmd", "sqllocaldb", "dacfx", "scriptdom", "swagger-parser", "oasdiff", "ajv", "mermaid", "mermaid-ascii", "git"]
     },
     "VersionPolicy": {
       "type": "object",
@@ -11,7 +11,8 @@
       "properties": {
         "minimum": { "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}$" },
         "major": { "type": "integer", "minimum": 0 },
-        "exact": { "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}$" }
+        "exact": { "description": "The exact version, optionally with a pre-release or build suffix such as a Go pseudo-version's timestamp and commit.", "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}(-[0-9A-Za-z][0-9A-Za-z.-]*)?$" },
+        "digest": { "description": "Hash of the exact bytes of the provisioned binary; a binary with another digest, or one whose bytes cannot be read, is outside the policy.", "$ref": "common.schema.json#/$defs/Hash" }
       }
     },
     "CheckDefinition": {
@@ -133,7 +134,8 @@
               "tool": { "$ref": "#/$defs/ToolName" },
               "versionPolicy": { "$ref": "#/$defs/VersionPolicy" },
               "required": { "type": "boolean" },
-              "purpose": { "$ref": "common.schema.json#/$defs/Text" }
+              "purpose": { "$ref": "common.schema.json#/$defs/Text" },
+              "license": { "description": "SPDX identifier of the license the provisioned tool is used under.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*$" }
             }
           }
         },

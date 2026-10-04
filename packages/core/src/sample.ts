@@ -24,6 +24,11 @@ import type { Model } from './generated/types.js';
  *   is proposed and verified by review.
  * - agr.payment-identity is a caller-identity agreement whose provider and
  *   consumer are records of other models, addressed by model id.
+ * - order ends in shipped or cancelled, shipment in delivered and invoice in
+ *   settled; tb.ordering-process lies within tb.internal and hosts
+ *   du.ordering-api.
+ * - wf.checkout and wf.fulfil declare ordered steps whose failures abort,
+ *   compensate (order.pay by order.cancel) and retry; wf.reporting has none.
  */
 export function sampleModel(): Model {
   return {
@@ -71,6 +76,7 @@ export function sampleModel(): Model {
         description: 'A customer order.',
         visibility: 'internal',
         stateProperty: 'status',
+        terminalStates: ['shipped', 'cancelled'],
         key: ['id'],
         properties: [
           { name: 'id', kind: 'string', required: true, nullable: false, immutable: true, origin: 'client', bounds: { minLength: 1, maxLength: 64 } },
@@ -111,6 +117,7 @@ export function sampleModel(): Model {
         representation: 'domain',
         visibility: 'internal',
         stateProperty: 'state',
+        terminalStates: ['delivered'],
         key: ['id'],
         properties: [
           { name: 'id', kind: 'string', required: true, nullable: false, immutable: true, origin: 'system', bounds: { minLength: 1, maxLength: 64 } },
@@ -155,6 +162,7 @@ export function sampleModel(): Model {
         representation: 'domain',
         visibility: 'internal',
         stateProperty: 'state',
+        terminalStates: ['settled'],
         key: ['id'],
         properties: [
           { name: 'id', kind: 'string', required: true, nullable: false, immutable: true, origin: 'system', bounds: { minLength: 1, maxLength: 64 } },
@@ -400,6 +408,10 @@ export function sampleModel(): Model {
         operations: ['order.place', 'order.get'],
         mutations: ['order.create', 'order.pay', 'order.cancel'],
         requirements: ['req.place-order', 'req.pay-order', 'req.cancel-order'],
+        steps: [
+          { id: 'create', actor: 'ordering', action: { kind: 'mutation', id: 'order.create' }, target: 'ordering', failure: { handling: 'abort' } },
+          { id: 'pay', actor: 'ordering', action: { kind: 'mutation', id: 'order.pay' }, target: 'ordering', failure: { handling: 'compensate', compensation: { kind: 'mutation', id: 'order.cancel' } } },
+        ],
       },
       {
         id: 'wf.fulfil',
@@ -412,6 +424,10 @@ export function sampleModel(): Model {
         operations: ['shipment.dispatch', 'shipment.status'],
         mutations: ['shipment.create'],
         requirements: ['req.dispatch'],
+        steps: [
+          { id: 'confirm', actor: 'fulfillment', action: { kind: 'operation', id: 'order.get' }, target: 'ordering', failure: { handling: 'retry' } },
+          { id: 'dispatch', actor: 'fulfillment', action: { kind: 'routine', id: 'fulfillment.rb_dispatch' }, target: 'fulfillment', failure: { handling: 'retry' } },
+        ],
       },
       {
         id: 'wf.reporting',
@@ -422,6 +438,7 @@ export function sampleModel(): Model {
           { typeId: 'invoice', version: 1 },
         ],
         requirements: ['req.report'],
+        steps: [],
       },
     ],
     edges: [
@@ -768,7 +785,7 @@ export function sampleModel(): Model {
         id: 'du.ordering-api',
         components: ['ordering', 'billing'],
         host: 'host.container',
-        trustBoundary: 'tb.internal',
+        trustBoundary: 'tb.ordering-process',
         instances: { min: 2, max: 6 },
         invocation: { trigger: 'http' },
         lifetime: 'long-running',
@@ -816,6 +833,7 @@ export function sampleModel(): Model {
     ],
     trustBoundaries: [
       { id: 'tb.internal', kind: 'network', description: 'Private network behind the API gateway.' },
+      { id: 'tb.ordering-process', kind: 'process', description: 'The ordering container process, which billing shares.', within: 'tb.internal' },
       { id: 'tb.public', kind: 'network', description: 'Internet-facing API gateway.' },
     ],
     securitySchemes: [{ id: 'bearer', type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'Bearer token issued by the identity provider.' }],

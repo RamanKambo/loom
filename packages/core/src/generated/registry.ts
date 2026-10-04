@@ -248,6 +248,7 @@ export const FIELD_PATHS = [
   "types[].description",
   "types[].visibility",
   "types[].stateProperty",
+  "types[].terminalStates[]",
   "types[].key[]",
   "types[].properties[].name",
   "types[].properties[].kind",
@@ -463,6 +464,14 @@ export const FIELD_PATHS = [
   "workflows[].operations[]",
   "workflows[].mutations[]",
   "workflows[].requirements[]",
+  "workflows[].steps[].id",
+  "workflows[].steps[].actor",
+  "workflows[].steps[].action.kind",
+  "workflows[].steps[].action.id",
+  "workflows[].steps[].target",
+  "workflows[].steps[].failure.handling",
+  "workflows[].steps[].failure.compensation.kind",
+  "workflows[].steps[].failure.compensation.id",
   "edges[].from",
   "edges[].to",
   "edges[].kind",
@@ -712,6 +721,7 @@ export const FIELD_PATHS = [
   "trustBoundaries[].id",
   "trustBoundaries[].kind",
   "trustBoundaries[].description",
+  "trustBoundaries[].within",
   "securitySchemes[].id",
   "securitySchemes[].type",
   "securitySchemes[].scheme",
@@ -962,6 +972,22 @@ export const REFERENCE_FIELDS = [
     "target": "requirement"
   },
   {
+    "path": "workflows[].steps[].actor",
+    "target": "component"
+  },
+  {
+    "path": "workflows[].steps[].action.id",
+    "target": "invocation"
+  },
+  {
+    "path": "workflows[].steps[].target",
+    "target": "component"
+  },
+  {
+    "path": "workflows[].steps[].failure.compensation.id",
+    "target": "invocation"
+  },
+  {
     "path": "edges[].from",
     "target": "any"
   },
@@ -1138,6 +1164,10 @@ export const REFERENCE_FIELDS = [
     "target": "inventory"
   },
   {
+    "path": "trustBoundaries[].within",
+    "target": "trustBoundary"
+  },
+  {
     "path": "consumerBindings[].consumer",
     "target": "record"
   },
@@ -1296,6 +1326,12 @@ export const KEYED_ARRAYS = [
     "path": "workflows[].imports[]",
     "key": [
       "typeId"
+    ]
+  },
+  {
+    "path": "workflows[].steps[]",
+    "key": [
+      "id"
     ]
   },
   {
@@ -1527,6 +1563,7 @@ export const ORDERED_ARRAYS = [
   "routines[].params[]",
   "routines[].resultSet[]",
   "routines[].supported[].rollout.order[]",
+  "workflows[].steps[]",
   "storage[].columns[]",
   "storage[].primaryKey[]",
   "storage[].unique[].columns[]",
@@ -2142,6 +2179,36 @@ export const PATCH_VARIANTS = [
     "collection": "workflows",
     "field": "imports",
     "definition": "PatchUpdateItemWorkflowsImports"
+  },
+  {
+    "op": "addItem",
+    "collection": "workflows",
+    "field": "steps",
+    "definition": "PatchAddItemWorkflowsSteps"
+  },
+  {
+    "op": "replaceItem",
+    "collection": "workflows",
+    "field": "steps",
+    "definition": "PatchReplaceItemWorkflowsSteps"
+  },
+  {
+    "op": "removeItem",
+    "collection": "workflows",
+    "field": "steps",
+    "definition": "PatchRemoveItemWorkflowsSteps"
+  },
+  {
+    "op": "moveItem",
+    "collection": "workflows",
+    "field": "steps",
+    "definition": "PatchMoveItemWorkflowsSteps"
+  },
+  {
+    "op": "updateItem",
+    "collection": "workflows",
+    "field": "steps",
+    "definition": "PatchUpdateItemWorkflowsSteps"
   },
   {
     "op": "add",

@@ -1,0 +1,12 @@
+{
+  "definition": "VersionPolicy",
+  "valid": [
+    { "major": 12 },
+    { "minimum": "5.7.0" },
+    { "exact": "0.0.0-20260908213847-5f00e3d9ac9f", "digest": "sha256:fd751149989a32ea6b3472aa146ca184936f33268ddc59fb867f1f25c652b02e" }
+  ],
+  "invalid": [
+    { "because": "a binary digest pin is a SHA-256 hash", "keyword": "pattern", "path": "/digest", "instance": { "exact": "1.0.0", "digest": "FD751149989A32EA6B3472AA146CA184936F33268DDC59FB867F1F25C652B02E" } },
+    { "because": "an exact version starts with its numeric release", "keyword": "pattern", "path": "/exact", "instance": { "exact": "latest" } }
+  ]
+}

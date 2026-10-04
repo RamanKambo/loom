@@ -1,0 +1,10 @@
+{
+  "definition": "TerminalRendering",
+  "valid": [
+    { "charset": "ascii", "view": "state-flowchart", "text": "+--------+     +------+\n| placed |---->| paid |\n+--------+     +------+\n", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+  ],
+  "invalid": [
+    { "because": "a terminal rendering is ASCII or Unicode", "keyword": "enum", "path": "/charset", "instance": { "charset": "ansi", "view": "hosting", "text": "", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    { "because": "a terminal rendering names the view it shows", "keyword": "required", "path": "", "instance": { "charset": "unicode", "text": "", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+  ]
+}

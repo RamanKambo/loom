@@ -1,0 +1,17 @@
+{
+  "definition": "DiagramCompleteness",
+  "valid": [
+    { "complete": true, "truncated": false, "omitted": [] },
+    {
+      "complete": false,
+      "truncated": true,
+      "omitted": [{ "element": "component:billing", "owner": { "modelId": "shop", "kind": "component", "id": "billing" }, "reason": "budget" }],
+      "continuation": "dgm.hosting.page.2",
+      "fullArtifact": { "uri": "loom://workspaces/ws_3f9a1c7d/diagrams/dgm.hosting", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 120000 }
+    }
+  ],
+  "invalid": [
+    { "because": "an omitted element names the record that owns it", "keyword": "required", "path": "/omitted/0", "instance": { "complete": false, "truncated": true, "omitted": [{ "element": "component:billing", "reason": "budget" }] } },
+    { "because": "an omission names why", "keyword": "enum", "path": "/omitted/0/reason", "instance": { "complete": false, "truncated": false, "omitted": [{ "owner": { "modelId": "shop", "kind": "component", "id": "billing" }, "reason": "inconvenient" }] } }
+  ]
+}

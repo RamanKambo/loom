@@ -1,0 +1,11 @@
+{
+  "definition": "DiagramFidelity",
+  "valid": [
+    { "level": "exact-semantics", "transformations": [] },
+    { "level": "annotated-layout", "transformations": [{ "kind": "state-as-flowchart", "description": "The state diagram is shown as the flowchart of its states and transitions.", "elements": [] }, { "kind": "flattened-groups", "description": "The nested trust boundary is listed in the legend instead of drawn inside its parent.", "elements": ["boundary:tb.ordering-process"] }] }
+  ],
+  "invalid": [
+    { "because": "a fidelity level is exact, annotated or unsupported", "keyword": "enum", "path": "/level", "instance": { "level": "approximate", "transformations": [] } },
+    { "because": "a transformation is declared with what it changed", "keyword": "required", "path": "/transformations/0", "instance": { "level": "annotated-layout", "transformations": [{ "kind": "wrapped-labels" }] } }
+  ]
+}

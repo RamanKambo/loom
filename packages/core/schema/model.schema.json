@@ -350,6 +350,12 @@
         "description": { "$ref": "common.schema.json#/$defs/Text" },
         "visibility": { "enum": ["public", "internal", "private"] },
         "stateProperty": { "$ref": "common.schema.json#/$defs/Name" },
+        "terminalStates": {
+          "description": "The end states of the state machine: states of the stateProperty from which the type's lifecycle ends. Stated by a type with a stateProperty; an empty list declares that the machine has no end state.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/StateName" }
+        },
         "key": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Name" }, "x-loom-ordered": true },
         "properties": { "type": "array", "items": { "$ref": "#/$defs/Property" }, "x-loom-key": "name", "x-loom-ordered": true },
         "invariants": { "type": "array", "items": { "$ref": "#/$defs/Predicate" } },
@@ -727,10 +733,41 @@
         "scenarios": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "scenario" } }
       }
     },
+    "StepAction": {
+      "description": "The operation, mutation or routine a workflow step performs, or that compensates it, by kind and id.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["operation", "mutation", "routine"] },
+        "id": { "$ref": "common.schema.json#/$defs/QualifiedId", "x-loom-ref": "invocation" }
+      }
+    },
+    "WorkflowStep": {
+      "description": "One ordered interaction of a workflow: the component that acts, what it performs, the component the action is directed at and how a failure of the step is handled. Trust crossings follow from the deployment units of the actor and the target and are never authored.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "actor", "action", "target", "failure"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Name" },
+        "actor": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "action": { "$ref": "#/$defs/StepAction" },
+        "target": { "description": "The component that serves the action; the actor itself for its own work.", "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
+        "failure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["handling"],
+          "properties": {
+            "handling": { "description": "'retry' repeats the step, 'compensate' performs the compensation, 'abort' ends the workflow.", "enum": ["retry", "compensate", "abort"] },
+            "compensation": { "description": "The action that undoes the step; stated when the handling is 'compensate'.", "$ref": "#/$defs/StepAction" }
+          }
+        }
+      }
+    },
     "Workflow": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "status", "dependsOn", "imports", "requirements"],
+      "required": ["id", "status", "dependsOn", "imports", "requirements", "steps"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/Id" },
         "status": { "enum": ["planned", "active"] },
@@ -750,7 +787,8 @@
         },
         "operations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "operation" } },
         "mutations": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "mutation" } },
-        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "requirement" } }
+        "requirements": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "requirement" } },
+        "steps": { "description": "The ordered interactions of the workflow; empty while none is declared.", "type": "array", "items": { "$ref": "#/$defs/WorkflowStep" }, "x-loom-key": "id", "x-loom-ordered": true }
       }
     },
     "Substitute": {
@@ -1411,7 +1449,8 @@
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/Id" },
         "kind": { "enum": ["network", "identity", "tenant", "process"] },
-        "description": { "$ref": "common.schema.json#/$defs/Text" }
+        "description": { "$ref": "common.schema.json#/$defs/Text" },
+        "within": { "description": "The boundary that encloses this one; absent for an outermost boundary.", "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "trustBoundary" }
       }
     },
     "ConsumerBinding": {

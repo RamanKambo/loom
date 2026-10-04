@@ -1,4 +1,4 @@
-import type { Model } from '../generated/types.js';
+import type { Model, TrustBoundary } from '../generated/types.js';
 import { indexModel } from '../records.js';
 import { toText } from './notice.js';
 import type { RenderContext } from './context.js';
@@ -10,8 +10,9 @@ export const ARCHITECTURE_FILE = 'architecture.md';
  * Architecture view: component dependencies (model edges lifted to the
  * components that own their endpoints, labelled by edge kind), ownership
  * (each component and the records it owns) and hosting (deployment units on
- * hosts inside trust boundaries, co-hosting marked), then the boundary
- * agreements across owners. Node ids are positional,
+ * hosts inside trust boundaries, each boundary drawn inside the one it lies
+ * within, co-hosting marked), then the boundary agreements across owners.
+ * Node ids are positional,
  * so a label may hold any character; the tables beneath each diagram list
  * every element the diagram shows.
  */
@@ -69,15 +70,25 @@ export function projectArchitecture(model: Model, ctx: RenderContext): Record<st
   else {
     L.push('```mermaid', 'flowchart TB');
     const hostNode = new Map(model.hosts.map((h, i) => [h.id, `h${i}`]));
-    model.trustBoundaries.forEach((b, i) => {
-      L.push(`    subgraph b${i}["${label(`${b.id} (${b.kind})`)}"]`);
+    const boundaryIndex = new Map(model.trustBoundaries.map((b, i) => [b.id, i]));
+    const parentOf = (b: TrustBoundary): string | undefined => (b.within !== undefined && boundaryIndex.has(b.within) ? b.within : undefined);
+    const drawn = new Set<string>();
+    // A boundary is drawn inside the one it lies within; one in a nesting cycle is drawn once, at the top level.
+    const drawBoundary = (b: TrustBoundary, depth: number): void => {
+      if (drawn.has(b.id)) return;
+      drawn.add(b.id);
+      const pad = '    '.repeat(depth);
+      L.push(`${pad}subgraph b${boundaryIndex.get(b.id)}["${label(`${b.id} (${b.kind})`)}"]`);
       model.deploymentUnits.forEach((u, j) => {
         if (u.trustBoundary !== b.id) return;
         const shared = u.components.length > 1 ? ', co-hosted' : '';
-        L.push(`        u${j}["${label(`${u.id}: ${u.components.join(', ')}${shared}`)}"]`);
+        L.push(`${pad}    u${j}["${label(`${u.id}: ${u.components.join(', ')}${shared}`)}"]`);
       });
-      L.push('    end');
-    });
+      for (const child of model.trustBoundaries) if (parentOf(child) === b.id) drawBoundary(child, depth + 1);
+      L.push(`${pad}end`);
+    };
+    for (const b of model.trustBoundaries) if (parentOf(b) === undefined) drawBoundary(b, 1);
+    for (const b of model.trustBoundaries) drawBoundary(b, 1);
     model.hosts.forEach((h, i) => L.push(`    h${i}(["${label(`${h.id} (${h.kind})`)}"])`));
     model.deploymentUnits.forEach((u, j) => {
       const h = hostNode.get(u.host);
@@ -95,9 +106,9 @@ export function projectArchitecture(model: Model, ctx: RenderContext): Record<st
     L.push(`| ${code(h.id)} | ${h.kind} | ${h.capabilities.triggers.join(', ')} | ${h.capabilities.maxTimeout ?? ''} | ${h.capabilities.scaling} |`);
     ctx.covered({ kind: 'host', id: h.id }, ARCHITECTURE_FILE, `| ${code(h.id)} | ${h.kind} |`);
   }
-  L.push('', '| Trust boundary | Kind | Description |', '| --- | --- | --- |');
+  L.push('', '| Trust boundary | Kind | Description | Within |', '| --- | --- | --- | --- |');
   for (const b of model.trustBoundaries) {
-    L.push(`| ${code(b.id)} | ${b.kind} | ${cell(b.description)} |`);
+    L.push(`| ${code(b.id)} | ${b.kind} | ${cell(b.description)} | ${b.within ? code(b.within) : ''} |`);
     ctx.covered({ kind: 'trustBoundary', id: b.id }, ARCHITECTURE_FILE, `| ${code(b.id)} | ${b.kind} |`);
   }
 

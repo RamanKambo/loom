@@ -1,0 +1,25 @@
+{
+  "definition": "DiagramResource",
+  "valid": [
+    {
+      "workspaceId": "ws_3f9a1c7d",
+      "diagramId": "dgm.hosting",
+      "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "diagram": {
+        "diagramId": "dgm.hosting",
+        "kind": "hosting",
+        "scope": { "target": { "kind": "workspace" }, "depth": 0 },
+        "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "nodes": [{ "key": "unit:du.dispatch-worker", "label": "du.dispatch-worker: fulfillment", "kind": "deploymentUnit", "owner": { "modelId": "shop", "kind": "deploymentUnit", "id": "du.dispatch-worker" } }],
+        "edges": [],
+        "groups": [{ "key": "boundary:tb.internal", "meaning": "trust-boundary", "label": "tb.internal (network)", "members": ["unit:du.dispatch-worker"], "owner": { "modelId": "shop", "kind": "trustBoundary", "id": "tb.internal" } }],
+        "coverage": { "complete": true, "items": [{ "ref": { "modelId": "shop", "kind": "deploymentUnit", "id": "du.dispatch-worker" }, "status": "drawn", "elements": ["unit:du.dispatch-worker"] }] },
+        "limits": { "budget": { "maxNodes": 200, "maxBytes": 16384 }, "reached": [], "boundaryEdges": [] }
+      },
+      "mermaid": "flowchart TB\n    subgraph b0[\"tb.internal (network)\"]\n        u0[\"du.dispatch-worker: fulfillment\"]\n    end\n"
+    }
+  ],
+  "invalid": [
+    { "because": "a diagram resource carries the structured diagram, not only its text", "keyword": "required", "path": "", "instance": { "workspaceId": "ws_3f9a1c7d", "diagramId": "dgm.hosting", "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "mermaid": "flowchart TB" } }
+  ]
+}

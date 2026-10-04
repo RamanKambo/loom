@@ -993,21 +993,12 @@
           "additionalProperties": false,
           "required": ["kind", "depth"],
           "properties": {
-            "kind": { "description": "The kind of diagram.", "enum": ["workflow", "state", "dependency", "ownership", "hosting"] },
+            "kind": { "$ref": "diagram.schema.json#/$defs/DiagramKind" },
             "depth": { "description": "How many relationship steps from the target the diagram follows.", "type": "integer", "minimum": 0, "maximum": 8 }
           }
         },
-        "formats": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/DiagramFormat" } },
-        "budget": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["maxNodes", "maxBytes"],
-          "properties": {
-            "maxNodes": { "type": "integer", "minimum": 1, "maximum": 2000 },
-            "maxBytes": { "type": "integer", "minimum": 1024, "maximum": 65536 },
-            "maxWidth": { "description": "The widest terminal rendering, in columns.", "type": "integer", "minimum": 40, "maximum": 400 }
-          }
-        },
+        "formats": { "description": "'graph' returns the structured diagram, 'mermaid' its Mermaid text and a terminal format its terminal rendering in that character set.", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/DiagramFormat" } },
+        "budget": { "description": "A member left out takes its default.", "$ref": "diagram.schema.json#/$defs/RenderingBudget" },
         "snapshotDigest": { "description": "Digest of the snapshot to draw; the current snapshot when absent.", "$ref": "common.schema.json#/$defs/Hash" }
       }
     },
@@ -1285,27 +1276,24 @@
       }
     },
     "DiagramData": {
-      "description": "The renderings of one diagram, each with the digest of its content, and the source vector they were drawn from. A 'graph' rendering carries the canonical JSON text of the structured graph; renderer identity and fidelity are not part of this result.",
+      "description": "The result of loom.diagram: the render result of the requested diagram, with the formats the request named.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["sourceVectorDigest", "renderings"],
+      "required": ["result"],
       "properties": {
-        "sourceVectorDigest": { "$ref": "common.schema.json#/$defs/Hash" },
-        "renderings": {
-          "type": "array",
-          "minItems": 1,
-          "x-loom-key": "format",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["format", "digest", "content"],
-            "properties": {
-              "format": { "$ref": "#/$defs/DiagramFormat" },
-              "digest": { "description": "Hash of the exact bytes of 'content'.", "$ref": "common.schema.json#/$defs/Hash" },
-              "content": { "type": "string" }
-            }
-          }
-        }
+        "result": { "$ref": "diagram.schema.json#/$defs/RenderResult" }
+      }
+    },
+    "ResourceReference": {
+      "description": "A revision-bound reference to content too large to carry inline: the URI of the resource that returns it, the revision it answers for, and the digest and size of the content.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "revision", "digest", "bytes"],
+      "properties": {
+        "uri": { "type": "string", "maxLength": 1024, "pattern": "^loom://[a-z]+/[^\\s]+$" },
+        "revision": { "description": "The revision, or the digest of the revision vector, the resource answers for.", "$ref": "common.schema.json#/$defs/Hash" },
+        "digest": { "description": "Hash of the content the resource returns.", "$ref": "common.schema.json#/$defs/Hash" },
+        "bytes": { "type": "integer", "minimum": 1 }
       }
     },
     "QualifyRun": {

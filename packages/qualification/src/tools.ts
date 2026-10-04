@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import type { ToolName, VersionPolicy } from '@loom/core';
@@ -53,7 +54,17 @@ export function satisfies(version: string, policy: VersionPolicy): boolean {
 }
 
 export const policyText = (p: VersionPolicy): string =>
-  [p.major !== undefined ? `major ${p.major}` : '', p.minimum ? `>= ${p.minimum}` : '', p.exact ? `= ${p.exact}` : ''].filter(Boolean).join(', ') || 'any version';
+  [p.major !== undefined ? `major ${p.major}` : '', p.minimum ? `>= ${p.minimum}` : '', p.exact ? `= ${p.exact}` : '', p.digest ? `digest ${p.digest}` : ''].filter(Boolean).join(', ') || 'any version';
+
+/** The SHA-256 of a located file in the contract's hash form, or null when the path is not a readable file. */
+export function fileDigest(path: string): string | null {
+  try {
+    if (!statSync(path).isFile()) return null;
+    return `sha256:${createHash('sha256').update(readFileSync(path)).digest('hex')}`;
+  } catch {
+    return null;
+  }
+}
 
 function judge(tool: ToolInfo, policy: VersionPolicy): ToolResolution {
   return satisfies(tool.version, policy)
@@ -113,14 +124,19 @@ async function findOasdiff(): Promise<string | null> {
   return existsSync(fallback) ? fallback : null;
 }
 
+/** The version of a Go module read from a binary's build information, or null when Go cannot read it. */
+async function goModuleVersion(exe: string, module: string): Promise<string | null> {
+  const go = findGo();
+  if (!go) return null;
+  const r = await exec(go, ['version', '-m', exe], { timeoutMs: PROBE_TIMEOUT_MS });
+  const m = r.ok ? new RegExp(String.raw`^\s*mod\s+${module.replace(/[.]/g, '\\.')}\s+v?(\S+)`, 'm').exec(r.stdout) : null;
+  return m ? m[1]! : null;
+}
+
 /** oasdiff built by `go install` reports 'main'; the module version is read from the binary's build information. */
 async function oasdiffVersion(exe: string): Promise<string> {
-  const go = findGo();
-  if (go) {
-    const r = await exec(go, ['version', '-m', exe], { timeoutMs: PROBE_TIMEOUT_MS });
-    const m = r.ok ? /^\s*mod\s+github\.com\/oasdiff\/oasdiff\s+v?(\S+)/m.exec(r.stdout) : null;
-    if (m) return m[1]!;
-  }
+  const fromBuild = await goModuleVersion(exe, 'github.com/oasdiff/oasdiff');
+  if (fromBuild) return fromBuild;
   const r = await exec(exe, ['--version'], { timeoutMs: PROBE_TIMEOUT_MS });
   const m = r.ok ? /version\s+v?(\d[\w.-]*)/i.exec(r.stdout) : null;
   return m ? m[1]! : 'unknown';
@@ -236,6 +252,11 @@ export function defaultToolLocator(): ToolLocator {
         if (!exe) return 'oasdiff was not found on PATH or in the Go bin directory';
         return [{ name, path: exe, version: await oasdiffVersion(exe) }];
       }
+      case 'mermaid-ascii': {
+        const exe = which('mermaid-ascii');
+        if (!exe) return 'mermaid-ascii is not on PATH';
+        return [{ name, path: exe, version: (await goModuleVersion(exe, 'github.com/AlexanderGrooff/mermaid-ascii')) ?? 'unknown' }];
+      }
       case 'git': {
         const exe = which('git');
         if (!exe) return 'git is not on PATH';
@@ -250,7 +271,17 @@ export function defaultToolLocator(): ToolLocator {
     const found = await candidates(name);
     if (typeof found === 'string') return { status: 'missing', reason: found };
     const ok = found.filter((t) => satisfies(t.version, policy)).sort((a, b) => compare(b.version, a.version));
-    if (ok.length) return { status: 'found', tool: ok[0]! };
-    return judge(found[0]!, policy);
+    if (!ok.length) return judge(found[0]!, policy);
+    if (policy.digest === undefined) return { status: 'found', tool: ok[0]! };
+    // A pinned digest admits only the exact binary; a tool whose bytes cannot be read is never assumed to match.
+    const pinned = ok.find((t) => fileDigest(t.path) === policy.digest);
+    if (pinned) return { status: 'found', tool: pinned };
+    const tool = ok[0]!;
+    const actual = fileDigest(tool.path);
+    return {
+      status: 'out-of-policy',
+      tool,
+      reason: actual === null ? `${tool.name} at ${tool.path} is not a readable file, so it cannot match the pinned digest ${policy.digest}` : `${tool.name} at ${tool.path} has digest ${actual}, not the pinned ${policy.digest}`,
+    };
   };
 }

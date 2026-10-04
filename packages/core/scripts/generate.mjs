@@ -245,6 +245,30 @@ function qualifyVocabulary(schema, where) {
   }
 }
 
+// A 'default' is a value of its own schema: a default outside a member's minimum, maximum, pattern or
+// values would hand every caller that leaves the member out a value the contract refuses.
+function defaultProblems(bundled, ajv) {
+  const problems = [];
+  const segment = (k) => k.replace(/~/g, '~0').replace(/\//g, '~1');
+  // A member of 'properties' or '$defs' is named, not a keyword, so a property called 'default' is not one.
+  const walk = (node, pointer, named = false) => {
+    if (Array.isArray(node)) return node.forEach((n, i) => walk(n, `${pointer}/${i}`));
+    if (!node || typeof node !== 'object') return;
+    if (named) {
+      for (const [name, sub] of Object.entries(node)) walk(sub, `${pointer}/${segment(name)}`);
+      return;
+    }
+    if (Object.hasOwn(node, 'default')) {
+      const validate = ajv.getSchema(`${BUNDLE_ID}#${pointer}`);
+      if (!validate) problems.push(`${pointer}: the schema that states a default does not compile`);
+      else if (!validate(node.default)) problems.push(`${pointer}: the default ${JSON.stringify(node.default)} does not satisfy its own schema: ${ajv.errorsText(validate.errors)}`);
+    }
+    for (const [k, v] of Object.entries(node)) if (k !== 'default' && k !== 'enum' && k !== 'const' && typeof v === 'object') walk(v, `${pointer}/${segment(k)}`, SCHEMA_MAPS.has(k));
+  };
+  walk(bundled.$defs, '/$defs', true);
+  return problems;
+}
+
 function makeAjv() {
   const ajv = new Ajv2020({ allErrors: true, strict: true, strictTypes: false, strictRequired: false, allowUnionTypes: true });
   addFormats(ajv);
@@ -704,7 +728,7 @@ function markdownNotice() {
   return form.replace('${SOURCE_NOTICE}', notice);
 }
 
-function operationReference(catalogue, tools, agentTools, rules, operations) {
+function operationReference(catalogue, defs, tools, agentTools, rules, operations) {
   const c = catalogue.cli;
   const options = c.commonOptions.map((o) => (o.purpose ? `${code(o.usage)} ${o.purpose}` : code(o.usage))).join(', ');
   const unlisted = catalogue.resources.filter((r) => r.exposure === 'none');
@@ -746,6 +770,14 @@ function operationReference(catalogue, tools, agentTools, rules, operations) {
     '| --- | --- | --- | --- | --- |',
     ...catalogue.resources.map((r) => `| ${code(r.uri)} | ${code(r.contents)} | ${r.scope} | ${r.exposure === 'listed' ? 'yes' : 'no'} | ${r.purpose} |`),
     ...(unlisted.length ? ['', 'Not listed:', '', ...unlisted.map((r) => `- ${code(r.uri)}: ${r.reason}`)] : []),
+    '',
+    '## Rendering budget',
+    '',
+    `A diagram request takes the default for each budget member it leaves out, and schema validation of the request refuses a member below its minimum or above its maximum. The numbers are the ${code('default')}, ${code('minimum')} and ${code('maximum')} keywords of ${code('RenderingBudget')} in ${code('packages/core/schema/diagram.schema.json')}, chosen rather than measured.`,
+    '',
+    '| Member | Minimum | Default | Maximum |',
+    '| --- | --- | --- | --- |',
+    ...Object.entries(defs.RenderingBudget.properties).map(([m, s]) => `| ${code(m)} | ${s.minimum} | ${s.default} | ${s.maximum} |`),
     '',
     '## Operations',
     '',
@@ -789,8 +821,8 @@ function operationReference(catalogue, tools, agentTools, rules, operations) {
   return `${L.join('\n')}\n`;
 }
 
-/** Every view of the catalogue: the generated module the adapters read, and the operation reference. */
-function operationViews(catalogue) {
+/** Every view of the catalogue: the generated module the adapters read, and the operation reference, whose rendering budget is read from the contract definitions. */
+function operationViews(catalogue, defs) {
   const rules = new Map(catalogue.presenceRules.map((r) => [r.id, r]));
   const operations = new Map(catalogue.operations.map((o) => [o.id, o]));
   const exposed = catalogue.operations.filter((o) => o.exposure.mcp !== 'none');
@@ -863,7 +895,7 @@ function operationViews(catalogue) {
     '/** The CLI usage text. */',
     `export const CLI_USAGE = ${JSON.stringify(cliUsage(catalogue))};\n`,
   ].join('\n');
-  return { module, reference: operationReference(catalogue, tools, agentTools, rules, operations) };
+  return { module, reference: operationReference(catalogue, defs, tools, agentTools, rules, operations) };
 }
 
 // ---------- emit ----------
@@ -889,6 +921,8 @@ async function generate() {
   } catch (err) {
     fail(`bundle does not compile under JSON Schema 2020-12: ${err.message}`);
   }
+  const defaults = defaultProblems(bundled, ajv);
+  if (defaults.length) fail(`defaults outside their schemas:\n  ${defaults.join('\n  ')}`);
   const data = loadData(ajv, bundled);
   const fixtureCases = runFixtures(ajv);
   await qualifyTypeGenerator();
@@ -914,7 +948,7 @@ async function generate() {
     .replace(new RegExp(String.raw` \*\n${provenance}`, 'g'), '');
 
   const json = (v) => JSON.stringify(v, null, 2);
-  const views = operationViews(data.operations);
+  const views = operationViews(data.operations, bundled.$defs);
   const outputs = new Map([
     [join(SCHEMA_DIR, PATCH_FILE), `${json(patch.schema)}\n`],
     [join(OUT_DIR, 'types.ts'), `${BANNER}/* eslint-disable */\n${types}`],

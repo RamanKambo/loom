@@ -136,6 +136,57 @@ export type ConcernId = string;
  */
 export type ModelKind = 'composition' | 'implementation' | 'mixed';
 /**
+ * The kind of a diagram. 'state-flowchart' is the flowchart of a state machine's states and transitions, the view a terminal shows for a state diagram.
+ */
+export type DiagramKind =
+  'state' | 'state-flowchart' | 'workflow-dependency' | 'component-dependency' | 'ownership' | 'hosting' | 'sequence';
+/**
+ * The stable semantic key of a diagram element, derived from the records it shows and never from layout or position, so one model yields the same keys on every rendering.
+ */
+export type DiagramKey = string;
+/**
+ * The whole workspace, or one record of it, that a diagram or a qualification run is about. A record is named by its kind and an id from a closed character set, so no command, URL, connection string or path can stand in for it.
+ */
+export type TargetReference =
+  | {
+      kind: 'workspace';
+    }
+  | {
+      kind: 'record';
+      ref: {
+        kind: RecordKind;
+        /**
+         * The record id; a property is '<typeId>.<propertyName>' and a composite key joins its values with '|'.
+         */
+        id: string;
+      };
+    };
+export type ToolName =
+  | 'node'
+  | 'tsc'
+  | 'dotnet'
+  | 'pwsh'
+  | 'pester'
+  | 'sqlcmd'
+  | 'sqllocaldb'
+  | 'dacfx'
+  | 'scriptdom'
+  | 'swagger-parser'
+  | 'oasdiff'
+  | 'ajv'
+  | 'mermaid'
+  | 'mermaid-ascii'
+  | 'git';
+/**
+ * An opaque continuation token. It binds the filters and the revision vector of the request that issued it, and a changed input invalidates it.
+ */
+export type Cursor = string;
+/**
+ * Opaque identity of one open workspace handle, valid only in the session that opened it; never a path, a credential or acceptance evidence.
+ */
+export type WorkspaceId = string;
+export type StateName = string;
+/**
  * Logical value kind. 'number' is binary floating point; 'decimal' is exact with declared precision and scale.
  */
 export type Kind =
@@ -163,7 +214,6 @@ export type Predicate = ProsePredicate | ExpressionPredicate;
 export type Expression =
   ComparisonExpression | LogicalExpression | NegationExpression | MembershipExpression | NullTestExpression;
 export type Operand = PropertyOperand | LiteralOperand;
-export type StateName = string;
 export type Trigger = 'http' | 'queue' | 'event' | 'schedule' | 'manual' | 'library-call' | 'cli';
 /**
  * One atomic model edit. A variant is selected by 'op', 'collection' and, for item operations, 'field'.
@@ -270,6 +320,11 @@ export type Patch =
   | PatchRemoveItemWorkflowsImports
   | PatchMoveItemWorkflowsImports
   | PatchUpdateItemWorkflowsImports
+  | PatchAddItemWorkflowsSteps
+  | PatchReplaceItemWorkflowsSteps
+  | PatchRemoveItemWorkflowsSteps
+  | PatchMoveItemWorkflowsSteps
+  | PatchUpdateItemWorkflowsSteps
   | PatchAddEdges
   | PatchReplaceEdges
   | PatchRemoveEdges
@@ -443,21 +498,6 @@ export type Patch =
   | PatchRenameAgreements
   | PatchSetSystemProfile
   | PatchClearSystemProfile;
-export type ToolName =
-  | 'node'
-  | 'tsc'
-  | 'dotnet'
-  | 'pwsh'
-  | 'pester'
-  | 'sqlcmd'
-  | 'sqllocaldb'
-  | 'dacfx'
-  | 'scriptdom'
-  | 'swagger-parser'
-  | 'oasdiff'
-  | 'ajv'
-  | 'mermaid'
-  | 'git';
 export type ProjectionTarget =
   | 'json-schema'
   | 'openapi'
@@ -637,6 +677,7 @@ export type FindingCode =
   | 'PROJECTION_DRAFT'
   | 'PROJECTION_COVERAGE_LOSS'
   | 'PROJECTION_INVALID'
+  | 'DIAGRAM_TERMINAL_UNFAITHFUL'
   | 'SCOPE_OVERLAP'
   | 'SCOPE_COMPONENT_UNKNOWN'
   | 'SCOPE_ROOT_INVALID'
@@ -677,10 +718,6 @@ export type Severity = 'error' | 'warning' | 'info';
  */
 export type ToolEffect = 'none' | 'reads' | 'writes';
 /**
- * Opaque identity of one open workspace handle, valid only in the session that opened it; never a path, a credential or acceptance evidence.
- */
-export type WorkspaceId = string;
-/**
  * The stage of work a workspace is in.
  */
 export type WorkflowPhase =
@@ -693,27 +730,6 @@ export type DiscoveryPath = string;
  * Opaque identity of one agent or browser session; never a credential.
  */
 export type SessionId = string;
-/**
- * An opaque continuation token. It binds the filters and the revision vector of the request that issued it, and a changed input invalidates it.
- */
-export type Cursor = string;
-/**
- * The whole workspace, or one record of it, that a diagram or a qualification run is about. A record is named by its kind and an id from a closed character set, so no command, URL, connection string or path can stand in for it.
- */
-export type TargetReference =
-  | {
-      kind: 'workspace';
-    }
-  | {
-      kind: 'record';
-      ref: {
-        kind: RecordKind;
-        /**
-         * The record id; a property is '<typeId>.<propertyName>' and a composite key joins its values with '|'.
-         */
-        id: string;
-      };
-    };
 /**
  * A rendering of a diagram: the structured graph, Mermaid text, or terminal text in ASCII or Unicode.
  */
@@ -1283,6 +1299,285 @@ export interface ResolvedReference1 {
   id: string;
   bundleDigest: Hash;
 }
+/**
+ * One node: its key, its label, its kind and the record that owns it, named with its model so a cross-model reference keeps its owner.
+ */
+export interface DiagramNode {
+  key: DiagramKey;
+  /**
+   * Display text: data every renderer escapes, never markup or renderer configuration.
+   */
+  label: string;
+  /**
+   * The record kind the node shows, or a state, start or end of a state machine.
+   */
+  kind: RecordKind | ('state' | 'start' | 'end');
+  owner: RecordAddress1;
+}
+/**
+ * One edge: its own key, its source and target nodes, its direction, the relationship it shows, its label and the records that own the relationship. Parallel edges and self-loops are kept.
+ */
+export interface DiagramEdge {
+  key: DiagramKey;
+  source: DiagramKey;
+  target: DiagramKey;
+  direction: 'directed' | 'bidirectional' | 'undirected';
+  relationship:
+    | 'transition'
+    | 'depends-on'
+    | 'uses'
+    | 'performs'
+    | 'owns'
+    | 'hosted-on'
+    | 'semantic'
+    | 'structural'
+    | 'runtime'
+    | 'build'
+    | 'integration'
+    | 'message'
+    | 'compensates';
+  /**
+   * Display text, possibly empty; data every renderer escapes.
+   */
+  label: string;
+  /**
+   * @minItems 1
+   */
+  owners: RecordAddress1[];
+}
+/**
+ * A group of nodes that keeps its hosting, trust-boundary or ownership meaning independently of layout; a renderer that flattens it keeps its membership and meaning in the legend.
+ */
+export interface DiagramGroup {
+  key: DiagramKey;
+  meaning: 'hosting' | 'trust-boundary' | 'ownership';
+  /**
+   * Display text; data every renderer escapes.
+   */
+  label: string;
+  /**
+   * The keys of the nodes the group holds.
+   */
+  members: DiagramKey[];
+  /**
+   * The stable semantic key of a diagram element, derived from the records it shows and never from layout or position, so one model yields the same keys on every rendering.
+   */
+  parent?: string;
+  owner: RecordAddress2;
+}
+/**
+ * The address of a record owned by one model: the owning model's id, the record kind and the record id. Another model's record resolves only through that model's published bundle.
+ */
+export interface RecordAddress2 {
+  modelId: ModelId;
+  kind: RecordKind;
+  id: string;
+}
+/**
+ * What a diagram covers: its target, how many relationship steps it follows and, for a diagram split into pages, which page it is.
+ */
+export interface DiagramScope {
+  target: TargetReference;
+  depth: number;
+  page?: {
+    index: number;
+    count: number;
+  };
+}
+/**
+ * Every in-scope record and relationship: drawn, with the elements that show it, or omitted or out of scope, with the reason. A relationship is accounted for by the record that owns it, and nothing is dropped silently.
+ */
+export interface DiagramCoverage {
+  /**
+   * True only when every in-scope item is drawn.
+   */
+  complete: boolean;
+  items: {
+    ref: RecordAddress1;
+    status: 'drawn' | 'omitted' | 'out-of-scope';
+    /**
+     * The keys of the nodes, edges and groups that show the record.
+     */
+    elements: DiagramKey[];
+    reason?: Text;
+  }[];
+}
+/**
+ * The budget a diagram was built under, with every member stated, which of its limits were reached, and the edges that leave the page to an element another page holds, which a page always shows.
+ */
+export interface DiagramLimits {
+  budget: RenderingBudget;
+  reached: ('nodes' | 'bytes' | 'width' | 'duration' | 'memory')[];
+  boundaryEdges: DiagramKey[];
+}
+/**
+ * What one rendering may use: nodes, bytes of output, terminal width, duration and memory. A request takes the default of each member it leaves out and may ask for at most its maximum. The defaults and maxima stated here are the only home of those numbers; they are chosen, not measured, and the terminal-rendering qualification measures real renders against them.
+ */
+export interface RenderingBudget {
+  maxNodes?: number;
+  /**
+   * Bytes of rendered output.
+   */
+  maxBytes?: number;
+  /**
+   * The widest terminal rendering, in columns.
+   */
+  maxWidth?: number;
+  /**
+   * Wall-clock time of one render, in milliseconds.
+   */
+  maxDurationMs?: number;
+  /**
+   * Memory of the renderer process, in bytes.
+   */
+  maxMemoryBytes?: number;
+}
+/**
+ * The structured semantic representation of one diagram, from which its Mermaid text and terminal renderer input are generated. Nodes, edges and groups are in a stable order, so repeated output is identical; isolated nodes, self-loops, parallel edges and start and end states are kept.
+ */
+export interface Diagram {
+  /**
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  diagramId: string;
+  kind: DiagramKind;
+  scope: DiagramScope;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  sourceVectorDigest: string;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  groups: DiagramGroup[];
+  coverage: DiagramCoverage;
+  limits: DiagramLimits;
+}
+/**
+ * The renderer that produced a terminal rendering: the tool, the version it reported, the digest of the binary that ran and the digest of the options it ran with.
+ */
+export interface RendererIdentity {
+  tool: ToolName;
+  version: string;
+  binaryDigest: Hash;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  optionDigest: string;
+}
+/**
+ * How faithfully a rendering shows the diagram: 'exact-semantics' when every element and relationship is shown as recorded, 'annotated-layout' when a declared visual transformation changed the layout but the legend and semantic table keep the meaning, 'unsupported' when the rendering cannot be faithful and is left out.
+ */
+export interface DiagramFidelity {
+  level: 'exact-semantics' | 'annotated-layout' | 'unsupported';
+  transformations: {
+    kind:
+      | 'state-as-flowchart'
+      | 'flattened-groups'
+      | 'wrapped-labels'
+      | 'abbreviated-labels'
+      | 'merged-parallel-edges'
+      | 'split-pages';
+    description: Text;
+    /**
+     * The keys of the elements the transformation changed.
+     */
+    elements: DiagramKey[];
+  }[];
+}
+/**
+ * The terminal text of a diagram in the requested character set, with the view it shows and the digest of its text.
+ */
+export interface TerminalRendering {
+  charset: 'ascii' | 'unicode';
+  /**
+   * The kind of a diagram. 'state-flowchart' is the flowchart of a state machine's states and transitions, the view a terminal shows for a state diagram.
+   */
+  view:
+    'state' | 'state-flowchart' | 'workflow-dependency' | 'component-dependency' | 'ownership' | 'hosting' | 'sequence';
+  text: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest: string;
+}
+/**
+ * What a rendering left out: whether it is truncated, every omitted element with the record that owns it and why, the continuation to the next page and where the full artifact is.
+ */
+export interface DiagramCompleteness {
+  complete: boolean;
+  truncated: boolean;
+  omitted: {
+    element?: DiagramKey;
+    owner: RecordAddress1;
+    reason: 'budget' | 'out-of-scope' | 'unsupported';
+  }[];
+  continuation?: Cursor;
+  fullArtifact?: ResourceReference;
+}
+/**
+ * A revision-bound reference to content too large to carry inline: the URI of the resource that returns it, the revision it answers for, and the digest and size of the content.
+ */
+export interface ResourceReference {
+  uri: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revision: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest: string;
+  bytes: number;
+}
+/**
+ * The result of rendering one diagram: the structured diagram or a revision-bound reference to it, the digests that identify its inputs and outputs, the original Mermaid text or a reference to it, the terminal rendering when one was requested and can be faithful, the renderer that ran, the fidelity, the coverage and the completeness. A terminal rendering that cannot be faithful is absent and reported as DIAGRAM_TERMINAL_UNFAITHFUL; 'renderer' is present whenever a terminal rendering was attempted.
+ */
+export interface RenderResult {
+  diagram: Diagram | ResourceReference;
+  sourceVectorDigest: Hash;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  graphDigest: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  mermaidDigest: string;
+  mermaid: string | ResourceReference;
+  terminal?: TerminalRendering;
+  renderer?: RendererIdentity;
+  fidelity: DiagramFidelity;
+  coverage: DiagramCoverage1;
+  completeness: DiagramCompleteness;
+}
+/**
+ * Every in-scope record and relationship: drawn, with the elements that show it, or omitted or out of scope, with the reason. A relationship is accounted for by the record that owns it, and nothing is dropped silently.
+ */
+export interface DiagramCoverage1 {
+  /**
+   * True only when every in-scope item is drawn.
+   */
+  complete: boolean;
+  items: {
+    ref: RecordAddress1;
+    status: 'drawn' | 'omitted' | 'out-of-scope';
+    /**
+     * The keys of the nodes, edges and groups that show the record.
+     */
+    elements: DiagramKey[];
+    reason?: Text;
+  }[];
+}
+/**
+ * One diagram as the diagram resource returns it: the structured diagram and its Mermaid text for the source vector they were built from.
+ */
+export interface DiagramResource {
+  workspaceId: WorkspaceId;
+  diagramId: Id;
+  sourceVectorDigest: Hash;
+  diagram: Diagram;
+  mermaid: string;
+}
 export interface Model {
   /**
    * Model format version. Distinct from every contract version inside the model.
@@ -1370,6 +1665,10 @@ export interface TypeDef {
   description?: Text;
   visibility?: 'public' | 'internal' | 'private';
   stateProperty?: Name;
+  /**
+   * The end states of the state machine: states of the stateProperty from which the type's lifecycle ends. Stated by a type with a stateProperty; an empty list declares that the machine has no end state.
+   */
+  terminalStates?: StateName[];
   key?: Name[];
   properties: Property[];
   invariants?: Predicate[];
@@ -1870,6 +2169,52 @@ export interface Workflow {
    * Items: Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
   requirements: string[];
+  /**
+   * The ordered interactions of the workflow; empty while none is declared.
+   */
+  steps: WorkflowStep[];
+}
+/**
+ * One ordered interaction of a workflow: the component that acts, what it performs, the component the action is directed at and how a failure of the step is handled. Trust crossings follow from the deployment units of the actor and the target and are never authored.
+ */
+export interface WorkflowStep {
+  id: Name;
+  /**
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  actor: string;
+  action: StepAction;
+  /**
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  target: string;
+  failure: {
+    /**
+     * 'retry' repeats the step, 'compensate' performs the compensation, 'abort' ends the workflow.
+     */
+    handling: 'retry' | 'compensate' | 'abort';
+    compensation?: StepAction1;
+  };
+}
+/**
+ * The operation, mutation or routine a workflow step performs, or that compensates it, by kind and id.
+ */
+export interface StepAction {
+  kind: 'operation' | 'mutation' | 'routine';
+  /**
+   * A record id, optionally prefixed by a published-contract id and a colon to reference a record inside a pinned published contract.
+   */
+  id: string;
+}
+/**
+ * The operation, mutation or routine a workflow step performs, or that compensates it, by kind and id.
+ */
+export interface StepAction1 {
+  kind: 'operation' | 'mutation' | 'routine';
+  /**
+   * A record id, optionally prefixed by a published-contract id and a colon to reference a record inside a pinned published contract.
+   */
+  id: string;
 }
 export interface Edge {
   /**
@@ -2444,6 +2789,10 @@ export interface TrustBoundary {
   id: Id;
   kind: 'network' | 'identity' | 'tenant' | 'process';
   description: Text;
+  /**
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  within?: string;
 }
 export interface SecurityScheme {
   id: Id;
@@ -2721,6 +3070,10 @@ export interface PatchUpdateTypes {
     description?: Text;
     visibility?: 'public' | 'internal' | 'private';
     stateProperty?: Name;
+    /**
+     * The end states of the state machine: states of the stateProperty from which the type's lifecycle ends. Stated by a type with a stateProperty; an empty list declares that the machine has no end state.
+     */
+    terminalStates?: StateName[];
     key?: Name[];
     properties?: Property[];
     invariants?: Predicate[];
@@ -2742,6 +3095,7 @@ export interface PatchUpdateTypes {
     | 'description'
     | 'visibility'
     | 'stateProperty'
+    | 'terminalStates'
     | 'key'
     | 'invariants'
     | 'externalSchema'
@@ -3855,6 +4209,10 @@ export interface PatchUpdateWorkflows {
      * Items: Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
     requirements?: string[];
+    /**
+     * The ordered interactions of the workflow; empty while none is declared.
+     */
+    steps?: WorkflowStep[];
   };
   /**
    * @minItems 1
@@ -3932,6 +4290,87 @@ export interface PatchUpdateItemWorkflowsImports {
   set?: {
     version?: ContractVersion;
   };
+}
+export interface PatchAddItemWorkflowsSteps {
+  op: 'addItem';
+  collection: 'workflows';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  field: 'steps';
+  item: WorkflowStep;
+  index?: number;
+}
+export interface PatchReplaceItemWorkflowsSteps {
+  op: 'replaceItem';
+  collection: 'workflows';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  field: 'steps';
+  key: string;
+  item: WorkflowStep;
+}
+export interface PatchRemoveItemWorkflowsSteps {
+  op: 'removeItem';
+  collection: 'workflows';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  field: 'steps';
+  key: string;
+}
+export interface PatchMoveItemWorkflowsSteps {
+  op: 'moveItem';
+  collection: 'workflows';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  field: 'steps';
+  key: string;
+  index: number;
+}
+export interface PatchUpdateItemWorkflowsSteps {
+  op: 'updateItem';
+  collection: 'workflows';
+  /**
+   * Element id; a composite key is its values joined with '|'.
+   */
+  id: string;
+  field: 'steps';
+  key: string;
+  set?: {
+    /**
+     * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+     */
+    actor?: string;
+    action?: StepAction;
+    /**
+     * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+     */
+    target?: string;
+    failure?: {
+      /**
+       * 'retry' repeats the step, 'compensate' performs the compensation, 'abort' ends the workflow.
+       */
+      handling: 'retry' | 'compensate' | 'abort';
+      compensation?: StepAction2;
+    };
+  };
+}
+/**
+ * The operation, mutation or routine a workflow step performs, or that compensates it, by kind and id.
+ */
+export interface StepAction2 {
+  kind: 'operation' | 'mutation' | 'routine';
+  /**
+   * A record id, optionally prefixed by a published-contract id and a colon to reference a record inside a pinned published contract.
+   */
+  id: string;
 }
 export interface PatchAddEdges {
   op: 'add';
@@ -5936,7 +6375,15 @@ export interface PatchUpdateTrustBoundaries {
   set?: {
     kind?: 'network' | 'identity' | 'tenant' | 'process';
     description?: Text;
+    /**
+     * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+     */
+    within?: string;
   };
+  /**
+   * @minItems 1
+   */
+  unset?: 'within'[];
 }
 export interface PatchRenameTrustBoundaries {
   op: 'rename';
@@ -6166,7 +6613,14 @@ export interface PatchClearSystemProfile {
 export interface VersionPolicy {
   minimum?: string;
   major?: number;
+  /**
+   * The exact version, optionally with a pre-release or build suffix such as a Go pseudo-version's timestamp and commit.
+   */
   exact?: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  digest?: string;
 }
 /**
  * A fixed native-tool invocation contract. 'runner' names a built-in qualification runner; no command text is ever taken from a model, a source file or a configuration value.
@@ -6263,6 +6717,10 @@ export interface ProfileDefinition {
     versionPolicy: VersionPolicy;
     required: boolean;
     purpose: Text;
+    /**
+     * SPDX identifier of the license the provisioned tool is used under.
+     */
+    license?: string;
   }[];
   /**
    * @minItems 1
@@ -7161,31 +7619,45 @@ export interface DiagramInput {
   workspaceId: WorkspaceId;
   target: TargetReference;
   scope: {
-    /**
-     * The kind of diagram.
-     */
-    kind: 'workflow' | 'state' | 'dependency' | 'ownership' | 'hosting';
+    kind: DiagramKind;
     /**
      * How many relationship steps from the target the diagram follows.
      */
     depth: number;
   };
   /**
+   * 'graph' returns the structured diagram, 'mermaid' its Mermaid text and a terminal format its terminal rendering in that character set.
+   *
    * @minItems 1
    */
   formats: DiagramFormat[];
-  budget: {
-    maxNodes: number;
-    maxBytes: number;
-    /**
-     * The widest terminal rendering, in columns.
-     */
-    maxWidth?: number;
-  };
+  budget: RenderingBudget1;
   /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
   snapshotDigest?: string;
+}
+/**
+ * What one rendering may use: nodes, bytes of output, terminal width, duration and memory. A request takes the default of each member it leaves out and may ask for at most its maximum. The defaults and maxima stated here are the only home of those numbers; they are chosen, not measured, and the terminal-rendering qualification measures real renders against them.
+ */
+export interface RenderingBudget1 {
+  maxNodes?: number;
+  /**
+   * Bytes of rendered output.
+   */
+  maxBytes?: number;
+  /**
+   * The widest terminal rendering, in columns.
+   */
+  maxWidth?: number;
+  /**
+   * Wall-clock time of one render, in milliseconds.
+   */
+  maxDurationMs?: number;
+  /**
+   * Memory of the renderer process, in bytes.
+   */
+  maxMemoryBytes?: number;
 }
 /**
  * The arguments of loom.qualify. 'action' selects start, status or cancel, and the operation catalogue's presence rules state the members each action requires and forbids. Checks are profile check ids and the execution policy names a runner identity provisioned in trusted local configuration; no command, URL, connection string or executable path is accepted.
@@ -7532,21 +8004,10 @@ export interface AgreementBundle {
   signature?: Signature;
 }
 /**
- * The renderings of one diagram, each with the digest of its content, and the source vector they were drawn from. A 'graph' rendering carries the canonical JSON text of the structured graph; renderer identity and fidelity are not part of this result.
+ * The result of loom.diagram: the render result of the requested diagram, with the formats the request named.
  */
 export interface DiagramData {
-  sourceVectorDigest: Hash;
-  /**
-   * @minItems 1
-   */
-  renderings: {
-    format: DiagramFormat;
-    /**
-     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
-     */
-    digest: string;
-    content: string;
-  }[];
+  result: RenderResult;
 }
 /**
  * The handle of a qualification run that passed preflight: the checks it runs under the named execution policy and the revision vector it qualifies. Only checks the trusted policy authorizes start.

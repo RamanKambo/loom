@@ -1,0 +1,12 @@
+{
+  "definition": "DiagramEdge",
+  "valid": [
+    { "key": "edge:fulfillment|ordering|runtime", "source": "component:fulfillment", "target": "component:ordering", "direction": "directed", "relationship": "runtime", "label": "runtime", "owners": [{ "modelId": "shop", "kind": "edge", "id": "fulfillment|ordering|runtime" }] },
+    { "key": "transition:order.pay:placed", "source": "state:order:placed", "target": "state:order:paid", "direction": "directed", "relationship": "transition", "label": "order.pay", "owners": [{ "modelId": "shop", "kind": "mutation", "id": "order.pay" }] },
+    { "key": "self:order.touch", "source": "state:order:paid", "target": "state:order:paid", "direction": "directed", "relationship": "transition", "label": "", "owners": [{ "modelId": "shop", "kind": "mutation", "id": "order.touch" }] }
+  ],
+  "invalid": [
+    { "because": "an edge names at least one owning record", "keyword": "minItems", "path": "/owners", "instance": { "key": "e", "source": "a", "target": "b", "direction": "directed", "relationship": "runtime", "label": "", "owners": [] } },
+    { "because": "a relationship is one the representation declares", "keyword": "enum", "path": "/relationship", "instance": { "key": "e", "source": "a", "target": "b", "direction": "directed", "relationship": "likes", "label": "", "owners": [{ "modelId": "shop", "kind": "edge", "id": "a|b|runtime" }] } }
+  ]
+}

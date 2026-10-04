@@ -6,7 +6,7 @@ import { dependencyGraph } from '../graph.js';
 import { recordKey, recordsOf, type CollectionName } from '../records.js';
 import { sqlTypeText } from '../sql-types.js';
 import { MARKDOWN_NOTICE, toText } from './notice.js';
-import { workflowSections } from './mermaid.js';
+import { failureText, workflowSections } from './mermaid.js';
 import { predicateText, type RenderContext } from './context.js';
 
 export const REFERENCE_FILE = 'reference.md';
@@ -76,9 +76,10 @@ const sqlText = (t: SqlType): string => sqlTypeText(t);
 
 /**
  * Markdown reference of the model, organised by component: each component's
- * types, storage, operations, routines and mutations; then workflows,
- * requirements, a consumers index by reverse reachability, the workflow
- * diagrams, and the rules the model is checked against.
+ * types, storage, operations, routines and mutations; then workflows with
+ * their ordered steps, requirements, a consumers index by reverse
+ * reachability, the workflow diagrams, and the rules the model is checked
+ * against.
  */
 export function projectReference(model: Model, ctx: RenderContext): Record<string, string> {
   const cover = (kind: RecordKind, id: string, location: string): void => ctx.covered({ kind, id }, REFERENCE_FILE, location);
@@ -110,6 +111,7 @@ function referenceText(model: Model): string {
       if (t.description) L.push(cell(t.description), '');
       L.push(`- Key: ${codes(t.key ?? [])}`);
       if (t.stateProperty !== undefined) L.push(`- State property: ${code(t.stateProperty)}`);
+      if (t.terminalStates !== undefined) L.push(`- Terminal states: ${codes(t.terminalStates)}`);
       for (const inv of t.invariants ?? []) L.push(`- Invariant: ${cell(predicateText(inv))}`);
       L.push('', '| Property | Kind | Required | Nullable | Immutable | Origin | Binds |', '| --- | --- | --- | --- | --- | --- | --- |');
       for (const p of t.properties) {
@@ -174,7 +176,13 @@ function referenceText(model: Model): string {
     L.push(`- Imports: ${w.imports.length ? w.imports.map((i) => `${code(i.typeId)} version ${i.version}`).join(', ') : '(none)'}`);
     L.push(`- Operations: ${codes(w.operations ?? [])}`);
     L.push(`- Mutations: ${codes(w.mutations ?? [])}`);
-    L.push(`- Requirements: ${codes(w.requirements)}`, '');
+    L.push(`- Requirements: ${codes(w.requirements)}`);
+    if (w.steps.length === 0) L.push('- Steps: (none)');
+    else {
+      L.push('- Steps:');
+      w.steps.forEach((s, i) => L.push(`  ${i + 1}. ${code(s.id)}: component ${code(s.actor)} performs ${s.action.kind} ${code(s.action.id)} on component ${code(s.target)}; on failure ${failureText(s.failure, code)}`));
+    }
+    L.push('');
   }
 
   L.push('## Requirements', '');

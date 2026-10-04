@@ -23,6 +23,13 @@
       "verification": ["cli.contract.every-example-of-the-operation-catalogue-keeps-the-presence-rules-of-its-tool-and-every-agent-tool-example-satisfies-its-input-and-selects-its-own-action","cli.contract.a-presence-rule-conditioned-on-a-member-value-applies-only-under-that-value-and-an-action-sending-another-action-s-member-is-refused","cli.contract.generation-refuses-agent-tools-and-resources-whose-actions-conditions-examples-or-templates-do-not-hold","cli.contract.a-hand-authored-contract-fixture-whose-valid-instance-the-schema-rejects-fails-generation","mcp-server.mcp.every-catalogued-agent-tool-stays-unadvertised-and-compacted-with-each-action-s-result-it-fits-the-tool-budget-with-no-root-combinator-in-its-input","core.selftest.generated-wording"]
     },
     {
+      "id": "contract.diagram",
+      "description": "The diagram contract is authored once with hand-authored valid and invalid fixtures: the structured diagram with its stable node, edge and group keys, owning record addresses, coverage and limits; the render result with its digests, Mermaid text or resource reference, terminal rendering, renderer identity and declared fidelity; the rendering budget whose defaults, minima and maxima are the keywords of its members, so schema validation of a request enforces them and generation refuses a default its own schema rejects; and the terminal renderer mermaid-ascii pinned by version and binary digest, which tool resolution admits only with that exact digest.",
+      "code": ["packages/core/scripts/generate.mjs#defaultProblems","packages/core/scripts/generate.mjs#operationReference","packages/qualification/src/tools.ts#fileDigest","packages/qualification/src/tools.ts#defaultToolLocator","packages/qualification/src/tools.ts#satisfies"],
+      "contract": ["diagram.schema.json#/$defs/Diagram","diagram.schema.json#/$defs/RenderResult","diagram.schema.json#/$defs/RenderingBudget","tools.schema.json#/$defs/DiagramData","tools.schema.json#/$defs/DiagramInput","profile.schema.json#/$defs/VersionPolicy","profiles/diagrams.json","result.schema.json#/$defs/FindingCode","fixtures/render-result.json","fixtures/rendering-budget.json"],
+      "verification": ["cli.contract.generation-refuses-a-default-that-its-own-schema-rejects-such-as-a-rendering-default-above-its-maximum","cli.contract.a-hand-authored-contract-fixture-whose-valid-instance-the-schema-rejects-fails-generation","qualification.framework.a-pinned-binary-digest-admits-only-the-binary-with-that-digest-and-a-tool-that-is-not-a-readable-file-never-matches","qualification.framework.version-policies-compare-numerically","core.selftest.contract"]
+    },
+    {
       "id": "contract.digest",
       "description": "The contract digest is the SHA-256 of the canonical schema bundle, profiles, projection profiles, interface control documents and operation catalogue, regenerated with the contract and named in every result and every baseline.",
       "code": ["packages/core/scripts/generate.mjs#generate","packages/core/scripts/generate.mjs#sha256","packages/core/scripts/generate.mjs#canonical","packages/core/src/generated/digest.ts#CONTRACT_DIGEST","packages/core/src/envelope.ts#revisionsOf"],
@@ -224,6 +231,13 @@
       "code": ["packages/core/src/rules/knowledge.ts#knowledgeRules","packages/core/src/rules/knowledge.ts#sources"],
       "contract": ["common.schema.json#/$defs/SourceRef","common.schema.json#/$defs/Basis"],
       "verification": ["core.selftest.contradictions","core.selftest.sample"]
+    },
+    {
+      "id": "core.model.lifecycle-interactions",
+      "description": "A state machine declares its terminal states, a trust boundary the boundary it lies within, and a workflow its ordered steps, each with its actor, action, target and failure handling of retry, compensation by a named action or abort; each field is compared by its own rule, and the workflow, reference and architecture views draw the end states, the step sequence and the nested boundaries.",
+      "code": ["packages/core/src/field-policy.ts#FIELD_POLICY","packages/core/src/field-policy.ts#DIFF_RULES","packages/core/src/projections/mermaid.ts#workflowSections","packages/core/src/projections/mermaid.ts#failureText","packages/core/src/projections/architecture.ts#projectArchitecture","packages/core/src/projections/reference.ts#projectReference"],
+      "contract": ["model.schema.json#/$defs/TypeDef/properties/terminalStates","model.schema.json#/$defs/TrustBoundary/properties/within","model.schema.json#/$defs/WorkflowStep","model.schema.json#/$defs/StepAction","fixtures/workflow-step.json"],
+      "verification": ["core.selftest.comparison","core.selftest.projections","core.selftest.contract","core.selftest.patches","cli.properties.every-changed-field-value-reaches-the-comparison-and-every-semantic-delta-yields-a-change-never-an-empty-comparison"]
     },
     {
       "id": "core.patch.atomic",

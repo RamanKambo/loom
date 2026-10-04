@@ -210,6 +210,36 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
         if (!f.file.endsWith('.md') || ['workflows.md', 'reference.md'].includes(f.file)) continue;
         assert(t, f.content.includes(modelRevision(sampleModel())), `${projectedPath(f)} names the model revision it was rendered from`);
       }
+      // The state machines, workflows and trust boundaries render the end states, ordered steps and nesting their records declare.
+      const stateful = sampleModel().types.filter((x) => x.stateProperty !== undefined && (x.terminalStates ?? []).length > 0);
+      assert(t, stateful.length > 0 && sampleModel().workflows.some((w) => w.steps.length > 1) && sampleModel().trustBoundaries.some((b) => b.within !== undefined), 'the sample declares terminal states, ordered steps and a nested trust boundary for the views to render');
+      for (const x of stateful) {
+        const states = x.properties.find((p) => p.name === x.stateProperty)?.enumValues ?? [];
+        const section = view('workflows.md').split(`### Type ${tick(x.id)} (`)[1]?.split('```\n')[0] ?? '';
+        for (const s of x.terminalStates ?? []) assert(t, section.includes(`    s${states.indexOf(s)} --> [*]`), `workflows.md ends the state machine of ${x.id} at its terminal state ${s}`);
+        assert(t, view('reference.md').includes(`- Terminal states: ${(x.terminalStates ?? []).map(tick).join(', ')}`), `reference.md lists the terminal states of ${x.id}`);
+      }
+      for (const w of sampleModel().workflows) {
+        const steps = view('workflows.md').split(`### Steps of workflow ${tick(w.id)}`)[1]?.split('### ')[0] ?? '';
+        w.steps.forEach((s, i) => {
+          assert(t, new RegExp(`\\n    p\\d+->>p\\d+: ${i + 1} ${s.id}: ${s.action.kind} ${s.action.id.replace(/\./g, '\\.')}, on failure ${s.failure.handling}`).test(steps), `workflows.md shows step ${i + 1} ${s.id} of ${w.id} in order with its action and failure handling`);
+          assert(t, view('reference.md').includes(`  ${i + 1}. ${tick(s.id)}: component ${tick(s.actor)} performs ${s.action.kind} ${tick(s.action.id)} on component ${tick(s.target)}; on failure ${s.failure.handling}`), `reference.md lists step ${i + 1} ${s.id} of ${w.id}`);
+        });
+        if (!w.steps.length) assert(t, steps.includes('No steps are declared.'), `workflows.md states that ${w.id} declares no steps`);
+      }
+      const hosting = (m: Model): string => {
+        const text = renderTarget(m, 'architecture').files[0]!.content;
+        return text.slice(text.indexOf('## Hosting'), text.indexOf('| Deployment unit |'));
+      };
+      for (const b of sampleModel().trustBoundaries) {
+        const nested = b.within === undefined ? undefined : hosting(sampleModel()).split(`["${b.within} (`)[1]?.split('\n    end')[0];
+        if (nested !== undefined) assert(t, nested.includes(`["${b.id} (${b.kind})"]`), `architecture.md draws ${b.id} inside ${b.within}`);
+        assert(t, view('architecture.md').includes(`| ${tick(b.id)} | ${b.kind} | ${b.description} | ${b.within ? tick(b.within) : ''} |`), `architecture.md lists ${b.id} with the boundary it lies within`);
+      }
+      const cyclic = fresh();
+      pick(cyclic.trustBoundaries, 'tb.internal').within = 'tb.ordering-process';
+      const cycle = hosting(cyclic);
+      assert(t, cyclic.trustBoundaries.every((b) => cycle.split(`["${b.id} (${b.kind})"]`).length === 2), `a nesting cycle draws each trust boundary exactly once: ${cycle}`);
 
       const broken = fresh();
       pick(broken.mutations, 'order.pay').to = 'refunded';

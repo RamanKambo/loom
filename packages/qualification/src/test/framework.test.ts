@@ -10,7 +10,7 @@ import { exec, runPwsh, lastJsonLine } from '../exec.js';
 import { aggregate } from '../policy.js';
 import { runChecks } from '../run.js';
 import { verifyRunRevisionSet } from '../revision.js';
-import { defaultToolLocator, satisfies, type ToolLocator } from '../tools.js';
+import { defaultToolLocator, fileDigest, policyText, satisfies, type ToolLocator } from '../tools.js';
 import { unmatchedBreaks, type OasdiffItem } from '../runners/openapi.js';
 import { connectionFailure } from '../runners/localdb.js';
 import { declarativeDdl } from '../runners/sql.js';
@@ -150,6 +150,22 @@ test('version policies compare numerically', () => {
   assert.ok(satisfies('18.0.0.0', { minimum: '16.1' }));
   assert.ok(satisfies('1.33.0', { exact: '1.33' }));
   assert.ok(!satisfies('unknown', { minimum: '1.0' }));
+  assert.ok(satisfies('0.0.0-20260908213847-5f00e3d9ac9f', { exact: '0.0.0-20260908213847-5f00e3d9ac9f' }));
+  assert.ok(!satisfies('0.0.0-20250101000000-0123456789ab', { exact: '0.0.0-20260908213847-5f00e3d9ac9f' }));
+});
+
+test('a pinned binary digest admits only the binary with that digest, and a tool that is not a readable file never matches', async () => {
+  const actual = fileDigest(process.execPath);
+  assert.match(actual ?? '', /^sha256:[0-9a-f]{64}$/);
+  const locate = defaultToolLocator();
+  const pinned = await locate('node', { digest: actual! });
+  assert.equal(pinned.status, 'found');
+  const other = await locate('node', { digest: `sha256:${'0'.repeat(64)}` });
+  assert.equal(other.status, 'out-of-policy');
+  assert.match(other.status === 'out-of-policy' ? other.reason : '', /not the pinned sha256:0{64}/);
+  const directory = await locate('mermaid', { major: 12, digest: actual! });
+  assert.equal(directory.status, 'out-of-policy', 'a package directory has no bytes to compare with the pin');
+  assert.match(policyText({ exact: '1.0', digest: actual! }), /digest sha256:/);
 });
 
 test('evidence and run records are signed with the key the signer names, and a tampered record fails verification', async () => {
