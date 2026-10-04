@@ -1,20 +1,34 @@
 {
   "icdVersion": 1,
   "id": "qualification",
-  "responsibility": "Runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records.",
+  "responsibility": "Runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records; coordinates SQL runs on disposable providers through their whole resource lifecycle, including cancellation, cleanup and crash recovery; and renders terminal diagrams with the pinned renderer.",
   "owns": [
     "The built-in runner for every check definition and the required/optional probe policy.",
     "Isolated per-run temporary directories and disposable fixture databases.",
-    "Tool discovery, version recording and evidence signing with the runner key named by policy."
+    "Tool discovery, version recording and evidence signing with the runner key named by policy.",
+    "The run coordinator: preflight, the run phases and the lifecycle phases of a SQL run, its budgets from the execution policy, and its RunRecord with cleanup, resource usage and applied limits.",
+    "The run lease (RunLease): an operating-system-enforced user lease taken before an engine starts, and a machine lease for a dedicated service.",
+    "The allocation journal (AllocationJournal) of every SQL run, written before an operation can partially create a resource and kept outside the run directory until recovery settles every owned resource.",
+    "The guardian: a temporary process beside an active SQL run that observes the owner process and performs bounded cleanup when the owner exits unexpectedly, then exits itself.",
+    "Recovery: the idempotent settlement of a journal's residual resources, checked before the next run and on explicit request, which reports its RunCleanup.",
+    "The terminal renderer: the pinned mermaid-ascii binary, launched once per render."
   ],
   "boundary": [
     "Never installs a tool and never executes command text drawn from a model, a source file or configuration.",
     "Executes only in an environment the policy designates.",
-    "A missing or unreadable tool yields UNKNOWN, never PASS."
+    "A missing or unreadable tool yields UNKNOWN, never PASS.",
+    "Reaches only a provider the machine-local provider configuration names and the execution policy permits; never a production database, an automatic shared LocalDB instance, another service or an arbitrary endpoint.",
+    "The coordinator, the guardian and recovery act on a resource only under the journal's one cleanup claim and only after verifying the recorded owner and process identity; a reused process id is never stopped as the owner.",
+    "No permanent service or scheduled task is introduced, and incomplete cleanup keeps the lease from another run until recovery establishes that the resources are settled.",
+    "A renderer failure never counts as a faithful terminal rendering."
   ],
   "provides": [
-    { "name": "runChecks", "kind": "function", "input": "profile.schema.json#/$defs/CheckDefinition", "output": "assurance.schema.json#/$defs/RunRecord", "refusals": ["unmet-prerequisite", "policy-failure"], "effects": "executes", "concurrency": "Each run uses its own temporary directory and fixture database; parallel runs never share state." },
-    { "name": "verifyRevisionSet", "kind": "function", "input": "assurance.schema.json#/$defs/RunRecord", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["policy-failure"], "effects": "reads", "concurrency": "Read-only comparison of every component's evidence against one coordinated revision set." }
+    { "name": "runChecks", "kind": "function", "input": "profile.schema.json#/$defs/CheckDefinition", "output": "assurance.schema.json#/$defs/RunRecord", "refusals": ["unmet-prerequisite", "policy-failure"], "effects": "executes", "concurrency": "Each run uses its own temporary directory and engine instance; by default one SQL run per user runs at a time across every Loom server and command-line process, and a queued request stays cancellable." },
+    { "name": "verifyRevisionSet", "kind": "function", "input": "assurance.schema.json#/$defs/RunRecord", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["policy-failure"], "effects": "reads", "concurrency": "Read-only comparison of every component's evidence against one coordinated revision set." },
+    { "name": "startRun", "kind": "function", "input": "tools.schema.json#/$defs/QualifyInput", "output": "tools.schema.json#/$defs/QualifyRun", "refusals": ["unknown-handle", "access-denied", "stale-base", "policy-failure", "unmet-prerequisite"], "effects": "executes", "concurrency": "Returns the run handle once preflight passed and continues the run without blocking the caller; a SQL run waits for the user lease, and a waiting run is cancellable." },
+    { "name": "runStatus", "kind": "function", "input": "tools.schema.json#/$defs/QualifyInput", "output": "tools.schema.json#/$defs/QualifyRunStatus", "refusals": ["unknown-handle", "invalid-input"], "effects": "reads", "concurrency": "Read-only; a bounded page of progress continued by its cursor, never blocked by the running checks." },
+    { "name": "cancelRun", "kind": "function", "input": "tools.schema.json#/$defs/QualifyInput", "output": "tools.schema.json#/$defs/QualifyCancelData", "refusals": ["unknown-handle", "cleanup-incomplete"], "effects": "writes", "concurrency": "Idempotent: the cancellation propagates to the commands, SQL sessions and engine owner, and is completed only once every process has exited and the cleanup has settled the run's resources." },
+    { "name": "terminalRenderer", "kind": "function", "input": "diagram.schema.json#/$defs/Diagram", "output": "diagram.schema.json#/$defs/TerminalRendering", "refusals": ["unmet-prerequisite"], "effects": "executes", "concurrency": "One renderer process per render, held to the rendering budget; a binary whose digest is not the pinned one is outside the version policy and renders nothing." }
   ],
   "consumes": [
     { "component": "adopting-implementation", "interface": "implementationArtifacts" }

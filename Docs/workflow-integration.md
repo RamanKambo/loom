@@ -40,7 +40,7 @@ A change that a policy change class does not pre-authorize needs a trusted accep
 
 Source: `packages/workspace/src/write.ts` and `packages/core/schema/icd/workspace.json`, interface `writeModel`.
 
-Every result envelope carries the model revision in `revisions.model`: the SHA-256 of the model's canonical JSON. A persistent change names the revision it was planned against, as `mutate --expected <revision>` on the command line or `expectedRevision` on the `loom.mutate` tool. The adapter takes an exclusive lock, recomputes the current revision and writes only when the two are equal. State writes follow the same rule against the state revision.
+Every result envelope carries the model revision in `revisions.model`: the SHA-256 of the model's canonical JSON. A persistent change names the revision it was planned against, as `mutate --expected <revision>` on the command line or `expectedRevision` on the `loom.mutate` tool. The adapter takes an exclusive lock, recomputes the current revision and writes only when the two are equal. A `loom.json` that cannot be read, or a lock another writer still holds when the wait ends, is refused with cause `unresolved-context` and writes nothing. State writes follow the same rule against the state revision.
 
 ## Error vocabulary
 

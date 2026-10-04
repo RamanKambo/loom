@@ -1466,6 +1466,125 @@ export const ICDS: readonly Icd[] = [
   },
   {
     "icdVersion": 1,
+    "id": "browser-host",
+    "responsibility": "Serves the compiled designer and an authenticated workspace interface to a browser tab from a loopback HTTP listener inside the MCP server process: the session exchange, the workspace snapshot, the activity stream and the catalogue actions, each through the workspace adapter and the operation catalogue the agent tools use.",
+    "owns": [
+      "The listener: bound to 127.0.0.1 on an available port when a workspace is opened with its view, ended with its owning server, and serving the production designer build without a development server or a compilation watcher.",
+      "Browser sessions: a short-lived one-use bootstrap capability, carried in the URL fragment of the workspace view, exchanged for a scoped HttpOnly SameSite cookie and revoked on request.",
+      "The activity stream of each browser session: the sequenced events of the workspaces it may read, with bounded retention and sanitized content."
+    ],
+    "boundary": [
+      "No model engine, rule or filesystem access of its own: every snapshot and action goes through the workspace adapter and the operation catalogue.",
+      "Loopback binding alone is no protection: the bootstrap exchange validates Host and Origin, enforces expiry and one-time use and rate-limits failures; every other route requires the scoped session and the origin check; a cross-origin request is refused, and no wildcard cross-origin access is granted. A request refused this way runs nothing and its body is a BrowserRejection, never a result envelope.",
+      "A bootstrap capability is never a filesystem path and is never logged; the view removes it from browser history after the exchange, and every response carries a restrictive referrer policy.",
+      "Read access cannot mutate, publish, run checks or change policy; edit access permits only the actions the workspace handle permits and never grants acceptance.",
+      "A browser session is not an agent handle: revoking it closes no agent's handle, and a remembered URL never attaches to another workspace.",
+      "Shutting the host down cancels or awaits the owned jobs within the cleanup deadline before the listener closes."
+    ],
+    "provides": [
+      {
+        "name": "sessionExchange",
+        "kind": "route",
+        "input": "tools.schema.json#/$defs/BrowserSessionRequest",
+        "output": "tools.schema.json#/$defs/BrowserSession",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "POST /api/session: exchanges a one-use bootstrap capability for a scoped browser session, set as an HttpOnly SameSite cookie, and returns the workspace handles that session may use with the access each grants; a reused or expired capability, or one from another host or origin, is rejected with a BrowserRejection."
+      },
+      {
+        "name": "workspaceSnapshot",
+        "kind": "route",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/WorkspaceSummary",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "GET /api/workspaces/{workspaceId}: the adapter-verified summary of the workspace at one revision vector, with its revisions, trust states and the capabilities of the handle; it reloads from the adapter after an external file change and never opens a sample model in its place."
+      },
+      {
+        "name": "activityStream",
+        "kind": "route",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/ActivityEvent",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "GET /api/workspaces/{workspaceId}/activity: an event-stream connection from an optional last sequence, delivering the session's events in sequence; a gap in the sequence means events were lost and a fresh snapshot is required."
+      },
+      {
+        "name": "catalogueActions",
+        "kind": "route",
+        "input": "tools.schema.json#/$defs/BrowserActionRequest",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "invalid-input",
+          "unresolved-context",
+          "unmet-prerequisite",
+          "policy-failure",
+          "stale-base",
+          "unknown-handle",
+          "access-denied",
+          "cleanup-incomplete",
+          "recovery-required"
+        ],
+        "effects": "writes",
+        "concurrency": "POST /api/workspaces/{workspaceId}/actions: one catalogue operation with its arguments, which carry the revision expectations its input defines, validated against the input its operation names and refused as that operation refuses; an action the handle's access does not permit is refused as access-denied; it returns the same result envelope as the agent or command-line action, and a stale write fails its revision check so a dirty draft stays a draft for explicit reconciliation."
+      },
+      {
+        "name": "sessionRevocation",
+        "kind": "route",
+        "input": "none",
+        "output": "none",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "DELETE /api/session: revokes the requesting browser session alone, leaving every agent handle and every other browser session as it was."
+      },
+      {
+        "name": "requestRejection",
+        "kind": "record",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/BrowserRejection",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "The body of every request any route refuses before an operation runs: a host or origin the host does not serve, a missing session, an expired or reused capability, too many failures or a workspace id naming no handle of the browser session; it is never a result envelope."
+      },
+      {
+        "name": "designerAssets",
+        "kind": "file",
+        "input": "none",
+        "output": "none",
+        "refusals": [],
+        "effects": "reads",
+        "concurrency": "The compiled designer, served read-only as static files at the workspace view URL http://127.0.0.1:{port}/workspaces/{workspaceId}."
+      }
+    ],
+    "consumes": [
+      {
+        "component": "workspace",
+        "interface": "sessionHandles"
+      },
+      {
+        "component": "workspace",
+        "interface": "openWorkspace"
+      },
+      {
+        "component": "workspace",
+        "interface": "workspaceStatus"
+      },
+      {
+        "component": "workspace",
+        "interface": "writeModel"
+      },
+      {
+        "component": "schema",
+        "interface": "operationCatalogue"
+      }
+    ]
+  },
+  {
+    "icdVersion": 1,
     "id": "cli",
     "responsibility": "Exposes the core, workspace and qualification services as commands whose results are the shared result envelope and whose exit status reflects refusal and finding severity.",
     "owns": [
@@ -1580,18 +1699,25 @@ export const ICDS: readonly Icd[] = [
       {
         "component": "qualification",
         "interface": "verifyRevisionSet"
+      },
+      {
+        "component": "schema",
+        "interface": "operationCatalogue"
       }
     ]
   },
   {
     "icdVersion": 1,
     "id": "core",
-    "responsibility": "Evaluates supplied records by rule: structural and semantic validation, comparison by compatibility dimension, dependency impact, readiness, evidence applicability and invalidation, and deterministic projection.",
+    "responsibility": "Evaluates supplied records by rule: structural and semantic validation, comparison by compatibility dimension, dependency impact, readiness, evidence applicability and invalidation, composition resolution, deterministic projection and the structured diagram representation, and holds the guidance text.",
     "owns": [
       "Semantic rules and their finding codes, severities and repairs.",
       "Comparison rules and the field policy that classifies every model field.",
       "Readiness, evidence and baseline evaluation over supplied, already-verified records.",
-      "Projection renderers and their coverage manifests."
+      "Projection renderers and their coverage manifests.",
+      "Composition resolution over supplied, verified member bundles and pins.",
+      "The structured diagram representation from which the Mermaid text and the terminal renderer input are generated.",
+      "The guidance resources' text."
     ],
     "boundary": [
       "No filesystem, network, process execution, clock or credential access.",
@@ -1746,6 +1872,39 @@ export const ICDS: readonly Icd[] = [
         ],
         "effects": "none",
         "concurrency": "Pure comparison of an expected revision with the current canonical hash."
+      },
+      {
+        "name": "guidance",
+        "kind": "function",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/GuideResource",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "Pure; each guide's text and its digests are fixed by the contract digest it names."
+      },
+      {
+        "name": "resolveComposition",
+        "kind": "function",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/FederationCheckData",
+        "refusals": [
+          "invalid-input",
+          "unresolved-context"
+        ],
+        "effects": "none",
+        "concurrency": "Pure over the member bundles and pins the adapter supplies: every record address resolves against the digest of the bundle that holds it, through any supported depth with cycle detection and explicit limits, and a missing bundle or a cycle is reported with its path, never guessed."
+      },
+      {
+        "name": "diagram",
+        "kind": "function",
+        "input": "diagram.schema.json#/$defs/DiagramScope",
+        "output": "diagram.schema.json#/$defs/Diagram",
+        "refusals": [
+          "invalid-input",
+          "unmet-prerequisite"
+        ],
+        "effects": "none",
+        "concurrency": "Pure and deterministic: nodes, edges and groups in a stable order, every in-scope record and relationship accounted for in its coverage, and labels escaped as data."
       }
     ],
     "consumes": [
@@ -1765,10 +1924,39 @@ export const ICDS: readonly Icd[] = [
     "boundary": [
       "No business validation of its own and no independently authoritative seal or acceptance state.",
       "The local undo and import comparison point is never an accepted engineering baseline.",
-      "Persistent saves apply the shared expected-revision rule."
+      "Persistent saves apply the shared expected-revision rule.",
+      "Connected to a workspace, it reads and acts only through the browser host, never the server's disk; disconnected, it shows the last content as a snapshot, disables connected actions and keeps imported evidence untrusted."
     ],
     "provides": [],
     "consumes": [
+      {
+        "component": "browser-host",
+        "interface": "sessionExchange"
+      },
+      {
+        "component": "browser-host",
+        "interface": "workspaceSnapshot"
+      },
+      {
+        "component": "browser-host",
+        "interface": "activityStream"
+      },
+      {
+        "component": "browser-host",
+        "interface": "catalogueActions"
+      },
+      {
+        "component": "browser-host",
+        "interface": "sessionRevocation"
+      },
+      {
+        "component": "browser-host",
+        "interface": "designerAssets"
+      },
+      {
+        "component": "browser-host",
+        "interface": "requestRejection"
+      },
       {
         "component": "core",
         "interface": "validate"
@@ -1826,15 +2014,19 @@ export const ICDS: readonly Icd[] = [
   {
     "icdVersion": 1,
     "id": "mcp",
-    "responsibility": "Exposes the shared core and workspace services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews.",
+    "responsibility": "Exposes the shared core, workspace and qualification services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews; dispatches the catalogued agent tools for workspaces, compositions, diagrams and qualification runs against per-session handles; serves the guidance, workspace, record, diagram and schema resources; and returns concise orientation instructions at initialization.",
     "owns": [
-      "Tool registration with compact advertised schemas, the schema resources that hold the full contract, schema-conforming structured content with a text fallback, and protocol compatibility results."
+      "Tool registration with compact advertised schemas, the schema resources that hold the full contract, schema-conforming structured content with a text fallback, and protocol compatibility results.",
+      "Session routing: each call that uses stored state names a workspace handle of its own session, and no call can change another session's workspace.",
+      "Asynchronous dispatch: long work such as a qualification run or a render runs outside the request, so it never blocks status, cancellation, other workspaces or browser events."
     ],
     "boundary": [
       "Writes only JSON-RPC to stdout.",
       "No alternative mutation, readiness or acceptance policy.",
       "Record text and retrieved documents are returned as data and never grant tool authority.",
-      "An advertised schema is a compact view; every call is validated against the full contract before anything runs."
+      "An advertised schema is a compact view; every call is validated against the full contract before anything runs.",
+      "A tool takes no shell command, connection string, URL or executable path; execution identities come from trusted local configuration.",
+      "Initialization instructions orient an agent and authorize nothing; the client decides how to present them."
     ],
     "provides": [
       {
@@ -1851,6 +2043,120 @@ export const ICDS: readonly Icd[] = [
         ],
         "effects": "writes",
         "concurrency": "A persistent mutation requires the expected base revision; two agents editing one prior revision cannot both succeed."
+      },
+      {
+        "name": "loom.workspace",
+        "kind": "tool",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "invalid-input",
+          "unresolved-context",
+          "policy-failure",
+          "stale-base",
+          "unknown-handle",
+          "cleanup-incomplete"
+        ],
+        "effects": "writes",
+        "concurrency": "Inspect, initialize, open, status and close by action; a handle belongs to the session that opened it, and close settles its owned work before releasing it."
+      },
+      {
+        "name": "loom.federation",
+        "kind": "tool",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "unresolved-context",
+          "unmet-prerequisite",
+          "policy-failure",
+          "stale-base",
+          "unknown-handle",
+          "access-denied",
+          "recovery-required"
+        ],
+        "effects": "writes",
+        "concurrency": "Inspect, plan, apply, check and publish by action; apply and publish write only against the expected revision vector, and an incomplete journaled change blocks further composed writes until recovery."
+      },
+      {
+        "name": "loom.diagram",
+        "kind": "tool",
+        "input": "tools.schema.json#/$defs/DiagramInput",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "invalid-input",
+          "unmet-prerequisite",
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "Renders from one snapshot within the rendering budget; the terminal rendering runs outside the request."
+      },
+      {
+        "name": "loom.qualify",
+        "kind": "tool",
+        "input": "tools.schema.json#/$defs/QualifyInput",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "invalid-input",
+          "unmet-prerequisite",
+          "policy-failure",
+          "stale-base",
+          "unknown-handle",
+          "access-denied",
+          "cleanup-incomplete"
+        ],
+        "effects": "executes",
+        "concurrency": "Start returns a run handle after preflight and the run continues outside the request; status pages its progress; cancel is idempotent and completes only once the run's processes and resources have settled."
+      },
+      {
+        "name": "instructions",
+        "kind": "record",
+        "input": "none",
+        "output": "none",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "One concise orientation text returned at initialization, the same for every session under one contract digest and at most mcp.instructionsBudget UTF-8 bytes of the operation catalogue."
+      },
+      {
+        "name": "guideResources",
+        "kind": "record",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/GuideResource",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "The guidance at loom://guide/engineering, loom://guide/workflow and loom://guide/capabilities, the same for every session and fixed by the contract digest each names."
+      },
+      {
+        "name": "workspaceStatusResource",
+        "kind": "record",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/WorkspaceStatus",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "loom://workspaces/{workspaceId}/status, readable only by the session that holds the handle."
+      },
+      {
+        "name": "recordResources",
+        "kind": "record",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/RecordResource",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "loom://workspaces/{workspaceId}/records/{kind}/{id}, one whole record at the model revision it names, readable only by the session that holds the handle."
+      },
+      {
+        "name": "diagramResources",
+        "kind": "record",
+        "input": "none",
+        "output": "diagram.schema.json#/$defs/DiagramResource",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "loom://workspaces/{workspaceId}/diagrams/{diagramId}, one diagram for the source vector it was built from, readable only by the session that holds the handle."
       },
       {
         "name": "schemaResources",
@@ -1904,8 +2210,24 @@ export const ICDS: readonly Icd[] = [
         "interface": "planChange"
       },
       {
+        "component": "core",
+        "interface": "guidance"
+      },
+      {
+        "component": "core",
+        "interface": "resolveComposition"
+      },
+      {
+        "component": "core",
+        "interface": "diagram"
+      },
+      {
         "component": "schema",
         "interface": "contractBundle"
+      },
+      {
+        "component": "schema",
+        "interface": "operationCatalogue"
       },
       {
         "component": "workspace",
@@ -1926,22 +2248,100 @@ export const ICDS: readonly Icd[] = [
       {
         "component": "workspace",
         "interface": "evidenceStore"
+      },
+      {
+        "component": "workspace",
+        "interface": "inspectWorkspace"
+      },
+      {
+        "component": "workspace",
+        "interface": "initializeWorkspace"
+      },
+      {
+        "component": "workspace",
+        "interface": "sessionHandles"
+      },
+      {
+        "component": "workspace",
+        "interface": "openWorkspace"
+      },
+      {
+        "component": "workspace",
+        "interface": "workspaceStatus"
+      },
+      {
+        "component": "workspace",
+        "interface": "closeWorkspace"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationInspect"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationPlan"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationApply"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationCheck"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationPublish"
+      },
+      {
+        "component": "workspace",
+        "interface": "federationJournal"
+      },
+      {
+        "component": "workspace",
+        "interface": "workspaceLock"
+      },
+      {
+        "component": "qualification",
+        "interface": "startRun"
+      },
+      {
+        "component": "qualification",
+        "interface": "runStatus"
+      },
+      {
+        "component": "qualification",
+        "interface": "cancelRun"
+      },
+      {
+        "component": "qualification",
+        "interface": "terminalRenderer"
       }
     ]
   },
   {
     "icdVersion": 1,
     "id": "qualification",
-    "responsibility": "Runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records.",
+    "responsibility": "Runs the fixed native-tool checks of the selected profiles against designated fixtures or adopting implementations and returns signed, revision-bound evidence and run records; coordinates SQL runs on disposable providers through their whole resource lifecycle, including cancellation, cleanup and crash recovery; and renders terminal diagrams with the pinned renderer.",
     "owns": [
       "The built-in runner for every check definition and the required/optional probe policy.",
       "Isolated per-run temporary directories and disposable fixture databases.",
-      "Tool discovery, version recording and evidence signing with the runner key named by policy."
+      "Tool discovery, version recording and evidence signing with the runner key named by policy.",
+      "The run coordinator: preflight, the run phases and the lifecycle phases of a SQL run, its budgets from the execution policy, and its RunRecord with cleanup, resource usage and applied limits.",
+      "The run lease (RunLease): an operating-system-enforced user lease taken before an engine starts, and a machine lease for a dedicated service.",
+      "The allocation journal (AllocationJournal) of every SQL run, written before an operation can partially create a resource and kept outside the run directory until recovery settles every owned resource.",
+      "The guardian: a temporary process beside an active SQL run that observes the owner process and performs bounded cleanup when the owner exits unexpectedly, then exits itself.",
+      "Recovery: the idempotent settlement of a journal's residual resources, checked before the next run and on explicit request, which reports its RunCleanup.",
+      "The terminal renderer: the pinned mermaid-ascii binary, launched once per render."
     ],
     "boundary": [
       "Never installs a tool and never executes command text drawn from a model, a source file or configuration.",
       "Executes only in an environment the policy designates.",
-      "A missing or unreadable tool yields UNKNOWN, never PASS."
+      "A missing or unreadable tool yields UNKNOWN, never PASS.",
+      "Reaches only a provider the machine-local provider configuration names and the execution policy permits; never a production database, an automatic shared LocalDB instance, another service or an arbitrary endpoint.",
+      "The coordinator, the guardian and recovery act on a resource only under the journal's one cleanup claim and only after verifying the recorded owner and process identity; a reused process id is never stopped as the owner.",
+      "No permanent service or scheduled task is introduced, and incomplete cleanup keeps the lease from another run until recovery establishes that the resources are settled.",
+      "A renderer failure never counts as a faithful terminal rendering."
     ],
     "provides": [
       {
@@ -1954,7 +2354,7 @@ export const ICDS: readonly Icd[] = [
           "policy-failure"
         ],
         "effects": "executes",
-        "concurrency": "Each run uses its own temporary directory and fixture database; parallel runs never share state."
+        "concurrency": "Each run uses its own temporary directory and engine instance; by default one SQL run per user runs at a time across every Loom server and command-line process, and a queued request stays cancellable."
       },
       {
         "name": "verifyRevisionSet",
@@ -1966,6 +2366,56 @@ export const ICDS: readonly Icd[] = [
         ],
         "effects": "reads",
         "concurrency": "Read-only comparison of every component's evidence against one coordinated revision set."
+      },
+      {
+        "name": "startRun",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/QualifyInput",
+        "output": "tools.schema.json#/$defs/QualifyRun",
+        "refusals": [
+          "unknown-handle",
+          "access-denied",
+          "stale-base",
+          "policy-failure",
+          "unmet-prerequisite"
+        ],
+        "effects": "executes",
+        "concurrency": "Returns the run handle once preflight passed and continues the run without blocking the caller; a SQL run waits for the user lease, and a waiting run is cancellable."
+      },
+      {
+        "name": "runStatus",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/QualifyInput",
+        "output": "tools.schema.json#/$defs/QualifyRunStatus",
+        "refusals": [
+          "unknown-handle",
+          "invalid-input"
+        ],
+        "effects": "reads",
+        "concurrency": "Read-only; a bounded page of progress continued by its cursor, never blocked by the running checks."
+      },
+      {
+        "name": "cancelRun",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/QualifyInput",
+        "output": "tools.schema.json#/$defs/QualifyCancelData",
+        "refusals": [
+          "unknown-handle",
+          "cleanup-incomplete"
+        ],
+        "effects": "writes",
+        "concurrency": "Idempotent: the cancellation propagates to the commands, SQL sessions and engine owner, and is completed only once every process has exited and the cleanup has settled the run's resources."
+      },
+      {
+        "name": "terminalRenderer",
+        "kind": "function",
+        "input": "diagram.schema.json#/$defs/Diagram",
+        "output": "diagram.schema.json#/$defs/TerminalRendering",
+        "refusals": [
+          "unmet-prerequisite"
+        ],
+        "effects": "executes",
+        "concurrency": "One renderer process per render, held to the rendering budget; a binary whose digest is not the pinned one is outside the version policy and renders nothing."
       }
     ],
     "consumes": [
@@ -1996,6 +2446,15 @@ export const ICDS: readonly Icd[] = [
         "refusals": [],
         "effects": "none",
         "concurrency": "Immutable for one contract digest."
+      },
+      {
+        "name": "operationCatalogue",
+        "kind": "file",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/OperationCatalogue",
+        "refusals": [],
+        "effects": "none",
+        "concurrency": "Immutable for one contract digest: every operation with its input, result, presence rules and examples, every resource and the MCP budgets; the MCP tools, the agent tools, the browser host's actions and the command line's usage and dispatch words come from it."
       }
     ],
     "consumes": []
@@ -2042,6 +2501,42 @@ export const ICDS: readonly Icd[] = [
       },
       {
         "component": "mcp",
+        "interface": "loom.workspace"
+      },
+      {
+        "component": "mcp",
+        "interface": "loom.federation"
+      },
+      {
+        "component": "mcp",
+        "interface": "loom.diagram"
+      },
+      {
+        "component": "mcp",
+        "interface": "loom.qualify"
+      },
+      {
+        "component": "mcp",
+        "interface": "instructions"
+      },
+      {
+        "component": "mcp",
+        "interface": "guideResources"
+      },
+      {
+        "component": "mcp",
+        "interface": "workspaceStatusResource"
+      },
+      {
+        "component": "mcp",
+        "interface": "recordResources"
+      },
+      {
+        "component": "mcp",
+        "interface": "diagramResources"
+      },
+      {
+        "component": "mcp",
         "interface": "schemaResources"
       }
     ]
@@ -2049,17 +2544,21 @@ export const ICDS: readonly Icd[] = [
   {
     "icdVersion": 1,
     "id": "workspace",
-    "responsibility": "Owns the .loom directory and every file the CLI and the MCP server read or write: initialization, discovery and path ownership, output routing and installation, trusted baselines, workflow state, expected-revision writes, the durable evidence store and published-contract resolution.",
+    "responsibility": "Owns the .loom directory and every file the CLI, the MCP server and the browser host read or write: inspection, initialization, discovery and path ownership, per-session workspace handles, output routing and installation, trusted baselines, workflow state, expected-revision writes, composition changes and their journal, the durable evidence store and published-contract resolution.",
     "owns": [
       "Path identity: separator normalization, filesystem case rules, symlink and junction resolution, containment by path segment.",
       "Disjointness of governed path sets across every discoverable descriptor.",
       "Atomic per-file installation with a bundle manifest and a recoverable journal.",
-      "Reading policy, baselines and acceptance records from the trusted Git ref."
+      "Reading policy, baselines and acceptance records from the trusted Git ref.",
+      "Workspace handles: an opaque workspaceId per session and model, with the watchers of the model, configuration and evidence paths that handle opened.",
+      "The federation journal of a change across repositories, its locks taken in canonical repository order."
     ],
     "boundary": [
       "No semantic rule of its own: every decision is delegated to the core.",
       "Never stages, commits or updates a gitlink.",
-      "Never trusts candidate-supplied policy or acceptance."
+      "Never trusts candidate-supplied policy or acceptance.",
+      "There is no process-wide active workspace: a call that uses stored state names the handle of its own session, and a startup directory is only a discovery hint.",
+      "Initialization never replaces an existing .loom and never creates an acceptance record."
     ],
     "provides": [
       {
@@ -2111,6 +2610,164 @@ export const ICDS: readonly Icd[] = [
         "concurrency": "Read-only."
       },
       {
+        "name": "inspectWorkspace",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "tools.schema.json#/$defs/WorkspaceInspectData",
+        "refusals": [
+          "invalid-input"
+        ],
+        "effects": "reads",
+        "concurrency": "Read-only: reads nothing above its boundary, walks no unrelated source, dependency or artifact tree, and returns the inspection digest an initialization names as its expectation."
+      },
+      {
+        "name": "initializeWorkspace",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "tools.schema.json#/$defs/WorkspaceInitializeData",
+        "refusals": [
+          "invalid-input",
+          "policy-failure",
+          "stale-base"
+        ],
+        "effects": "writes",
+        "concurrency": "Driven by the requested declaration: a dry run returns every file it would write and the inspection digest and writes nothing; applying needs that digest and the same declaration, reinspects under the lock, refuses a stale proposal and writes the scaffold atomically with a recovery journal for an interrupted write."
+      },
+      {
+        "name": "sessionHandles",
+        "kind": "record",
+        "input": "none",
+        "output": "tools.schema.json#/$defs/WorkspaceHandle",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "none",
+        "concurrency": "A handle exists only for the session that opened it; two sessions opening one model share its revision protocol and keep separate handles, activity and browser sessions; a workspaceId of another session is an unknown handle."
+      },
+      {
+        "name": "openWorkspace",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "tools.schema.json#/$defs/WorkspaceSummary",
+        "refusals": [
+          "unresolved-context"
+        ],
+        "effects": "reads",
+        "concurrency": "Opens a handle for the requesting session with read or edit access and returns the bounded summary at one revision vector; it changes no model."
+      },
+      {
+        "name": "workspaceStatus",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "tools.schema.json#/$defs/WorkspaceStatus",
+        "refusals": [
+          "unknown-handle"
+        ],
+        "effects": "reads",
+        "concurrency": "Read-only status of one handle of the requesting session: its revisions, resources, pending runs and next actions."
+      },
+      {
+        "name": "closeWorkspace",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/WorkspaceInput",
+        "output": "tools.schema.json#/$defs/WorkspaceCloseData",
+        "refusals": [
+          "unknown-handle",
+          "cleanup-incomplete"
+        ],
+        "effects": "writes",
+        "concurrency": "Cancels or awaits the handle's owned runs, detaches its watchers, revokes its browser access and releases it; a close that leaves an owned resource is refused with the resource and its recovery."
+      },
+      {
+        "name": "federationInspect",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "tools.schema.json#/$defs/FederationInspectData",
+        "refusals": [
+          "unknown-handle",
+          "unmet-prerequisite"
+        ],
+        "effects": "reads",
+        "concurrency": "Read-only: the direct members with their pins, the roots each model claims, the missing inputs and the dependency graph."
+      },
+      {
+        "name": "federationPlan",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "tools.schema.json#/$defs/ChangeProposal",
+        "refusals": [
+          "unknown-handle",
+          "stale-base",
+          "policy-failure"
+        ],
+        "effects": "reads",
+        "concurrency": "Writes nothing: an immutable proposal bound to the revision vector it was planned against."
+      },
+      {
+        "name": "federationApply",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "tools.schema.json#/$defs/FederationApplyData",
+        "refusals": [
+          "unknown-handle",
+          "access-denied",
+          "stale-base",
+          "unmet-prerequisite",
+          "recovery-required"
+        ],
+        "effects": "writes",
+        "concurrency": "Owner-local writes through the expected-revision and lock protocol, locks taken in canonical repository order and every write journaled; there is no atomic transaction across repositories, so a partly applied change stays visibly incomplete until recovery resumes it or restores the journal-owned writes that are still unchanged."
+      },
+      {
+        "name": "federationCheck",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "tools.schema.json#/$defs/FederationCheckData",
+        "refusals": [
+          "unknown-handle",
+          "unresolved-context"
+        ],
+        "effects": "reads",
+        "concurrency": "Read-only resolution of one snapshot's closure; it manufactures no acceptance."
+      },
+      {
+        "name": "federationPublish",
+        "kind": "function",
+        "input": "tools.schema.json#/$defs/FederationInput",
+        "output": "tools.schema.json#/$defs/FederationPublishData",
+        "refusals": [
+          "unknown-handle",
+          "access-denied",
+          "stale-base",
+          "unmet-prerequisite",
+          "policy-failure"
+        ],
+        "effects": "writes",
+        "concurrency": "Writes one immutable bundle; a release publication requires the configured acceptance and evidence, and a draft is never trusted as a release."
+      },
+      {
+        "name": "federationJournal",
+        "kind": "record",
+        "input": "none",
+        "output": "workspace.schema.json#/$defs/FederationJournal",
+        "refusals": [
+          "recovery-required"
+        ],
+        "effects": "writes",
+        "concurrency": "One journal per applied proposal; a journal in recovery-required blocks further composed writes and composed readiness until recovery completes or restores it."
+      },
+      {
+        "name": "workspaceLock",
+        "kind": "function",
+        "input": "none",
+        "output": "none",
+        "refusals": [
+          "unresolved-context"
+        ],
+        "effects": "none",
+        "concurrency": "An exclusive lock file per written file, awaited without blocking the server, so a waiting write never stalls status, cancellation, other workspaces or browser events; a lock left by a process that no longer exists is taken over, and a lock not obtained in time is refused as unresolved-context. No model lock is held while native checks run."
+      },
+      {
         "name": "installOutputs",
         "kind": "function",
         "input": "tools.schema.json#/$defs/ProjectData",
@@ -2152,11 +2809,12 @@ export const ICDS: readonly Icd[] = [
         "output": "result.schema.json#/$defs/ResultEnvelope",
         "refusals": [
           "invalid-input",
+          "unresolved-context",
           "stale-base",
           "policy-failure"
         ],
         "effects": "writes",
-        "concurrency": "The persistent mutation the CLI and the MCP server share: the expected base revision is checked before the core computes the change and again, as a compare-and-swap, under an exclusive lock file while writing; a stale base, a refused change and a dry run write nothing."
+        "concurrency": "The persistent mutation the CLI, the MCP server and the browser host share: the expected base revision is checked before the core computes the change and again, as a compare-and-swap, under an exclusive lock file while writing; a stale base, a refused change and a dry run write nothing, and an unreadable configuration or a lock not obtained in time is refused as unresolved-context."
       },
       {
         "name": "evidenceStore",
@@ -2201,6 +2859,10 @@ export const ICDS: readonly Icd[] = [
       {
         "component": "core",
         "interface": "checkRevision"
+      },
+      {
+        "component": "core",
+        "interface": "resolveComposition"
       },
       {
         "component": "workflow-integration",

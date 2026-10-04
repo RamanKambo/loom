@@ -1,0 +1,8 @@
+{
+  "definition": "WorkspaceAccess",
+  "valid": ["read", "edit"],
+  "invalid": [
+    { "because": "no access grants acceptance", "keyword": "enum", "path": "", "instance": "accept" },
+    { "because": "access is read or edit, never an administrative override", "keyword": "enum", "path": "", "instance": "admin" }
+  ]
+}

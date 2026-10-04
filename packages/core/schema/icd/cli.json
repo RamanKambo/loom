@@ -32,6 +32,7 @@
     { "component": "workspace", "interface": "evidenceStore" },
     { "component": "workspace", "interface": "resolvePublishedContracts" },
     { "component": "qualification", "interface": "runChecks" },
-    { "component": "qualification", "interface": "verifyRevisionSet" }
+    { "component": "qualification", "interface": "verifyRevisionSet" },
+    { "component": "schema", "interface": "operationCatalogue" }
   ]
 }

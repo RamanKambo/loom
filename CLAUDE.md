@@ -70,6 +70,7 @@ the open-items register. Workspace scripts: @package.json
   | Every record, patch, result and workspace shape | `packages/core/schema/*.schema.json` |
   | Every operation: purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP tool and CLI command | `packages/core/schema/operations.json`; the MCP tool list and descriptions, the tools and examples of `loom.describe`, the CLI usage and dispatch words and `Docs/operations.md` are generated from it, and the adapters' handler tables are checked against it |
   | The size budget of one advertised MCP tool definition | `mcp.toolBudget` in `packages/core/schema/operations.json`; the smoke test holds every tool and tools/list to it |
+  | The UTF-8 byte budget of the initialize orientation | `mcp.instructionsBudget` in `packages/core/schema/operations.json`, generated as `MCP_INSTRUCTIONS_BUDGET` |
   | The URI forms of the server's resources (guides, workspace status, records) | `resources` in `packages/core/schema/operations.json` |
   | Discovery page defaults and maxima (bytes and records) | `DiscoveryBudget` in `packages/core/schema/tools.schema.json`: its `default` and `maximum` keywords |
   | Diagram rendering budget defaults, minima and maxima (nodes, bytes, width, duration in ms, memory) | `RenderingBudget` in `packages/core/schema/diagram.schema.json`: its `default`, `minimum` and `maximum` keywords |

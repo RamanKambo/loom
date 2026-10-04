@@ -1,0 +1,13 @@
+{
+  "definition": "BrowserRejection",
+  "valid": [
+    { "cause": "origin-rejected", "message": "The request came from another origin." },
+    { "cause": "bootstrap-reused", "message": "The bootstrap capability was already exchanged; open the workspace view again." },
+    { "cause": "unknown-handle", "message": "The workspace names no handle of this browser session." }
+  ],
+  "invalid": [
+    { "because": "a rejection cause is one of the browser causes or the shared unknown-handle cause", "keyword": "enum", "path": "/cause", "instance": { "cause": "unknown-workspace", "message": "No such workspace." } },
+    { "because": "a rejection message holds no path", "keyword": "pattern", "path": "/message", "instance": { "cause": "session-required", "message": "No session cookie for D:/work/shop/.loom." } },
+    { "because": "a rejection is no result envelope and carries no envelope member", "keyword": "additionalProperties", "path": "", "instance": { "cause": "rate-limited", "message": "Too many failed exchanges.", "outcome": "refused" } }
+  ]
+}

@@ -28,7 +28,7 @@ The server lists these tools in this order, each with the description generated 
 11. `loom.checkReadiness`, operation [checkReadiness](#checkreadiness)
 12. `loom.planChange`, operation [planChange](#planchange)
 
-Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the `loom://schema/<Definition>` resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most 8192 bytes.
+Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the `loom://schema/<Definition>` resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most 8192 bytes, and the orientation instructions the server returns at initialization take at most 2400 UTF-8 bytes.
 
 The catalogue also defines these agent tools, which the server does not advertise. Each operation states its action, input, result data, presence rules and examples:
 
@@ -1058,7 +1058,7 @@ Apply a planned proposal as journaled owner-local writes in canonical repository
 
 - Prerequisites: a proposal a plan returned; the acceptance the owners' trusted policies require.
 - Effects: `writes`, can persist changes.
-- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `stale-base` when an input changed since 'expectedVector', and nothing is written; `unmet-prerequisite` when an owner's trusted policy requires an acceptance the proposal lacks; `recovery-required` when a journal holds an incomplete change.
+- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle was opened with read access; `stale-base` when an input changed since 'expectedVector', and nothing is written; `unmet-prerequisite` when an owner's trusted policy requires an acceptance the proposal lacks; `recovery-required` when a journal holds an incomplete change.
 - Next action: check the composed result, through [federationCheck](#federationcheck).
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `apply`, input `FederationInput`, result data `FederationApplyData`; the server does not advertise it.
@@ -1071,7 +1071,7 @@ Presence rules of action `apply` of `loom.federation`, checked before anything r
 
 Description of action `apply` of `loom.federation`:
 
-> Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable. Prerequisites: a proposal a plan returned; the acceptance the owners' trusted policies require. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector', and nothing is written; as unmet-prerequisite when an owner's trusted policy requires an acceptance the proposal lacks; as recovery-required when a journal holds an incomplete change. When 'action' is 'apply', send 'proposalId' and 'expectedVector' without 'changes' or 'snapshotDigest' or 'export' or 'purpose'. Next: check the composed result with loom.federation action 'check'.
+> Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable. Prerequisites: a proposal a plan returned; the acceptance the owners' trusted policies require. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as access-denied when the handle was opened with read access; as stale-base when an input changed since 'expectedVector', and nothing is written; as unmet-prerequisite when an owner's trusted policy requires an acceptance the proposal lacks; as recovery-required when a journal holds an incomplete change. When 'action' is 'apply', send 'proposalId' and 'expectedVector' without 'changes' or 'snapshotDigest' or 'export' or 'purpose'. Next: check the composed result with loom.federation action 'check'.
 
 Examples:
 
@@ -1124,7 +1124,7 @@ Publish an immutable bundle, a member's export or a composition's agreements; a 
 
 - Prerequisites: a handle with the publish capability.
 - Effects: `writes`, can persist changes.
-- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `stale-base` when an input changed since 'expectedVector'; `unmet-prerequisite` when a release lacks its configured acceptance or evidence; `policy-failure` when the export omits a record of its required closure.
+- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle lacks the publish capability; `stale-base` when an input changed since 'expectedVector'; `unmet-prerequisite` when a release lacks its configured acceptance or evidence; `policy-failure` when the export omits a record of its required closure.
 - Next action: pin the published bundle in the consuming composition, through [federationPlan](#federationplan).
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `publish`, input `FederationInput`, result data `FederationPublishData`; the server does not advertise it.
@@ -1137,7 +1137,7 @@ Presence rules of action `publish` of `loom.federation`, checked before anything
 
 Description of action `publish` of `loom.federation`:
 
-> Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence. Prerequisites: a handle with the publish capability. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as unmet-prerequisite when a release lacks its configured acceptance or evidence; as policy-failure when the export omits a record of its required closure. When 'action' is 'publish', send 'export' and 'expectedVector' and 'purpose' without 'changes' or 'proposalId' or 'snapshotDigest'. Next: pin the published bundle in the consuming composition with loom.federation action 'plan'.
+> Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence. Prerequisites: a handle with the publish capability. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as access-denied when the handle lacks the publish capability; as stale-base when an input changed since 'expectedVector'; as unmet-prerequisite when a release lacks its configured acceptance or evidence; as policy-failure when the export omits a record of its required closure. When 'action' is 'publish', send 'export' and 'expectedVector' and 'purpose' without 'changes' or 'proposalId' or 'snapshotDigest'. Next: pin the published bundle in the consuming composition with loom.federation action 'plan'.
 
 Examples:
 
@@ -1213,7 +1213,7 @@ Start a qualification run of named profile checks against one record or the whol
 
 - Prerequisites: a handle with the qualify capability; the revision vector the run must qualify, as 'expectedVector'; an execution policy naming a runner identity provisioned in trusted local configuration.
 - Effects: `writes`, can persist changes.
-- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `stale-base` when an input changed since 'expectedVector'; `policy-failure` when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; `unmet-prerequisite` when a check's native tool or runner is not provisioned, so qualification is not established.
+- Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle lacks the qualify capability; `stale-base` when an input changed since 'expectedVector'; `policy-failure` when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; `unmet-prerequisite` when a check's native tool or runner is not provisioned, so qualification is not established.
 - Next action: follow the run's progress, through [qualifyStatus](#qualifystatus).
 - MCP tool: none.
 - Agent tool: `loom.qualify`, action `start`, input `QualifyInput`, result data `QualifyRun`; the server does not advertise it.
@@ -1226,7 +1226,7 @@ Presence rules of action `start` of `loom.qualify`, checked before anything runs
 
 Description of action `start` of `loom.qualify`:
 
-> Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes. Prerequisites: a handle with the qualify capability; the revision vector the run must qualify, as 'expectedVector'; an execution policy naming a runner identity provisioned in trusted local configuration. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as policy-failure when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; as unmet-prerequisite when a check's native tool or runner is not provisioned, so qualification is not established. When 'action' is 'start', send 'checks' and 'target' and 'expectedVector' and 'executionPolicy' without 'runId' or 'cursor'. Next: follow the run's progress with loom.qualify action 'status'.
+> Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes. Prerequisites: a handle with the qualify capability; the revision vector the run must qualify, as 'expectedVector'; an execution policy naming a runner identity provisioned in trusted local configuration. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as access-denied when the handle lacks the qualify capability; as stale-base when an input changed since 'expectedVector'; as policy-failure when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; as unmet-prerequisite when a check's native tool or runner is not provisioned, so qualification is not established. When 'action' is 'start', send 'checks' and 'target' and 'expectedVector' and 'executionPolicy' without 'runId' or 'cursor'. Next: follow the run's progress with loom.qualify action 'status'.
 
 Examples:
 

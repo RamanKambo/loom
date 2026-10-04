@@ -1,12 +1,15 @@
 {
   "icdVersion": 1,
   "id": "core",
-  "responsibility": "Evaluates supplied records by rule: structural and semantic validation, comparison by compatibility dimension, dependency impact, readiness, evidence applicability and invalidation, and deterministic projection.",
+  "responsibility": "Evaluates supplied records by rule: structural and semantic validation, comparison by compatibility dimension, dependency impact, readiness, evidence applicability and invalidation, composition resolution, deterministic projection and the structured diagram representation, and holds the guidance text.",
   "owns": [
     "Semantic rules and their finding codes, severities and repairs.",
     "Comparison rules and the field policy that classifies every model field.",
     "Readiness, evidence and baseline evaluation over supplied, already-verified records.",
-    "Projection renderers and their coverage manifests."
+    "Projection renderers and their coverage manifests.",
+    "Composition resolution over supplied, verified member bundles and pins.",
+    "The structured diagram representation from which the Mermaid text and the terminal renderer input are generated.",
+    "The guidance resources' text."
   ],
   "boundary": [
     "No filesystem, network, process execution, clock or credential access.",
@@ -26,7 +29,10 @@
     { "name": "planChange", "kind": "function", "input": "tools.schema.json#/$defs/PlanChangeInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "stale-base", "policy-failure"], "effects": "none", "concurrency": "Pure preview; never persists." },
     { "name": "compareBaseline", "kind": "function", "input": "assurance.schema.json#/$defs/Baseline", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["policy-failure", "unresolved-context"], "effects": "none", "concurrency": "Pure; the adapter supplies the verified baseline, policy and acceptance records." },
     { "name": "evaluateEvidence", "kind": "function", "input": "assurance.schema.json#/$defs/EvidenceRecord", "output": "result.schema.json#/$defs/QualificationState", "refusals": ["unresolved-context"], "effects": "none", "concurrency": "Pure; provenance verification results arrive as input." },
-    { "name": "checkRevision", "kind": "function", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["stale-base"], "effects": "none", "concurrency": "Pure comparison of an expected revision with the current canonical hash." }
+    { "name": "checkRevision", "kind": "function", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["stale-base"], "effects": "none", "concurrency": "Pure comparison of an expected revision with the current canonical hash." },
+    { "name": "guidance", "kind": "function", "input": "none", "output": "tools.schema.json#/$defs/GuideResource", "refusals": [], "effects": "none", "concurrency": "Pure; each guide's text and its digests are fixed by the contract digest it names." },
+    { "name": "resolveComposition", "kind": "function", "input": "none", "output": "tools.schema.json#/$defs/FederationCheckData", "refusals": ["invalid-input", "unresolved-context"], "effects": "none", "concurrency": "Pure over the member bundles and pins the adapter supplies: every record address resolves against the digest of the bundle that holds it, through any supported depth with cycle detection and explicit limits, and a missing bundle or a cycle is reported with its path, never guessed." },
+    { "name": "diagram", "kind": "function", "input": "diagram.schema.json#/$defs/DiagramScope", "output": "diagram.schema.json#/$defs/Diagram", "refusals": ["invalid-input", "unmet-prerequisite"], "effects": "none", "concurrency": "Pure and deterministic: nodes, edges and groups in a stable order, every in-scope record and relationship accounted for in its coverage, and labels escaped as data." }
   ],
   "consumes": [
     { "component": "schema", "interface": "contractBundle" }

@@ -31,6 +31,7 @@ Source: the interface control documents in `packages/core/schema/icd`, one per c
 | Qualification adapter | `packages/qualification` | Fixed native-tool checks against designated fixtures or adopting implementations, returning signed, revision-bound evidence |
 | Command line | `packages/cli` | The workspace commands over the shared result envelope |
 | MCP server | `packages/mcp-server` | The same services as Model Context Protocol tools with compact generated input and output schemas, and the full contract as schema resources |
+| Browser host | In the `packages/mcp-server` process | The authenticated loopback HTTP host of the designer: session exchange, workspace snapshot, activity stream and catalogue actions; its ICD states the interface ahead of the implementation |
 | Designer | `apps/designer` | Browser editing and visualization through the same core; see [apps/designer/README.md](apps/designer/README.md) |
 
 The interface each component provides and consumes, its refusals and its concurrency behavior are stated in its ICD file; [Docs/workflow-integration.md](Docs/workflow-integration.md) covers the boundary to a workflow or plugin integration.

@@ -12,7 +12,7 @@
     ],
     "exitStatus": "0 ok, 1 refusal or error finding, 2 usage error."
   },
-  "mcp": { "toolBudget": 8192 },
+  "mcp": { "toolBudget": 8192, "instructionsBudget": 2400 },
   "presenceRules": [
     {
       "id": "model-or-workspace",
@@ -849,6 +849,7 @@
       "effects": "writes",
       "refusals": [
         { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
+        { "cause": "access-denied", "when": "the handle was opened with read access" },
         { "cause": "stale-base", "when": "an input changed since 'expectedVector', and nothing is written" },
         { "cause": "unmet-prerequisite", "when": "an owner's trusted policy requires an acceptance the proposal lacks" },
         { "cause": "recovery-required", "when": "a journal holds an incomplete change" }
@@ -893,6 +894,7 @@
       "effects": "writes",
       "refusals": [
         { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
+        { "cause": "access-denied", "when": "the handle lacks the publish capability" },
         { "cause": "stale-base", "when": "an input changed since 'expectedVector'" },
         { "cause": "unmet-prerequisite", "when": "a release lacks its configured acceptance or evidence" },
         { "cause": "policy-failure", "when": "the export omits a record of its required closure" }
@@ -945,6 +947,7 @@
       "effects": "writes",
       "refusals": [
         { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
+        { "cause": "access-denied", "when": "the handle lacks the qualify capability" },
         { "cause": "stale-base", "when": "an input changed since 'expectedVector'" },
         { "cause": "policy-failure", "when": "the trusted policy does not authorize a check, or the execution policy names no provisioned identity" },
         { "cause": "unmet-prerequisite", "when": "a check's native tool or runner is not provisioned, so qualification is not established" }

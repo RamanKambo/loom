@@ -1,0 +1,34 @@
+{
+  "icdVersion": 1,
+  "id": "browser-host",
+  "responsibility": "Serves the compiled designer and an authenticated workspace interface to a browser tab from a loopback HTTP listener inside the MCP server process: the session exchange, the workspace snapshot, the activity stream and the catalogue actions, each through the workspace adapter and the operation catalogue the agent tools use.",
+  "owns": [
+    "The listener: bound to 127.0.0.1 on an available port when a workspace is opened with its view, ended with its owning server, and serving the production designer build without a development server or a compilation watcher.",
+    "Browser sessions: a short-lived one-use bootstrap capability, carried in the URL fragment of the workspace view, exchanged for a scoped HttpOnly SameSite cookie and revoked on request.",
+    "The activity stream of each browser session: the sequenced events of the workspaces it may read, with bounded retention and sanitized content."
+  ],
+  "boundary": [
+    "No model engine, rule or filesystem access of its own: every snapshot and action goes through the workspace adapter and the operation catalogue.",
+    "Loopback binding alone is no protection: the bootstrap exchange validates Host and Origin, enforces expiry and one-time use and rate-limits failures; every other route requires the scoped session and the origin check; a cross-origin request is refused, and no wildcard cross-origin access is granted. A request refused this way runs nothing and its body is a BrowserRejection, never a result envelope.",
+    "A bootstrap capability is never a filesystem path and is never logged; the view removes it from browser history after the exchange, and every response carries a restrictive referrer policy.",
+    "Read access cannot mutate, publish, run checks or change policy; edit access permits only the actions the workspace handle permits and never grants acceptance.",
+    "A browser session is not an agent handle: revoking it closes no agent's handle, and a remembered URL never attaches to another workspace.",
+    "Shutting the host down cancels or awaits the owned jobs within the cleanup deadline before the listener closes."
+  ],
+  "provides": [
+    { "name": "sessionExchange", "kind": "route", "input": "tools.schema.json#/$defs/BrowserSessionRequest", "output": "tools.schema.json#/$defs/BrowserSession", "refusals": [], "effects": "none", "concurrency": "POST /api/session: exchanges a one-use bootstrap capability for a scoped browser session, set as an HttpOnly SameSite cookie, and returns the workspace handles that session may use with the access each grants; a reused or expired capability, or one from another host or origin, is rejected with a BrowserRejection." },
+    { "name": "workspaceSnapshot", "kind": "route", "input": "none", "output": "tools.schema.json#/$defs/WorkspaceSummary", "refusals": ["unknown-handle"], "effects": "reads", "concurrency": "GET /api/workspaces/{workspaceId}: the adapter-verified summary of the workspace at one revision vector, with its revisions, trust states and the capabilities of the handle; it reloads from the adapter after an external file change and never opens a sample model in its place." },
+    { "name": "activityStream", "kind": "route", "input": "none", "output": "tools.schema.json#/$defs/ActivityEvent", "refusals": ["unknown-handle"], "effects": "reads", "concurrency": "GET /api/workspaces/{workspaceId}/activity: an event-stream connection from an optional last sequence, delivering the session's events in sequence; a gap in the sequence means events were lost and a fresh snapshot is required." },
+    { "name": "catalogueActions", "kind": "route", "input": "tools.schema.json#/$defs/BrowserActionRequest", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "access-denied", "cleanup-incomplete", "recovery-required"], "effects": "writes", "concurrency": "POST /api/workspaces/{workspaceId}/actions: one catalogue operation with its arguments, which carry the revision expectations its input defines, validated against the input its operation names and refused as that operation refuses; an action the handle's access does not permit is refused as access-denied; it returns the same result envelope as the agent or command-line action, and a stale write fails its revision check so a dirty draft stays a draft for explicit reconciliation." },
+    { "name": "sessionRevocation", "kind": "route", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "DELETE /api/session: revokes the requesting browser session alone, leaving every agent handle and every other browser session as it was." },
+    { "name": "requestRejection", "kind": "record", "input": "none", "output": "tools.schema.json#/$defs/BrowserRejection", "refusals": [], "effects": "none", "concurrency": "The body of every request any route refuses before an operation runs: a host or origin the host does not serve, a missing session, an expired or reused capability, too many failures or a workspace id naming no handle of the browser session; it is never a result envelope." },
+    { "name": "designerAssets", "kind": "file", "input": "none", "output": "none", "refusals": [], "effects": "reads", "concurrency": "The compiled designer, served read-only as static files at the workspace view URL http://127.0.0.1:{port}/workspaces/{workspaceId}." }
+  ],
+  "consumes": [
+    { "component": "workspace", "interface": "sessionHandles" },
+    { "component": "workspace", "interface": "openWorkspace" },
+    { "component": "workspace", "interface": "workspaceStatus" },
+    { "component": "workspace", "interface": "writeModel" },
+    { "component": "schema", "interface": "operationCatalogue" }
+  ]
+}

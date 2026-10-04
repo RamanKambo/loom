@@ -1,0 +1,8 @@
+{
+  "definition": "BootstrapCapability",
+  "valid": ["example_bootstrap_capability_0001", "example-bootstrap-capability-not-a-real-value-0002"],
+  "invalid": [
+    { "because": "a capability is never a filesystem path", "keyword": "pattern", "path": "", "instance": "C:/work/shop/.loom/session-token-file" },
+    { "because": "a capability is long enough not to be guessed", "keyword": "pattern", "path": "", "instance": "short-token" }
+  ]
+}

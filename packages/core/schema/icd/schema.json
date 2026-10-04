@@ -11,7 +11,8 @@
     "Semantic rules stay in the core; the schema expresses only structure."
   ],
   "provides": [
-    { "name": "contractBundle", "kind": "file", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "Immutable for one contract digest." }
+    { "name": "contractBundle", "kind": "file", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "Immutable for one contract digest." },
+    { "name": "operationCatalogue", "kind": "file", "input": "none", "output": "tools.schema.json#/$defs/OperationCatalogue", "refusals": [], "effects": "none", "concurrency": "Immutable for one contract digest: every operation with its input, result, presence rules and examples, every resource and the MCP budgets; the MCP tools, the agent tools, the browser host's actions and the command line's usage and dispatch words come from it." }
   ],
   "consumes": []
 }

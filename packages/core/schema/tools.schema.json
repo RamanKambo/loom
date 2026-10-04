@@ -896,7 +896,7 @@
         "declaration": { "description": "The .loom/loom.json to create, validated as persistent configuration.", "$ref": "workspace.schema.json#/$defs/LoomConfig" },
         "dryRun": { "description": "Return the scaffold proposal and write nothing.", "type": "boolean" },
         "expectedInspection": { "description": "The inspection digest the initialization was prepared against.", "$ref": "common.schema.json#/$defs/Hash" },
-        "access": { "description": "'read' cannot mutate, publish, run checks or change policy; 'edit' never grants acceptance.", "enum": ["read", "edit"] },
+        "access": { "$ref": "#/$defs/WorkspaceAccess" },
         "view": { "description": "Start the browser view and return its loopback URL.", "type": "boolean", "default": true },
         "workspaceId": { "$ref": "#/$defs/WorkspaceId" }
       }
@@ -1382,14 +1382,75 @@
         },
         "revision": { "description": "The model revision the event refers to.", "$ref": "common.schema.json#/$defs/Hash" },
         "operationId": { "description": "The catalogue operation that caused the event.", "type": "string", "pattern": "^[a-z][A-Za-z]*$" },
-        "summary": {
-          "description": "One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character.",
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 280,
-          "pattern": "^(?![\\s\\S]*(?:[A-Za-z]:/|(?:^|[\\s(])/[^\\s/]+/|://[^\\s/@]*@|-----BEGIN|eyJ[A-Za-z0-9_-]{8,}\\.|[Bb]earer\\s|(?:[Pp]assword|PASSWORD|[Pp]asswd|[Pp]wd|PWD|[Ss]ecret|SECRET|[Tt]oken|TOKEN|[Aa]pi[_-]?[Kk]ey|API_?KEY|AccountKey|SharedAccessSignature|sig)\\s*[=:]))[^\\u0000-\\u001f\\\\]+$"
-        },
+        "summary": { "$ref": "#/$defs/SanitizedLine" },
         "time": { "$ref": "common.schema.json#/$defs/Timestamp" }
+      }
+    },
+    "SanitizedLine": {
+      "description": "One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character, so it can be shown or logged without leaking a location or a secret.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "pattern": "^(?![\\s\\S]*(?:[A-Za-z]:/|(?:^|[\\s(])/[^\\s/]+/|://[^\\s/@]*@|-----BEGIN|eyJ[A-Za-z0-9_-]{8,}\\.|[Bb]earer\\s|(?:[Pp]assword|PASSWORD|[Pp]asswd|[Pp]wd|PWD|[Ss]ecret|SECRET|[Tt]oken|TOKEN|[Aa]pi[_-]?[Kk]ey|API_?KEY|AccountKey|SharedAccessSignature|sig)\\s*[=:]))[^\\u0000-\\u001f\\\\]+$"
+    },
+    "WorkspaceAccess": {
+      "description": "The access a workspace handle grants. 'read' cannot mutate, publish, run checks or change policy; 'edit' permits the actions the trusted policy permits and never grants acceptance.",
+      "enum": ["read", "edit"]
+    },
+    "BootstrapCapability": {
+      "description": "A short-lived, one-use capability that lets a browser exchange it once for a scoped session, carried in the URL fragment of a workspace view. It is an opaque random token, never a filesystem path, and is never logged.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{32,128}$"
+    },
+    "BrowserSessionRequest": {
+      "description": "The request body of POST /api/session on the browser host: the bootstrap capability alone, which the host accepts once, before it expires, from its own origin.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability"],
+      "properties": {
+        "capability": { "$ref": "#/$defs/BootstrapCapability" }
+      }
+    },
+    "BrowserSession": {
+      "description": "The response body of a successful POST /api/session: the workspace handles the new browser session may use, each with the access it grants, and when the session expires. The session itself travels as an HttpOnly SameSite cookie, which is transport and no member of this shape. It is not a result envelope, because the exchange runs no catalogue operation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handles", "expiresAt"],
+      "properties": {
+        "handles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["handle", "access"],
+            "properties": {
+              "handle": { "$ref": "#/$defs/WorkspaceHandle" },
+              "access": { "$ref": "#/$defs/WorkspaceAccess" }
+            }
+          }
+        },
+        "expiresAt": { "description": "When the browser session ends; a later request needs a new bootstrap capability.", "$ref": "common.schema.json#/$defs/Timestamp" }
+      }
+    },
+    "BrowserActionRequest": {
+      "description": "The request body of POST /api/workspaces/{workspaceId}/actions on the browser host: one catalogue operation and its arguments, for the workspace the route names. The revision expectations travel inside the arguments as the operation's own input defines them, 'expectedVector' in the input of a cross-model plan, apply or publish and the expectation of a single-workspace write in that write's input, so the agent tools, the command line and the browser share one home for each. The response is the same result envelope the corresponding agent or command-line action returns, refused with the same causes, so no second response shape exists.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "arguments"],
+      "properties": {
+        "operation": { "description": "The id of a catalogue operation; an id the catalogue does not hold is refused as invalid-input.", "type": "string", "pattern": "^[a-z][A-Za-z]*$" },
+        "arguments": { "description": "The operation's arguments, held opaque here because the server validates them against the input definition the catalogue names for the operation before anything runs.", "type": "object" }
+      }
+    },
+    "BrowserRejection": {
+      "description": "The body of a request the browser host refuses before any operation runs: a host or origin it does not serve, a request without a valid session, an expired or reused bootstrap capability, too many failed attempts, or a workspace id naming no handle the browser session holds. It is never a result envelope, because no operation ran. 'unknown-handle' is the refusal cause of the same name and meaning.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cause", "message"],
+      "properties": {
+        "cause": { "enum": ["host-rejected", "origin-rejected", "session-required", "bootstrap-expired", "bootstrap-reused", "rate-limited", "unknown-handle"] },
+        "message": { "description": "What was rejected, without the bootstrap capability, a path or a credential.", "$ref": "#/$defs/SanitizedLine" }
       }
     },
     "DiscoveryBudget": {
@@ -1511,12 +1572,13 @@
       "properties": {
         "catalogueVersion": { "const": 1 },
         "mcp": {
-          "description": "The MCP server as a whole: the size budget its advertised tool definitions are held to.",
+          "description": "The MCP server as a whole: the size budgets its advertised tool definitions and its initialization instructions are held to.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["toolBudget"],
+          "required": ["toolBudget", "instructionsBudget"],
           "properties": {
-            "toolBudget": { "description": "The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.", "type": "integer", "minimum": 1024 }
+            "toolBudget": { "description": "The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.", "type": "integer", "minimum": 1024 },
+            "instructionsBudget": { "description": "The most UTF-8 bytes the orientation instructions the server returns at initialization may take, so the orientation stays concise beside the client's own context.", "type": "integer", "minimum": 256 }
           }
         },
         "cli": {

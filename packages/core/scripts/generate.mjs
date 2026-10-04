@@ -752,7 +752,7 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
     '',
     ...tools.map((t, i) => `${i + 1}. ${code(t.name)}, operation ${anchor(operations.get(t.operation))}`),
     '',
-    `Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the ${code('loom://schema/<Definition>')} resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most ${catalogue.mcp.toolBudget} bytes.`,
+    `Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the ${code('loom://schema/<Definition>')} resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most ${catalogue.mcp.toolBudget} bytes, and the orientation instructions the server returns at initialization take at most ${catalogue.mcp.instructionsBudget} UTF-8 bytes.`,
     ...(agentTools.length
       ? [
           '',
@@ -892,6 +892,8 @@ function operationViews(catalogue, defs) {
     `export const CLI_COMMANDS: readonly string[] = ${json(commands)};\n`,
     "/** The most bytes one tool's advertised definition may take: name, description, input and output schema, serialized as JSON. */",
     `export const MCP_TOOL_BUDGET = ${JSON.stringify(catalogue.mcp.toolBudget)};\n`,
+    '/** The most UTF-8 bytes the orientation instructions the server returns at initialization may take. */',
+    `export const MCP_INSTRUCTIONS_BUDGET = ${JSON.stringify(catalogue.mcp.instructionsBudget)};\n`,
     '/** The CLI usage text. */',
     `export const CLI_USAGE = ${JSON.stringify(cliUsage(catalogue))};\n`,
   ].join('\n');

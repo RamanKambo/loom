@@ -6,10 +6,18 @@
   "boundary": [
     "No business validation of its own and no independently authoritative seal or acceptance state.",
     "The local undo and import comparison point is never an accepted engineering baseline.",
-    "Persistent saves apply the shared expected-revision rule."
+    "Persistent saves apply the shared expected-revision rule.",
+    "Connected to a workspace, it reads and acts only through the browser host, never the server's disk; disconnected, it shows the last content as a snapshot, disables connected actions and keeps imported evidence untrusted."
   ],
   "provides": [],
   "consumes": [
+    { "component": "browser-host", "interface": "sessionExchange" },
+    { "component": "browser-host", "interface": "workspaceSnapshot" },
+    { "component": "browser-host", "interface": "activityStream" },
+    { "component": "browser-host", "interface": "catalogueActions" },
+    { "component": "browser-host", "interface": "sessionRevocation" },
+    { "component": "browser-host", "interface": "designerAssets" },
+    { "component": "browser-host", "interface": "requestRejection" },
     { "component": "core", "interface": "validate" },
     { "component": "core", "interface": "mutate" },
     { "component": "core", "interface": "diff" },

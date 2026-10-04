@@ -1,0 +1,8 @@
+{
+  "definition": "BrowserSessionRequest",
+  "valid": [{ "capability": "example_bootstrap_capability_0001" }],
+  "invalid": [
+    { "because": "the exchange needs the bootstrap capability", "keyword": "required", "path": "", "instance": {} },
+    { "because": "the exchange carries the capability alone, never a path to open", "keyword": "additionalProperties", "path": "", "instance": { "capability": "example_bootstrap_capability_0001", "path": "services/payments" } }
+  ]
+}

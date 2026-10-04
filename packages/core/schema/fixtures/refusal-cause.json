@@ -1,7 +1,8 @@
 {
   "definition": "RefusalCause",
-  "valid": ["stale-base", "unknown-handle", "cleanup-incomplete", "recovery-required"],
+  "valid": ["stale-base", "unknown-handle", "access-denied", "cleanup-incomplete", "recovery-required"],
   "invalid": [
+    { "because": "an access refusal is one cause for every handle, whatever surface carries it", "keyword": "enum", "path": "", "instance": "read-only-handle" },
     { "because": "a refusal cause is one of the contract's causes, and restarting is never the ordinary remedy", "keyword": "enum", "path": "", "instance": "restart-required" }
   ]
 }

@@ -1,16 +1,31 @@
 {
   "icdVersion": 1,
   "id": "mcp",
-  "responsibility": "Exposes the shared core and workspace services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews.",
-  "owns": ["Tool registration with compact advertised schemas, the schema resources that hold the full contract, schema-conforming structured content with a text fallback, and protocol compatibility results."],
+  "responsibility": "Exposes the shared core, workspace and qualification services to agents as MCP tools with generated input and output schemas, structured content, bounded context and previews; dispatches the catalogued agent tools for workspaces, compositions, diagrams and qualification runs against per-session handles; serves the guidance, workspace, record, diagram and schema resources; and returns concise orientation instructions at initialization.",
+  "owns": [
+    "Tool registration with compact advertised schemas, the schema resources that hold the full contract, schema-conforming structured content with a text fallback, and protocol compatibility results.",
+    "Session routing: each call that uses stored state names a workspace handle of its own session, and no call can change another session's workspace.",
+    "Asynchronous dispatch: long work such as a qualification run or a render runs outside the request, so it never blocks status, cancellation, other workspaces or browser events."
+  ],
   "boundary": [
     "Writes only JSON-RPC to stdout.",
     "No alternative mutation, readiness or acceptance policy.",
     "Record text and retrieved documents are returned as data and never grant tool authority.",
-    "An advertised schema is a compact view; every call is validated against the full contract before anything runs."
+    "An advertised schema is a compact view; every call is validated against the full contract before anything runs.",
+    "A tool takes no shell command, connection string, URL or executable path; execution identities come from trusted local configuration.",
+    "Initialization instructions orient an agent and authorize nothing; the client decides how to present them."
   ],
   "provides": [
     { "name": "tools", "kind": "tool", "input": "none", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"], "effects": "writes", "concurrency": "A persistent mutation requires the expected base revision; two agents editing one prior revision cannot both succeed." },
+    { "name": "loom.workspace", "kind": "tool", "input": "tools.schema.json#/$defs/WorkspaceInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unresolved-context", "policy-failure", "stale-base", "unknown-handle", "cleanup-incomplete"], "effects": "writes", "concurrency": "Inspect, initialize, open, status and close by action; a handle belongs to the session that opened it, and close settles its owned work before releasing it." },
+    { "name": "loom.federation", "kind": "tool", "input": "tools.schema.json#/$defs/FederationInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "access-denied", "recovery-required"], "effects": "writes", "concurrency": "Inspect, plan, apply, check and publish by action; apply and publish write only against the expected revision vector, and an incomplete journaled change blocks further composed writes until recovery." },
+    { "name": "loom.diagram", "kind": "tool", "input": "tools.schema.json#/$defs/DiagramInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unmet-prerequisite", "unknown-handle"], "effects": "reads", "concurrency": "Renders from one snapshot within the rendering budget; the terminal rendering runs outside the request." },
+    { "name": "loom.qualify", "kind": "tool", "input": "tools.schema.json#/$defs/QualifyInput", "output": "result.schema.json#/$defs/ResultEnvelope", "refusals": ["invalid-input", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "access-denied", "cleanup-incomplete"], "effects": "executes", "concurrency": "Start returns a run handle after preflight and the run continues outside the request; status pages its progress; cancel is idempotent and completes only once the run's processes and resources have settled." },
+    { "name": "instructions", "kind": "record", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "One concise orientation text returned at initialization, the same for every session under one contract digest and at most mcp.instructionsBudget UTF-8 bytes of the operation catalogue." },
+    { "name": "guideResources", "kind": "record", "input": "none", "output": "tools.schema.json#/$defs/GuideResource", "refusals": [], "effects": "none", "concurrency": "The guidance at loom://guide/engineering, loom://guide/workflow and loom://guide/capabilities, the same for every session and fixed by the contract digest each names." },
+    { "name": "workspaceStatusResource", "kind": "record", "input": "none", "output": "tools.schema.json#/$defs/WorkspaceStatus", "refusals": ["unknown-handle"], "effects": "reads", "concurrency": "loom://workspaces/{workspaceId}/status, readable only by the session that holds the handle." },
+    { "name": "recordResources", "kind": "record", "input": "none", "output": "tools.schema.json#/$defs/RecordResource", "refusals": ["unknown-handle"], "effects": "reads", "concurrency": "loom://workspaces/{workspaceId}/records/{kind}/{id}, one whole record at the model revision it names, readable only by the session that holds the handle." },
+    { "name": "diagramResources", "kind": "record", "input": "none", "output": "diagram.schema.json#/$defs/DiagramResource", "refusals": ["unknown-handle"], "effects": "reads", "concurrency": "loom://workspaces/{workspaceId}/diagrams/{diagramId}, one diagram for the source vector it was built from, readable only by the session that holds the handle." },
     { "name": "schemaResources", "kind": "record", "input": "none", "output": "none", "refusals": [], "effects": "none", "concurrency": "The full contract of one definition at loom://schema/<Definition>, immutable for the contract digest it names; an unknown definition is a resource-not-found protocol error." }
   ],
   "consumes": [
@@ -24,11 +39,32 @@
     { "component": "core", "interface": "context" },
     { "component": "core", "interface": "checkReadiness" },
     { "component": "core", "interface": "planChange" },
+    { "component": "core", "interface": "guidance" },
+    { "component": "core", "interface": "resolveComposition" },
+    { "component": "core", "interface": "diagram" },
     { "component": "schema", "interface": "contractBundle" },
+    { "component": "schema", "interface": "operationCatalogue" },
     { "component": "workspace", "interface": "loadWorkspace" },
     { "component": "workspace", "interface": "writeModel" },
     { "component": "workspace", "interface": "readTrustedBaseline" },
     { "component": "workspace", "interface": "readPolicy" },
-    { "component": "workspace", "interface": "evidenceStore" }
+    { "component": "workspace", "interface": "evidenceStore" },
+    { "component": "workspace", "interface": "inspectWorkspace" },
+    { "component": "workspace", "interface": "initializeWorkspace" },
+    { "component": "workspace", "interface": "sessionHandles" },
+    { "component": "workspace", "interface": "openWorkspace" },
+    { "component": "workspace", "interface": "workspaceStatus" },
+    { "component": "workspace", "interface": "closeWorkspace" },
+    { "component": "workspace", "interface": "federationInspect" },
+    { "component": "workspace", "interface": "federationPlan" },
+    { "component": "workspace", "interface": "federationApply" },
+    { "component": "workspace", "interface": "federationCheck" },
+    { "component": "workspace", "interface": "federationPublish" },
+    { "component": "workspace", "interface": "federationJournal" },
+    { "component": "workspace", "interface": "workspaceLock" },
+    { "component": "qualification", "interface": "startRun" },
+    { "component": "qualification", "interface": "runStatus" },
+    { "component": "qualification", "interface": "cancelRun" },
+    { "component": "qualification", "interface": "terminalRenderer" }
   ]
 }

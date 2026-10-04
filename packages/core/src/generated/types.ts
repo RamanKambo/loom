@@ -584,7 +584,7 @@ export type ProjectionTarget =
   | 'coverage-matrix'
   | 'evidence-index';
 /**
- * Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it.
+ * Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs.
  */
 export type RefusalCause =
   | 'invalid-input'
@@ -593,6 +593,7 @@ export type RefusalCause =
   | 'policy-failure'
   | 'stale-base'
   | 'unknown-handle'
+  | 'access-denied'
   | 'cleanup-incomplete'
   | 'recovery-required';
 /**
@@ -803,6 +804,10 @@ export type DiagramFormat = 'graph' | 'mermaid' | 'terminal-ascii' | 'terminal-u
  */
 export type RunPhase = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
 /**
+ * The access a workspace handle grants. 'read' cannot mutate, publish, run checks or change policy; 'edit' permits the actions the trusted policy permits and never grants acceptance.
+ */
+export type WorkspaceAccess = 'read' | 'edit';
+/**
  * One typed change to a composition: a direct member, a boundary agreement, a member's export pin or an output claim.
  */
 export type FederationChange =
@@ -844,6 +849,14 @@ export type FederationChange =
  * The bundle a composition member publishes upward: a published contract that names its model and source commit, pins the agreement bundle it satisfies and carries the full required record closure of its exports, namely types, operations with their errors and authority, routines, mutations, security schemes, hosting requirements and evidence obligations. An export that omits a required behavior cannot qualify its consumer. PublishedContract rejects every unknown member.
  */
 export type ExportBundle = PublishedContract;
+/**
+ * One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character, so it can be shown or logged without leaking a location or a secret.
+ */
+export type SanitizedLine = string;
+/**
+ * A short-lived, one-use capability that lets a browser exchange it once for a scoped session, carried in the URL fragment of a workspace view. It is an opaque random token, never a filesystem path, and is never logged.
+ */
+export type BootstrapCapability = string;
 
 /**
  * Content of .loom/baselines/<id>.json: an accepted baseline. Model format, config version, contract versions, source revisions and generator version are recorded separately.
@@ -7221,7 +7234,10 @@ export interface ProjectionProfile {
 }
 export interface IcdInterface {
   name: string;
-  kind: 'function' | 'command' | 'tool' | 'file' | 'record';
+  /**
+   * 'route' is an HTTP route of the loopback browser host. Its interface name is an identifier, so a consumer names it the same way as any other interface, and its method and path are stated in its concurrency text.
+   */
+  kind: 'function' | 'command' | 'tool' | 'route' | 'file' | 'record';
   /**
    * Schema pointer of the input contract.
    */
@@ -7246,6 +7262,7 @@ export interface Icd {
     | 'qualification'
     | 'cli'
     | 'mcp'
+    | 'browser-host'
     | 'designer'
     | 'workflow-integration'
     | 'adopting-implementation';
@@ -7984,10 +8001,7 @@ export interface WorkspaceInput {
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
   expectedInspection?: string;
-  /**
-   * 'read' cannot mutate, publish, run checks or change policy; 'edit' never grants acceptance.
-   */
-  access?: 'read' | 'edit';
+  access?: WorkspaceAccess;
   /**
    * Start the browser view and return its loopback URL.
    */
@@ -8588,11 +8602,60 @@ export interface ActivityEvent {
    * The catalogue operation that caused the event.
    */
   operationId: string;
-  /**
-   * One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character.
-   */
-  summary: string;
+  summary: SanitizedLine;
   time: Timestamp;
+}
+/**
+ * The request body of POST /api/session on the browser host: the bootstrap capability alone, which the host accepts once, before it expires, from its own origin.
+ */
+export interface BrowserSessionRequest {
+  capability: BootstrapCapability;
+}
+/**
+ * The response body of a successful POST /api/session: the workspace handles the new browser session may use, each with the access it grants, and when the session expires. The session itself travels as an HttpOnly SameSite cookie, which is transport and no member of this shape. It is not a result envelope, because the exchange runs no catalogue operation.
+ */
+export interface BrowserSession {
+  /**
+   * @minItems 1
+   */
+  handles: {
+    handle: WorkspaceHandle;
+    access: WorkspaceAccess;
+  }[];
+  /**
+   * When the browser session ends; a later request needs a new bootstrap capability.
+   */
+  expiresAt: string;
+}
+/**
+ * The request body of POST /api/workspaces/{workspaceId}/actions on the browser host: one catalogue operation and its arguments, for the workspace the route names. The revision expectations travel inside the arguments as the operation's own input defines them, 'expectedVector' in the input of a cross-model plan, apply or publish and the expectation of a single-workspace write in that write's input, so the agent tools, the command line and the browser share one home for each. The response is the same result envelope the corresponding agent or command-line action returns, refused with the same causes, so no second response shape exists.
+ */
+export interface BrowserActionRequest {
+  /**
+   * The id of a catalogue operation; an id the catalogue does not hold is refused as invalid-input.
+   */
+  operation: string;
+  /**
+   * The operation's arguments, held opaque here because the server validates them against the input definition the catalogue names for the operation before anything runs.
+   */
+  arguments: {};
+}
+/**
+ * The body of a request the browser host refuses before any operation runs: a host or origin it does not serve, a request without a valid session, an expired or reused bootstrap capability, too many failed attempts, or a workspace id naming no handle the browser session holds. It is never a result envelope, because no operation ran. 'unknown-handle' is the refusal cause of the same name and meaning.
+ */
+export interface BrowserRejection {
+  cause:
+    | 'host-rejected'
+    | 'origin-rejected'
+    | 'session-required'
+    | 'bootstrap-expired'
+    | 'bootstrap-reused'
+    | 'rate-limited'
+    | 'unknown-handle';
+  /**
+   * One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character, so it can be shown or logged without leaking a location or a secret.
+   */
+  message: string;
 }
 /**
  * The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.
@@ -8708,13 +8771,17 @@ export interface RecordResource {
 export interface OperationCatalogue {
   catalogueVersion: 1;
   /**
-   * The MCP server as a whole: the size budget its advertised tool definitions are held to.
+   * The MCP server as a whole: the size budgets its advertised tool definitions and its initialization instructions are held to.
    */
   mcp: {
     /**
      * The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.
      */
     toolBudget: number;
+    /**
+     * The most UTF-8 bytes the orientation instructions the server returns at initialization may take, so the orientation stays concise beside the client's own context.
+     */
+    instructionsBudget: number;
   };
   /**
    * The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.

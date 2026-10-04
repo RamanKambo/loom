@@ -1,0 +1,9 @@
+{
+  "definition": "SanitizedLine",
+  "valid": ["The ordering SQL schema is rendered (2 tables).", "The request came from another origin."],
+  "invalid": [
+    { "because": "a line holds no local path", "keyword": "pattern", "path": "", "instance": "Could not read C:/work/shop/.loom/model.json" },
+    { "because": "a line holds no credential-shaped value", "keyword": "pattern", "path": "", "instance": "Rejected token=abc123" },
+    { "because": "a line is one bounded line", "keyword": "pattern", "path": "", "instance": "first line\nsecond line" }
+  ]
+}

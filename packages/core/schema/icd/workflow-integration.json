@@ -14,6 +14,15 @@
   "consumes": [
     { "component": "cli", "interface": "commands" },
     { "component": "mcp", "interface": "tools" },
+    { "component": "mcp", "interface": "loom.workspace" },
+    { "component": "mcp", "interface": "loom.federation" },
+    { "component": "mcp", "interface": "loom.diagram" },
+    { "component": "mcp", "interface": "loom.qualify" },
+    { "component": "mcp", "interface": "instructions" },
+    { "component": "mcp", "interface": "guideResources" },
+    { "component": "mcp", "interface": "workspaceStatusResource" },
+    { "component": "mcp", "interface": "recordResources" },
+    { "component": "mcp", "interface": "diagramResources" },
     { "component": "mcp", "interface": "schemaResources" }
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "definition": "BrowserActionRequest",
+  "valid": [
+    {
+      "operation": "mutate",
+      "arguments": { "workspace": true, "expectedRevision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "patch": { "op": "update", "collection": "operations", "id": "order.get", "set": { "description": "Read one order by its id." } } }
+    },
+    {
+      "operation": "federationApply",
+      "arguments": { "action": "apply", "workspaceId": "ws_3f9a1c7d", "proposalId": "prop-1", "expectedVector": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+    },
+    { "operation": "workspaceStatus", "arguments": { "action": "status", "workspaceId": "ws_3f9a1c7d" } }
+  ],
+  "invalid": [
+    { "because": "an action names its catalogue operation by id", "keyword": "pattern", "path": "/operation", "instance": { "operation": "loom.mutate", "arguments": {} } },
+    { "because": "an action carries its arguments, even when they are empty", "keyword": "required", "path": "", "instance": { "operation": "workspaceStatus" } },
+    { "because": "revision expectations travel inside the operation's arguments, never beside them", "keyword": "additionalProperties", "path": "", "instance": { "operation": "mutate", "arguments": {}, "expectation": { "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "config": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "policy": null, "imports": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" } } },
+    { "because": "an action request carries no member outside its contract, such as a command to run", "keyword": "additionalProperties", "path": "", "instance": { "operation": "qualifyStart", "arguments": {}, "command": "sqlcmd -Q \"SELECT 1\"" } }
+  ]
+}
