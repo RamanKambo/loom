@@ -1,0 +1,8 @@
+{
+  "definition": "PowerShellEdition",
+  "valid": ["Desktop", "Core"],
+  "invalid": [
+    { "because": "an edition is the value $PSVersionTable.PSEdition reports, with its exact case", "keyword": "enum", "path": "", "instance": "core" },
+    { "because": "a version is not an edition", "keyword": "enum", "path": "", "instance": "7.4" }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "definition": "RunCleanup",
+  "valid": [
+    {
+      "state": "clean",
+      "outcomes": [
+        { "kind": "database", "identity": "loom_catalog_1a2b3c4d", "outcome": "done" },
+        { "kind": "file", "identity": "databases/loom_catalog_1a2b3c4d.mdf", "outcome": "done" },
+        { "kind": "instance", "identity": "loom-1a2b3c4d", "outcome": "done" }
+      ],
+      "actions": [
+        { "phase": "quiesce", "action": "Close the run's connections and await its child processes.", "outcome": "done" },
+        { "phase": "remove-databases", "action": "Drop the run's databases and verify their catalog absence.", "outcome": "done" },
+        { "phase": "stop", "action": "Stop the owned instance.", "outcome": "done" },
+        { "phase": "release", "action": "Delete the owned instance and release the lease.", "outcome": "done" }
+      ],
+      "residual": []
+    },
+    {
+      "state": "failed",
+      "outcomes": [
+        { "kind": "database", "identity": "loom_behavior_1a2b3c4d", "outcome": "done" },
+        { "kind": "process", "identity": "process 4120 created 2026-10-04T09:00:01.250Z", "outcome": "failed", "detail": "The engine process did not exit within the cleanup deadline." }
+      ],
+      "actions": [{ "phase": "stop", "action": "Stop the owned instance, then escalate to the owned process.", "outcome": "failed" }],
+      "residual": [{ "kind": "process", "identity": "process 4120 created 2026-10-04T09:00:01.250Z" }, { "kind": "instance", "identity": "loom-1a2b3c4d" }],
+      "recovery": { "journal": "run.20261004090000.1a2b3c4d", "action": "Run qualification recovery, which verifies the recorded owner before it stops and deletes the instance." }
+    }
+  ],
+  "invalid": [
+    { "because": "cleanup is pending, running, clean or failed", "keyword": "enum", "path": "/state", "instance": { "state": "residual", "outcomes": [], "actions": [], "residual": [] } },
+    { "because": "a residual resource is identified by kind and identity", "keyword": "required", "path": "/residual/0", "instance": { "state": "failed", "outcomes": [], "actions": [], "residual": [{ "kind": "instance" }] } },
+    { "because": "an attempted action belongs to a resource-lifecycle phase", "keyword": "enum", "path": "/actions/0/phase", "instance": { "state": "failed", "outcomes": [], "actions": [{ "phase": "cleanup", "action": "Stop the instance.", "outcome": "failed" }], "residual": [] } },
+    { "because": "a run cleanup carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "state": "clean", "outcomes": [], "actions": [], "residual": [], "complete": true } }
+  ]
+}

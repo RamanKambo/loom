@@ -1,10 +1,21 @@
 {
   "definition": "QualifyCancelData",
   "valid": [
-    { "runId": "run-1", "cancellation": "requested", "phase": "cancelling", "cleanup": { "complete": false, "steps": [{ "step": "cancel-runs", "outcome": "done" }], "residual": [] } },
-    { "runId": "run-1", "cancellation": "completed", "phase": "cancelled", "cleanup": { "complete": true, "steps": [{ "step": "stop-processes", "outcome": "done" }, { "step": "remove-resources", "outcome": "done" }], "residual": [] } }
+    { "runId": "run-1", "cancellation": "requested", "phase": "cancelling", "cleanup": { "state": "running", "outcomes": [], "actions": [{ "phase": "quiesce", "action": "Cancel the running batch and close the run's connections.", "outcome": "done" }], "residual": [] } },
+    {
+      "runId": "run-1",
+      "cancellation": "completed",
+      "phase": "cancelled",
+      "cleanup": {
+        "state": "clean",
+        "outcomes": [{ "kind": "database", "identity": "loom_behavior_1a2b3c4d", "outcome": "done" }, { "kind": "instance", "identity": "loom-1a2b3c4d", "outcome": "done" }],
+        "actions": [{ "phase": "remove-databases", "action": "Drop the run's databases and verify their catalog absence.", "outcome": "done" }, { "phase": "stop", "action": "Stop the owned instance.", "outcome": "done" }],
+        "residual": []
+      }
+    }
   ],
   "invalid": [
-    { "because": "a cancellation is requested or completed, never assumed", "keyword": "enum", "path": "/cancellation", "instance": { "runId": "run-1", "cancellation": "pending", "phase": "cancelling", "cleanup": { "complete": false, "steps": [], "residual": [] } } }
+    { "because": "a cancellation is requested or completed, never assumed", "keyword": "enum", "path": "/cancellation", "instance": { "runId": "run-1", "cancellation": "pending", "phase": "cancelling", "cleanup": { "state": "pending", "outcomes": [], "actions": [], "residual": [] } } },
+    { "because": "a run's cancellation reports the run cleanup, not a workspace close report", "keyword": "required", "path": "/cleanup", "instance": { "runId": "run-1", "cancellation": "completed", "phase": "cancelled", "cleanup": { "complete": true, "steps": [], "residual": [] } } }
   ]
 }

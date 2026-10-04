@@ -1,0 +1,8 @@
+{
+  "definition": "ProviderKind",
+  "valid": ["localdb", "developer-service"],
+  "invalid": [
+    { "because": "no arbitrary database endpoint is a provider", "keyword": "enum", "path": "", "instance": "remote-server" },
+    { "because": "an automatic shared LocalDB instance is never a target", "keyword": "enum", "path": "", "instance": "mssqllocaldb" }
+  ]
+}

@@ -15,11 +15,26 @@
       "substitutes": [{ "kind": "test-double", "permits": ["implementation"], "limits": "Never satisfies a real database or service integration obligation." }],
       "qualification": { "required": ["sql.behavior"], "optional": ["sql.operations"] },
       "environments": [{ "id": "localdb-fixture", "kind": "disposable-fixture", "designated": true, "description": "Per-run LocalDB database created and dropped by the qualification runner." }],
+      "execution": { "providers": ["localdb"], "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 } },
       "freeze": { "onAcceptance": true, "defectFixRequalify": ["conformance"] }
+    },
+    {
+      "policyVersion": 1,
+      "id": "no-sql",
+      "revision": 1,
+      "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] },
+      "changeClasses": [],
+      "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } },
+      "substitutes": [],
+      "qualification": { "required": [], "optional": [] },
+      "environments": [],
+      "execution": { "providers": [], "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 } }
     }
   ],
   "invalid": [
-    { "because": "a trusted ref must be a fully qualified Git ref", "keyword": "pattern", "path": "/trust/ref", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [] } },
-    { "because": "an approval mode outside the vocabulary is rejected", "keyword": "enum", "path": "/changeClasses/0/approval", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [{ "id": "c", "description": "x", "match": {}, "approval": "agent-approved" }], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [] } }
+    { "because": "a trusted ref must be a fully qualified Git ref", "keyword": "pattern", "path": "/trust/ref", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [], "execution": { "providers": [], "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 } } } },
+    { "because": "an approval mode outside the vocabulary is rejected", "keyword": "enum", "path": "/changeClasses/0/approval", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [{ "id": "c", "description": "x", "match": {}, "approval": "agent-approved" }], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [], "execution": { "providers": [], "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 } } } },
+    { "because": "a policy states the providers and budgets its runs execute under", "keyword": "required", "path": "", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [] } },
+    { "because": "an execution policy names providers by id and accepts no endpoint", "keyword": "additionalProperties", "path": "/execution", "instance": { "policyVersion": 1, "id": "p", "revision": 1, "trust": { "ref": "refs/heads/main", "acceptanceVia": "trusted-ref", "acceptanceKeys": [], "evidenceKeys": [] }, "changeClasses": [], "readiness": { "implementation": { "requires": "none" }, "integration": { "evidence": [] }, "release": { "evidence": [] } }, "substitutes": [], "qualification": { "required": [], "optional": [] }, "environments": [], "execution": { "providers": ["localdb"], "endpoint": "unlisted-server", "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 } } } }
   ]
 }

@@ -1,0 +1,7 @@
+{
+  "definition": "RunResourceKind",
+  "valid": ["instance", "database", "file", "directory", "process", "service-startup"],
+  "invalid": [
+    { "because": "an evidence directory is outside the run's owned resources and never removed by cleanup", "keyword": "enum", "path": "", "instance": "evidence" }
+  ]
+}

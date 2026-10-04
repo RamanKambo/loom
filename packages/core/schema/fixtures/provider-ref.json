@@ -1,0 +1,11 @@
+{
+  "definition": "ProviderRef",
+  "valid": [
+    { "kind": "localdb", "id": "localdb" },
+    { "kind": "developer-service", "id": "sql-developer" }
+  ],
+  "invalid": [
+    { "because": "a provider is named by its configuration entry, never by a connection string", "keyword": "additionalProperties", "path": "", "instance": { "kind": "localdb", "id": "localdb", "connectionString": "unlisted" } },
+    { "because": "a provider reference names the entry it selects", "keyword": "required", "path": "", "instance": { "kind": "localdb" } }
+  ]
+}

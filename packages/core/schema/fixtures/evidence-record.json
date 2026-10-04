@@ -17,9 +17,27 @@
       "limits": "Declared procedure contract subset in a disposable fixture.",
       "inputs": [{ "ref": "storage:ordering.orders", "hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555" }],
       "signature": { "keyId": "ci-runner", "algorithm": "ed25519", "value": "AAAA" }
+    },
+    {
+      "evidenceVersion": 1,
+      "id": "ev.powershell-conformance.0001",
+      "claims": [{ "kind": "check", "ref": "powershell.conformance" }],
+      "kind": "conformance",
+      "check": { "id": "powershell.conformance", "revision": 1, "definitionHash": "sha256:6666666666666666666666666666666666666666666666666666666666666666" },
+      "artifacts": [],
+      "sources": [{ "repository": ".", "revision": "a9ce204" }],
+      "environment": { "id": "process", "kind": "process" },
+      "tool": { "name": "powershell", "version": "5.1.26100.9444", "edition": "Desktop" },
+      "result": "PASS",
+      "run": { "id": "run.0002", "runner": "ci", "startedAt": "2026-10-04T10:00:00Z", "finishedAt": "2026-10-04T10:00:09Z" },
+      "boundaries": [],
+      "limits": "Routine contracts under Windows PowerShell 5.1 only.",
+      "inputs": []
     }
   ],
   "invalid": [
+    { "because": "a PowerShell edition is Desktop or Core", "keyword": "enum", "path": "/tool/edition", "instance": { "evidenceVersion": 1, "id": "e", "claims": [{ "kind": "check", "ref": "x" }], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "process" }, "tool": { "name": "pwsh", "version": "7.6.6", "edition": "PowerShell 7" }, "result": "PASS", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } },
+    { "because": "an environment kind outside the vocabulary is rejected", "keyword": "enum", "path": "/environment/kind", "instance": { "evidenceVersion": 1, "id": "e", "claims": [{ "kind": "check", "ref": "x" }], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "laptop" }, "tool": { "name": "node", "version": "24" }, "result": "PASS", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } },
     { "because": "a result outside PASS, FAIL, UNKNOWN and NOT_APPLICABLE is rejected", "keyword": "enum", "path": "/result", "instance": { "evidenceVersion": 1, "id": "e", "claims": [{ "kind": "check", "ref": "x" }], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "process" }, "tool": { "name": "node", "version": "24" }, "result": "SKIPPED", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } },
     { "because": "evidence without a claim is rejected", "keyword": "minItems", "path": "/claims", "instance": { "evidenceVersion": 1, "id": "e", "claims": [], "kind": "unit", "check": { "id": "x", "revision": 1, "definitionHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }, "artifacts": [], "sources": [], "environment": { "id": "p", "kind": "process" }, "tool": { "name": "node", "version": "24" }, "result": "PASS", "run": { "id": "r", "runner": "ci", "startedAt": "2026-10-03T10:00:00Z", "finishedAt": "2026-10-03T10:00:05Z" }, "boundaries": [], "limits": "x", "inputs": [] } }
   ]

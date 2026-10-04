@@ -1,0 +1,37 @@
+{
+  "definition": "AllocationJournal",
+  "valid": [
+    {
+      "journalVersion": 1,
+      "runId": "run.20261004090000.1a2b3c4d",
+      "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" } },
+      "provider": { "kind": "localdb", "id": "localdb" },
+      "phases": [
+        { "phase": "preflight", "startedAt": "2026-10-04T09:00:00Z", "finishedAt": "2026-10-04T09:00:00.400Z" },
+        { "phase": "reserve", "startedAt": "2026-10-04T09:00:00.400Z", "finishedAt": "2026-10-04T09:00:00.450Z" },
+        { "phase": "start", "startedAt": "2026-10-04T09:00:00.450Z" }
+      ],
+      "resources": [
+        { "kind": "instance", "identity": "loom-1a2b3c4d", "path": "C:\\loom\\instances\\loom-1a2b3c4d", "state": "created" },
+        { "kind": "process", "identity": "sqlservr", "process": { "pid": 4120, "createdAt": "2026-10-04T09:00:01.250Z" }, "state": "created" },
+        { "kind": "database", "identity": "loom_catalog_1a2b3c4d", "state": "intended" }
+      ],
+      "cleanupClaim": { "holder": "coordinator", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" }, "claimedAt": "2026-10-04T09:00:00.420Z" }
+    },
+    {
+      "journalVersion": 1,
+      "runId": "run.20261004091500.5e6f7a8b",
+      "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": { "pid": 5012, "createdAt": "2026-10-04T09:14:59Z" } },
+      "provider": { "kind": "developer-service", "id": "sql-developer" },
+      "phases": [{ "phase": "preflight", "startedAt": "2026-10-04T09:15:00Z" }],
+      "resources": []
+    }
+  ],
+  "invalid": [
+    { "because": "a journal records the owning process with its creation time, not a bare process id", "keyword": "type", "path": "/owner/process", "instance": { "journalVersion": 1, "runId": "run-1", "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": 3964 }, "provider": { "kind": "localdb", "id": "localdb" }, "phases": [], "resources": [] } },
+    { "because": "the owning account is recorded as a hash, never by name", "keyword": "pattern", "path": "/owner/user", "instance": { "journalVersion": 1, "runId": "run-1", "owner": { "user": "a-user-name", "session": "sess_7c1e9a2b", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" } }, "provider": { "kind": "localdb", "id": "localdb" }, "phases": [], "resources": [] } },
+    { "because": "only the coordinator, the guardian or recovery holds the cleanup claim", "keyword": "enum", "path": "/cleanupClaim/holder", "instance": { "journalVersion": 1, "runId": "run-1", "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" } }, "provider": { "kind": "localdb", "id": "localdb" }, "phases": [], "resources": [], "cleanupClaim": { "holder": "scheduled-task", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" }, "claimedAt": "2026-10-04T09:00:00Z" } } },
+    { "because": "a journaled resource is intended, created, removed or residual", "keyword": "enum", "path": "/resources/0/state", "instance": { "journalVersion": 1, "runId": "run-1", "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" } }, "provider": { "kind": "localdb", "id": "localdb" }, "phases": [], "resources": [{ "kind": "database", "identity": "loom_catalog_1a2b3c4d", "state": "probably-gone" }] } },
+    { "because": "a journal carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "journalVersion": 1, "runId": "run-1", "owner": { "user": "sha256:7777777777777777777777777777777777777777777777777777777777777777", "session": "sess_7c1e9a2b", "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" } }, "provider": { "kind": "localdb", "id": "localdb" }, "phases": [], "resources": [], "connectionString": "unlisted" } }
+  ]
+}

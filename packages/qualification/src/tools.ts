@@ -217,6 +217,13 @@ export function defaultToolLocator(): ToolLocator {
         const r = await runPwsh(exe, '[pscustomobject]@{ version = $PSVersionTable.PSVersion.ToString() } | ConvertTo-Json -Compress', { timeoutMs: PROBE_TIMEOUT_MS });
         return r.ok ? [{ name, path: exe, version: String(r.json['version']) }] : `pwsh did not report its version: ${r.reason}`;
       }
+      case 'powershell': {
+        // Windows PowerShell 5.1 is a separate executable from pwsh; it is never located through pwsh or in its place.
+        const exe = which('powershell');
+        if (!exe) return 'powershell is not on PATH';
+        const r = await runPwsh(exe, '[pscustomobject]@{ version = $PSVersionTable.PSVersion.ToString() } | ConvertTo-Json -Compress', { timeoutMs: PROBE_TIMEOUT_MS });
+        return r.ok ? [{ name, path: exe, version: String(r.json['version']) }] : `powershell did not report its version: ${r.reason}`;
+      }
       case 'pester': {
         const pwsh = await candidates('pwsh');
         if (typeof pwsh === 'string') return `Pester needs pwsh: ${pwsh}`;

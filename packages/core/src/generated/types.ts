@@ -94,9 +94,51 @@ export type SubstituteKind = 'mock' | 'test-double' | 'stub' | 'fixture' | 'emul
  */
 export type TaskClass = 'discovery' | 'specification' | 'implementation' | 'integration' | 'release' | 'operations';
 /**
+ * The kind of environment a check executes in: the local process, a disposable fixture the run owns, or a designated ci, test, staging or production environment.
+ */
+export type EnvironmentKind = 'process' | 'disposable-fixture' | 'ci' | 'test' | 'staging' | 'production';
+/**
  * Result of one executed check. NOT_APPLICABLE requires a recorded justification.
  */
 export type CheckResult = 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+/**
+ * A target SQL platform: the platform a storage record maps onto and the platform a qualification run qualifies.
+ */
+export type SqlPlatform = 'sqlserver-2019' | 'sqlserver-2022' | 'azure-sql-database';
+/**
+ * The kind of a disposable SQL provider. 'localdb' is a LocalDB instance the run creates and owns; 'developer-service' is a dedicated Developer edition service, provisioned separately and used only for development and testing, which a run starts and stops and never takes over while it already runs.
+ */
+export type ProviderKind = 'localdb' | 'developer-service';
+/**
+ * The state of a run's cleanup. 'clean' holds only when every owned database, file, process and service is removed, stopped or restored and nothing owned is residual; 'failed' keeps the allocation journal so that recovery can settle what is residual.
+ */
+export type CleanupState = 'pending' | 'running' | 'clean' | 'failed';
+/**
+ * A kind of resource a SQL run owns: the engine instance (the LocalDB instance it created or the dedicated service it started), a database, a file, a directory, a process, or the temporary startup-mode change of a service.
+ */
+export type RunResourceKind = 'instance' | 'database' | 'file' | 'directory' | 'process' | 'service-startup';
+/**
+ * The outcome of one cleanup step or owned resource: 'done' when it was cancelled, stopped, removed or restored as its kind requires, 'not-needed' when there was nothing to do, and 'failed' otherwise.
+ */
+export type CleanupOutcome = 'done' | 'not-needed' | 'failed';
+/**
+ * A resource-lifecycle phase of a disposable SQL run, in the order a run passes through them: preflight validates the tools, capabilities, free disk, permissions and trusted scripts; reserve takes the lease and journals the allocation intent; start starts the owned engine; prepare creates the run's databases; execute runs the checks; capture persists their outcomes outside the disposable directory; quiesce stops remaining work; remove-databases drops the run's databases; stop stops the engine; and release removes the owned instance, restores the service startup state and releases the lease. RunPhase is the separate stage a run handle reports.
+ */
+export type LifecyclePhase =
+  | 'preflight'
+  | 'reserve'
+  | 'start'
+  | 'prepare'
+  | 'execute'
+  | 'capture'
+  | 'quiesce'
+  | 'remove-databases'
+  | 'stop'
+  | 'release';
+/**
+ * Opaque identity of one agent or browser session; never a credential.
+ */
+export type SessionId = string;
 /**
  * Declared stable identity of a persistent model, the same wherever its repository is checked out; never a path.
  */
@@ -120,6 +162,10 @@ export type CalendarDate = string;
  */
 export type Duration = string;
 /**
+ * An absolute path on the local machine: a drive letter or a root slash, never a network share and never a '..' segment. Only a machine-local record that is never committed, projected or signed holds one, because the location differs on every machine; a path that names repository content is a RelativePath.
+ */
+export type MachinePath = string;
+/**
  * Epistemic status of a claim. 'accepted' is honoured only when a trusted acceptance record covers the claim; the stored word alone grants nothing.
  */
 export type Basis = 'sourced' | 'observed' | 'assumed' | 'proposed' | 'accepted';
@@ -127,6 +173,20 @@ export type Basis = 'sourced' | 'observed' | 'assumed' | 'proposed' | 'accepted'
  * Contract maturity, distinct from task phase and from deployment state.
  */
 export type Maturity = 'proposed' | 'accepted' | 'implemented' | 'qualified';
+/**
+ * The typed cause of an UNKNOWN result: what kept a check from establishing PASS or FAIL. 'tool-absent', 'version-policy', 'unreadable', 'crashed' and 'timeout' name the tool or its run; 'connection' and 'login' the database it had to reach; 'cancelled' a run cancelled before the check finished; 'insufficient-resources' a fixture that cannot run inside the run budgets, which never raises a limit; and 'provider-blocked' a provider that trusted configuration or the service permissions do not let the run start. A required UNKNOWN never qualifies.
+ */
+export type UnavailableCause =
+  | 'tool-absent'
+  | 'version-policy'
+  | 'unreadable'
+  | 'crashed'
+  | 'timeout'
+  | 'connection'
+  | 'login'
+  | 'cancelled'
+  | 'insufficient-resources'
+  | 'provider-blocked';
 /**
  * Identifier of an applicable design concern from the behavior profile, for example 'operation.idempotency'.
  */
@@ -161,11 +221,15 @@ export type TargetReference =
         id: string;
       };
     };
+/**
+ * A native tool a check or a renderer runs. 'pwsh' is the PowerShell executable of the Core edition and 'powershell' the Windows PowerShell 5.1 executable of the Desktop edition; they are separate tools, and one never stands in for the other.
+ */
 export type ToolName =
   | 'node'
   | 'tsc'
   | 'dotnet'
   | 'pwsh'
+  | 'powershell'
   | 'pester'
   | 'sqlcmd'
   | 'sqllocaldb'
@@ -498,6 +562,10 @@ export type Patch =
   | PatchRenameAgreements
   | PatchSetSystemProfile
   | PatchClearSystemProfile;
+/**
+ * The edition a PowerShell executable reports in $PSVersionTable.PSEdition: 'Desktop' for Windows PowerShell 5.1 and 'Core' for PowerShell 7. A PowerShell check declares the edition it actually ran, because a script can behave differently under the other edition.
+ */
+export type PowerShellEdition = 'Desktop' | 'Core';
 export type ProjectionTarget =
   | 'json-schema'
   | 'openapi'
@@ -727,10 +795,6 @@ export type WorkflowPhase =
  */
 export type DiscoveryPath = string;
 /**
- * Opaque identity of one agent or browser session; never a credential.
- */
-export type SessionId = string;
-/**
  * A rendering of a diagram: the structured graph, Mermaid text, or terminal text in ASCII or Unicode.
  */
 export type DiagramFormat = 'graph' | 'mermaid' | 'terminal-ascii' | 'terminal-unicode';
@@ -949,6 +1013,16 @@ export interface Policy {
     designated: boolean;
     description: Text;
   }[];
+  /**
+   * How SQL qualification runs execute under this policy: the providers of trusted local configuration it permits, by id, and the budgets every run is held to. A run is never permitted a provider outside this list.
+   */
+  execution: {
+    /**
+     * Ids of entries in the trusted local provider configuration; an empty list permits no SQL provider.
+     */
+    providers: Id[];
+    budgets: RunBudgets;
+  };
   freeze?: {
     /**
      * Freeze every component of an accepted baseline.
@@ -964,6 +1038,39 @@ export interface Substitute {
    */
   permits: TaskClass[];
   limits: Text;
+}
+/**
+ * The resource budgets of one disposable SQL run, held by the trusted execution policy. The values a policy states are conservative policy defaults, not vendor sizing claims and no guarantee that every fixture fits; a fixture that cannot run inside them reports insufficient resources and never raises a limit. The configured maximum server memory does not cap every allocation of the engine process, so a run records its actual peak working set beside the limits it applied.
+ */
+export interface RunBudgets {
+  /**
+   * Wall-clock time of the whole test execution, in seconds.
+   */
+  totalDeadlineSeconds: number;
+  /**
+   * Wall-clock time of one command, in seconds; a check may declare a stricter deadline, never a longer one.
+   */
+  commandDeadlineSeconds: number;
+  /**
+   * Time for the engine to start and accept a connection, in seconds.
+   */
+  engineStartDeadlineSeconds: number;
+  /**
+   * Time for cleanup to settle every owned resource, in seconds.
+   */
+  cleanupDeadlineSeconds: number;
+  /**
+   * Bytes the data and log files of the run's databases may grow to; the growth limit is set before data loading.
+   */
+  fixtureFileBytes: number;
+  /**
+   * The engine's configured maximum server memory, in MiB.
+   */
+  maxServerMemoryMiB: number;
+  /**
+   * The engine's configured maximum degree of parallelism; at least 1, so the budget always names a bound.
+   */
+  maxDegreeOfParallelism: number;
 }
 export interface EvidenceClaim {
   kind: 'criterion' | 'retainedBehavior' | 'migration' | 'check' | 'contract' | 'release';
@@ -993,7 +1100,7 @@ export interface EvidenceRecord {
   sources: SourceRevision[];
   environment: {
     id: Id;
-    kind: 'process' | 'disposable-fixture' | 'ci' | 'test' | 'staging' | 'production';
+    kind: EnvironmentKind;
     /**
      * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
      */
@@ -1002,6 +1109,10 @@ export interface EvidenceRecord {
   tool: {
     name: string;
     version: string;
+    /**
+     * The edition a PowerShell executable reported when it ran the check.
+     */
+    edition?: 'Desktop' | 'Core';
   };
   result: CheckResult;
   reason?: string;
@@ -1030,38 +1141,340 @@ export interface EvidenceRecord {
   signature?: Signature;
 }
 /**
- * One coordinated qualification run over an exact revision set.
+ * One coordinated qualification run over an exact revision set: the inputs it qualified, the checks it ran with their outcomes, the evidence it stored and its test outcome, and for a database run its target, provider, engine version, cleanup, resource usage and applied limits.
  */
 export interface RunRecord {
   runVersion: 1;
-  id: Id;
+  runId: Id;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  inputDigest: string;
   runner: Id;
   startedAt: Timestamp;
   finishedAt: Timestamp;
+  /**
+   * The exact inputs the run qualified. Every path is relative to the run root, so the set and its digest name no machine location.
+   */
   revisionSet: {
     contractDigest: Hash;
     sources: SourceRevision[];
-    model?: Hash;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    model?: string;
     config?: Hash;
-    bundle?: Hash;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    bundle?: string;
     profiles: {
       id: string;
       version: number;
       hash: Hash;
     }[];
+    /**
+     * The trusted execution policy the run ran under.
+     */
+    policy?: {
+      ref: Id;
+      revision: number;
+      hash: Hash;
+    };
+    /**
+     * The adopting implementation's files the run executed, such as its actual schema and routine scripts, each with the hash of its exact bytes; a generated conforming example never stands in for them.
+     */
+    implementation?: {
+      path: RelativePath;
+      hash: Hash;
+    }[];
+    /**
+     * The authored fixture files the run loaded, each with the hash of its exact bytes.
+     */
+    fixtures?: {
+      path: RelativePath;
+      hash: Hash;
+    }[];
+    /**
+     * The files holding the expected assertions the run checked, each with the hash of its exact bytes.
+     */
+    assertions?: {
+      path: RelativePath;
+      hash: Hash;
+    }[];
   };
+  /**
+   * The target SQL platform the run qualifies and the engine capabilities its fixtures declare they need, which preflight compares with the engine; a database run states it.
+   */
+  target?: {
+    platform: SqlPlatform;
+    /**
+     * Declared engine capabilities, such as full-text-search; a capability the provider's engine lacks makes the dependent checks unavailable.
+     */
+    capabilities: string[];
+  };
+  provider?: ProviderRef;
+  /**
+   * The engine version measured when the engine started, which can differ from the version its provider entry names; a database run states it.
+   */
+  engineVersion?: string;
+  /**
+   * Items: One check's outcome: passed is PASS, failed is FAIL, unavailable is UNKNOWN with the cause and the provisioned dependency the check lacks, and cancelled is UNKNOWN with the cause 'cancelled'. A required UNKNOWN keeps the test outcome from PASS. The evidence of a check is the stored record whose 'check.id' names it.
+   */
   checks: {
     check: Id;
     required: boolean;
     result: CheckResult;
-    evidence?: Id;
+    /**
+     * Why the result is UNKNOWN.
+     */
+    cause?:
+      | 'tool-absent'
+      | 'version-policy'
+      | 'unreadable'
+      | 'crashed'
+      | 'timeout'
+      | 'connection'
+      | 'login'
+      | 'cancelled'
+      | 'insufficient-resources'
+      | 'provider-blocked';
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    dependency?: string;
     reason?: string;
   }[];
   /**
+   * The id of every evidence record the run produced, in run order.
+   */
+  evidenceRefs: Id[];
+  /**
    * Result of one executed check. NOT_APPLICABLE requires a recorded justification.
    */
-  aggregate: 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+  testOutcome: 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+  /**
+   * The lifecycle outcome. 'succeeded' only when the test outcome is PASS and cleanup is 'clean'; 'unsuccessful' when the test outcome is not PASS or cleanup is not 'clean', the test evidence being kept even when cleanup failed; 'cancelled' when a cancellation completed once the run's processes and resources settled.
+   */
+  outcome?: 'succeeded' | 'unsuccessful' | 'cancelled';
+  cleanup?: RunCleanup;
+  /**
+   * What the run measured using, because the configured limits do not bound every allocation.
+   */
+  resourceUsage?: {
+    /**
+     * The peak working set of the engine process, in bytes.
+     */
+    peakWorkingSetBytes: number;
+    /**
+     * The most disk the run's owned files took, in bytes.
+     */
+    diskBytes: number;
+    /**
+     * How long each lifecycle phase the run entered took.
+     */
+    phaseDurations: {
+      phase: LifecyclePhase;
+      milliseconds: number;
+    }[];
+  };
+  /**
+   * The resource limits the run applied, unlike an evidence record's 'limits', which states what a PASS does not establish: the budgets of its execution policy and, for each limit, whether the host enforced it. The configured maximum server memory does not cap every allocation of the engine process, so whether an operating-system limit held the process is recorded rather than assumed.
+   */
+  limits?: {
+    budgets: RunBudgets;
+    /**
+     * Whether each limit was enforced: a member of RunBudgets by its name, or 'processMemory', an operating-system limit on the memory of the engine process.
+     */
+    enforcement: {
+      limit:
+        | 'totalDeadlineSeconds'
+        | 'commandDeadlineSeconds'
+        | 'engineStartDeadlineSeconds'
+        | 'cleanupDeadlineSeconds'
+        | 'fixtureFileBytes'
+        | 'maxServerMemoryMiB'
+        | 'maxDegreeOfParallelism'
+        | 'processMemory';
+      enforced: boolean;
+      /**
+       * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+       */
+      mechanism?: string;
+    }[];
+  };
   signature?: Signature;
+}
+/**
+ * The provider the run selected; a database run states it.
+ */
+export interface ProviderRef {
+  kind: ProviderKind;
+  id: Id;
+}
+/**
+ * The cleanup of one SQL run: its state, the outcome for each owned database, file, process and service, the actions attempted, the owned resources still residual and the recovery that settles them. Test evidence is kept whatever the state, and a run's lifecycle succeeds only when its cleanup is 'clean'.
+ */
+export interface RunCleanup {
+  state: CleanupState;
+  /**
+   * The cleanup outcome of each owned resource.
+   */
+  outcomes: {
+    kind: RunResourceKind;
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    identity: string;
+    outcome: CleanupOutcome;
+    detail?: Text;
+  }[];
+  /**
+   * Each cleanup action attempted, in order, with the lifecycle phase it belongs to and its outcome.
+   */
+  actions: {
+    phase: LifecyclePhase;
+    action: Text;
+    outcome: CleanupOutcome;
+  }[];
+  /**
+   * The owned resources cleanup did not settle.
+   */
+  residual: {
+    kind: RunResourceKind;
+    identity: Text;
+  }[];
+  /**
+   * What settles the residual resources: the run whose allocation journal records them and the recovery action to take. A cleanup with a residual resource states it.
+   */
+  recovery?: {
+    /**
+     * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+     */
+    journal: string;
+    action: Text;
+  };
+}
+/**
+ * The SQL provider a run selected: its kind and the id of its entry in trusted local provider configuration. No endpoint, connection string or path stands in for it.
+ */
+export interface ProviderRef1 {
+  kind: ProviderKind;
+  id: Id;
+}
+/**
+ * Trusted local provider configuration: the disposable SQL providers this machine provisioned, each mapped to its installation details, which an execution policy names by id. It is machine-local and never committed, so its installation paths are absolute machine paths. No member holds a connection string, an endpoint, a host name or a port, because a run reaches only a provider this configuration names.
+ */
+export interface ProviderConfiguration {
+  providersVersion: 1;
+  providers: (
+    | {
+        id: Id;
+        kind: 'localdb';
+        /**
+         * The SqlLocalDB executable of the installation.
+         */
+        executable: string;
+        /**
+         * The exact installed engine version; a run never falls back to another installed version.
+         */
+        version: string;
+      }
+    | {
+        id: Id;
+        kind: 'developer-service';
+        /**
+         * The Windows service name, in a closed character set so no host name, port or connection string can stand in for it.
+         */
+        serviceName: string;
+        /**
+         * The engine instance name, in a closed character set for the same reason.
+         */
+        instanceName: string;
+        /**
+         * True when this configuration pre-authorizes temporarily changing the startup mode of the service while it is Disabled, restoring it after the run; without that authority a Disabled service is a blocked provider and its startup configuration is never altered.
+         */
+        startupChangeAuthorized: boolean;
+      }
+  )[];
+}
+/**
+ * The durable journal of one SQL run's resource allocation, written before an operation can partially create a resource and kept until recovery settles every owned resource. The coordinator, the guardian and the recovery command act on a resource only under the one cleanup claim and only after verifying the recorded owner. It lives outside the run's disposable directory and outlives it, so its paths are absolute machine paths and it is never committed, projected or signed.
+ */
+export interface AllocationJournal {
+  journalVersion: 1;
+  runId: Id;
+  /**
+   * Who owns the run: the operating-system account, the session and the owning process.
+   */
+  owner: {
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    user: string;
+    session: SessionId;
+    process: ProcessIdentity;
+  };
+  provider: ProviderRef1;
+  /**
+   * Each lifecycle phase the run entered, in order, with when it started and, once it finished, when it finished.
+   */
+  phases: {
+    phase: LifecyclePhase;
+    startedAt: Timestamp;
+    finishedAt?: Timestamp;
+  }[];
+  /**
+   * Every resource the run intends to create or created, recorded before the operation that creates it, so a partially created resource stays in the journal even when its creation failed.
+   */
+  resources: {
+    kind: RunResourceKind;
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    identity: string;
+    /**
+     * Where the resource lives, for an instance, a file or a directory.
+     */
+    path?: string;
+    process?: ProcessIdentity1;
+    state: 'intended' | 'created' | 'removed' | 'residual';
+  }[];
+  /**
+   * The one actor allowed to stop or remove the run's resources, so the coordinator, the guardian and recovery never act on one resource at once.
+   */
+  cleanupClaim?: {
+    holder: 'coordinator' | 'guardian' | 'recovery';
+    process: ProcessIdentity;
+    claimedAt: Timestamp;
+  };
+}
+/**
+ * A process named by its id and its creation time. An operating system reuses process ids, so a process with the same id and another creation time is a different process and is never acted on as the owner.
+ */
+export interface ProcessIdentity {
+  pid: number;
+  createdAt: Timestamp;
+}
+/**
+ * A process named by its id and its creation time. An operating system reuses process ids, so a process with the same id and another creation time is a different process and is never acted on as the owner.
+ */
+export interface ProcessIdentity1 {
+  pid: number;
+  createdAt: Timestamp;
+}
+/**
+ * The operating-system-enforced lease a SQL run holds before it starts an engine: a user lease allows one SQL run per user across every Loom server and command-line process, and a machine lease keeps another user from controlling a dedicated service at the same time. Incomplete cleanup keeps the lease from another run until recovery settles it.
+ */
+export interface RunLease {
+  leaseVersion: 1;
+  scope: 'user' | 'machine';
+  holder: {
+    process: ProcessIdentity;
+    session: SessionId;
+  };
+  runId: Id;
+  acquiredAt: Timestamp;
 }
 /**
  * Outcome and maintenance-cost measurements of one engine revision against an explicit recorded baseline. No universal accuracy percentage is claimed.
@@ -1149,13 +1562,14 @@ export interface MetricCount5 {
   missed: string[];
 }
 /**
- * Executable register mapping each capability to its owning code, its contract and the verification cases that exercise it.
+ * Executable register mapping each capability to its owning code, its contract and the verification cases that exercise it, and optionally to its owner, the negative cases that show it refuses what it must, its proof limits, the environments its cases execute in and the evidence that qualified it.
  */
 export interface CapabilityRegister {
   registerVersion: 1;
   capabilities: {
     id: string;
     description: Text;
+    owner?: Alias;
     /**
      * @minItems 1
      */
@@ -1165,9 +1579,33 @@ export interface CapabilityRegister {
      */
     contract: string[];
     /**
+     * The cases that show the capability holds.
+     *
      * @minItems 1
      */
     verification: string[];
+    /**
+     * The cases that show the capability refuses or fails what it must.
+     *
+     * @minItems 1
+     */
+    negativeVerification?: string[];
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    proofLimits?: string;
+    /**
+     * The kinds of environment the verification cases must execute in to prove the capability.
+     *
+     * @minItems 1
+     */
+    environments?: EnvironmentKind[];
+    /**
+     * The evidence records or runs that qualified the capability.
+     *
+     * @minItems 1
+     */
+    evidenceRefs?: Id[];
   }[];
 }
 /**
@@ -1261,6 +1699,43 @@ export interface RecordAddress1 {
   modelId: ModelId;
   kind: RecordKind;
   id: string;
+}
+/**
+ * Binds a release candidate to the exact content that was qualified: every repository of the candidate at its commit with the hash of its working tree, the contract digest and the runs that qualified it, so another agent's simultaneous edits cannot qualify a different candidate.
+ */
+export interface ReleaseEvidence {
+  releaseEvidenceVersion: 1;
+  /**
+   * @minItems 1
+   */
+  candidate: {
+    /**
+     * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+     */
+    repositoryPath: string;
+    /**
+     * The full commit id; an abbreviated id could name another commit.
+     */
+    commit: string;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    workingTreeHash: string;
+    /**
+     * True when the working tree held no change beside the commit.
+     */
+    clean: boolean;
+  }[];
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  contractDigest: string;
+  /**
+   * The run ids whose records qualified the candidate.
+   *
+   * @minItems 1
+   */
+  runRefs: Id[];
 }
 export interface Quantity {
   value: number;
@@ -2580,7 +3055,7 @@ export interface Storage {
    * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
    */
   owner: string;
-  platform: 'sqlserver-2019' | 'sqlserver-2022' | 'azure-sql-database';
+  platform: SqlPlatform;
   schema: Name;
   table: Name;
   /**
@@ -5536,7 +6011,7 @@ export interface PatchUpdateStorage {
      * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
      */
     owner?: string;
-    platform?: 'sqlserver-2019' | 'sqlserver-2022' | 'azure-sql-database';
+    platform?: SqlPlatform;
     schema?: Name;
     table?: Name;
     /**
@@ -6621,6 +7096,10 @@ export interface VersionPolicy {
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
   digest?: string;
+  /**
+   * The PowerShell edition the executable must report; it applies only to a PowerShell tool.
+   */
+  edition?: 'Desktop' | 'Core';
 }
 /**
  * A fixed native-tool invocation contract. 'runner' names a built-in qualification runner; no command text is ever taken from a model, a source file or a configuration value.
@@ -7816,7 +8295,7 @@ export interface CleanupReport {
       | 'detach-watchers'
       | 'revoke-browser-access'
       | 'release-handle';
-    outcome: 'done' | 'not-needed' | 'failed';
+    outcome: CleanupOutcome;
     detail?: Text;
   }[];
   residual: {
@@ -8044,6 +8523,20 @@ export interface QualifyRunStatus {
        * Result of one executed check. NOT_APPLICABLE requires a recorded justification.
        */
       result?: 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+      /**
+       * Why a finished check's result is UNKNOWN.
+       */
+      cause?:
+        | 'tool-absent'
+        | 'version-policy'
+        | 'unreadable'
+        | 'crashed'
+        | 'timeout'
+        | 'connection'
+        | 'login'
+        | 'cancelled'
+        | 'insufficient-resources'
+        | 'provider-blocked';
     }[];
   };
   /**
@@ -8051,9 +8544,9 @@ export interface QualifyRunStatus {
    */
   evidence: Id[];
   /**
-   * 'residual' when the run left an owned resource, which cancelling reports with its recovery.
+   * The state of a run's cleanup. 'clean' holds only when every owned database, file, process and service is removed, stopped or restored and nothing owned is residual; 'failed' keeps the allocation journal so that recovery can settle what is residual.
    */
-  cleanup: 'pending' | 'complete' | 'residual';
+  cleanup: 'pending' | 'running' | 'clean' | 'failed';
   cursor?: Cursor;
 }
 /**
@@ -8063,7 +8556,7 @@ export interface QualifyCancelData {
   runId: Id;
   cancellation: 'requested' | 'completed';
   phase: RunPhase;
-  cleanup: CleanupReport;
+  cleanup: RunCleanup;
 }
 /**
  * One event of a workspace's activity stream, in sequence for its session. Its time is operational and stays outside deterministic projections, and its summary is bounded and holds no path or credential.

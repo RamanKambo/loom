@@ -1,0 +1,7 @@
+{
+  "definition": "SqlPlatform",
+  "valid": ["sqlserver-2019", "sqlserver-2022", "azure-sql-database"],
+  "invalid": [
+    { "because": "LocalDB is a provider of a disposable engine, not a target platform", "keyword": "enum", "path": "", "instance": "localdb" }
+  ]
+}

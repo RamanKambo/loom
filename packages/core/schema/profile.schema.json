@@ -3,7 +3,12 @@
   "$comment": "Profile definitions (language, interface, behavior and host), projection profiles, fixed native-tool check definitions and component interface control documents. Instances live in ../profiles and ../icd and are validated by the generator.",
   "$defs": {
     "ToolName": {
-      "enum": ["node", "tsc", "dotnet", "pwsh", "pester", "sqlcmd", "sqllocaldb", "dacfx", "scriptdom", "swagger-parser", "oasdiff", "ajv", "mermaid", "mermaid-ascii", "git"]
+      "description": "A native tool a check or a renderer runs. 'pwsh' is the PowerShell executable of the Core edition and 'powershell' the Windows PowerShell 5.1 executable of the Desktop edition; they are separate tools, and one never stands in for the other.",
+      "enum": ["node", "tsc", "dotnet", "pwsh", "powershell", "pester", "sqlcmd", "sqllocaldb", "dacfx", "scriptdom", "swagger-parser", "oasdiff", "ajv", "mermaid", "mermaid-ascii", "git"]
+    },
+    "PowerShellEdition": {
+      "description": "The edition a PowerShell executable reports in $PSVersionTable.PSEdition: 'Desktop' for Windows PowerShell 5.1 and 'Core' for PowerShell 7. A PowerShell check declares the edition it actually ran, because a script can behave differently under the other edition.",
+      "enum": ["Desktop", "Core"]
     },
     "VersionPolicy": {
       "type": "object",
@@ -12,7 +17,8 @@
         "minimum": { "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}$" },
         "major": { "type": "integer", "minimum": 0 },
         "exact": { "description": "The exact version, optionally with a pre-release or build suffix such as a Go pseudo-version's timestamp and commit.", "type": "string", "pattern": "^\\d+(\\.\\d+){0,3}(-[0-9A-Za-z][0-9A-Za-z.-]*)?$" },
-        "digest": { "description": "Hash of the exact bytes of the provisioned binary; a binary with another digest, or one whose bytes cannot be read, is outside the policy.", "$ref": "common.schema.json#/$defs/Hash" }
+        "digest": { "description": "Hash of the exact bytes of the provisioned binary; a binary with another digest, or one whose bytes cannot be read, is outside the policy.", "$ref": "common.schema.json#/$defs/Hash" },
+        "edition": { "description": "The PowerShell edition the executable must report; it applies only to a PowerShell tool.", "$ref": "#/$defs/PowerShellEdition" }
       }
     },
     "CheckDefinition": {

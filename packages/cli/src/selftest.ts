@@ -76,8 +76,8 @@ export async function runSelfTest(loomRoot: string, log: Log): Promise<number> {
   for (const c of q.run.checks) log(`check ${c.check} (${c.required ? 'required' : 'optional'}): ${c.result} - ${c.reason ?? ''}`);
   for (const id of q.unlisted) log(`check ${id}: the self-qualification policy neither requires it nor marks it optional`);
   const counts = (['PASS', 'FAIL', 'UNKNOWN', 'NOT_APPLICABLE'] as const).map((r) => `${q.run.checks.filter((c) => c.result === r).length} ${r}`).join(', ');
-  // A required UNKNOWN keeps the aggregate from PASS, so a missing tool can never read as a qualified self-test.
-  const ok = q.run.aggregate === 'PASS' && q.unlisted.length === 0 && wording.length === 0;
-  log(`loom cli self-test ${ok ? 'PASS' : 'FAIL'}: drift check OK; release wording ${wording.length === 0 ? 'clean' : `${wording.length} markers`}; qualification ${q.run.aggregate} over ${q.run.checks.length} checks (${counts}).`);
+  // A required UNKNOWN keeps the test outcome from PASS, so a missing tool can never read as a qualified self-test.
+  const ok = q.run.testOutcome === 'PASS' && q.unlisted.length === 0 && wording.length === 0;
+  log(`loom cli self-test ${ok ? 'PASS' : 'FAIL'}: drift check OK; release wording ${wording.length === 0 ? 'clean' : `${wording.length} markers`}; qualification ${q.run.testOutcome} over ${q.run.checks.length} checks (${counts}).`);
   return ok ? 0 : 1;
 }

@@ -1,0 +1,11 @@
+{
+  "definition": "ProcessIdentity",
+  "valid": [
+    { "pid": 4120, "createdAt": "2026-10-04T09:00:01.250Z" }
+  ],
+  "invalid": [
+    { "because": "a process id alone could name a reused id of another process", "keyword": "required", "path": "", "instance": { "pid": 4120 } },
+    { "because": "a process identity carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "pid": 4120, "createdAt": "2026-10-04T09:00:01.250Z", "name": "sqlservr" } },
+    { "because": "a process id is a positive integer", "keyword": "minimum", "path": "/pid", "instance": { "pid": 0, "createdAt": "2026-10-04T09:00:01.250Z" } }
+  ]
+}

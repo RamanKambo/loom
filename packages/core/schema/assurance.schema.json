@@ -185,7 +185,7 @@
       "description": "A gate policy, read only from the trusted ref named in it. Candidate content cannot authorize itself or weaken a required check.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["policyVersion", "id", "revision", "trust", "changeClasses", "readiness", "substitutes", "qualification", "environments"],
+      "required": ["policyVersion", "id", "revision", "trust", "changeClasses", "readiness", "substitutes", "qualification", "environments", "execution"],
       "properties": {
         "policyVersion": { "const": 1 },
         "id": { "$ref": "common.schema.json#/$defs/Id" },
@@ -252,6 +252,16 @@
             }
           }
         },
+        "execution": {
+          "description": "How SQL qualification runs execute under this policy: the providers of trusted local configuration it permits, by id, and the budgets every run is held to. A run is never permitted a provider outside this list.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["providers", "budgets"],
+          "properties": {
+            "providers": { "description": "Ids of entries in the trusted local provider configuration; an empty list permits no SQL provider.", "type": "array", "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/Id" } },
+            "budgets": { "$ref": "#/$defs/RunBudgets" }
+          }
+        },
         "freeze": {
           "type": "object",
           "additionalProperties": false,
@@ -312,7 +322,7 @@
           "required": ["id", "kind"],
           "properties": {
             "id": { "$ref": "common.schema.json#/$defs/Id" },
-            "kind": { "enum": ["process", "disposable-fixture", "ci", "test", "staging", "production"] },
+            "kind": { "$ref": "common.schema.json#/$defs/EnvironmentKind" },
             "configuration": { "description": "Hash of the configuration identity; never a secret value.", "$ref": "common.schema.json#/$defs/Hash" }
           }
         },
@@ -322,7 +332,8 @@
           "required": ["name", "version"],
           "properties": {
             "name": { "type": "string", "minLength": 1 },
-            "version": { "type": "string", "minLength": 1 }
+            "version": { "type": "string", "minLength": 1 },
+            "edition": { "description": "The edition a PowerShell executable reported when it ran the check.", "$ref": "profile.schema.json#/$defs/PowerShellEdition" }
           }
         },
         "result": { "$ref": "common.schema.json#/$defs/CheckResult" },
@@ -370,26 +381,31 @@
       }
     },
     "RunRecord": {
-      "description": "One coordinated qualification run over an exact revision set.",
+      "description": "One coordinated qualification run over an exact revision set: the inputs it qualified, the checks it ran with their outcomes, the evidence it stored and its test outcome, and for a database run its target, provider, engine version, cleanup, resource usage and applied limits.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["runVersion", "id", "runner", "startedAt", "finishedAt", "revisionSet", "checks", "aggregate"],
+      "required": ["runVersion", "runId", "inputDigest", "runner", "startedAt", "finishedAt", "revisionSet", "checks", "evidenceRefs", "testOutcome"],
       "properties": {
         "runVersion": { "const": 1 },
-        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "runId": { "$ref": "common.schema.json#/$defs/Id" },
+        "inputDigest": {
+          "description": "Hash of the canonical JSON of an object holding the revision set as 'revisionSet' and, as 'checks', the id, revision and definition hash of every check the run ran, in run order, so the digest names exactly the inputs this record states and is the same on every machine.",
+          "$ref": "common.schema.json#/$defs/Hash"
+        },
         "runner": { "$ref": "common.schema.json#/$defs/Id" },
         "startedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
         "finishedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
         "revisionSet": {
+          "description": "The exact inputs the run qualified. Every path is relative to the run root, so the set and its digest name no machine location.",
           "type": "object",
           "additionalProperties": false,
           "required": ["contractDigest", "sources", "profiles"],
           "properties": {
             "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" },
             "sources": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/SourceRevision" } },
-            "model": { "$ref": "common.schema.json#/$defs/Hash" },
+            "model": { "description": "Revision of the model snapshot the run qualified.", "$ref": "common.schema.json#/$defs/Hash" },
             "config": { "$ref": "common.schema.json#/$defs/Hash" },
-            "bundle": { "$ref": "common.schema.json#/$defs/Hash" },
+            "bundle": { "description": "Hash of the imported bundle snapshot the model was evaluated with.", "$ref": "common.schema.json#/$defs/Hash" },
             "profiles": {
               "type": "array",
               "items": {
@@ -402,13 +418,79 @@
                   "hash": { "$ref": "common.schema.json#/$defs/Hash" }
                 }
               }
+            },
+            "policy": {
+              "description": "The trusted execution policy the run ran under.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ref", "revision", "hash"],
+              "properties": {
+                "ref": { "$ref": "common.schema.json#/$defs/Id" },
+                "revision": { "type": "integer", "minimum": 1 },
+                "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+              }
+            },
+            "implementation": {
+              "description": "The adopting implementation's files the run executed, such as its actual schema and routine scripts, each with the hash of its exact bytes; a generated conforming example never stands in for them.",
+              "type": "array",
+              "x-loom-key": "path",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "hash"],
+                "properties": {
+                  "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+                  "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+                }
+              }
+            },
+            "fixtures": {
+              "description": "The authored fixture files the run loaded, each with the hash of its exact bytes.",
+              "type": "array",
+              "x-loom-key": "path",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "hash"],
+                "properties": {
+                  "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+                  "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+                }
+              }
+            },
+            "assertions": {
+              "description": "The files holding the expected assertions the run checked, each with the hash of its exact bytes.",
+              "type": "array",
+              "x-loom-key": "path",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["path", "hash"],
+                "properties": {
+                  "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+                  "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+                }
+              }
             }
           }
         },
+        "target": {
+          "description": "The target SQL platform the run qualifies and the engine capabilities its fixtures declare they need, which preflight compares with the engine; a database run states it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["platform", "capabilities"],
+          "properties": {
+            "platform": { "$ref": "model.schema.json#/$defs/SqlPlatform" },
+            "capabilities": { "description": "Declared engine capabilities, such as full-text-search; a capability the provider's engine lacks makes the dependent checks unavailable.", "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 64 } }
+          }
+        },
+        "provider": { "description": "The provider the run selected; a database run states it.", "$ref": "#/$defs/ProviderRef" },
+        "engineVersion": { "description": "The engine version measured when the engine started, which can differ from the version its provider entry names; a database run states it.", "type": "string", "pattern": "^\\d+(\\.\\d+){1,3}$" },
         "checks": {
           "type": "array",
           "x-loom-key": "check",
           "items": {
+            "description": "One check's outcome: passed is PASS, failed is FAIL, unavailable is UNKNOWN with the cause and the provisioned dependency the check lacks, and cancelled is UNKNOWN with the cause 'cancelled'. A required UNKNOWN keeps the test outcome from PASS. The evidence of a check is the stored record whose 'check.id' names it.",
             "type": "object",
             "additionalProperties": false,
             "required": ["check", "required", "result"],
@@ -416,16 +498,289 @@
               "check": { "$ref": "common.schema.json#/$defs/Id" },
               "required": { "type": "boolean" },
               "result": { "$ref": "common.schema.json#/$defs/CheckResult" },
-              "evidence": { "$ref": "common.schema.json#/$defs/Id" },
+              "cause": { "description": "Why the result is UNKNOWN.", "$ref": "common.schema.json#/$defs/UnavailableCause" },
+              "dependency": { "description": "The provisioned dependency the check needs and lacks, such as the tool and the version policy it must satisfy.", "$ref": "common.schema.json#/$defs/Text" },
               "reason": { "type": "string" }
             }
           }
         },
-        "aggregate": {
+        "evidenceRefs": { "description": "The id of every evidence record the run produced, in run order.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
+        "testOutcome": {
           "description": "PASS only when every required check passed or is justified NOT_APPLICABLE; any required UNKNOWN makes it UNKNOWN; any required FAIL makes it FAIL.",
           "$ref": "common.schema.json#/$defs/CheckResult"
         },
+        "outcome": {
+          "description": "The lifecycle outcome. 'succeeded' only when the test outcome is PASS and cleanup is 'clean'; 'unsuccessful' when the test outcome is not PASS or cleanup is not 'clean', the test evidence being kept even when cleanup failed; 'cancelled' when a cancellation completed once the run's processes and resources settled.",
+          "enum": ["succeeded", "unsuccessful", "cancelled"]
+        },
+        "cleanup": { "$ref": "#/$defs/RunCleanup" },
+        "resourceUsage": {
+          "description": "What the run measured using, because the configured limits do not bound every allocation.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["peakWorkingSetBytes", "diskBytes", "phaseDurations"],
+          "properties": {
+            "peakWorkingSetBytes": { "description": "The peak working set of the engine process, in bytes.", "type": "integer", "minimum": 0 },
+            "diskBytes": { "description": "The most disk the run's owned files took, in bytes.", "type": "integer", "minimum": 0 },
+            "phaseDurations": {
+              "description": "How long each lifecycle phase the run entered took.",
+              "type": "array",
+              "x-loom-key": "phase",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["phase", "milliseconds"],
+                "properties": {
+                  "phase": { "$ref": "common.schema.json#/$defs/LifecyclePhase" },
+                  "milliseconds": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
+          }
+        },
+        "limits": {
+          "description": "The resource limits the run applied, unlike an evidence record's 'limits', which states what a PASS does not establish: the budgets of its execution policy and, for each limit, whether the host enforced it. The configured maximum server memory does not cap every allocation of the engine process, so whether an operating-system limit held the process is recorded rather than assumed.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["budgets", "enforcement"],
+          "properties": {
+            "budgets": { "$ref": "#/$defs/RunBudgets" },
+            "enforcement": {
+              "description": "Whether each limit was enforced: a member of RunBudgets by its name, or 'processMemory', an operating-system limit on the memory of the engine process.",
+              "type": "array",
+              "x-loom-key": "limit",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["limit", "enforced"],
+                "properties": {
+                  "limit": { "enum": ["totalDeadlineSeconds", "commandDeadlineSeconds", "engineStartDeadlineSeconds", "cleanupDeadlineSeconds", "fixtureFileBytes", "maxServerMemoryMiB", "maxDegreeOfParallelism", "processMemory"] },
+                  "enforced": { "type": "boolean" },
+                  "mechanism": { "description": "How the host enforced the limit, or why it could not without breaking correct engine operation.", "$ref": "common.schema.json#/$defs/Text" }
+                }
+              }
+            }
+          }
+        },
         "signature": { "$ref": "common.schema.json#/$defs/Signature" }
+      }
+    },
+    "RunBudgets": {
+      "description": "The resource budgets of one disposable SQL run, held by the trusted execution policy. The values a policy states are conservative policy defaults, not vendor sizing claims and no guarantee that every fixture fits; a fixture that cannot run inside them reports insufficient resources and never raises a limit. The configured maximum server memory does not cap every allocation of the engine process, so a run records its actual peak working set beside the limits it applied.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totalDeadlineSeconds", "commandDeadlineSeconds", "engineStartDeadlineSeconds", "cleanupDeadlineSeconds", "fixtureFileBytes", "maxServerMemoryMiB", "maxDegreeOfParallelism"],
+      "properties": {
+        "totalDeadlineSeconds": { "description": "Wall-clock time of the whole test execution, in seconds.", "type": "integer", "minimum": 1 },
+        "commandDeadlineSeconds": { "description": "Wall-clock time of one command, in seconds; a check may declare a stricter deadline, never a longer one.", "type": "integer", "minimum": 1 },
+        "engineStartDeadlineSeconds": { "description": "Time for the engine to start and accept a connection, in seconds.", "type": "integer", "minimum": 1 },
+        "cleanupDeadlineSeconds": { "description": "Time for cleanup to settle every owned resource, in seconds.", "type": "integer", "minimum": 1 },
+        "fixtureFileBytes": { "description": "Bytes the data and log files of the run's databases may grow to; the growth limit is set before data loading.", "type": "integer", "minimum": 1 },
+        "maxServerMemoryMiB": { "description": "The engine's configured maximum server memory, in MiB.", "type": "integer", "minimum": 1 },
+        "maxDegreeOfParallelism": { "description": "The engine's configured maximum degree of parallelism; at least 1, so the budget always names a bound.", "type": "integer", "minimum": 1 }
+      }
+    },
+    "ProviderRef": {
+      "description": "The SQL provider a run selected: its kind and the id of its entry in trusted local provider configuration. No endpoint, connection string or path stands in for it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "common.schema.json#/$defs/ProviderKind" },
+        "id": { "$ref": "common.schema.json#/$defs/Id" }
+      }
+    },
+    "ProviderConfiguration": {
+      "description": "Trusted local provider configuration: the disposable SQL providers this machine provisioned, each mapped to its installation details, which an execution policy names by id. It is machine-local and never committed, so its installation paths are absolute machine paths. No member holds a connection string, an endpoint, a host name or a port, because a run reaches only a provider this configuration names.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providersVersion", "providers"],
+      "properties": {
+        "providersVersion": { "const": 1 },
+        "providers": {
+          "type": "array",
+          "x-loom-key": "id",
+          "items": {
+            "oneOf": [
+              {
+                "description": "A LocalDB installation: the run creates a uniquely owned instance of exactly this version.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "kind", "executable", "version"],
+                "properties": {
+                  "id": { "$ref": "common.schema.json#/$defs/Id" },
+                  "kind": { "const": "localdb" },
+                  "executable": { "description": "The SqlLocalDB executable of the installation.", "$ref": "common.schema.json#/$defs/MachinePath" },
+                  "version": { "description": "The exact installed engine version; a run never falls back to another installed version.", "type": "string", "pattern": "^\\d+(\\.\\d+){1,3}$" }
+                }
+              },
+              {
+                "description": "A dedicated Developer edition service, otherwise stopped, that a run starts and stops.",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "kind", "serviceName", "instanceName", "startupChangeAuthorized"],
+                "properties": {
+                  "id": { "$ref": "common.schema.json#/$defs/Id" },
+                  "kind": { "const": "developer-service" },
+                  "serviceName": { "description": "The Windows service name, in a closed character set so no host name, port or connection string can stand in for it.", "type": "string", "maxLength": 256, "pattern": "^[A-Za-z0-9_$-]+$" },
+                  "instanceName": { "description": "The engine instance name, in a closed character set for the same reason.", "type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_$-]+$" },
+                  "startupChangeAuthorized": { "description": "True when this configuration pre-authorizes temporarily changing the startup mode of the service while it is Disabled, restoring it after the run; without that authority a Disabled service is a blocked provider and its startup configuration is never altered.", "type": "boolean" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "RunResourceKind": {
+      "description": "A kind of resource a SQL run owns: the engine instance (the LocalDB instance it created or the dedicated service it started), a database, a file, a directory, a process, or the temporary startup-mode change of a service.",
+      "enum": ["instance", "database", "file", "directory", "process", "service-startup"]
+    },
+    "RunCleanup": {
+      "description": "The cleanup of one SQL run: its state, the outcome for each owned database, file, process and service, the actions attempted, the owned resources still residual and the recovery that settles them. Test evidence is kept whatever the state, and a run's lifecycle succeeds only when its cleanup is 'clean'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "outcomes", "actions", "residual"],
+      "properties": {
+        "state": { "$ref": "common.schema.json#/$defs/CleanupState" },
+        "outcomes": {
+          "description": "The cleanup outcome of each owned resource.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "identity", "outcome"],
+            "properties": {
+              "kind": { "$ref": "#/$defs/RunResourceKind" },
+              "identity": { "description": "What identifies the resource, such as a database name, a file path relative to the run directory, a process id with its creation time or a service name; never a credential.", "$ref": "common.schema.json#/$defs/Text" },
+              "outcome": { "$ref": "common.schema.json#/$defs/CleanupOutcome" },
+              "detail": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        },
+        "actions": {
+          "description": "Each cleanup action attempted, in order, with the lifecycle phase it belongs to and its outcome.",
+          "type": "array",
+          "x-loom-ordered": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["phase", "action", "outcome"],
+            "properties": {
+              "phase": { "$ref": "common.schema.json#/$defs/LifecyclePhase" },
+              "action": { "$ref": "common.schema.json#/$defs/Text" },
+              "outcome": { "$ref": "common.schema.json#/$defs/CleanupOutcome" }
+            }
+          }
+        },
+        "residual": {
+          "description": "The owned resources cleanup did not settle.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "identity"],
+            "properties": {
+              "kind": { "$ref": "#/$defs/RunResourceKind" },
+              "identity": { "$ref": "common.schema.json#/$defs/Text" }
+            }
+          }
+        },
+        "recovery": {
+          "description": "What settles the residual resources: the run whose allocation journal records them and the recovery action to take. A cleanup with a residual resource states it.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["journal", "action"],
+          "properties": {
+            "journal": { "description": "The run id of the allocation journal.", "$ref": "common.schema.json#/$defs/Id" },
+            "action": { "$ref": "common.schema.json#/$defs/Text" }
+          }
+        }
+      }
+    },
+    "AllocationJournal": {
+      "description": "The durable journal of one SQL run's resource allocation, written before an operation can partially create a resource and kept until recovery settles every owned resource. The coordinator, the guardian and the recovery command act on a resource only under the one cleanup claim and only after verifying the recorded owner. It lives outside the run's disposable directory and outlives it, so its paths are absolute machine paths and it is never committed, projected or signed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journalVersion", "runId", "owner", "provider", "phases", "resources"],
+      "properties": {
+        "journalVersion": { "const": 1 },
+        "runId": { "$ref": "common.schema.json#/$defs/Id" },
+        "owner": {
+          "description": "Who owns the run: the operating-system account, the session and the owning process.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["user", "session", "process"],
+          "properties": {
+            "user": { "description": "Hash of the operating-system account identity, so recovery verifies the owner without the journal holding an account name.", "$ref": "common.schema.json#/$defs/Hash" },
+            "session": { "$ref": "tools.schema.json#/$defs/SessionId" },
+            "process": { "$ref": "common.schema.json#/$defs/ProcessIdentity" }
+          }
+        },
+        "provider": { "$ref": "#/$defs/ProviderRef" },
+        "phases": {
+          "description": "Each lifecycle phase the run entered, in order, with when it started and, once it finished, when it finished.",
+          "type": "array",
+          "x-loom-ordered": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["phase", "startedAt"],
+            "properties": {
+              "phase": { "$ref": "common.schema.json#/$defs/LifecyclePhase" },
+              "startedAt": { "$ref": "common.schema.json#/$defs/Timestamp" },
+              "finishedAt": { "$ref": "common.schema.json#/$defs/Timestamp" }
+            }
+          }
+        },
+        "resources": {
+          "description": "Every resource the run intends to create or created, recorded before the operation that creates it, so a partially created resource stays in the journal even when its creation failed.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "identity", "state"],
+            "properties": {
+              "kind": { "$ref": "#/$defs/RunResourceKind" },
+              "identity": { "description": "What identifies the resource, such as an instance, database or service name; never a credential.", "$ref": "common.schema.json#/$defs/Text" },
+              "path": { "description": "Where the resource lives, for an instance, a file or a directory.", "$ref": "common.schema.json#/$defs/MachinePath" },
+              "process": { "description": "For a process, its id and creation time.", "$ref": "common.schema.json#/$defs/ProcessIdentity" },
+              "state": { "enum": ["intended", "created", "removed", "residual"] }
+            }
+          }
+        },
+        "cleanupClaim": {
+          "description": "The one actor allowed to stop or remove the run's resources, so the coordinator, the guardian and recovery never act on one resource at once.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["holder", "process", "claimedAt"],
+          "properties": {
+            "holder": { "enum": ["coordinator", "guardian", "recovery"] },
+            "process": { "$ref": "common.schema.json#/$defs/ProcessIdentity" },
+            "claimedAt": { "$ref": "common.schema.json#/$defs/Timestamp" }
+          }
+        }
+      }
+    },
+    "RunLease": {
+      "description": "The operating-system-enforced lease a SQL run holds before it starts an engine: a user lease allows one SQL run per user across every Loom server and command-line process, and a machine lease keeps another user from controlling a dedicated service at the same time. Incomplete cleanup keeps the lease from another run until recovery settles it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["leaseVersion", "scope", "holder", "runId", "acquiredAt"],
+      "properties": {
+        "leaseVersion": { "const": 1 },
+        "scope": { "enum": ["user", "machine"] },
+        "holder": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["process", "session"],
+          "properties": {
+            "process": { "$ref": "common.schema.json#/$defs/ProcessIdentity" },
+            "session": { "$ref": "tools.schema.json#/$defs/SessionId" }
+          }
+        },
+        "runId": { "$ref": "common.schema.json#/$defs/Id" },
+        "acquiredAt": { "$ref": "common.schema.json#/$defs/Timestamp" }
       }
     },
     "MetricsReport": {
@@ -511,7 +866,7 @@
       }
     },
     "CapabilityRegister": {
-      "description": "Executable register mapping each capability to its owning code, its contract and the verification cases that exercise it.",
+      "description": "Executable register mapping each capability to its owning code, its contract and the verification cases that exercise it, and optionally to its owner, the negative cases that show it refuses what it must, its proof limits, the environments its cases execute in and the evidence that qualified it.",
       "type": "object",
       "additionalProperties": false,
       "required": ["registerVersion", "capabilities"],
@@ -527,9 +882,14 @@
             "properties": {
               "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
               "description": { "$ref": "common.schema.json#/$defs/Text" },
+              "owner": { "$ref": "common.schema.json#/$defs/Alias" },
               "code": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+#[A-Za-z_$][A-Za-z0-9_$.]*$" } },
               "contract": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+(#/[A-Za-z0-9$_/.-]*)?$" } },
-              "verification": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" } }
+              "verification": { "description": "The cases that show the capability holds.", "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" } },
+              "negativeVerification": { "description": "The cases that show the capability refuses or fails what it must.", "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" } },
+              "proofLimits": { "description": "What the verification cases do not establish.", "$ref": "common.schema.json#/$defs/Text" },
+              "environments": { "description": "The kinds of environment the verification cases must execute in to prove the capability.", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/EnvironmentKind" } },
+              "evidenceRefs": { "description": "The evidence records or runs that qualified the capability.", "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Id" } }
             }
           }
         }
@@ -548,6 +908,33 @@
         "agreements": { "type": "array", "items": { "$ref": "workspace.schema.json#/$defs/AgreementBinding" } },
         "evidenceRefs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
         "acceptanceRefs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+      }
+    },
+    "ReleaseEvidence": {
+      "description": "Binds a release candidate to the exact content that was qualified: every repository of the candidate at its commit with the hash of its working tree, the contract digest and the runs that qualified it, so another agent's simultaneous edits cannot qualify a different candidate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseEvidenceVersion", "candidate", "contractDigest", "runRefs"],
+      "properties": {
+        "releaseEvidenceVersion": { "const": 1 },
+        "candidate": {
+          "type": "array",
+          "minItems": 1,
+          "x-loom-key": "repositoryPath",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repositoryPath", "commit", "workingTreeHash", "clean"],
+            "properties": {
+              "repositoryPath": { "description": "The repository, relative to the root of the release; '.' for the root itself.", "$ref": "common.schema.json#/$defs/RelativePath" },
+              "commit": { "description": "The full commit id; an abbreviated id could name another commit.", "type": "string", "pattern": "^[0-9a-f]{40}$" },
+              "workingTreeHash": { "description": "Hash over the tracked and untracked candidate content of the working tree, so an edit made after the commit changes it.", "$ref": "common.schema.json#/$defs/Hash" },
+              "clean": { "description": "True when the working tree held no change beside the commit.", "type": "boolean" }
+            }
+          }
+        },
+        "contractDigest": { "description": "The contract digest the candidate was qualified under.", "$ref": "common.schema.json#/$defs/Hash" },
+        "runRefs": { "description": "The run ids whose records qualified the candidate.", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/Id" } }
       }
     }
   }

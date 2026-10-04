@@ -1,0 +1,8 @@
+{
+  "definition": "UnavailableCause",
+  "valid": ["tool-absent", "version-policy", "unreadable", "crashed", "timeout", "connection", "login", "cancelled", "insufficient-resources", "provider-blocked"],
+  "invalid": [
+    { "because": "an UNKNOWN result names a typed cause, never free text", "keyword": "enum", "path": "", "instance": "something went wrong" },
+    { "because": "a failed assertion is a FAIL, not a cause of UNKNOWN", "keyword": "enum", "path": "", "instance": "assertion-failed" }
+  ]
+}

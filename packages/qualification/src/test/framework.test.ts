@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { generateKeyPairSync } from 'node:crypto';
-import { sampleModel, type Change, type CheckDefinition, type Model, type Policy } from '@loom/core';
+import { canonicalHash, sampleModel, schemaErrors, type Change, type CheckDefinition, type Model, type Policy } from '@loom/core';
 import { initWorkspace, listEvidence, readTrustedEvidence, verifyRecord } from '@loom/workspace';
 import { commitAll, gitInit, scratch } from '@loom/workspace/testing';
 import { exec, runPwsh, lastJsonLine } from '../exec.js';
 import { aggregate } from '../policy.js';
-import { runChecks } from '../run.js';
+import { runChecks, runInputDigest } from '../run.js';
 import { verifyRunRevisionSet } from '../revision.js';
 import { defaultToolLocator, fileDigest, policyText, satisfies, type ToolLocator } from '../tools.js';
 import { unmatchedBreaks, type OasdiffItem } from '../runners/openapi.js';
@@ -50,7 +50,7 @@ test('a required check whose tool is missing is UNKNOWN and keeps the aggregate 
   const out = await run([check('t.needs-tool')], { 't.needs-tool': passing }, { toolLocator: missing });
   assert.equal(out.run.checks[0]!.result, 'UNKNOWN');
   assert.match(out.run.checks[0]!.reason ?? '', /tool removed/);
-  assert.equal(out.run.aggregate, 'UNKNOWN');
+  assert.equal(out.run.testOutcome, 'UNKNOWN');
 });
 
 test('an optional check that is UNKNOWN stays visible but does not block a passing required check', async () => {
@@ -58,7 +58,22 @@ test('an optional check that is UNKNOWN stays visible but does not block a passi
   const optional = check('t.optional', { tool: { name: 'node', versionPolicy: { exact: '0.0.0' } } });
   const out = await run([check('t.required'), optional], { 't.required': passing, 't.optional': passing }, { toolLocator: locator, policy: policyWith(['t.required'], ['t.optional']) });
   assert.deepEqual(out.run.checks.map((c) => [c.check, c.required, c.result]), [['t.required', true, 'PASS'], ['t.optional', false, 'UNKNOWN']]);
-  assert.equal(out.run.aggregate, 'PASS');
+  assert.equal(out.run.testOutcome, 'PASS');
+});
+
+test('a run record satisfies its contract, names every evidence record it produced and digests exactly the inputs it states', async () => {
+  const checks = [check('t.first'), check('t.second')];
+  const policy = policyWith(['t.first', 't.second']);
+  const out = await run(checks, { 't.first': passing, 't.second': async () => outcome('FAIL', 'failed on purpose') }, { policy });
+  assert.deepEqual(schemaErrors('RunRecord', out.run), []);
+  assert.deepEqual(out.run.evidenceRefs, out.evidence.map((e) => e.id));
+  assert.deepEqual(out.evidence.map((e) => e.check.id), ['t.first', 't.second'], 'each record names the check it evidences');
+  assert.deepEqual(out.run.revisionSet.policy, { ref: policy.id, revision: policy.revision, hash: canonicalHash(policy) });
+  assert.equal(out.run.inputDigest, runInputDigest(out.run.revisionSet, checks));
+  assert.notEqual(runInputDigest(out.run.revisionSet, checks.slice(0, 1)), out.run.inputDigest, 'another check list is another input');
+  assert.notEqual(runInputDigest({ ...out.run.revisionSet, policy: { ...out.run.revisionSet.policy!, revision: 2 } }, checks), out.run.inputDigest, 'another policy revision is another input');
+  const unpoliced = await run(checks.slice(0, 1), { 't.first': passing });
+  assert.equal(unpoliced.run.revisionSet.policy, undefined, 'a run without a policy names none');
 });
 
 test('a tool outside the version policy is UNKNOWN and its actual version is recorded', async () => {
@@ -266,9 +281,9 @@ test('two parallel runs use separate directories and never remove each other\'s 
   };
   const [a, b] = await Promise.all([run([check('t.mark')], { 't.mark': marking }), run([check('t.mark')], { 't.mark': marking })]);
   assert.notEqual(a.runDir, b.runDir);
-  assert.notEqual(a.run.id, b.run.id);
-  assert.deepEqual(seen[a.run.id], [`${a.run.id}.marker`]);
-  assert.deepEqual(seen[b.run.id], [`${b.run.id}.marker`]);
+  assert.notEqual(a.run.runId, b.run.runId);
+  assert.deepEqual(seen[a.run.runId], [`${a.run.runId}.marker`]);
+  assert.deepEqual(seen[b.run.runId], [`${b.run.runId}.marker`]);
   assert.ok(!existsSync(a.runDir) && !existsSync(b.runDir));
 });
 

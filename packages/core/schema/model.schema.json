@@ -1239,6 +1239,10 @@
         "identity": { "type": "boolean" }
       }
     },
+    "SqlPlatform": {
+      "description": "A target SQL platform: the platform a storage record maps onto and the platform a qualification run qualifies.",
+      "enum": ["sqlserver-2019", "sqlserver-2022", "azure-sql-database"]
+    },
     "Storage": {
       "description": "Physical relational mapping of one type. Logical ownership stays on the type and the owning component.",
       "type": "object",
@@ -1248,7 +1252,7 @@
         "id": { "$ref": "common.schema.json#/$defs/Id" },
         "type": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "type" },
         "owner": { "$ref": "common.schema.json#/$defs/Id", "x-loom-ref": "component" },
-        "platform": { "enum": ["sqlserver-2019", "sqlserver-2022", "azure-sql-database"] },
+        "platform": { "$ref": "#/$defs/SqlPlatform" },
         "schema": { "$ref": "common.schema.json#/$defs/Name" },
         "table": { "$ref": "common.schema.json#/$defs/Name" },
         "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/StorageColumn" }, "x-loom-key": "name", "x-loom-ordered": true },

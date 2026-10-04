@@ -1,0 +1,21 @@
+{
+  "definition": "ReleaseEvidence",
+  "valid": [
+    {
+      "releaseEvidenceVersion": 1,
+      "candidate": [
+        { "repositoryPath": ".", "commit": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "workingTreeHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "clean": true },
+        { "repositoryPath": "services/payments", "commit": "a9ce204b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f", "workingTreeHash": "sha256:9999999999999999999999999999999999999999999999999999999999999999", "clean": false }
+      ],
+      "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "runRefs": ["run.20261004090000.1a2b3c4d"]
+    }
+  ],
+  "invalid": [
+    { "because": "an abbreviated commit could name another commit", "keyword": "pattern", "path": "/candidate/0/commit", "instance": { "releaseEvidenceVersion": 1, "candidate": [{ "repositoryPath": ".", "commit": "f13d98f", "workingTreeHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "clean": true }], "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "runRefs": ["run-1"] } },
+    { "because": "a commit without its working-tree hash cannot show the candidate was unchanged", "keyword": "required", "path": "/candidate/0", "instance": { "releaseEvidenceVersion": 1, "candidate": [{ "repositoryPath": ".", "commit": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "clean": true }], "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "runRefs": ["run-1"] } },
+    { "because": "a repository is named relative to the release root, never by a machine path", "keyword": "pattern", "path": "/candidate/0/repositoryPath", "instance": { "releaseEvidenceVersion": 1, "candidate": [{ "repositoryPath": "C:/checkouts/payments", "commit": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "workingTreeHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "clean": true }], "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "runRefs": ["run-1"] } },
+    { "because": "release evidence names at least one qualifying run", "keyword": "minItems", "path": "/runRefs", "instance": { "releaseEvidenceVersion": 1, "candidate": [{ "repositoryPath": ".", "commit": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "workingTreeHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "clean": true }], "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "runRefs": [] } },
+    { "because": "release evidence carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "releaseEvidenceVersion": 1, "candidate": [{ "repositoryPath": ".", "commit": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "workingTreeHash": "sha256:8888888888888888888888888888888888888888888888888888888888888888", "clean": true }], "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "runRefs": ["run-1"], "approvedBy": "team-release" } }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "definition": "ProviderConfiguration",
+  "valid": [
+    {
+      "providersVersion": 1,
+      "providers": [
+        { "id": "localdb", "kind": "localdb", "executable": "C:\\Program Files\\Microsoft SQL Server\\160\\Tools\\Binn\\SqlLocalDB.exe", "version": "16.0.1000.6" },
+        { "id": "sql-developer", "kind": "developer-service", "serviceName": "MSSQL$LOOMDEV", "instanceName": "LOOMDEV", "startupChangeAuthorized": false }
+      ]
+    },
+    { "providersVersion": 1, "providers": [] }
+  ],
+  "invalid": [
+    { "because": "no provider accepts a host name, port or connection string", "keyword": "additionalProperties", "path": "/providers/0", "instance": { "providersVersion": 1, "providers": [{ "id": "sql-developer", "kind": "developer-service", "serviceName": "MSSQL$LOOMDEV", "instanceName": "LOOMDEV", "startupChangeAuthorized": false, "port": 1433 }] } },
+    { "because": "an instance name in a closed character set cannot carry a host and port", "keyword": "pattern", "path": "/providers/0/instanceName", "instance": { "providersVersion": 1, "providers": [{ "id": "sql-developer", "kind": "developer-service", "serviceName": "MSSQL$LOOMDEV", "instanceName": "dbhost,1433", "startupChangeAuthorized": false }] } },
+    { "because": "a LocalDB installation names the exact installed version", "keyword": "required", "path": "/providers/0", "instance": { "providersVersion": 1, "providers": [{ "id": "localdb", "kind": "localdb", "executable": "C:\\Program Files\\Microsoft SQL Server\\160\\Tools\\Binn\\SqlLocalDB.exe" }] } },
+    { "because": "an installation path is an absolute machine path", "keyword": "pattern", "path": "/providers/0/executable", "instance": { "providersVersion": 1, "providers": [{ "id": "localdb", "kind": "localdb", "executable": "SqlLocalDB.exe", "version": "16.0.1000.6" }] } },
+    { "because": "a provider configuration carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "providersVersion": 1, "providers": [], "default": "localdb" } }
+  ]
+}

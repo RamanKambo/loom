@@ -69,6 +69,12 @@
       "minLength": 1,
       "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\\\)(?!(.*/)?\\.\\.(/|$))[^\\u0000-\\u001f]+$"
     },
+    "MachinePath": {
+      "description": "An absolute path on the local machine: a drive letter or a root slash, never a network share and never a '..' segment. Only a machine-local record that is never committed, projected or signed holds one, because the location differs on every machine; a path that names repository content is a RelativePath.",
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^(?:[A-Za-z]:[\\\\/]|/(?!/))(?!(?:.*[\\\\/])?\\.\\.(?:[\\\\/]|$))[^\\u0000-\\u001f]+$"
+    },
     "Quantity": {
       "x-loom-atomic": true,
       "type": "object",
@@ -133,9 +139,33 @@
         "integration", "e2e", "migration", "operational", "review"
       ]
     },
+    "EnvironmentKind": {
+      "description": "The kind of environment a check executes in: the local process, a disposable fixture the run owns, or a designated ci, test, staging or production environment.",
+      "enum": ["process", "disposable-fixture", "ci", "test", "staging", "production"]
+    },
     "CheckResult": {
       "description": "Result of one executed check. NOT_APPLICABLE requires a recorded justification.",
       "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]
+    },
+    "UnavailableCause": {
+      "description": "The typed cause of an UNKNOWN result: what kept a check from establishing PASS or FAIL. 'tool-absent', 'version-policy', 'unreadable', 'crashed' and 'timeout' name the tool or its run; 'connection' and 'login' the database it had to reach; 'cancelled' a run cancelled before the check finished; 'insufficient-resources' a fixture that cannot run inside the run budgets, which never raises a limit; and 'provider-blocked' a provider that trusted configuration or the service permissions do not let the run start. A required UNKNOWN never qualifies.",
+      "enum": ["tool-absent", "version-policy", "unreadable", "crashed", "timeout", "connection", "login", "cancelled", "insufficient-resources", "provider-blocked"]
+    },
+    "LifecyclePhase": {
+      "description": "A resource-lifecycle phase of a disposable SQL run, in the order a run passes through them: preflight validates the tools, capabilities, free disk, permissions and trusted scripts; reserve takes the lease and journals the allocation intent; start starts the owned engine; prepare creates the run's databases; execute runs the checks; capture persists their outcomes outside the disposable directory; quiesce stops remaining work; remove-databases drops the run's databases; stop stops the engine; and release removes the owned instance, restores the service startup state and releases the lease. RunPhase is the separate stage a run handle reports.",
+      "enum": ["preflight", "reserve", "start", "prepare", "execute", "capture", "quiesce", "remove-databases", "stop", "release"]
+    },
+    "CleanupState": {
+      "description": "The state of a run's cleanup. 'clean' holds only when every owned database, file, process and service is removed, stopped or restored and nothing owned is residual; 'failed' keeps the allocation journal so that recovery can settle what is residual.",
+      "enum": ["pending", "running", "clean", "failed"]
+    },
+    "CleanupOutcome": {
+      "description": "The outcome of one cleanup step or owned resource: 'done' when it was cancelled, stopped, removed or restored as its kind requires, 'not-needed' when there was nothing to do, and 'failed' otherwise.",
+      "enum": ["done", "not-needed", "failed"]
+    },
+    "ProviderKind": {
+      "description": "The kind of a disposable SQL provider. 'localdb' is a LocalDB instance the run creates and owns; 'developer-service' is a dedicated Developer edition service, provisioned separately and used only for development and testing, which a run starts and stops and never takes over while it already runs.",
+      "enum": ["localdb", "developer-service"]
     },
     "Dimension": {
       "description": "Compatibility dimension a change is assessed in.",
@@ -222,6 +252,16 @@
         "digest": { "description": "Hash of the canonical JSON of the bundle's content.", "$ref": "#/$defs/Hash" },
         "schemaVersion": { "description": "Model format version of the content.", "type": "integer", "minimum": 1 },
         "sourceCommit": { "description": "The commit the bundle was published from.", "$ref": "#/$defs/CommitId" }
+      }
+    },
+    "ProcessIdentity": {
+      "description": "A process named by its id and its creation time. An operating system reuses process ids, so a process with the same id and another creation time is a different process and is never acted on as the owner.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pid", "createdAt"],
+      "properties": {
+        "pid": { "type": "integer", "minimum": 1 },
+        "createdAt": { "$ref": "#/$defs/Timestamp" }
       }
     }
   }

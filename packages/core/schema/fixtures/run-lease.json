@@ -1,0 +1,12 @@
+{
+  "definition": "RunLease",
+  "valid": [
+    { "leaseVersion": 1, "scope": "user", "holder": { "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" }, "session": "sess_7c1e9a2b" }, "runId": "run.20261004090000.1a2b3c4d", "acquiredAt": "2026-10-04T09:00:00.420Z" },
+    { "leaseVersion": 1, "scope": "machine", "holder": { "process": { "pid": 5012, "createdAt": "2026-10-04T09:14:59Z" }, "session": "sess_7c1e9a2b" }, "runId": "run.20261004091500.5e6f7a8b", "acquiredAt": "2026-10-04T09:15:00Z" }
+  ],
+  "invalid": [
+    { "because": "a lease is held per user or per machine", "keyword": "enum", "path": "/scope", "instance": { "leaseVersion": 1, "scope": "workspace", "holder": { "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" }, "session": "sess_7c1e9a2b" }, "runId": "run-1", "acquiredAt": "2026-10-04T09:00:00Z" } },
+    { "because": "the holder names its process with its creation time", "keyword": "required", "path": "/holder", "instance": { "leaseVersion": 1, "scope": "user", "holder": { "session": "sess_7c1e9a2b" }, "runId": "run-1", "acquiredAt": "2026-10-04T09:00:00Z" } },
+    { "because": "a lease carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "leaseVersion": 1, "scope": "user", "holder": { "process": { "pid": 3964, "createdAt": "2026-10-04T08:59:58.100Z" }, "session": "sess_7c1e9a2b" }, "runId": "run-1", "acquiredAt": "2026-10-04T09:00:00Z", "expires": "2026-10-04T10:00:00Z" } }
+  ]
+}

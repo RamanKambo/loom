@@ -1,4 +1,4 @@
-export { runChecks, resolveChecks } from './run.js';
+export { runChecks, resolveChecks, runInputDigest } from './run.js';
 export type { RunOptions, RunOutput, Signer } from './run.js';
 export { aggregate, environmentFor, isRequired } from './policy.js';
 export type { CheckOutcome, EnvironmentChoice } from './policy.js';

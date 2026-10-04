@@ -68,6 +68,7 @@ const POLICY: Policy = {
   substitutes: [],
   qualification: { required: [], optional: [] },
   environments: [],
+  execution: { providers: [], budgets: { totalDeadlineSeconds: 900, commandDeadlineSeconds: 60, engineStartDeadlineSeconds: 60, cleanupDeadlineSeconds: 60, fixtureFileBytes: 2147483648, maxServerMemoryMiB: 512, maxDegreeOfParallelism: 1 } },
 };
 
 /** A workspace whose policy, accepted baseline and acceptance are committed to the trusted ref. */

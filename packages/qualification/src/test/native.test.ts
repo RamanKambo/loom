@@ -47,7 +47,7 @@ test('every profile check passes against Loom\'s own fixtures under the self-qua
   assert.deepEqual(q.unlisted, []);
   const notPassing = q.run.checks.filter((c) => c.result !== 'PASS').map((c) => `${c.check}: ${c.result} ${c.reason ?? ''}`);
   assert.deepEqual(notPassing, []);
-  assert.equal(q.run.aggregate, 'PASS');
+  assert.equal(q.run.testOutcome, 'PASS');
   assert.ok(q.evidence.every((e) => e.tool.version !== 'unknown' && e.limits.length > 0));
 });
 

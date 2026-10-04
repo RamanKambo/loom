@@ -1144,7 +1144,7 @@
             "required": ["step", "outcome"],
             "properties": {
               "step": { "enum": ["cancel-runs", "await-runs", "stop-processes", "remove-resources", "detach-watchers", "revoke-browser-access", "release-handle"] },
-              "outcome": { "enum": ["done", "not-needed", "failed"] },
+              "outcome": { "$ref": "common.schema.json#/$defs/CleanupOutcome" },
               "detail": { "$ref": "common.schema.json#/$defs/Text" }
             }
           }
@@ -1337,14 +1337,15 @@
                   "sequence": { "type": "integer", "minimum": 1 },
                   "check": { "$ref": "common.schema.json#/$defs/Id" },
                   "state": { "enum": ["started", "finished"] },
-                  "result": { "description": "The result of a finished check.", "$ref": "common.schema.json#/$defs/CheckResult" }
+                  "result": { "description": "The result of a finished check.", "$ref": "common.schema.json#/$defs/CheckResult" },
+                  "cause": { "description": "Why a finished check's result is UNKNOWN.", "$ref": "common.schema.json#/$defs/UnavailableCause" }
                 }
               }
             }
           }
         },
         "evidence": { "description": "The evidence records the run stored.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
-        "cleanup": { "description": "'residual' when the run left an owned resource, which cancelling reports with its recovery.", "enum": ["pending", "complete", "residual"] },
+        "cleanup": { "description": "The run's cleanup state; 'failed' when the run left an owned resource, which cancelling reports with its recovery.", "$ref": "common.schema.json#/$defs/CleanupState" },
         "cursor": { "$ref": "#/$defs/Cursor" }
       }
     },
@@ -1357,7 +1358,7 @@
         "runId": { "$ref": "common.schema.json#/$defs/Id" },
         "cancellation": { "enum": ["requested", "completed"] },
         "phase": { "$ref": "#/$defs/RunPhase" },
-        "cleanup": { "$ref": "#/$defs/CleanupReport" }
+        "cleanup": { "$ref": "assurance.schema.json#/$defs/RunCleanup" }
       }
     },
     "ActivityEvent": {

@@ -58,5 +58,19 @@
       "designated": true,
       "description": "A LocalDB instance the qualification run creates for itself and stops and deletes when the run ends; it holds only fixture databases."
     }
-  ]
+  ],
+  "execution": {
+    "providers": [
+      "localdb"
+    ],
+    "budgets": {
+      "totalDeadlineSeconds": 900,
+      "commandDeadlineSeconds": 60,
+      "engineStartDeadlineSeconds": 60,
+      "cleanupDeadlineSeconds": 60,
+      "fixtureFileBytes": 2147483648,
+      "maxServerMemoryMiB": 512,
+      "maxDegreeOfParallelism": 1
+    }
+  }
 }

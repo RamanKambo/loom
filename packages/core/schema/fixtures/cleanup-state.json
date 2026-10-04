@@ -1,0 +1,8 @@
+{
+  "definition": "CleanupState",
+  "valid": ["pending", "running", "clean", "failed"],
+  "invalid": [
+    { "because": "a cleanup that left a resource is 'failed', with the resource listed as residual", "keyword": "enum", "path": "", "instance": "residual" },
+    { "because": "'complete' does not say whether anything owned remains", "keyword": "enum", "path": "", "instance": "complete" }
+  ]
+}

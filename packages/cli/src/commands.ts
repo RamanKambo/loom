@@ -425,10 +425,10 @@ export function cmdMutate(ctx: Context): CommandResult {
   return data?.committed === true ? { env, detail: [`committed revision ${data.revision ?? ''}`] } : { env };
 }
 
-const qualificationOf = (aggregate: string): QualificationState =>
-  aggregate === 'PASS'
+const qualificationOf = (testOutcome: string): QualificationState =>
+  testOutcome === 'PASS'
     ? { state: 'qualified', reasons: [] }
-    : aggregate === 'FAIL'
+    : testOutcome === 'FAIL'
       ? { state: 'unqualified', reasons: [{ code: 'EVIDENCE_FAILED', message: 'a required check failed', refs: [] }] }
       : { state: 'unknown', reasons: [{ code: 'EVIDENCE_UNKNOWN', message: 'a required check did not produce a result', refs: [] }] };
 
@@ -467,8 +467,8 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
     const metrics = has(a, 'metrics') ? metricsOf(ctx, q.run) : null;
     if (metrics) data['metrics'] = metrics.report;
     const states = defaultStates(NOT_EVALUATED);
-    states.qualification = q.unlisted.length ? { state: 'unknown', reasons: [{ code: 'EVIDENCE_UNKNOWN', message: `checks outside the self-qualification policy: ${q.unlisted.join(', ')}`, refs: [] }] } : qualificationOf(q.run.aggregate);
-    return { env: envelope('cli.qualify', { model: null, findings: q.findings, states, data }), detail: [...runSummary(q.run), `aggregate: ${q.run.aggregate}`, ...(metrics?.detail ?? [])] };
+    states.qualification = q.unlisted.length ? { state: 'unknown', reasons: [{ code: 'EVIDENCE_UNKNOWN', message: `checks outside the self-qualification policy: ${q.unlisted.join(', ')}`, refs: [] }] } : qualificationOf(q.run.testOutcome);
+    return { env: envelope('cli.qualify', { model: null, findings: q.findings, states, data }), detail: [...runSummary(q.run), `testOutcome: ${q.run.testOutcome}`, ...(metrics?.detail ?? [])] };
   }
   const s = session(ctx);
   if (!s.workspace || !s.model) return noWorkspace('cli.qualify', s);
@@ -507,7 +507,7 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
   const data: Record<string, unknown> = { run: out.run, evidence: out.evidence.map((e) => e.id), obligations: (evaluated.data as { obligations?: unknown } | undefined)?.obligations ?? [] };
   const metrics = has(a, 'metrics') ? metricsOf(ctx, out.run) : null;
   if (metrics) data['metrics'] = metrics.report;
-  return { env: stampSession(envelope('cli.qualify', { model: s.model, findings: out.findings, states, data }), s), detail: [...runSummary(out.run), `aggregate: ${out.run.aggregate}`, ...(metrics?.detail ?? [])] };
+  return { env: stampSession(envelope('cli.qualify', { model: s.model, findings: out.findings, states, data }), s), detail: [...runSummary(out.run), `testOutcome: ${out.run.testOutcome}`, ...(metrics?.detail ?? [])] };
 }
 
 export function cmdEvidence(ctx: Context): CommandResult {

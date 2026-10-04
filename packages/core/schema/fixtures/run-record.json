@@ -1,0 +1,77 @@
+{
+  "definition": "RunRecord",
+  "valid": [
+    {
+      "runVersion": 1,
+      "runId": "run.20261004080000.0a1b2c3d",
+      "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "runner": "loom-cli",
+      "startedAt": "2026-10-04T08:00:00Z",
+      "finishedAt": "2026-10-04T08:00:04Z",
+      "revisionSet": {
+        "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [{ "repository": ".", "revision": "a9ce204" }],
+        "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "profiles": [{ "id": "documentation", "version": 1, "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }]
+      },
+      "checks": [{ "check": "documentation.yaml-roundtrip", "required": false, "result": "PASS", "reason": "the YAML export round-trips to the same model" }],
+      "evidenceRefs": ["ev.20261004080000.0a1b2c3d.documentation.yaml-roundtrip"],
+      "testOutcome": "UNKNOWN"
+    },
+    {
+      "runVersion": 1,
+      "runId": "run.20261004090000.1a2b3c4d",
+      "inputDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "runner": "loom-self-qualification",
+      "startedAt": "2026-10-04T09:00:00Z",
+      "finishedAt": "2026-10-04T09:04:10Z",
+      "revisionSet": {
+        "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [{ "repository": ".", "revision": "f13d98f0a1b2c3d4e5f60718293a4b5c6d7e8f90", "dirty": false }],
+        "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "bundle": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "profiles": [{ "id": "sql", "version": 1, "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }],
+        "policy": { "ref": "loom-self-qualification", "revision": 1, "hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+        "implementation": [{ "path": "examples/conforming/ordering/sp_place_order.sql", "hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }],
+        "fixtures": [{ "path": "qualification/fixtures/api-database/migrations/representative-rows-version-1.sql", "hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444" }],
+        "assertions": [{ "path": "qualification/fixtures/api-database/expected.json", "hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555" }]
+      },
+      "target": { "platform": "sqlserver-2022", "capabilities": [] },
+      "provider": { "kind": "localdb", "id": "localdb" },
+      "engineVersion": "16.0.1000.6",
+      "checks": [
+        { "check": "sql.behavior", "required": true, "result": "PASS", "reason": "the contract tests pass against the conforming fixture and fail against the violating one with 50005" },
+        { "check": "sql.operations", "required": false, "result": "UNKNOWN", "cause": "tool-absent", "dependency": "sqlcmd 15.0 or later on PATH", "reason": "sqlcmd is not on PATH" }
+      ],
+      "evidenceRefs": ["ev.20261004090000.1a2b3c4d.sql.behavior", "ev.20261004090000.1a2b3c4d.sql.operations"],
+      "testOutcome": "PASS",
+      "outcome": "succeeded",
+      "cleanup": {
+        "state": "clean",
+        "outcomes": [{ "kind": "database", "identity": "loom_behavior_1a2b3c4d", "outcome": "done" }, { "kind": "instance", "identity": "loom-1a2b3c4d", "outcome": "done" }],
+        "actions": [{ "phase": "remove-databases", "action": "Drop the run's databases and verify their catalog absence.", "outcome": "done" }, { "phase": "stop", "action": "Stop the owned instance.", "outcome": "done" }],
+        "residual": []
+      },
+      "resourceUsage": { "peakWorkingSetBytes": 412000000, "diskBytes": 96000000, "phaseDurations": [{ "phase": "start", "milliseconds": 7400 }, { "phase": "execute", "milliseconds": 221000 }] },
+      "limits": {
+        "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 },
+        "enforcement": [
+          { "limit": "totalDeadlineSeconds", "enforced": true },
+          { "limit": "maxServerMemoryMiB", "enforced": true, "mechanism": "Set as the instance's max server memory before the fixtures loaded." },
+          { "limit": "processMemory", "enforced": false, "mechanism": "No operating-system limit was applied, because it could break correct engine operation." }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    { "because": "the test outcome is 'testOutcome'; the record holds one name for it", "keyword": "additionalProperties", "path": "", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN", "aggregate": "UNKNOWN" } },
+    { "because": "a run is identified by its runId", "keyword": "required", "path": "", "instance": { "runVersion": 1, "id": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN" } },
+    { "because": "a check's evidence is found through the record that names the check, never a second list", "keyword": "additionalProperties", "path": "/checks/0", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [{ "check": "sql.behavior", "required": true, "result": "PASS", "evidence": "ev.1" }], "evidenceRefs": ["ev.1"], "testOutcome": "PASS" } },
+    { "because": "an UNKNOWN names a typed cause", "keyword": "enum", "path": "/checks/0/cause", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [{ "check": "sql.behavior", "required": true, "result": "UNKNOWN", "cause": "flaky" }], "evidenceRefs": [], "testOutcome": "UNKNOWN" } },
+    { "because": "the input digest is a canonical SHA-256 hash", "keyword": "pattern", "path": "/inputDigest", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN" } },
+    { "because": "an implementation file is named relative to the run root, never by a machine path", "keyword": "pattern", "path": "/revisionSet/implementation/0/path", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [], "implementation": [{ "path": "C:/checkout/schema.sql", "hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333" }] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN" } },
+    { "because": "the target is a SQL platform of the contract", "keyword": "enum", "path": "/target/platform", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "target": { "platform": "localdb", "capabilities": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN" } },
+    { "because": "a recorded limit is a run budget or the process memory limit", "keyword": "enum", "path": "/limits/enforcement/0/limit", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "UNKNOWN", "limits": { "budgets": { "totalDeadlineSeconds": 900, "commandDeadlineSeconds": 60, "engineStartDeadlineSeconds": 60, "cleanupDeadlineSeconds": 60, "fixtureFileBytes": 2147483648, "maxServerMemoryMiB": 512, "maxDegreeOfParallelism": 1 }, "enforcement": [{ "limit": "cpuQuota", "enforced": true }] } } },
+    { "because": "the lifecycle outcome is succeeded, unsuccessful or cancelled", "keyword": "enum", "path": "/outcome", "instance": { "runVersion": 1, "runId": "run-1", "inputDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "runner": "ci", "startedAt": "2026-10-04T08:00:00Z", "finishedAt": "2026-10-04T08:00:04Z", "revisionSet": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sources": [], "profiles": [] }, "checks": [], "evidenceRefs": [], "testOutcome": "PASS", "outcome": "passed-with-residue" } }
+  ]
+}

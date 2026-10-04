@@ -53,7 +53,7 @@ Source: `packages/core/schema/icd/core.json`, `qualification.json` and `mcp.json
 | What a model record may contain | `packages/core/schema/model.schema.json` |
 | What a patch, a finding, a change or a result looks like | `packages/core/schema/patch.schema.json` (derived), `result.schema.json`, `tools.schema.json` |
 | What `loom.json`, `state.json`, a manifest or a published bundle in `.loom` contains | `packages/core/schema/workspace.schema.json` |
-| What a baseline, an acceptance, a policy or an evidence record contains | `packages/core/schema/assurance.schema.json` |
+| What a baseline, an acceptance, a policy, an evidence record, a run record, the machine-local SQL provider configuration, an allocation journal, a run lease or release evidence contains | `packages/core/schema/assurance.schema.json` |
 | Every finding code with its severity and rule | `FINDING_RULES` in `packages/core/src/codes.ts`, rendered in the Rules section of the `reference` projection |
 | How each model field is compared, and in which compatibility dimension | `DIFF_RULES` and `FIELD_POLICY` in `packages/core/src/field-policy.ts` |
 | What a language or interface profile supports, requires and cannot prove | `packages/core/schema/profiles/<id>.json` |

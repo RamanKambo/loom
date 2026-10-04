@@ -63,6 +63,7 @@ const policy = (spki: string, required: string[]): Policy => ({
   substitutes: [],
   qualification: { required, optional: [] },
   environments: [],
+  execution: { providers: [], budgets: { totalDeadlineSeconds: 900, commandDeadlineSeconds: 60, engineStartDeadlineSeconds: 60, cleanupDeadlineSeconds: 60, fixtureFileBytes: 2147483648, maxServerMemoryMiB: 512, maxDegreeOfParallelism: 1 } },
 });
 
 function editModel(dir: string, edit: (m: Model) => void): void {

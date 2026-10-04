@@ -9,10 +9,19 @@
       "cleanup": "pending",
       "cursor": "run-1.page.2"
     },
-    { "runId": "run-1", "phase": "completed", "progress": { "completed": 2, "total": 2, "events": [] }, "evidence": ["ev.sql-build", "ev.sql-behavior"], "cleanup": "complete" }
+    { "runId": "run-1", "phase": "completed", "progress": { "completed": 2, "total": 2, "events": [] }, "evidence": ["ev.sql-build", "ev.sql-behavior"], "cleanup": "clean" },
+    {
+      "runId": "run-2",
+      "phase": "failed",
+      "progress": { "completed": 1, "total": 1, "events": [{ "sequence": 1, "check": "sql.behavior", "state": "finished", "result": "UNKNOWN", "cause": "timeout" }] },
+      "evidence": ["ev.sql-behavior"],
+      "cleanup": "failed"
+    }
   ],
   "invalid": [
     { "because": "a finished check reports a check result", "keyword": "enum", "path": "/progress/events/0/result", "instance": { "runId": "run-1", "phase": "running", "progress": { "completed": 1, "total": 2, "events": [{ "sequence": 1, "check": "sql.build", "state": "finished", "result": "OK" }] }, "evidence": [], "cleanup": "pending" } },
-    { "because": "cleanup is pending, complete or residual", "keyword": "enum", "path": "/cleanup", "instance": { "runId": "run-1", "phase": "cancelled", "progress": { "completed": 0, "total": 2, "events": [] }, "evidence": [], "cleanup": "skipped" } }
+    { "because": "cleanup is pending, running, clean or failed", "keyword": "enum", "path": "/cleanup", "instance": { "runId": "run-1", "phase": "cancelled", "progress": { "completed": 0, "total": 2, "events": [] }, "evidence": [], "cleanup": "residual" } },
+    { "because": "an UNKNOWN result names its cause from the typed vocabulary", "keyword": "enum", "path": "/progress/events/0/cause", "instance": { "runId": "run-1", "phase": "running", "progress": { "completed": 1, "total": 2, "events": [{ "sequence": 1, "check": "sql.build", "state": "finished", "result": "UNKNOWN", "cause": "flaky" }] }, "evidence": [], "cleanup": "pending" } },
+    { "because": "a progress event carries no member outside its contract", "keyword": "additionalProperties", "path": "/progress/events/0", "instance": { "runId": "run-1", "phase": "running", "progress": { "completed": 1, "total": 2, "events": [{ "sequence": 1, "check": "sql.build", "state": "finished", "result": "PASS", "detail": "verbose output" }] }, "evidence": [], "cleanup": "pending" } }
   ]
 }

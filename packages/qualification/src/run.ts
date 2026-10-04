@@ -83,6 +83,15 @@ export function resolveChecks(checks: ReadonlyArray<CheckDefinition | string>): 
 /** The profile that defines a check. */
 const profileOf = (check: CheckDefinition) => PROFILES.find((p) => p.checks.some((c) => c.id === check.id));
 
+/**
+ * The input digest of a run record: the canonical hash of its revision set and,
+ * in run order, the id, revision and definition hash of every check it ran, so
+ * anyone holding the record and the check definitions can recompute it.
+ */
+export function runInputDigest(revisionSet: RunRecord['revisionSet'], checks: readonly CheckDefinition[]): string {
+  return canonicalHash({ revisionSet, checks: checks.map((c) => ({ id: c.id, revision: c.revision, definitionHash: canonicalHash(c) })) });
+}
+
 const newRunId = (): string => `run.${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}.${randomBytes(4).toString('hex')}`;
 
 class Resources implements RunResources {
@@ -189,7 +198,7 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
       const record = buildEvidence({ runId, runner, check, required, result, toolRecord, env, artifacts, sources, startedAt: checkStarted, model: options.model, index });
       const signed = sign(record);
       evidence.push(signed);
-      const entry: RunRecord['checks'][number] = { check: check.id, required, result: result.result, evidence: signed.id };
+      const entry: RunRecord['checks'][number] = { check: check.id, required, result: result.result };
       if (result.reason) entry.reason = result.reason;
       outcomes.push(entry);
       log(`check ${check.id}: ${result.result} - ${result.reason}`);
@@ -202,20 +211,24 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
   if (options.store) for (const record of evidence) findings.push(...putEvidence(options.root, record).findings);
 
   const profiles = [...new Map(checks.map((c) => profileOf(c)).filter((p) => p !== undefined).map((p) => [p!.id, p!])).values()];
+  const revisionSet: RunRecord['revisionSet'] = {
+    contractDigest: CONTRACT_DIGEST,
+    sources,
+    model: modelRevision(options.model),
+    profiles: profiles.map((p) => ({ id: p.id, version: p.version, hash: canonicalHash(p) })),
+    ...(options.policy ? { policy: { ref: options.policy.id, revision: options.policy.revision, hash: canonicalHash(options.policy) } } : {}),
+  };
   const run: RunRecord = {
     runVersion: 1,
-    id: runId,
+    runId,
+    inputDigest: runInputDigest(revisionSet, checks),
     runner,
     startedAt,
     finishedAt: new Date().toISOString(),
-    revisionSet: {
-      contractDigest: CONTRACT_DIGEST,
-      sources,
-      model: modelRevision(options.model),
-      profiles: profiles.map((p) => ({ id: p.id, version: p.version, hash: canonicalHash(p) })),
-    },
+    revisionSet,
     checks: outcomes,
-    aggregate: aggregate(outcomes),
+    evidenceRefs: evidence.map((e) => e.id),
+    testOutcome: aggregate(outcomes),
   };
   return { run: sign(run), evidence, findings, runDir };
 }

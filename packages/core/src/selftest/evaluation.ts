@@ -65,6 +65,7 @@ const POLICY: Policy = {
   substitutes: [{ kind: 'test-double', permits: ['implementation'], limits: 'Never satisfies a real integration obligation.' }],
   qualification: { required: [], optional: [] },
   environments: [{ id: 'localdb-fixture', kind: 'disposable-fixture', designated: true, description: 'A per-run fixture database.' }],
+  execution: { providers: ['localdb'], budgets: { totalDeadlineSeconds: 900, commandDeadlineSeconds: 60, engineStartDeadlineSeconds: 60, cleanupDeadlineSeconds: 60, fixtureFileBytes: 2147483648, maxServerMemoryMiB: 512, maxDegreeOfParallelism: 1 } },
   freeze: { onAcceptance: false, defectFixRequalify: ['conformance'] },
 };
 

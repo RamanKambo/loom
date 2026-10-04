@@ -1,0 +1,8 @@
+{
+  "definition": "LifecyclePhase",
+  "valid": ["preflight", "reserve", "start", "prepare", "execute", "capture", "quiesce", "remove-databases", "stop", "release"],
+  "invalid": [
+    { "because": "a run handle's stage is a RunPhase, not a resource-lifecycle phase", "keyword": "enum", "path": "", "instance": "running" },
+    { "because": "deleting files is part of release, never a phase of its own", "keyword": "enum", "path": "", "instance": "delete-files" }
+  ]
+}

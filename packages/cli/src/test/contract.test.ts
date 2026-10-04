@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlink
 import { dirname, join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CONTRACT_DIGEST, OPERATION_CATALOGUE, schemaErrors, unmetPresenceRules } from '@loom/core';
+import { CONTRACT_DIGEST, OPERATION_CATALOGUE, SCHEMA_BUNDLE, deepClone, schemaErrors, unmetPresenceRules } from '@loom/core';
 import type { OperationCatalogue } from '@loom/core';
 import { scratch } from '@loom/workspace/testing';
 
@@ -249,6 +249,24 @@ test('generation refuses a default that its own schema rejects, such as a render
   assert.equal(r.status, 1, r.output);
   assert.match(r.output, /\/\$defs\/RenderingBudget\/properties\/maxNodes: the default 5000 does not satisfy its own schema/);
   assert.match(r.output, /\/\$defs\/RenderingBudget\/properties\/maxDurationMs: the default 50 does not satisfy its own schema/);
+});
+
+type SchemaDefs = Record<string, { properties?: Record<string, { properties?: Record<string, { items?: { properties?: Record<string, { enum?: string[] }> } }> }> }>;
+
+/** The run budgets a run record's limits cannot say were enforced or not: each is a member of RunBudgets missing from the enforcement vocabulary. */
+function unrecordedBudgets(defs: SchemaDefs): string[] {
+  const budgets = Object.keys(defs['RunBudgets']?.properties ?? {});
+  const limits = defs['RunRecord']?.properties?.['limits']?.properties?.['enforcement']?.items?.properties?.['limit']?.enum ?? [];
+  return budgets.filter((b) => !limits.includes(b));
+}
+
+test('a run record can state whether the host enforced every run budget', () => {
+  const defs = SCHEMA_BUNDLE.$defs as unknown as SchemaDefs;
+  assert.ok(Object.keys(defs['RunBudgets']?.properties ?? {}).length >= 7, 'the budgets are read from the contract');
+  assert.deepEqual(unrecordedBudgets(defs), []);
+  const widened = deepClone(defs);
+  widened['RunBudgets']!.properties!['maxWorkers'] = {};
+  assert.deepEqual(unrecordedBudgets(widened), ['maxWorkers'], 'a budget added without an enforcement name is reported');
 });
 
 const ALLOWED_IMPORTS = /^(?:\.{1,2}\/|ajv(?:\/|$)|ajv-formats$|yaml$)/;

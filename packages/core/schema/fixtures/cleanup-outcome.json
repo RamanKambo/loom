@@ -1,0 +1,7 @@
+{
+  "definition": "CleanupOutcome",
+  "valid": ["done", "not-needed", "failed"],
+  "invalid": [
+    { "because": "an outcome is done, not needed or failed; a skipped step is never assumed done", "keyword": "enum", "path": "", "instance": "skipped" }
+  ]
+}

@@ -6,9 +6,29 @@
       "capabilities": [
         { "id": "workspace.init.scaffold", "description": "Initialization scaffolds the four .loom files without staging them.", "code": ["packages/workspace/src/init.ts#initWorkspace"], "contract": ["workspace.schema.json#/$defs/LoomConfig"], "verification": ["workspace.init.scaffold-files"] }
       ]
+    },
+    {
+      "registerVersion": 1,
+      "capabilities": [
+        {
+          "id": "qualification.isolation",
+          "description": "Each qualification run uses its own LocalDB instance and removes it.",
+          "owner": "team-qualification",
+          "code": ["packages/qualification/src/run.ts#runChecks"],
+          "contract": ["assurance.schema.json#/$defs/RunRecord"],
+          "verification": ["qualification.native.two-parallel-runs-each-use-their-own-localdb-instance-and-leave-none-behind"],
+          "negativeVerification": ["qualification.framework.a-fixture-check-runs-only-in-an-environment-the-policy-designates"],
+          "proofLimits": "A local LocalDB run does not establish Azure SQL identity, network or operational behavior.",
+          "environments": ["process", "disposable-fixture"],
+          "evidenceRefs": ["run.20261004090000.1a2b3c4d"]
+        }
+      ]
     }
   ],
   "invalid": [
-    { "because": "a capability without a verification case is rejected", "keyword": "minItems", "path": "/capabilities/0/verification", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": [] }] } }
+    { "because": "a capability without a verification case is rejected", "keyword": "minItems", "path": "/capabilities/0/verification", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": [] }] } },
+    { "because": "an execution environment is one of the environment kinds", "keyword": "enum", "path": "/capabilities/0/environments/0", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": ["a.b.c"], "environments": ["laptop"] }] } },
+    { "because": "a negative case id has the form of every other case id", "keyword": "pattern", "path": "/capabilities/0/negativeVerification/0", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": ["a.b.c"], "negativeVerification": ["Fails On Bad Input"] }] } },
+    { "because": "a capability entry carries no member outside its contract", "keyword": "additionalProperties", "path": "/capabilities/0", "instance": { "registerVersion": 1, "capabilities": [{ "id": "a.b", "description": "x", "code": ["a.ts#f"], "contract": ["model.schema.json"], "verification": ["a.b.c"], "author": "someone" }] } }
   ]
 }

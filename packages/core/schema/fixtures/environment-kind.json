@@ -1,0 +1,7 @@
+{
+  "definition": "EnvironmentKind",
+  "valid": ["process", "disposable-fixture", "ci", "test", "staging", "production"],
+  "invalid": [
+    { "because": "an environment is named by its kind, never by a machine", "keyword": "enum", "path": "", "instance": "developer-laptop" }
+  ]
+}

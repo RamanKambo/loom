@@ -1,0 +1,13 @@
+{
+  "definition": "MachinePath",
+  "valid": [
+    "C:\\Program Files\\Microsoft SQL Server\\160\\Tools\\Binn\\SqlLocalDB.exe",
+    "D:/loom/journals/run.20261004090000.1a2b3c4d.json",
+    "/var/lib/loom/journals/run.json"
+  ],
+  "invalid": [
+    { "because": "a relative path does not name one location on the machine", "keyword": "pattern", "path": "", "instance": "journals/run.json" },
+    { "because": "a network share is another machine, not a local path", "keyword": "pattern", "path": "", "instance": "\\\\fileserver\\share\\SqlLocalDB.exe" },
+    { "because": "a '..' segment can leave the directory the path appears to name", "keyword": "pattern", "path": "", "instance": "C:\\loom\\runs\\..\\..\\Windows\\System32" }
+  ]
+}

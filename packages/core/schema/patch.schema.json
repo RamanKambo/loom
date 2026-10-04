@@ -8917,11 +8917,7 @@
               "x-loom-ref": "component"
             },
             "platform": {
-              "enum": [
-                "sqlserver-2019",
-                "sqlserver-2022",
-                "azure-sql-database"
-              ]
+              "$ref": "model.schema.json#/$defs/SqlPlatform"
             },
             "schema": {
               "$ref": "common.schema.json#/$defs/Name"

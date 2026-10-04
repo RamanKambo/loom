@@ -36,6 +36,7 @@ function policy(overrides: Partial<Policy> = {}): Policy {
     substitutes: [],
     qualification: { required: ['sql.behavior'], optional: [] },
     environments: [{ id: 'localdb-fixture', kind: 'disposable-fixture', designated: true, description: 'A per-run LocalDB database.' }],
+    execution: { providers: ['localdb'], budgets: { totalDeadlineSeconds: 900, commandDeadlineSeconds: 60, engineStartDeadlineSeconds: 60, cleanupDeadlineSeconds: 60, fixtureFileBytes: 2147483648, maxServerMemoryMiB: 512, maxDegreeOfParallelism: 1 } },
     freeze: { onAcceptance: true, defectFixRequalify: ['conformance'] },
     ...overrides,
   };

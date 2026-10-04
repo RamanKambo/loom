@@ -18,7 +18,7 @@ export function verifyRunRevisionSet(run: RunRecord, evidence: readonly Evidence
   const out: Finding[] = [];
   const pinned = canonicalJson(run.revisionSet.sources);
   for (const e of evidence) {
-    if (e.run.id !== run.id) out.push(finding(`evidence/${e.id}`, `evidence ${e.id} belongs to run ${e.run.id}, not ${run.id}`, 'qualify with evidence of one coordinated run'));
+    if (e.run.id !== run.runId) out.push(finding(`evidence/${e.id}`, `evidence ${e.id} belongs to run ${e.run.id}, not ${run.runId}`, 'qualify with evidence of one coordinated run'));
     else if (canonicalJson(e.sources) !== pinned) out.push(finding(`evidence/${e.id}`, `evidence ${e.id} pins sources that differ from its run's revision set`, 'rerun the check in one coordinated run'));
   }
   out.push(...verifyRevisionSet(run.revisionSet.sources, current));
