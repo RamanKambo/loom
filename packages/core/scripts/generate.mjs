@@ -28,7 +28,7 @@ const BUNDLE_ID = 'urn:loom:schema';
 const VOCABULARY = {
   typed: ['type', 'properties', 'required', 'additionalProperties', 'items', 'enum', 'const', 'oneOf', 'anyOf', 'allOf', '$ref', '$defs'],
   runtime: ['pattern', 'minLength', 'maxLength', 'minimum', 'maximum', 'exclusiveMinimum', 'minItems', 'maxItems', 'uniqueItems', 'format', 'propertyNames'],
-  annotation: ['$schema', '$id', '$comment', 'description', 'x-loom-kind', 'x-loom-key', 'x-loom-ordered', 'x-loom-ref', 'x-loom-atomic'],
+  annotation: ['$schema', '$id', '$comment', 'description', 'default', 'x-loom-kind', 'x-loom-key', 'x-loom-ordered', 'x-loom-ref', 'x-loom-atomic'],
 };
 const KNOWN_KEYWORDS = new Set(Object.values(VOCABULARY).flat());
 // Members whose value is a map of subschemas, so their own keys are names rather than keywords.
@@ -239,7 +239,7 @@ function qualifyVocabulary(schema, where) {
       if (!KNOWN_KEYWORDS.has(k)) fail(`${at}: keyword '${k}' is outside the qualified vocabulary`);
       used.add(k);
       if (SCHEMA_MAPS.has(k)) for (const [name, sub] of Object.entries(v)) walk(sub, `${at}/${k}/${name}`);
-      else if (k === 'enum' || k === 'const' || k === 'required' || k === 'x-loom-key') continue;
+      else if (k === 'enum' || k === 'const' || k === 'default' || k === 'required' || k === 'x-loom-key') continue;
       else if (typeof v === 'object') walk(v, `${at}/${k}`);
     }
   }
@@ -369,12 +369,14 @@ function loadData(ajv, bundled) {
 
 // What the catalogue schema cannot state: unique names, references that resolve, vocabularies owned
 // by the result contract, a reason exactly where an interface is 'none', presence rules naming members
-// of their input, and examples that satisfy their input definition or start with their command.
-// Every problem is reported at once, so one run shows the whole repair.
+// of their input and values those members admit, examples that satisfy their input definition or
+// start with their command, agent-tool actions covering their input's 'action' exactly once, and
+// resource templates whose variables name required members of what the resource returns. Every
+// problem is reported at once, so one run shows the whole repair.
 function catalogueProblems(catalogue, bundled, ajv) {
   const problems = [];
   const defs = bundled.$defs;
-  const causes = defs.Refusal.properties.cause.enum;
+  const causes = defs.RefusalCause.enum;
   const effects = defs.ToolEffect.enum;
   const unique = (kind) => {
     const seen = new Set();
@@ -388,7 +390,9 @@ function catalogueProblems(catalogue, bundled, ajv) {
   const named = new Set();
   const rule = unique('presence rule');
   for (const r of catalogue.presenceRules) rule(r.id);
-  const [operation, tool, command] = [unique('operation'), unique('MCP tool'), unique('command')];
+  const [operation, tool, command, resource] = [unique('operation'), unique('MCP tool'), unique('command'), unique('resource')];
+  const advertised = new Set(catalogue.operations.filter((o) => o.exposure.mcp !== 'none').map((o) => o.exposure.mcp.tool));
+  const agentTools = new Map();
   for (const op of catalogue.operations) {
     const at = `operation '${op.id}'`;
     operation(op.id);
@@ -399,18 +403,13 @@ function catalogueProblems(catalogue, bundled, ajv) {
     if ((mcp === 'none' || cli === 'none') !== (reason !== undefined)) problems.push(`${at}: a reason is given exactly when an interface does not expose the operation`);
     if (mcp !== 'none') {
       tool(mcp.tool);
-      for (const d of [mcp.input, mcp.data]) if (!defs[d]) problems.push(`${at}: the contract defines no '${d}'`);
-      const members = Object.keys(defs[mcp.input]?.properties ?? {});
-      for (const id of mcp.presence) {
-        named.add(id);
-        const r = rules.get(id);
-        if (!r) problems.push(`${at}: names no presence rule '${id}'`);
-        else for (const m of new Set(r.accept.flatMap((a) => [...a.present, ...a.absent]))) if (!members.includes(m)) problems.push(`${at}: presence rule '${id}' names '${m}', which ${mcp.input} does not declare`);
-      }
-      const validate = defs[mcp.input] ? ajv.getSchema(`${BUNDLE_ID}#/$defs/${mcp.input}`) : null;
-      mcp.examples.forEach((ex, i) => {
-        if (validate && !validate(ex.input)) problems.push(`${at}: MCP example ${i} does not satisfy ${mcp.input}: ${ajv.errorsText(validate.errors)}`);
-      });
+      contractProblems(at, 'MCP', mcp);
+    }
+    if (op.agentTool !== undefined) {
+      if (mcp !== 'none') problems.push(`${at}: only an operation the MCP server does not advertise states an agent tool`);
+      if (advertised.has(op.agentTool.tool)) problems.push(`${at}: agent tool '${op.agentTool.tool}' is also an advertised MCP tool`);
+      contractProblems(at, 'agent-tool', op.agentTool);
+      agentTools.set(op.agentTool.tool, [...(agentTools.get(op.agentTool.tool) ?? []), op]);
     }
     if (cli !== 'none') {
       command(cli.command);
@@ -419,8 +418,71 @@ function catalogueProblems(catalogue, bundled, ajv) {
       });
     }
   }
+  for (const [name, ops] of agentTools) {
+    const inputs = [...new Set(ops.map((o) => o.agentTool.input))];
+    if (inputs.length > 1) problems.push(`agent tool '${name}': its operations name different inputs, ${inputs.join(', ')}`);
+    const action = defs[inputs[0]]?.properties?.action;
+    const seen = new Set();
+    for (const o of ops) {
+      const a = o.agentTool.action;
+      if (action === undefined && a !== undefined) problems.push(`operation '${o.id}': ${o.agentTool.input} declares no 'action', so the operation names none`);
+      if (action !== undefined && a === undefined) problems.push(`operation '${o.id}': ${o.agentTool.input} declares 'action', so the operation names its value`);
+      if (a === undefined) continue;
+      if (seen.has(a)) problems.push(`agent tool '${name}': action '${a}' is catalogued twice`);
+      seen.add(a);
+      if (Array.isArray(action?.enum) && !action.enum.includes(a)) problems.push(`operation '${o.id}': action '${a}' is not a value of the 'action' of ${o.agentTool.input}`);
+    }
+    for (const a of Array.isArray(action?.enum) ? action.enum : []) if (!seen.has(a)) problems.push(`agent tool '${name}': action '${a}' of ${inputs[0]} has no operation`);
+    if (action === undefined && ops.length > 1) problems.push(`agent tool '${name}': ${ops.length} operations share an input without 'action'`);
+  }
+  for (const r of catalogue.resources) {
+    const at = `resource '${r.uri}'`;
+    resource(r.uri);
+    if ((r.exposure === 'none') !== (r.reason !== undefined)) problems.push(`${at}: a reason is given exactly when the server does not list the resource`);
+    const contents = defs[r.contents];
+    if (!contents) {
+      problems.push(`${at}: the contract defines no '${r.contents}'`);
+      continue;
+    }
+    // A variable names a required member of what the resource returns, or of a definition one of its required members holds.
+    const required = new Set(contents.required ?? []);
+    for (const k of contents.required ?? []) {
+      const member = contents.properties?.[k];
+      for (const n of (member?.$ref ? defs[defName(member.$ref)] : member)?.required ?? []) required.add(n);
+    }
+    for (const m of r.uri.matchAll(/\{([A-Za-z]+)\}/g)) if (!required.has(m[1])) problems.push(`${at}: its variable '{${m[1]}}' names no required member of ${r.contents}`);
+  }
   for (const r of catalogue.presenceRules) if (!named.has(r.id)) problems.push(`presence rule '${r.id}' is named by no tool`);
   return problems;
+
+  // The checks an advertised MCP tool and a catalogued agent tool share.
+  function contractProblems(at, label, contract) {
+    for (const d of [contract.input, contract.data]) if (!defs[d]) problems.push(`${at}: the contract defines no '${d}'`);
+    const members = defs[contract.input]?.properties ?? {};
+    const declares = (m) => Object.hasOwn(members, m);
+    for (const id of contract.presence) {
+      named.add(id);
+      const r = rules.get(id);
+      if (!r) {
+        problems.push(`${at}: names no presence rule '${id}'`);
+        continue;
+      }
+      for (const m of new Set(r.accept.flatMap((a) => [...a.present, ...a.absent]))) if (!declares(m)) problems.push(`${at}: presence rule '${id}' names '${m}', which ${contract.input} does not declare`);
+      for (const w of r.when ?? []) {
+        if (!declares(w.member)) {
+          problems.push(`${at}: presence rule '${id}' applies on '${w.member}', which ${contract.input} does not declare`);
+          continue;
+        }
+        const admits = ajv.getSchema(`${BUNDLE_ID}#/$defs/${contract.input}/properties/${w.member}`);
+        if (!admits) problems.push(`${at}: presence rule '${id}': the member '${w.member}' of ${contract.input} does not compile`);
+        else for (const v of w.in) if (!admits(v)) problems.push(`${at}: presence rule '${id}' applies on '${w.member}' being ${JSON.stringify(v)}, which ${contract.input} does not admit`);
+      }
+    }
+    const validate = defs[contract.input] ? ajv.getSchema(`${BUNDLE_ID}#/$defs/${contract.input}`) : null;
+    contract.examples.forEach((ex, i) => {
+      if (validate && !validate(ex.input)) problems.push(`${at}: ${label} example ${i} does not satisfy ${contract.input}: ${ajv.errorsText(validate.errors)}`);
+    });
+  }
 }
 
 // Every consumed interface must be provided by the named component, and every provided interface
@@ -549,27 +611,60 @@ const anchor = (op) => `[${op.id}](#${op.id.toLowerCase()})`;
 // --self-test the name the argument parser gives the command it selects.
 const commandWord = (command) => command.split(' ')[0].replace(/^--/, '');
 
+const literal = (v) => (typeof v === 'string' ? `'${v}'` : JSON.stringify(v));
+
 function presenceSentence(rule) {
   const combination = (a) =>
     a.present.length ? `send ${quoted(a.present).join(' and ')}${a.absent.length ? ` without ${quoted(a.absent).join(' or ')}` : ''}` : `omit ${quoted(a.absent).join(' and ')}`;
-  return sentence(rule.accept.map(combination).join(', or '));
+  const condition = (rule.when ?? []).map((c) => `'${c.member}' is ${c.in.map(literal).join(' or ')}`).join(' and ');
+  return sentence(`${condition ? `when ${condition}, ` : ''}${rule.accept.map(combination).join(', or ')}`);
 }
+
+/** The tool contract of an operation: its advertised MCP exposure, or the agent tool it catalogues; null for neither. */
+const contractOf = (op) => (op.exposure.mcp !== 'none' ? op.exposure.mcp : (op.agentTool ?? null));
+
+/** An agent-tool operation as a reader names it: the tool and, for a tool with actions, the action. */
+const actionOf = (agentTool) => `${agentTool.tool}${agentTool.action === undefined ? '' : ` action '${agentTool.action}'`}`;
 
 function interfaceOf(op) {
   if (op.exposure.mcp !== 'none') return op.exposure.mcp.tool;
+  if (op.agentTool !== undefined) return actionOf(op.agentTool);
   return op.exposure.cli !== 'none' ? `the command '${op.exposure.cli.command}'` : `the operation '${op.id}'`;
 }
 
-function toolDescription(op, rules, operations) {
+// The sentences of an operation's description, the presence rules by id so a tool with several
+// actions can state a rule its actions share once.
+function descriptionParts(op, rules, operations) {
   const next = op.nextAction.operation === undefined ? op.nextAction.action : `${op.nextAction.action} with ${interfaceOf(operations.get(op.nextAction.operation))}`;
-  return [
-    op.purpose,
-    sentence(`prerequisites: ${op.prerequisites.length ? op.prerequisites.join('; ') : 'none'}`),
-    sentence(`effects: ${EFFECT_TEXT[op.effects]}`),
-    ...(op.refusals.length ? [sentence(`refused as ${op.refusals.map((r) => `${r.cause} when ${r.when}`).join('; as ')}`)] : []),
-    ...op.exposure.mcp.presence.map((id) => presenceSentence(rules.get(id))),
-    sentence(`next: ${next}`),
-  ].join(' ');
+  return {
+    head: [
+      op.purpose,
+      sentence(`prerequisites: ${op.prerequisites.length ? op.prerequisites.join('; ') : 'none'}`),
+      sentence(`effects: ${EFFECT_TEXT[op.effects]}`),
+      ...(op.refusals.length ? [sentence(`refused as ${op.refusals.map((r) => `${r.cause} when ${r.when}`).join('; as ')}`)] : []),
+    ],
+    presence: contractOf(op).presence.map((id) => [id, presenceSentence(rules.get(id))]),
+    next: sentence(`next: ${next}`),
+  };
+}
+
+function toolDescription(op, rules, operations) {
+  const { head, presence, next } = descriptionParts(op, rules, operations);
+  return [...head, ...presence.map(([, s]) => s), next].join(' ');
+}
+
+/** The description of an agent tool: each action's description in turn, a presence rule shared by several actions stated at its first. */
+function agentToolDescription(ops, rules, operations) {
+  const stated = new Set();
+  return ops
+    .map((o) => {
+      const { head, presence, next } = descriptionParts(o, rules, operations);
+      const fresh = presence.filter(([id]) => !stated.has(id));
+      for (const [id] of fresh) stated.add(id);
+      const text = [...head, ...fresh.map(([, s]) => s), next].join(' ');
+      return o.agentTool.action === undefined ? text : `Action '${o.agentTool.action}': ${text}`;
+    })
+    .join(' ');
 }
 
 function wrap(text, width) {
@@ -609,9 +704,10 @@ function markdownNotice() {
   return form.replace('${SOURCE_NOTICE}', notice);
 }
 
-function operationReference(catalogue, tools, rules, operations) {
+function operationReference(catalogue, tools, agentTools, rules, operations) {
   const c = catalogue.cli;
   const options = c.commonOptions.map((o) => (o.purpose ? `${code(o.usage)} ${o.purpose}` : code(o.usage))).join(', ');
+  const unlisted = catalogue.resources.filter((r) => r.exposure === 'none');
   const L = [
     markdownNotice(),
     '# Loom operations',
@@ -633,6 +729,23 @@ function operationReference(catalogue, tools, rules, operations) {
     ...tools.map((t, i) => `${i + 1}. ${code(t.name)}, operation ${anchor(operations.get(t.operation))}`),
     '',
     `Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the ${code('loom://schema/<Definition>')} resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most ${catalogue.mcp.toolBudget} bytes.`,
+    ...(agentTools.length
+      ? [
+          '',
+          'The catalogue also defines these agent tools, which the server does not advertise. Each operation states its action, input, result data, presence rules and examples:',
+          '',
+          ...agentTools.map((t) => `- ${code(t.name)}: ${t.actions.map((a) => anchor(operations.get(a.operation))).join(', ')}`),
+        ]
+      : []),
+    '',
+    '## Resources',
+    '',
+    `Besides the schema resources, the catalogue defines these resources. A ${code('session')} resource is readable only by the session that holds the workspace handle.`,
+    '',
+    '| Resource | Returns | Scope | Listed | Purpose |',
+    '| --- | --- | --- | --- | --- |',
+    ...catalogue.resources.map((r) => `| ${code(r.uri)} | ${code(r.contents)} | ${r.scope} | ${r.exposure === 'listed' ? 'yes' : 'no'} | ${r.purpose} |`),
+    ...(unlisted.length ? ['', 'Not listed:', '', ...unlisted.map((r) => `- ${code(r.uri)}: ${r.reason}`)] : []),
     '',
     '## Operations',
     '',
@@ -648,19 +761,24 @@ function operationReference(catalogue, tools, rules, operations) {
     L.push(`- Effects: ${code(op.effects)}, ${EFFECT_TEXT[op.effects]}.`);
     L.push(`- Refusals: ${op.refusals.length ? `${op.refusals.map((r) => `${code(r.cause)} when ${r.when}`).join('; ')}.` : 'none.'}`);
     L.push(`- Next action: ${op.nextAction.action}${target ? `, through ${anchor(target)}` : ''}.`);
+    const agent = op.agentTool;
+    const contract = contractOf(op);
+    const subject = agent === undefined ? code(mcp === 'none' ? '' : mcp.tool) : agent.action === undefined ? code(agent.tool) : `action ${code(agent.action)} of ${code(agent.tool)}`;
     L.push(`- MCP tool: ${mcp === 'none' ? 'none.' : `${code(mcp.tool)}, input ${code(mcp.input)}, result data ${code(mcp.data)}.`}`);
+    if (agent !== undefined) L.push(`- Agent tool: ${code(agent.tool)}${agent.action === undefined ? '' : `, action ${code(agent.action)}`}, input ${code(agent.input)}, result data ${code(agent.data)}; the server does not advertise it.`);
     L.push(`- Command: ${cli === 'none' ? 'none.' : `${cli.usage.map(code).join(' or ')}.`}`);
     if (reason !== undefined) L.push(`- Not exposed: ${reason}`);
-    if (mcp !== 'none' && mcp.presence.length) {
-      L.push('', `Presence rules of ${code(mcp.tool)}, checked before anything runs:`, '');
-      for (const id of mcp.presence) {
+    if (contract !== null && contract.presence.length) {
+      L.push('', `Presence rules of ${subject}, checked before anything runs:`, '');
+      for (const id of contract.presence) {
         const r = rules.get(id);
         L.push(`- ${presenceSentence(r)} A request matching no combination is refused with ${code(r.code)} at ${code(r.path)}.`);
       }
     }
     if (mcp !== 'none') L.push('', `Description of ${code(mcp.tool)}:`, '', `> ${tools.find((t) => t.name === mcp.tool).description}`);
+    if (agent !== undefined) L.push('', `Description of ${subject}:`, '', `> ${agentTools.find((t) => t.name === agent.tool).actions.find((a) => a.operation === op.id).description}`);
     const examples = [
-      ...(mcp === 'none' ? [] : mcp.examples.map((e) => [e.description, 'json', JSON.stringify(e.input, null, 2)])),
+      ...(contract === null ? [] : contract.examples.map((e) => [e.description, 'json', JSON.stringify(e.input, null, 2)])),
       ...(cli === 'none' ? [] : cli.examples.map((e) => [e.description, 'sh', `${c.invocation} ${e.command}`])),
     ];
     if (examples.length) {
@@ -686,6 +804,19 @@ function operationViews(catalogue) {
     presence: o.exposure.mcp.presence.map((id) => rules.get(id)),
   }));
   const examples = exposed.flatMap((o) => o.exposure.mcp.examples.map((e) => ({ tool: o.exposure.mcp.tool, description: e.description, input: e.input })));
+  const agentOps = catalogue.operations.filter((o) => o.agentTool !== undefined);
+  const agentTools = [...new Set(agentOps.map((o) => o.agentTool.tool))].map((name) => {
+    const ops = agentOps.filter((o) => o.agentTool.tool === name);
+    const actions = ops.map((o) => ({
+      ...(o.agentTool.action === undefined ? {} : { action: o.agentTool.action }),
+      operation: o.id,
+      data: o.agentTool.data,
+      effects: o.effects,
+      description: toolDescription(o, rules, operations),
+      presence: o.agentTool.presence.map((id) => rules.get(id)),
+    }));
+    return { name, input: ops[0].agentTool.input, description: agentToolDescription(ops, rules, operations), actions };
+  });
   const commands = [...new Set(catalogue.operations.filter((o) => o.exposure.cli !== 'none').map((o) => commandWord(o.exposure.cli.command)))];
   const json = (v) => JSON.stringify(v, null, 2);
   const module = [
@@ -701,10 +832,28 @@ function operationViews(catalogue) {
     '  description: string;',
     '  presence: readonly CataloguePresenceRule[];',
     '}\n',
+    '/** One action of an agent tool: its operation, result definition, effect, generated description and presence rules. */',
+    'export interface AgentToolAction {',
+    '  action?: string;',
+    '  operation: string;',
+    '  data: string;',
+    "  effects: DescribeData['tools'][number]['effects'];",
+    '  description: string;',
+    '  presence: readonly CataloguePresenceRule[];',
+    '}\n',
+    '/** An agent tool the catalogue defines and the MCP server does not advertise: its input, its whole description and its actions. */',
+    'export interface AgentTool {',
+    '  name: string;',
+    '  input: string;',
+    '  description: string;',
+    '  actions: readonly AgentToolAction[];',
+    '}\n',
     '/** The authored operation catalogue, packages/core/schema/operations.json. */',
     `export const OPERATION_CATALOGUE: OperationCatalogue = ${json(catalogue)};\n`,
     '/** Every MCP tool, in the order the server lists them. */',
     `export const MCP_TOOLS: readonly CatalogueTool[] = ${json(tools)};\n`,
+    '/** Every agent tool the server does not advertise, in catalogue order. */',
+    `export const AGENT_TOOLS: readonly AgentTool[] = ${json(agentTools)};\n`,
     "/** The MCP examples, in the shape of DescribeData's examples. */",
     `export const TOOL_EXAMPLES: DescribeData['examples'] = ${json(examples)};\n`,
     '/** The command words the CLI dispatches on, in catalogue order. */',
@@ -714,7 +863,7 @@ function operationViews(catalogue) {
     '/** The CLI usage text. */',
     `export const CLI_USAGE = ${JSON.stringify(cliUsage(catalogue))};\n`,
   ].join('\n');
-  return { module, reference: operationReference(catalogue, tools, rules, operations) };
+  return { module, reference: operationReference(catalogue, tools, agentTools, rules, operations) };
 }
 
 // ---------- emit ----------

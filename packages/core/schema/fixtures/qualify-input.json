@@ -1,0 +1,16 @@
+{
+  "definition": "QualifyInput",
+  "valid": [
+    { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior", "documentation.yaml-roundtrip"], "target": { "kind": "workspace" }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "ci-runner" },
+    { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["csharp.conformance"], "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "local-runner" },
+    { "action": "status", "workspaceId": "ws_3f9a1c7d", "runId": "run-1", "cursor": "run-1.page.2" },
+    { "action": "cancel", "workspaceId": "ws_3f9a1c7d", "runId": "run-1" }
+  ],
+  "invalid": [
+    { "because": "a check is a check id, never a shell command", "keyword": "pattern", "path": "/checks/0", "instance": { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["pwsh -File run.ps1"], "target": { "kind": "workspace" }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "ci-runner" } },
+    { "because": "an execution policy names a provisioned identity, never an executable path", "keyword": "pattern", "path": "/executionPolicy", "instance": { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "workspace" }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "C:/tools/sqlcmd.exe" } },
+    { "because": "a target names a record, never a SQL connection string", "keyword": "pattern", "path": "/target/ref/id", "instance": { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "record", "ref": { "kind": "storage", "id": "Server=tcp:db.example.com;Database=shop" } }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "ci-runner" } },
+    { "because": "a cursor is an opaque token, never a URL", "keyword": "pattern", "path": "/cursor", "instance": { "action": "status", "workspaceId": "ws_3f9a1c7d", "runId": "run-1", "cursor": "https://example.com/next" } },
+    { "because": "no free-text command member is accepted", "keyword": "additionalProperties", "path": "", "instance": { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "workspace" }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "executionPolicy": "ci-runner", "command": "sqlcmd -S . -i run.sql" } }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "definition": "WorkspaceInitializeData",
+  "valid": [
+    {
+      "outcome": "proposed",
+      "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "writes": [
+        { "path": ".loom/model.json", "role": "model", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        { "path": ".loom/loom.json", "role": "config", "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+      ],
+      "nextActions": [
+        {
+          "purpose": "Create the workspace against the same inspection.",
+          "tool": "loom.workspace",
+          "arguments": { "action": "initialize", "path": "services/payments", "declaration": { "configVersion": 1, "model": "model.json", "scope": { "payments": ["src"] }, "outputs": {}, "gates": {} }, "dryRun": false, "expectedInspection": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          "prerequisites": [],
+          "effects": "writes",
+          "blockedBy": []
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "an initialization writes only scaffold files and its journal", "keyword": "enum", "path": "/writes/0/role", "instance": { "outcome": "created", "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "writes": [{ "path": "src/index.ts", "role": "source", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }], "nextActions": [] } },
+    { "because": "a written path is repository-relative", "keyword": "pattern", "path": "/writes/0/path", "instance": { "outcome": "created", "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "writes": [{ "path": "D:/work/payments/.loom/model.json", "role": "model", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }], "nextActions": [] } }
+  ]
+}

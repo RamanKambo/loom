@@ -1,0 +1,10 @@
+{
+  "definition": "QualifyCancelData",
+  "valid": [
+    { "runId": "run-1", "cancellation": "requested", "phase": "cancelling", "cleanup": { "complete": false, "steps": [{ "step": "cancel-runs", "outcome": "done" }], "residual": [] } },
+    { "runId": "run-1", "cancellation": "completed", "phase": "cancelled", "cleanup": { "complete": true, "steps": [{ "step": "stop-processes", "outcome": "done" }, { "step": "remove-resources", "outcome": "done" }], "residual": [] } }
+  ],
+  "invalid": [
+    { "because": "a cancellation is requested or completed, never assumed", "keyword": "enum", "path": "/cancellation", "instance": { "runId": "run-1", "cancellation": "pending", "phase": "cancelling", "cleanup": { "complete": false, "steps": [], "residual": [] } } }
+  ]
+}

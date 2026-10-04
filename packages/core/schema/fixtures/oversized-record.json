@@ -1,0 +1,10 @@
+{
+  "definition": "OversizedRecord",
+  "valid": [
+    { "ref": { "kind": "type", "id": "order" }, "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 70000, "summary": "Type order with 48 properties; its record resource returns it whole.", "resource": "loom://workspaces/ws_3f9a1c7d/records/type/order", "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+  ],
+  "invalid": [
+    { "because": "an oversized record names the resource that returns it, so its existence is never omitted", "keyword": "required", "path": "", "instance": { "ref": { "kind": "type", "id": "order" }, "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 70000, "summary": "Type order with 48 properties.", "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    { "because": "the resource is a loom resource, never an arbitrary URL", "keyword": "pattern", "path": "/resource", "instance": { "ref": { "kind": "type", "id": "order" }, "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 70000, "summary": "Type order with 48 properties.", "resource": "https://example.com/order.json", "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+  ]
+}

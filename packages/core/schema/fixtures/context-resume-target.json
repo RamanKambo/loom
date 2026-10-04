@@ -1,0 +1,8 @@
+{
+  "definition": "ContextResumeTarget",
+  "valid": [{ "kind": "resume" }],
+  "invalid": [
+    { "because": "a resume target names no record; it resumes the whole workspace", "keyword": "additionalProperties", "path": "", "instance": { "kind": "resume", "ref": { "kind": "component", "id": "ordering" } } },
+    { "because": "the kind of a resume target is 'resume'", "keyword": "const", "path": "/kind", "instance": { "kind": "component" } }
+  ]
+}

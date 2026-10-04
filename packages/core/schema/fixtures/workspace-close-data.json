@@ -1,0 +1,10 @@
+{
+  "definition": "WorkspaceCloseData",
+  "valid": [
+    { "workspaceId": "ws_3f9a1c7d", "released": true, "cleanup": { "complete": true, "steps": [{ "step": "cancel-runs", "outcome": "not-needed" }, { "step": "revoke-browser-access", "outcome": "done" }, { "step": "release-handle", "outcome": "done" }], "residual": [] } },
+    { "workspaceId": "ws_3f9a1c7d", "released": false, "cleanup": { "complete": false, "steps": [{ "step": "remove-resources", "outcome": "failed" }], "residual": [{ "kind": "database", "identity": "LoomQualify_run1", "recovery": "Drop the LocalDB instance LoomQualify_run1 after its evidence is collected." }] } }
+  ],
+  "invalid": [
+    { "because": "a close names the handle it closed", "keyword": "required", "path": "", "instance": { "released": true, "cleanup": { "complete": true, "steps": [], "residual": [] } } }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "definition": "WorkspaceStatus",
+  "valid": [
+    {
+      "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read", "qualify"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } },
+      "revisionVector": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "resources": [{ "uri": "loom://workspaces/ws_3f9a1c7d/status", "contents": "WorkspaceStatus" }],
+      "pendingRuns": [{ "runId": "run-1", "phase": "running" }],
+      "nextActions": [{ "purpose": "Follow the running qualification.", "tool": "loom.qualify", "arguments": { "action": "status", "workspaceId": "ws_3f9a1c7d", "runId": "run-1" }, "prerequisites": [], "effects": "reads", "blockedBy": [] }]
+    }
+  ],
+  "invalid": [
+    { "because": "a pending run names its phase", "keyword": "required", "path": "/pendingRuns/0", "instance": { "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } }, "revisionVector": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "resources": [], "pendingRuns": [{ "runId": "run-1" }], "nextActions": [] } },
+    { "because": "a workspace resource is a loom resource, never a file URL", "keyword": "pattern", "path": "/resources/0/uri", "instance": { "workspace": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } }, "revisionVector": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "resources": [{ "uri": "file:///D:/work/payments/.loom/model.json", "contents": "Model" }], "pendingRuns": [], "nextActions": [] } }
+  ]
+}

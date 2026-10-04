@@ -20,6 +20,7 @@ import {
   schemaErrors,
   selfTest,
   structuralFindings,
+  unmetPresenceRules,
   validate,
   validateTool,
   withArtifactHashes,
@@ -260,15 +261,12 @@ const invalid = (tool: string, findings: Finding[], message: string): ResultEnve
 /**
  * The presence rules of the tool's catalogue entry, which the input contract's
  * root combinators state, checked first so a refusal names the actual rule
- * rather than a combinator. A rule holds when one of its accepted combinations
- * has every member it lists as present sent and every member it lists as
- * absent left out.
+ * rather than a combinator. The core's unmetPresenceRules decides which rules
+ * apply and hold, so a rule conditioned on a member value, such as one action,
+ * is enforced exactly as the catalogue states it.
  */
 function presenceFindings(contract: ToolContract, args: Json): Finding[] {
-  const has = (k: string): boolean => args[k] !== undefined;
-  return contract.presence
-    .filter((rule) => !rule.accept.some((a) => a.present.every(has) && a.absent.every((k) => !has(k))))
-    .map((rule) => asFinding(rule.code, rule.path, rule.message, rule.fix));
+  return unmetPresenceRules(contract.presence, args).map((rule) => asFinding(rule.code, rule.path, rule.message, rule.fix));
 }
 
 /**

@@ -1,0 +1,19 @@
+{
+  "definition": "FederationApplyData",
+  "valid": [
+    {
+      "proposalId": "prop-1",
+      "journal": {
+        "journalVersion": 1,
+        "proposalId": "prop-1",
+        "inputDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "state": "complete",
+        "writes": [{ "write": { "owner": "shop", "repositoryPath": ".", "path": ".loom/loom.json", "expectedOld": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "expectedNew": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }, "status": "applied" }]
+      },
+      "revisionVector": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "invalid": [
+    { "because": "an applied proposal reports the journal of its writes", "keyword": "required", "path": "", "instance": { "proposalId": "prop-1", "revisionVector": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" } }
+  ]
+}

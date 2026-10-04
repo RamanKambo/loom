@@ -1,0 +1,26 @@
+{
+  "definition": "DiagramInput",
+  "valid": [
+    {
+      "workspaceId": "ws_3f9a1c7d",
+      "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } },
+      "scope": { "kind": "dependency", "depth": 1 },
+      "formats": ["mermaid", "terminal-unicode"],
+      "budget": { "maxNodes": 50, "maxBytes": 8192, "maxWidth": 120 }
+    },
+    {
+      "workspaceId": "ws_3f9a1c7d",
+      "target": { "kind": "workspace" },
+      "scope": { "kind": "hosting", "depth": 0 },
+      "formats": ["graph"],
+      "budget": { "maxNodes": 200, "maxBytes": 65536 },
+      "snapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "invalid": [
+    { "because": "the renderer is provisioned, never an executable path the caller names", "keyword": "additionalProperties", "path": "", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 }, "renderer": "C:/tools/mermaid-ascii.exe" } },
+    { "because": "a format names a rendering, never a URL", "keyword": "enum", "path": "/formats/0", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["https://render.example.com/svg"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
+    { "because": "a target names a record, never a connection string", "keyword": "pattern", "path": "/target/ref/id", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "storage", "id": "Server=tcp:db.example.com;Database=shop" } }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } } },
+    { "because": "a budget bounds the rendering", "keyword": "maximum", "path": "/budget/maxNodes", "instance": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "workspace" }, "scope": { "kind": "dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 100000, "maxBytes": 8192 } } }
+  ]
+}

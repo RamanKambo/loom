@@ -22,7 +22,8 @@
           "nextAction": { "action": "check the owning model" },
           "exposure": { "mcp": "none", "cli": { "command": "owner", "usage": ["owner [<path>]"], "examples": [] }, "reason": "Ownership is a command-line question." }
         }
-      ]
+      ],
+      "resources": [{ "uri": "loom://workspaces/{workspaceId}/status", "purpose": "The status of one open workspace.", "contents": "WorkspaceStatus", "scope": "session", "exposure": "listed" }]
     }
   ],
   "invalid": [

@@ -1,0 +1,10 @@
+{
+  "definition": "RecordResource",
+  "valid": [
+    { "workspaceId": "ws_3f9a1c7d", "kind": "operation", "id": "order.get", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "record": { "id": "order.get", "kind": "query", "owner": "ordering", "version": 1 } }
+  ],
+  "invalid": [
+    { "because": "a record resource names the revision it answers for", "keyword": "required", "path": "", "instance": { "workspaceId": "ws_3f9a1c7d", "kind": "operation", "id": "order.get", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "record": {} } },
+    { "because": "a record is data, never text to run", "keyword": "type", "path": "/record", "instance": { "workspaceId": "ws_3f9a1c7d", "kind": "operation", "id": "order.get", "revision": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "record": "SELECT * FROM orders" } }
+  ]
+}

@@ -476,6 +476,18 @@ export type ProjectionTarget =
   | 'coverage-matrix'
   | 'evidence-index';
 /**
+ * Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it.
+ */
+export type RefusalCause =
+  | 'invalid-input'
+  | 'unresolved-context'
+  | 'unmet-prerequisite'
+  | 'policy-failure'
+  | 'stale-base'
+  | 'unknown-handle'
+  | 'cleanup-incomplete'
+  | 'recovery-required';
+/**
  * Stable finding vocabulary. Severity and the one-line rule of each code live in the core's rule table.
  */
 export type FindingCode =
@@ -673,6 +685,81 @@ export type WorkspaceId = string;
  */
 export type WorkflowPhase =
   'unplanned' | 'discovery' | 'specification' | 'implementation' | 'integration' | 'release' | 'operations';
+/**
+ * A local filesystem path an agent supplies for discovery, absolute or relative to the server's working directory. It is the one input that may name a location outside a repository; it grants no authority and is never written into a model, a projection or evidence.
+ */
+export type DiscoveryPath = string;
+/**
+ * Opaque identity of one agent or browser session; never a credential.
+ */
+export type SessionId = string;
+/**
+ * An opaque continuation token. It binds the filters and the revision vector of the request that issued it, and a changed input invalidates it.
+ */
+export type Cursor = string;
+/**
+ * The whole workspace, or one record of it, that a diagram or a qualification run is about. A record is named by its kind and an id from a closed character set, so no command, URL, connection string or path can stand in for it.
+ */
+export type TargetReference =
+  | {
+      kind: 'workspace';
+    }
+  | {
+      kind: 'record';
+      ref: {
+        kind: RecordKind;
+        /**
+         * The record id; a property is '<typeId>.<propertyName>' and a composite key joins its values with '|'.
+         */
+        id: string;
+      };
+    };
+/**
+ * A rendering of a diagram: the structured graph, Mermaid text, or terminal text in ASCII or Unicode.
+ */
+export type DiagramFormat = 'graph' | 'mermaid' | 'terminal-ascii' | 'terminal-unicode';
+/**
+ * The stage of a qualification run that passed preflight. 'cancelling' lasts until its processes and resources have settled.
+ */
+export type RunPhase = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
+/**
+ * One typed change to a composition: a direct member, a boundary agreement, a member's export pin or an output claim.
+ */
+export type FederationChange =
+  | {
+      change: 'addMember';
+      member: CompositionMember;
+    }
+  | {
+      change: 'removeMember';
+      memberId: Id;
+    }
+  | {
+      change: 'setAgreement';
+      agreement: Agreement;
+    }
+  | {
+      change: 'removeAgreement';
+      agreementId: Id;
+    }
+  | {
+      change: 'pinExport';
+      memberId: Id;
+      pin: ContractPin;
+    }
+  | {
+      change: 'unpinExport';
+      memberId: Id;
+      pin: ContractPin;
+    }
+  | {
+      change: 'claimOutput';
+      path: RelativePath;
+    }
+  | {
+      change: 'releaseOutput';
+      path: RelativePath;
+    };
 /**
  * The bundle a composition member publishes upward: a published contract that names its model and source commit, pins the agreement bundle it satisfies and carries the full required record closure of its exports, namely types, operations with their errors and authority, routines, mutations, security schemes, hosting requirements and evidence obligations. An export that omits a required behavior cannot qualify its consumer. PublishedContract rejects every unknown member.
  */
@@ -6206,7 +6293,7 @@ export interface IcdInterface {
    * Schema pointer of the output contract.
    */
   output: string;
-  refusals: ('invalid-input' | 'unresolved-context' | 'unmet-prerequisite' | 'policy-failure' | 'stale-base')[];
+  refusals: RefusalCause[];
   effects: 'none' | 'reads' | 'writes' | 'executes';
   concurrency: Text;
 }
@@ -6407,7 +6494,7 @@ export interface Completeness {
   continuation?: string;
 }
 export interface Refusal {
-  cause: 'invalid-input' | 'unresolved-context' | 'unmet-prerequisite' | 'policy-failure' | 'stale-base';
+  cause: RefusalCause;
   message: string;
 }
 /**
@@ -6866,12 +6953,16 @@ export interface WorkspaceSummary {
   }[];
   imports: ContractPin[];
   unknowns: Unknown[];
-  pendingWork: {
-    workPackage: string;
-    status: 'planned' | 'in-progress' | 'blocked';
-  }[];
+  pendingWork: PendingWork[];
   nextActions: NextAction[];
   completeness: Completeness;
+}
+/**
+ * A work package that is not done, and whether it is planned, in progress or blocked.
+ */
+export interface PendingWork {
+  workPackage: string;
+  status: 'planned' | 'in-progress' | 'blocked';
 }
 /**
  * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
@@ -6935,145 +7026,39 @@ export interface OwnedWrite {
   expectedNew: Hash;
 }
 /**
- * Every operation Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
+ * The arguments of loom.workspace. 'action' selects inspect, initialize, open, status or close, and the operation catalogue's presence rules state the members each action requires and forbids.
  */
-export interface OperationCatalogue {
-  catalogueVersion: 1;
+export interface WorkspaceInput {
+  action: 'inspect' | 'initialize' | 'open' | 'status' | 'close';
   /**
-   * The MCP server as a whole: the size budget its advertised tool definitions are held to.
+   * The local directory to inspect, initialize or open.
    */
-  mcp: {
-    /**
-     * The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.
-     */
-    toolBudget: number;
-  };
+  path?: string;
   /**
-   * The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.
+   * The directory above which inspection reads nothing.
    */
-  cli: {
-    title: Text;
-    synopsis: Text;
-    /**
-     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
-     */
-    invocation: string;
-    commonOptions: {
-      usage: string;
-      purpose?: Text;
-    }[];
-    exitStatus: Text;
-  };
-  presenceRules: CataloguePresenceRule[];
+  boundary?: string;
+  declaration?: LoomConfig;
   /**
-   * @minItems 1
+   * Return the scaffold proposal and write nothing.
    */
-  operations: CatalogueOperation[];
+  dryRun?: boolean;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  expectedInspection?: string;
+  /**
+   * 'read' cannot mutate, publish, run checks or change policy; 'edit' never grants acceptance.
+   */
+  access?: 'read' | 'edit';
+  /**
+   * Start the browser view and return its loopback URL.
+   */
+  view?: boolean;
+  workspaceId?: WorkspaceId;
 }
 /**
- * A presence rule of an MCP tool input: the member combinations it accepts. The advertised input schema leaves root presence combinators out, so the server checks these rules before anything runs, refuses a request matching no accepted combination with the finding below, and the tool description states each rule.
- */
-export interface CataloguePresenceRule {
-  id: Id;
-  /**
-   * A combination holds when every member it lists as present is sent and every member it lists as absent is not.
-   *
-   * @minItems 1
-   */
-  accept: {
-    present: Name[];
-    absent: Name[];
-  }[];
-  code: FindingCode;
-  path: string;
-  message: Text;
-  fix: Text;
-}
-/**
- * One operation: what it does, what it needs, what it changes, when it is refused, the next useful action and how the MCP server and the command line expose it. 'none' marks an interface that does not expose the operation, and 'reason' then says why.
- */
-export interface CatalogueOperation {
-  id: string;
-  /**
-   * One sentence.
-   */
-  purpose: string;
-  /**
-   * Clauses, each without a closing period.
-   */
-  prerequisites: string[];
-  /**
-   * The effect on persisted state, named in the vocabulary of ToolEffect.
-   */
-  effects: string;
-  /**
-   * The important refusals: a cause of the result envelope's Refusal and when it is given.
-   */
-  refusals: {
-    cause: string;
-    when: string;
-  }[];
-  nextAction: {
-    action: string;
-    /**
-     * The operation that performs the action.
-     */
-    operation?: string;
-  };
-  exposure: {
-    mcp:
-      | 'none'
-      | {
-          tool: string;
-          /**
-           * The contract definition of the tool's arguments.
-           */
-          input: string;
-          /**
-           * The contract definition of the result's 'data'.
-           */
-          data: string;
-          /**
-           * The presence rules of the input, by id, in the order the server checks them.
-           */
-          presence: Id[];
-          examples: {
-            description: Text;
-            /**
-             * Arguments that satisfy the input definition.
-             */
-            input: {};
-          }[];
-        };
-    cli:
-      | 'none'
-      | {
-          /**
-           * The command and the switches that select this operation, as typed after the program.
-           */
-          command: string;
-          /**
-           * The usage alternatives, printed joined by ' | '.
-           *
-           * @minItems 1
-           */
-          usage: Text[];
-          examples: {
-            description: Text;
-            /**
-             * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
-             */
-            command: string;
-          }[];
-        };
-    /**
-     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
-     */
-    reason?: string;
-  };
-}
-/**
- * Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.
+ * The .loom/loom.json to create, validated as persistent configuration.
  */
 export interface LoomConfig {
   configVersion: 1;
@@ -7132,85 +7117,334 @@ export interface LoomConfig {
   };
 }
 /**
- * Content of .loom/state.json: transient workflow state. 'sealed' is a derived view of acceptance for the current revision and carries no authority.
+ * The arguments of loom.federation. 'action' selects inspect, plan, apply, check or publish, and the operation catalogue's presence rules state the members each action requires and forbids.
  */
-export interface WorkflowState {
-  stateVersion: 1;
-  phase: WorkflowPhase;
+export interface FederationInput {
+  action: 'inspect' | 'plan' | 'apply' | 'check' | 'publish';
+  workspaceId: WorkspaceId;
   /**
-   * The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.
+   * @minItems 1
    */
-  outcome?: {
-    statement: Text;
-    exclusions: Text[];
-    constraints: Text[];
-  };
-  sealed: boolean;
+  changes?: FederationChange[];
   /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
-  revision?: string;
-  tasks?: {
-    workPackage: string;
-    status: 'planned' | 'in-progress' | 'blocked' | 'done';
-    inputs?: {
-      ref: RecordRef;
-      hash: Hash;
-    }[];
-    evidence?: Id[];
-  }[];
-}
-export interface ManifestArtifact {
-  instance: ArtifactInstanceName;
-  target: ProjectionTarget;
-  file: string;
-  component?: Id;
+  expectedVector?: string;
   /**
-   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  proposalId?: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  snapshotDigest?: string;
+  /**
+   * What to publish: the contract id and version and the records the bundle carries, with their required closure; a composition publishes its agreements.
+   */
+  export?: {
+    contract: Id;
+    version: ContractVersion;
+    /**
+     * @minItems 1
+     */
+    records: RecordRef[];
+  };
+  /**
+   * A 'draft' is never trusted as a release; a 'release' requires the configured acceptance and evidence.
+   */
+  purpose?: 'draft' | 'release';
+}
+/**
+ * The arguments of loom.diagram: the record or scope to draw, the kind of diagram and how far it reaches, the formats and the rendering budget. No command, URL, connection string or executable path is accepted; the renderer is the provisioned one trusted configuration names.
+ */
+export interface DiagramInput {
+  workspaceId: WorkspaceId;
+  target: TargetReference;
+  scope: {
+    /**
+     * The kind of diagram.
+     */
+    kind: 'workflow' | 'state' | 'dependency' | 'ownership' | 'hosting';
+    /**
+     * How many relationship steps from the target the diagram follows.
+     */
+    depth: number;
+  };
+  /**
+   * @minItems 1
+   */
+  formats: DiagramFormat[];
+  budget: {
+    maxNodes: number;
+    maxBytes: number;
+    /**
+     * The widest terminal rendering, in columns.
+     */
+    maxWidth?: number;
+  };
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  snapshotDigest?: string;
+}
+/**
+ * The arguments of loom.qualify. 'action' selects start, status or cancel, and the operation catalogue's presence rules state the members each action requires and forbids. Checks are profile check ids and the execution policy names a runner identity provisioned in trusted local configuration; no command, URL, connection string or executable path is accepted.
+ */
+export interface QualifyInput {
+  action: 'start' | 'status' | 'cancel';
+  workspaceId: WorkspaceId;
+  /**
+   * Profile check ids, for example sql.behavior.
+   *
+   * @minItems 1
+   */
+  checks?: Id[];
+  target?: TargetReference;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  expectedVector?: string;
+  /**
+   * Record identifier. The character set is the OpenAPI component-key set, so an id is usable as a JSON Pointer segment, a schema component name and a file-name stem without escaping.
+   */
+  executionPolicy?: string;
+  runId?: Id;
+  cursor?: Cursor;
+}
+/**
+ * What inspection found at a path, without writing: the repository, who owns the path, where a workspace could be placed with the reasons, and the inspection digest an initialization names as its expectation.
+ */
+export interface WorkspaceInspectData {
+  /**
+   * The inspected path, as supplied.
    */
   path: string;
-  required: boolean;
-  draft: boolean;
-  hash: Hash;
-}
-/**
- * Content of .loom/manifest.json: deterministic record of every installed generated artifact. Projection selection and output routing are recorded separately.
- */
-export interface OutputManifest {
-  manifestVersion: 1;
-  model: {
-    hash: Hash;
+  repository: {
+    isRepository: boolean;
+    /**
+     * Whether the path is the root of its repository.
+     */
+    isRoot: boolean;
+    commit?: CommitId;
+    dirty?: boolean;
   };
-  config: {
-    hash: Hash;
-  };
-  profile: {
-    id: string;
-    version: number;
-    enables: ProjectionTarget[];
-  };
-  generator: {
-    version: string;
-    contractDigest: Hash;
-  };
-  artifacts: ManifestArtifact[];
-}
-/**
- * Recoverable record of one bundle installation. Each file is replaced atomically; the bundle as a whole is complete only when every entry is installed and the manifest matches.
- */
-export interface InstallJournal {
-  journalVersion: 1;
+  ownership: OwnershipResult;
+  /**
+   * Where a workspace could be placed, most suitable first, each with its reasons; empty when a workspace already governs the path.
+   */
+  placements: {
+    /**
+     * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+     */
+    root: string;
+    modelKind: ModelKind;
+    /**
+     * @minItems 1
+     */
+    reasons: Text[];
+  }[];
   /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
-  bundle: string;
-  state: 'staged' | 'installing' | 'complete' | 'failed';
-  entries: {
-    path: RelativePath;
-    hash: Hash;
-    previousHash?: Hash | null;
-    status: 'pending' | 'installed' | 'failed';
+  inspectionDigest: string;
+}
+/**
+ * Who owns the path, relative to its repository root.
+ */
+export interface OwnershipResult {
+  path: RelativePath;
+  status: 'owned' | 'ungoverned' | 'overlap' | 'unresolved';
+  owner?: {
+    /**
+     * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+     */
+    descriptor: string;
+    component: Id;
+    root: RelativePath;
+  };
+  /**
+   * Every descriptor inspected for this path, claiming or not.
+   */
+  candidates: {
+    descriptor: RelativePath;
+    claims: boolean;
+    component?: Id;
+    readable?: boolean;
   }[];
+}
+/**
+ * The scaffold an initialization proposes, or the workspace it created: every file it writes, each a requested scaffold file or the journal, with its hash.
+ */
+export interface WorkspaceInitializeData {
+  /**
+   * 'proposed' for a dry run, which writes nothing; 'created' once every write is applied.
+   */
+  outcome: 'proposed' | 'created';
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  inspectionDigest: string;
+  /**
+   * @minItems 1
+   */
+  writes: {
+    /**
+     * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+     */
+    path: string;
+    role: 'model' | 'config' | 'state' | 'gitignore' | 'journal';
+    hash: Hash;
+  }[];
+  nextActions: NextAction[];
+}
+/**
+ * The current state of one open workspace, for the session holding its handle: its revisions, the resources it serves, its pending runs and the next actions. The status action and the workspace status resource both return it.
+ */
+export interface WorkspaceStatus {
+  workspace: WorkspaceHandle;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revisionVector: string;
+  /**
+   * The resources of this workspace the session may read, each with the definition of what it returns.
+   */
+  resources: {
+    uri: string;
+    contents: string;
+  }[];
+  pendingRuns: {
+    runId: Id;
+    phase: RunPhase;
+  }[];
+  nextActions: NextAction[];
+}
+/**
+ * The outcome of closing a handle: owned runs cancelled or awaited, watchers detached, browser access revoked and the handle released. A close that leaves an owned resource is refused as cleanup-incomplete and reports it with its recovery.
+ */
+export interface WorkspaceCloseData {
+  workspaceId: WorkspaceId;
+  released: boolean;
+  cleanup: CleanupReport;
+}
+/**
+ * What cleanup did and what it left: each step with its outcome, and every residual owned resource with the action that recovers it. Evidence and journals are kept whatever the outcome.
+ */
+export interface CleanupReport {
+  /**
+   * True only when every step is done or not needed and nothing is residual.
+   */
+  complete: boolean;
+  steps: {
+    step:
+      | 'cancel-runs'
+      | 'await-runs'
+      | 'stop-processes'
+      | 'remove-resources'
+      | 'detach-watchers'
+      | 'revoke-browser-access'
+      | 'release-handle';
+    outcome: 'done' | 'not-needed' | 'failed';
+    detail?: Text;
+  }[];
+  residual: {
+    kind: 'process' | 'database' | 'directory' | 'watcher' | 'browser-session' | 'run';
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    identity: string;
+    recovery: Text;
+  }[];
+}
+/**
+ * A composition as declared and resolved: its direct members with their pins, the roots each model claims, the inputs that are missing and the dependency graph between models.
+ */
+export interface FederationInspectData {
+  members: {
+    memberId: Id;
+    modelId: ModelId;
+    relationship: 'implementation' | 'composition';
+    exports: ContractPin[];
+    /**
+     * 'missing' when the checkout is absent, 'unreadable' when its descriptor cannot be read and 'stale' when a pinned export no longer matches what the member publishes.
+     */
+    status: 'resolved' | 'missing' | 'unreadable' | 'stale';
+  }[];
+  /**
+   * The roots each model claims, relative to the composition root: its source roots, the roots it delegates to its members and its output roots.
+   */
+  ownership: {
+    modelId: ModelId;
+    sourceRoots: RelativePath[];
+    delegatedRoots: RelativePath[];
+    outputRoots: RelativePath[];
+  }[];
+  missing: {
+    modelId: ModelId;
+    input: 'checkout' | 'configuration' | 'export' | 'agreement-bundle';
+    reason: Text;
+  }[];
+  /**
+   * Which model consumes which: 'from' consumes what 'to' publishes, through the pinned bundle.
+   */
+  graph: {
+    nodes: ModelId[];
+    edges: {
+      from: ModelId;
+      to: ModelId;
+      pin: ContractPin;
+    }[];
+  };
+}
+/**
+ * An applied proposal: the journal of its owner-local writes and the revision vector they leave. A journal left in 'recovery-required' is reported with the refusal of the same name.
+ */
+export interface FederationApplyData {
+  proposalId: Id;
+  journal: FederationJournal;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revisionVector: string;
+}
+/**
+ * Recoverable record of one change across repositories, whose locks are taken in canonical repository order. There is no atomic transaction across repositories: the change is complete only in state 'complete', and a partially applied one stays visibly incomplete until recovery resumes the staged proposal or restores the journal-owned writes that are still unchanged, never another writer's.
+ */
+export interface FederationJournal {
+  journalVersion: 1;
+  proposalId: Id;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  inputDigest: string;
+  state: 'prepared' | 'applying' | 'complete' | 'recovery-required';
+  /**
+   * Every write of the change in canonical repository order, each with its owner and expected old and new hashes.
+   *
+   * @minItems 1
+   */
+  writes: {
+    write: OwnedWrite;
+    status: 'pending' | 'applied' | 'restored';
+  }[];
+}
+/**
+ * The required closure of one composition snapshot. Its composed validation and readiness are the result's states, and the check manufactures no acceptance.
+ */
+export interface FederationCheckData {
+  snapshotDigest: Hash;
+  revisionVector: RevisionVector;
+  /**
+   * Every record of the required closure: resolved against the digest of the bundle that holds it, or a bare address when no pinned bundle does.
+   */
+  closure: (ResolvedReference1 | RecordAddress1)[];
+}
+/**
+ * A published bundle, immutable once returned: a member's export or a composition's agreement bundle. A draft is never trusted as a release.
+ */
+export interface FederationPublishData {
+  purpose: 'draft' | 'release';
+  bundle: ExportBundle | AgreementBundle;
 }
 /**
  * A published contract bundle: the records an independent system or a composition member exposes, pinned by publisher, contract id, version and digest. A member's export also names its model and source commit and pins the agreement bundle it satisfies.
@@ -7298,30 +7532,568 @@ export interface AgreementBundle {
   signature?: Signature;
 }
 /**
- * Recoverable record of one change across repositories, whose locks are taken in canonical repository order. There is no atomic transaction across repositories: the change is complete only in state 'complete', and a partially applied one stays visibly incomplete until recovery resumes the staged proposal or restores the journal-owned writes that are still unchanged, never another writer's.
+ * The renderings of one diagram, each with the digest of its content, and the source vector they were drawn from. A 'graph' rendering carries the canonical JSON text of the structured graph; renderer identity and fidelity are not part of this result.
  */
-export interface FederationJournal {
-  journalVersion: 1;
-  proposalId: Id;
+export interface DiagramData {
+  sourceVectorDigest: Hash;
+  /**
+   * @minItems 1
+   */
+  renderings: {
+    format: DiagramFormat;
+    /**
+     * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+     */
+    digest: string;
+    content: string;
+  }[];
+}
+/**
+ * The handle of a qualification run that passed preflight: the checks it runs under the named execution policy and the revision vector it qualifies. Only checks the trusted policy authorizes start.
+ */
+export interface QualifyRun {
+  runId: Id;
+  workspaceId: WorkspaceId;
+  /**
+   * @minItems 1
+   */
+  checks: Id[];
+  target: TargetReference;
+  executionPolicy: Id;
+  revisionVector: Hash;
+  phase: RunPhase;
+}
+/**
+ * The state of one run: its phase, a bounded page of progress, the evidence it recorded and its cleanup. 'cursor' continues the progress where the page ended.
+ */
+export interface QualifyRunStatus {
+  runId: Id;
+  phase: RunPhase;
+  progress: {
+    completed: number;
+    total: number;
+    /**
+     * @maxItems 200
+     */
+    events: {
+      sequence: number;
+      check: Id;
+      state: 'started' | 'finished';
+      /**
+       * Result of one executed check. NOT_APPLICABLE requires a recorded justification.
+       */
+      result?: 'PASS' | 'FAIL' | 'UNKNOWN' | 'NOT_APPLICABLE';
+    }[];
+  };
+  /**
+   * The evidence records the run stored.
+   */
+  evidence: Id[];
+  /**
+   * 'residual' when the run left an owned resource, which cancelling reports with its recovery.
+   */
+  cleanup: 'pending' | 'complete' | 'residual';
+  cursor?: Cursor;
+}
+/**
+ * The cancellation of one run. 'requested' means the run is stopping; 'completed' comes only once its processes and resources have settled, with the cleanup that settled them. Repeating the request returns the current state.
+ */
+export interface QualifyCancelData {
+  runId: Id;
+  cancellation: 'requested' | 'completed';
+  phase: RunPhase;
+  cleanup: CleanupReport;
+}
+/**
+ * One event of a workspace's activity stream, in sequence for its session. Its time is operational and stays outside deterministic projections, and its summary is bounded and holds no path or credential.
+ */
+export interface ActivityEvent {
+  sessionId: SessionId;
+  workspaceId: WorkspaceId;
+  /**
+   * One more than the session's previous event; a gap means events were lost and a fresh snapshot is required.
+   */
+  sequence: number;
+  kind:
+    | 'workspace.opened'
+    | 'model.changed'
+    | 'projection.ready'
+    | 'qualification.progress'
+    | 'qualification.completed'
+    | 'cleanup.changed'
+    | 'workspace.closed';
+  subject: {
+    kind: 'workspace' | 'model' | 'record' | 'projection' | 'run';
+    id: string;
+  };
   /**
    * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
    */
-  inputDigest: string;
-  state: 'prepared' | 'applying' | 'complete' | 'recovery-required';
+  revision: string;
   /**
-   * Every write of the change in canonical repository order, each with its owner and expected old and new hashes.
+   * The catalogue operation that caused the event.
+   */
+  operationId: string;
+  /**
+   * One line for a reader, at most 280 characters, without a local path, a credential-shaped value, a backslash or a control character.
+   */
+  summary: string;
+  time: Timestamp;
+}
+/**
+ * The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.
+ */
+export interface DiscoveryBudget {
+  maxBytes?: number;
+  maxRecords?: number;
+}
+/**
+ * How much of loom.describe one call returns. 'summary', the default, returns descriptions and selected capability facts; 'full' returns the requested sections a page at a time within the budget, never an unbounded dump. Every omitted section or record is listed in the result's completeness.
+ */
+export interface DescribePage {
+  detail?: 'summary' | 'full';
+  cursor?: Cursor;
+  budget?: DiscoveryBudget;
+}
+/**
+ * A record too large for a discovery page: its reference, hash, size and summary, and the revision-bound record resource that returns it whole. A page never omits a record's existence.
+ */
+export interface OversizedRecord {
+  ref: RecordRef;
+  hash: Hash;
+  /**
+   * The size of the record's canonical JSON.
+   */
+  bytes: number;
+  summary: string;
+  /**
+   * The URI of the record resource.
+   */
+  resource: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revision: string;
+}
+/**
+ * A context target of kind 'resume': the state a resumed session restates before it continues, answered by ResumeData.
+ */
+export interface ContextResumeTarget {
+  kind: 'resume';
+}
+/**
+ * What a resumed session needs before it continues, at one revision vector: the outcome, the phase, the owning scopes, the frozen contracts, the unknowns that block work, the relevant evidence, the pending work and concrete next actions. Omitted entries are listed in the result's completeness, and a truncated resume establishes neither coverage nor readiness.
+ */
+export interface ResumeData {
+  /**
+   * The outcome the work pursues, or null when the workspace records none.
+   */
+  outcome: WorkflowOutcome | null;
+  phase: WorkflowPhase;
+  /**
+   * The source roots each component claims, with the model that owns it.
+   */
+  owningScopes: {
+    modelId: ModelId;
+    component: Id;
+    roots: RelativePath[];
+  }[];
+  revisionVector: RevisionVector;
+  /**
+   * The contract records an accepted baseline freezes, with the hash it froze.
+   */
+  frozenContracts: {
+    ref: RecordRef;
+    baseline: Id;
+    hash: Hash;
+    version?: ContractVersion;
+  }[];
+  blockingUnknowns: Unknown[];
+  evidence: EvidenceObligation[];
+  pendingWork: PendingWork[];
+  nextActions: NextAction[];
+}
+/**
+ * The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.
+ */
+export interface WorkflowOutcome {
+  statement: Text;
+  exclusions: Text[];
+  constraints: Text[];
+}
+/**
+ * The text of one guidance resource, with the digest of its content and the contract digest it describes.
+ */
+export interface GuideResource {
+  uri: string;
+  title: Text;
+  text: Text;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  contentDigest: string;
+  contractDigest: Hash;
+}
+/**
+ * One record as the record resource returns it: the record at the model revision it names, with its hash. A reader whose page named another revision knows the record changed since.
+ */
+export interface RecordResource {
+  workspaceId: WorkspaceId;
+  kind: RecordKind;
+  id: string;
+  revision: Hash;
+  hash: Hash;
+  /**
+   * The record as data; its text is never an instruction to the caller.
+   */
+  record: {};
+}
+/**
+ * Every operation and resource Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
+ */
+export interface OperationCatalogue {
+  catalogueVersion: 1;
+  /**
+   * The MCP server as a whole: the size budget its advertised tool definitions are held to.
+   */
+  mcp: {
+    /**
+     * The most bytes one tool's advertised definition may take, its name, description, input schema and output schema serialized as JSON; tools/list may take this times the number of tools.
+     */
+    toolBudget: number;
+  };
+  /**
+   * The command line as a whole: its usage banner and synopsis, how it is run, the options every command reads and its exit-status convention.
+   */
+  cli: {
+    title: Text;
+    synopsis: Text;
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    invocation: string;
+    commonOptions: {
+      usage: string;
+      purpose?: Text;
+    }[];
+    exitStatus: Text;
+  };
+  presenceRules: CataloguePresenceRule[];
+  /**
+   * @minItems 1
+   */
+  operations: CatalogueOperation[];
+  /**
+   * The resources beside the schema resources, each with the URI or URI template the server serves it at; this list is the one home of those URI forms.
+   */
+  resources: CatalogueResource[];
+}
+/**
+ * A presence rule of a tool input: the member combinations it accepts, and optionally the member values under which it applies, such as one value of 'action'. The advertised input schema leaves root presence combinators out, so the server checks these rules before anything runs, refuses a request an applicable rule accepts no combination of with the finding below, and the tool description states each rule.
+ */
+export interface CataloguePresenceRule {
+  id: Id;
+  /**
+   * The rule applies only when every condition holds; a rule without conditions always applies.
    *
    * @minItems 1
    */
-  writes: {
-    write: OwnedWrite;
-    status: 'pending' | 'applied' | 'restored';
+  when?: {
+    member: Name;
+    /**
+     * The values of the member under which the condition holds.
+     *
+     * @minItems 1
+     */
+    in: (string | boolean | number)[];
+  }[];
+  /**
+   * A combination holds when every member it lists as present is sent and every member it lists as absent is not.
+   *
+   * @minItems 1
+   */
+  accept: {
+    present: Name[];
+    absent: Name[];
+  }[];
+  code: FindingCode;
+  path: string;
+  message: Text;
+  fix: Text;
+}
+/**
+ * One operation: what it does, what it needs, what it changes, when it is refused, the next useful action and how the MCP server and the command line expose it. 'none' marks an interface that does not expose the operation, and 'reason' then says why. An operation of an agent tool the server does not advertise states that tool's contract in 'agentTool'.
+ */
+export interface CatalogueOperation {
+  id: string;
+  /**
+   * One sentence.
+   */
+  purpose: string;
+  /**
+   * Clauses, each without a closing period.
+   */
+  prerequisites: string[];
+  /**
+   * The effect on persisted state, named in the vocabulary of ToolEffect.
+   */
+  effects: string;
+  /**
+   * The important refusals: a cause of the result envelope's Refusal and when it is given.
+   */
+  refusals: {
+    cause: string;
+    when: string;
+  }[];
+  nextAction: {
+    action: string;
+    /**
+     * The operation that performs the action.
+     */
+    operation?: string;
+  };
+  exposure: {
+    mcp:
+      | 'none'
+      | {
+          tool: string;
+          /**
+           * The contract definition of the tool's arguments.
+           */
+          input: string;
+          /**
+           * The contract definition of the result's 'data'.
+           */
+          data: string;
+          /**
+           * The presence rules of the input, by id, in the order the server checks them.
+           */
+          presence: Id[];
+          examples: {
+            description: Text;
+            /**
+             * Arguments that satisfy the input definition.
+             */
+            input: {};
+          }[];
+        };
+    cli:
+      | 'none'
+      | {
+          /**
+           * The command and the switches that select this operation, as typed after the program.
+           */
+          command: string;
+          /**
+           * The usage alternatives, printed joined by ' | '.
+           *
+           * @minItems 1
+           */
+          usage: Text[];
+          examples: {
+            description: Text;
+            /**
+             * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+             */
+            command: string;
+          }[];
+        };
+    /**
+     * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+     */
+    reason?: string;
+  };
+  agentTool?: CatalogueAgentTool;
+}
+/**
+ * The contract of an operation of an agent tool that the MCP server does not advertise: the tool and the action value that selects the operation, the input and result definitions, the presence rules and examples. Only an operation whose MCP exposure is 'none' states it.
+ */
+export interface CatalogueAgentTool {
+  tool: string;
+  /**
+   * The value of the input's 'action' member that selects this operation; absent for a tool with one operation.
+   */
+  action?: string;
+  /**
+   * The contract definition of the tool's arguments.
+   */
+  input: string;
+  /**
+   * The contract definition of the result's 'data' for this operation.
+   */
+  data: string;
+  /**
+   * The presence rules of the input, by id, in the order they are checked.
+   */
+  presence: Id[];
+  examples: {
+    description: Text;
+    /**
+     * Arguments that satisfy the input definition and the presence rules.
+     */
+    input: {};
+  }[];
+}
+/**
+ * A resource of the MCP server beside the schema resources: its URI or URI template, its purpose, the definition of what it returns, whether it reads the same for every session or only for the requesting one, and whether the server lists it. Every variable of a template names a required member of what the resource returns.
+ */
+export interface CatalogueResource {
+  uri: string;
+  /**
+   * One sentence.
+   */
+  purpose: string;
+  /**
+   * The contract definition of what the resource returns.
+   */
+  contents: string;
+  /**
+   * 'server' when every session reads the same content; 'session' when only the session holding the workspace handle may read it.
+   */
+  scope: 'server' | 'session';
+  /**
+   * 'listed' when the server lists and serves the resource; 'none' otherwise, and 'reason' then says why.
+   */
+  exposure: 'listed' | 'none';
+  reason?: Text;
+}
+/**
+ * Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.
+ */
+export interface LoomConfig1 {
+  configVersion: 1;
+  modelId?: ModelId;
+  modelKind?: ModelKind;
+  /**
+   * Explicit composition: the direct members, the roots registered as delegated to them and the output roots this workspace claims. Filesystem nesting alone confers neither membership nor authority, and an unlisted child .loom under this workspace's claims is an overlap.
+   */
+  composition?: {
+    members: CompositionMember[];
+    /**
+     * Repository-relative roots a delegated member owns through its own .loom; this workspace's scope never claims them.
+     */
+    delegatedRoots: {
+      memberId: Id;
+      /**
+       * @minItems 1
+       */
+      roots: RelativePath[];
+    }[];
+    /**
+     * Repository-relative output roots only this workspace installs into, checked separately from source ownership.
+     */
+    outputClaims: RelativePath[];
+  };
+  /**
+   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   */
+  model: string;
+  /**
+   * Projection profile id; 'none' enables no artifacts and is permitted only for an unplanned workspace.
+   */
+  projectionProfile?: string;
+  /**
+   * Governed path set: component id to one or more repository-relative directory roots.
+   */
+  scope: {
+    /**
+     * @minItems 1
+     */
+    [k: string]: RelativePath[] | undefined;
+  };
+  /**
+   * Generated artifact instance to one repository-relative target directory. An unmapped enabled artifact goes to Docs/Loom/.
+   */
+  outputs: {
+    [k: string]: RelativePath | undefined;
+  };
+  /**
+   * Gate bindings. These can only strengthen the trusted policy named by policyRef; they never weaken it.
+   */
+  gates: {
+    policyRef?: Id;
+    implementationRequires?: 'none' | 'proposed-contract' | 'accepted-contract';
+    releaseRequires?: EvidenceKind[];
+  };
+}
+/**
+ * Content of .loom/state.json: transient workflow state. 'sealed' is a derived view of acceptance for the current revision and carries no authority.
+ */
+export interface WorkflowState {
+  stateVersion: 1;
+  phase: WorkflowPhase;
+  outcome?: WorkflowOutcome;
+  sealed: boolean;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revision?: string;
+  tasks?: {
+    workPackage: string;
+    status: 'planned' | 'in-progress' | 'blocked' | 'done';
+    inputs?: {
+      ref: RecordRef;
+      hash: Hash;
+    }[];
+    evidence?: Id[];
+  }[];
+}
+export interface ManifestArtifact {
+  instance: ArtifactInstanceName;
+  target: ProjectionTarget;
+  file: string;
+  component?: Id;
+  /**
+   * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+   */
+  path: string;
+  required: boolean;
+  draft: boolean;
+  hash: Hash;
+}
+/**
+ * Content of .loom/manifest.json: deterministic record of every installed generated artifact. Projection selection and output routing are recorded separately.
+ */
+export interface OutputManifest {
+  manifestVersion: 1;
+  model: {
+    hash: Hash;
+  };
+  config: {
+    hash: Hash;
+  };
+  profile: {
+    id: string;
+    version: number;
+    enables: ProjectionTarget[];
+  };
+  generator: {
+    version: string;
+    contractDigest: Hash;
+  };
+  artifacts: ManifestArtifact[];
+}
+/**
+ * Recoverable record of one bundle installation. Each file is replaced atomically; the bundle as a whole is complete only when every entry is installed and the manifest matches.
+ */
+export interface InstallJournal {
+  journalVersion: 1;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  bundle: string;
+  state: 'staged' | 'installing' | 'complete' | 'failed';
+  entries: {
+    path: RelativePath;
+    hash: Hash;
+    previousHash?: Hash | null;
+    status: 'pending' | 'installed' | 'failed';
   }[];
 }
 /**
  * Owner of one path. 'ungoverned' only after complete negative resolution; incomplete inspection is 'unresolved'.
  */
-export interface OwnershipResult {
+export interface OwnershipResult1 {
   path: RelativePath;
   status: 'owned' | 'ungoverned' | 'overlap' | 'unresolved';
   owner?: {

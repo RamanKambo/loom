@@ -1,0 +1,17 @@
+{
+  "definition": "FederationChange",
+  "valid": [
+    { "change": "addMember", "member": { "memberId": "billing", "modelId": "billing", "repositoryPath": "services/billing", "relationship": "implementation", "exports": [] } },
+    { "change": "removeMember", "memberId": "billing" },
+    { "change": "setAgreement", "agreement": { "id": "agr.timeout", "kind": "timeout-allocation", "constraint": "Checkout completes within five seconds, of which payments take at most three.", "providers": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture" }], "consumers": [{ "modelId": "ordering", "kind": "operation", "id": "order.pay" }], "owner": "team-architecture" } },
+    { "change": "removeAgreement", "agreementId": "agr.timeout" },
+    { "change": "pinExport", "memberId": "payments", "pin": { "publisher": "team-payments", "contract": "payments-export", "version": 2, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" } },
+    { "change": "claimOutput", "path": "Docs/Loom" },
+    { "change": "releaseOutput", "path": "Docs/Loom" }
+  ],
+  "invalid": [
+    { "because": "an output claim is repository-relative", "keyword": "pattern", "path": "/path", "instance": { "change": "claimOutput", "path": "C:/out" } },
+    { "because": "a change is one of the typed composition changes", "keyword": "oneOf", "path": "", "instance": { "change": "renameRepository", "path": "services/billing" } },
+    { "because": "an export pin is exact, with its digest and source commit", "keyword": "required", "path": "/pin", "instance": { "change": "pinExport", "memberId": "payments", "pin": { "publisher": "team-payments", "contract": "payments-export", "version": 2 } } }
+  ]
+}

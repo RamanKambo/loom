@@ -8,9 +8,20 @@
       "path": "(root)",
       "message": "the request must carry exactly one of 'patch' or 'patches'",
       "fix": "send one patch as 'patch' or a batch as 'patches'"
+    },
+    {
+      "id": "workspace-initialize-apply",
+      "when": [{ "member": "action", "in": ["initialize"] }, { "member": "dryRun", "in": [false] }],
+      "accept": [{ "present": ["expectedInspection"], "absent": [] }],
+      "code": "STRUCTURAL_INVALID",
+      "path": "expectedInspection",
+      "message": "an initialization that writes names the inspection it was prepared against",
+      "fix": "send 'expectedInspection'"
     }
   ],
   "invalid": [
+    { "because": "a condition lists the values under which it holds", "keyword": "minItems", "path": "/when/0/in", "instance": { "id": "never", "when": [{ "member": "action", "in": [] }], "accept": [{ "present": ["path"], "absent": [] }], "code": "STRUCTURAL_INVALID", "path": "(root)", "message": "send a path", "fix": "send a path" } },
+    { "because": "a condition names a member", "keyword": "pattern", "path": "/when/0/member", "instance": { "id": "dotted", "when": [{ "member": "target.kind", "in": ["record"] }], "accept": [{ "present": ["path"], "absent": [] }], "code": "STRUCTURAL_INVALID", "path": "(root)", "message": "send a path", "fix": "send a path" } },
     { "because": "a rule accepts at least one combination", "keyword": "minItems", "path": "/accept", "instance": { "id": "never", "accept": [], "code": "STRUCTURAL_INVALID", "path": "(root)", "message": "nothing is accepted", "fix": "send something" } },
     { "because": "a combination names its present and absent members", "keyword": "required", "path": "/accept/0", "instance": { "id": "partial", "accept": [{ "present": ["patch"] }], "code": "PATCH_AMBIGUOUS", "path": "(root)", "message": "send a patch", "fix": "send a patch" } },
     { "because": "the finding code is a code of the finding vocabulary", "keyword": "enum", "path": "/code", "instance": { "id": "coded", "accept": [{ "present": ["patch"], "absent": [] }], "code": "PATCH_MISSING", "path": "(root)", "message": "send a patch", "fix": "send a patch" } }

@@ -88,6 +88,17 @@
       "description": "The stage of work a workspace is in.",
       "enum": ["unplanned", "discovery", "specification", "implementation", "integration", "release", "operations"]
     },
+    "WorkflowOutcome": {
+      "description": "The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "exclusions", "constraints"],
+      "properties": {
+        "statement": { "$ref": "common.schema.json#/$defs/Text" },
+        "exclusions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
+        "constraints": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } }
+      }
+    },
     "WorkflowState": {
       "description": "Content of .loom/state.json: transient workflow state. 'sealed' is a derived view of acceptance for the current revision and carries no authority.",
       "type": "object",
@@ -96,17 +107,7 @@
       "properties": {
         "stateVersion": { "const": 1 },
         "phase": { "$ref": "#/$defs/WorkflowPhase" },
-        "outcome": {
-          "description": "The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.",
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["statement", "exclusions", "constraints"],
-          "properties": {
-            "statement": { "$ref": "common.schema.json#/$defs/Text" },
-            "exclusions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
-            "constraints": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } }
-          }
-        },
+        "outcome": { "$ref": "#/$defs/WorkflowOutcome" },
         "sealed": { "type": "boolean" },
         "revision": { "description": "Model revision the state was last written against.", "$ref": "common.schema.json#/$defs/Hash" },
         "tasks": {

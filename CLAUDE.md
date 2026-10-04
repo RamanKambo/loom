@@ -70,6 +70,8 @@ the open-items register. Workspace scripts: @package.json
   | Every record, patch, result and workspace shape | `packages/core/schema/*.schema.json` |
   | Every operation: purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP tool and CLI command | `packages/core/schema/operations.json`; the MCP tool list and descriptions, the tools and examples of `loom.describe`, the CLI usage and dispatch words and `Docs/operations.md` are generated from it, and the adapters' handler tables are checked against it |
   | The size budget of one advertised MCP tool definition | `mcp.toolBudget` in `packages/core/schema/operations.json`; the smoke test holds every tool and tools/list to it |
+  | The URI forms of the server's resources (guides, workspace status, records) | `resources` in `packages/core/schema/operations.json` |
+  | Discovery page defaults and maxima (bytes and records) | `DiscoveryBudget` in `packages/core/schema/tools.schema.json`: its `default` and `maximum` keywords |
   | How an advertised tool schema is compacted and which schema resources the server lists | `inputSchemaOf`, `outputSchemaOf` and `advertisedDefinitions` in `packages/mcp-server/src/tools.ts` |
   | The finding-code vocabulary | `FindingCode` in `packages/core/schema/result.schema.json` |
   | Each code's severity and one-line rule | `FINDING_RULES` in `packages/core/src/codes.ts` |

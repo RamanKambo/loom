@@ -1,0 +1,7 @@
+{
+  "definition": "RunPhase",
+  "valid": ["queued", "running", "cancelling", "completed"],
+  "invalid": [
+    { "because": "a run that has not passed preflight has no handle and so no phase", "keyword": "enum", "path": "", "instance": "preflight" }
+  ]
+}

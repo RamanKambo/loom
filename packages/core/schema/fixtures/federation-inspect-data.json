@@ -1,0 +1,21 @@
+{
+  "definition": "FederationInspectData",
+  "valid": [
+    {
+      "members": [
+        { "memberId": "payments", "modelId": "payments", "relationship": "implementation", "exports": [{ "publisher": "team-payments", "contract": "payments-export", "version": 1, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" }], "status": "resolved" },
+        { "memberId": "billing", "modelId": "billing", "relationship": "implementation", "exports": [], "status": "missing" }
+      ],
+      "ownership": [{ "modelId": "shop", "sourceRoots": [], "delegatedRoots": ["services/payments", "services/billing"], "outputRoots": ["Docs/Loom"] }],
+      "missing": [{ "modelId": "billing", "input": "checkout", "reason": "The submodule services/billing is not checked out." }],
+      "graph": {
+        "nodes": ["shop", "payments"],
+        "edges": [{ "from": "shop", "to": "payments", "pin": { "publisher": "team-payments", "contract": "payments-export", "version": 1, "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "schemaVersion": 1, "sourceCommit": "a9ce204" } }]
+      }
+    }
+  ],
+  "invalid": [
+    { "because": "a member is resolved, missing, unreadable or stale", "keyword": "enum", "path": "/members/0/status", "instance": { "members": [{ "memberId": "payments", "modelId": "payments", "relationship": "implementation", "exports": [], "status": "assumed" }], "ownership": [], "missing": [], "graph": { "nodes": [], "edges": [] } } },
+    { "because": "a dependency names the pin it goes through", "keyword": "required", "path": "/graph/edges/0", "instance": { "members": [], "ownership": [], "missing": [], "graph": { "nodes": ["shop", "payments"], "edges": [{ "from": "shop", "to": "payments" }] } } }
+  ]
+}

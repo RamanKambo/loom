@@ -1,0 +1,18 @@
+{
+  "definition": "QualifyRunStatus",
+  "valid": [
+    {
+      "runId": "run-1",
+      "phase": "running",
+      "progress": { "completed": 1, "total": 2, "events": [{ "sequence": 1, "check": "sql.build", "state": "started" }, { "sequence": 2, "check": "sql.build", "state": "finished", "result": "PASS" }] },
+      "evidence": ["ev.sql-build"],
+      "cleanup": "pending",
+      "cursor": "run-1.page.2"
+    },
+    { "runId": "run-1", "phase": "completed", "progress": { "completed": 2, "total": 2, "events": [] }, "evidence": ["ev.sql-build", "ev.sql-behavior"], "cleanup": "complete" }
+  ],
+  "invalid": [
+    { "because": "a finished check reports a check result", "keyword": "enum", "path": "/progress/events/0/result", "instance": { "runId": "run-1", "phase": "running", "progress": { "completed": 1, "total": 2, "events": [{ "sequence": 1, "check": "sql.build", "state": "finished", "result": "OK" }] }, "evidence": [], "cleanup": "pending" } },
+    { "because": "cleanup is pending, complete or residual", "keyword": "enum", "path": "/cleanup", "instance": { "runId": "run-1", "phase": "cancelled", "progress": { "completed": 0, "total": 2, "events": [] }, "evidence": [], "cleanup": "skipped" } }
+  ]
+}

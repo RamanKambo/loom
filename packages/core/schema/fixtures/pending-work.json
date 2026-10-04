@@ -1,0 +1,11 @@
+{
+  "definition": "PendingWork",
+  "valid": [
+    { "workPackage": "wp.payments.specification", "status": "in-progress" },
+    { "workPackage": "wp.payments.implementation", "status": "blocked" }
+  ],
+  "invalid": [
+    { "because": "finished work is not pending", "keyword": "enum", "path": "/status", "instance": { "workPackage": "wp.payments.specification", "status": "done" } },
+    { "because": "pending work names its work package", "keyword": "required", "path": "", "instance": { "status": "planned" } }
+  ]
+}

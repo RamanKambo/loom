@@ -1,0 +1,8 @@
+{
+  "definition": "SessionId",
+  "valid": ["sess_9f2c4b1e", "b7d1-44c2-9a0e"],
+  "invalid": [
+    { "because": "a session id is opaque, never a credential-shaped value", "keyword": "pattern", "path": "", "instance": "Bearer abc.def" },
+    { "because": "a session id is long enough not to be guessed", "keyword": "pattern", "path": "", "instance": "s1" }
+  ]
+}

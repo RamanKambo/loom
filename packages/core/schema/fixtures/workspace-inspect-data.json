@@ -1,0 +1,23 @@
+{
+  "definition": "WorkspaceInspectData",
+  "valid": [
+    {
+      "path": "C:/repos/payments",
+      "repository": { "isRepository": true, "isRoot": true, "commit": "a9ce204", "dirty": false },
+      "ownership": { "path": ".", "status": "ungoverned", "candidates": [] },
+      "placements": [{ "root": ".", "modelKind": "implementation", "reasons": ["The repository root holds the service's source and no descriptor claims it."] }],
+      "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "path": "services/payments/src",
+      "repository": { "isRepository": true, "isRoot": false },
+      "ownership": { "path": "services/payments/src", "status": "owned", "owner": { "descriptor": "services/payments/.loom", "component": "payments", "root": "services/payments/src" }, "candidates": [{ "descriptor": "services/payments/.loom", "claims": true, "component": "payments", "readable": true }] },
+      "placements": [],
+      "inspectionDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "invalid": [
+    { "because": "a suggested placement names its reasons", "keyword": "minItems", "path": "/placements/0/reasons", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "placements": [{ "root": ".", "modelKind": "implementation", "reasons": [] }], "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
+    { "because": "an inspection carries the digest an initialization names", "keyword": "required", "path": "", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "placements": [] } }
+  ]
+}

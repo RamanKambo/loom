@@ -25,6 +25,16 @@
         "mcp": { "tool": "loom.describe", "input": "DescribeInput", "data": "DescribeData", "presence": [], "examples": [] },
         "cli": { "command": "describe", "usage": ["describe [--sections a,b]"], "examples": [{ "description": "List the patch operations only.", "command": "describe --sections patches" }] }
       }
+    },
+    {
+      "id": "workspaceStatus",
+      "purpose": "Report an open workspace's current revisions.",
+      "prerequisites": ["a handle this session opened"],
+      "effects": "reads",
+      "refusals": [{ "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" }],
+      "nextAction": { "action": "close the handle" },
+      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised." },
+      "agentTool": { "tool": "loom.workspace", "action": "status", "input": "WorkspaceInput", "data": "WorkspaceStatus", "presence": ["workspace-handle"], "examples": [{ "description": "Read the status of a handle.", "input": { "action": "status", "workspaceId": "ws_3f9a1c7d" } }] }
     }
   ],
   "invalid": [

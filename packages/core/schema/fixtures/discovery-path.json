@@ -1,0 +1,8 @@
+{
+  "definition": "DiscoveryPath",
+  "valid": ["C:/repos/payments", "services/payments", "/srv/checkouts/shop"],
+  "invalid": [
+    { "because": "a path holds no control character", "keyword": "pattern", "path": "", "instance": "services/pay\nments" },
+    { "because": "an empty path names nothing", "keyword": "minLength", "path": "", "instance": "" }
+  ]
+}

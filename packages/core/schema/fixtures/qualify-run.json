@@ -1,0 +1,10 @@
+{
+  "definition": "QualifyRun",
+  "valid": [
+    { "runId": "run-1", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "workspace" }, "executionPolicy": "ci-runner", "revisionVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "phase": "queued" }
+  ],
+  "invalid": [
+    { "because": "a run names the execution policy it runs under", "keyword": "required", "path": "", "instance": { "runId": "run-1", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "workspace" }, "revisionVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "phase": "queued" } },
+    { "because": "a run runs at least one check", "keyword": "minItems", "path": "/checks", "instance": { "runId": "run-1", "workspaceId": "ws_3f9a1c7d", "checks": [], "target": { "kind": "workspace" }, "executionPolicy": "ci-runner", "revisionVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "phase": "queued" } }
+  ]
+}

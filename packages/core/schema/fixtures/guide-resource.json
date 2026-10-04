@@ -1,0 +1,10 @@
+{
+  "definition": "GuideResource",
+  "valid": [
+    { "uri": "loom://guide/workflow", "title": "Workflow", "text": "Identify the workspace and the requested outcome first, then read its context.", "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "contractDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+  ],
+  "invalid": [
+    { "because": "a guide resource lives under loom://guide/", "keyword": "pattern", "path": "/uri", "instance": { "uri": "https://example.com/guide", "title": "Workflow", "text": "Identify the workspace first.", "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "contractDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+    { "because": "a guide names the contract digest it describes", "keyword": "required", "path": "", "instance": { "uri": "loom://guide/workflow", "title": "Workflow", "text": "Identify the workspace first.", "contentDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } }
+  ]
+}

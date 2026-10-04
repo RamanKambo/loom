@@ -1,0 +1,15 @@
+{
+  "definition": "DiagramData",
+  "valid": [
+    {
+      "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "renderings": [
+        { "format": "mermaid", "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "content": "flowchart LR\n    c0[\"ordering\"] -->|runtime| c1[\"billing\"]\n" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a rendering carries the digest of its content", "keyword": "required", "path": "/renderings/0", "instance": { "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "renderings": [{ "format": "mermaid", "content": "flowchart LR" }] } },
+    { "because": "a diagram result has at least one rendering", "keyword": "minItems", "path": "/renderings", "instance": { "sourceVectorDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "renderings": [] } }
+  ]
+}

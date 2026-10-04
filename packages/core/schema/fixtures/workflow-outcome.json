@@ -1,0 +1,11 @@
+{
+  "definition": "WorkflowOutcome",
+  "valid": [
+    { "statement": "Orders can be paid in one step.", "exclusions": ["Refunds."], "constraints": ["Amounts are exact decimals."] },
+    { "statement": "Invoices are reported by calendar month.", "exclusions": [], "constraints": [] }
+  ],
+  "invalid": [
+    { "because": "an outcome names its exclusions and constraints, even when there are none", "keyword": "required", "path": "", "instance": { "statement": "Orders can be paid." } },
+    { "because": "an outcome is stated, never empty", "keyword": "minLength", "path": "/statement", "instance": { "statement": "", "exclusions": [], "constraints": [] } }
+  ]
+}

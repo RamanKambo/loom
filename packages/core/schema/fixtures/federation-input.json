@@ -1,0 +1,29 @@
+{
+  "definition": "FederationInput",
+  "valid": [
+    { "action": "inspect", "workspaceId": "ws_3f9a1c7d" },
+    {
+      "action": "plan",
+      "workspaceId": "ws_3f9a1c7d",
+      "changes": [
+        { "change": "addMember", "member": { "memberId": "billing", "modelId": "billing", "repositoryPath": "services/billing", "relationship": "implementation", "exports": [] } },
+        { "change": "claimOutput", "path": "Docs/Loom" }
+      ],
+      "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    { "action": "check", "workspaceId": "ws_3f9a1c7d", "snapshotDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    {
+      "action": "publish",
+      "workspaceId": "ws_3f9a1c7d",
+      "export": { "contract": "payments-export", "version": 1, "records": [{ "kind": "operation", "id": "payment.capture" }] },
+      "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "purpose": "release"
+    }
+  ],
+  "invalid": [
+    { "because": "a change is one of the typed composition changes", "keyword": "oneOf", "path": "/changes/0", "instance": { "action": "plan", "workspaceId": "ws_3f9a1c7d", "changes": [{ "change": "renameRepository", "path": "services/billing" }], "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
+    { "because": "a publication is a draft or a release", "keyword": "enum", "path": "/purpose", "instance": { "action": "publish", "workspaceId": "ws_3f9a1c7d", "export": { "contract": "payments-export", "version": 1, "records": [{ "kind": "operation", "id": "payment.capture" }] }, "expectedVector": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "purpose": "final" } },
+    { "because": "every action names its workspace handle", "keyword": "required", "path": "", "instance": { "action": "inspect" } },
+    { "because": "an expected vector is a digest", "keyword": "pattern", "path": "/expectedVector", "instance": { "action": "apply", "workspaceId": "ws_3f9a1c7d", "proposalId": "prop-1", "expectedVector": "latest" } }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "definition": "FederationCheckData",
+  "valid": [
+    {
+      "snapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] },
+      "closure": [
+        { "modelId": "payments", "kind": "operation", "id": "payment.capture", "bundleDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        { "modelId": "billing", "kind": "type", "id": "invoice" }
+      ]
+    }
+  ],
+  "invalid": [
+    { "because": "a closure entry is a resolved reference or a bare address", "keyword": "oneOf", "path": "/closure/0", "instance": { "snapshotDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] }, "closure": [{ "modelId": "payments", "kind": "operation", "id": "payment.capture", "bundleDigest": "latest" }] } },
+    { "because": "a check names the snapshot it resolved", "keyword": "required", "path": "", "instance": { "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] }, "closure": [] } }
+  ]
+}

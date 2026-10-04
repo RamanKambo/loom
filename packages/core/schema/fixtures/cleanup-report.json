@@ -1,0 +1,15 @@
+{
+  "definition": "CleanupReport",
+  "valid": [
+    { "complete": true, "steps": [{ "step": "cancel-runs", "outcome": "not-needed" }, { "step": "detach-watchers", "outcome": "done" }, { "step": "release-handle", "outcome": "done" }], "residual": [] },
+    {
+      "complete": false,
+      "steps": [{ "step": "stop-processes", "outcome": "failed", "detail": "The runner process did not exit within the cleanup deadline." }],
+      "residual": [{ "kind": "process", "identity": "process 4120", "recovery": "Stop process 4120 once its evidence is collected, then close the handle again." }]
+    }
+  ],
+  "invalid": [
+    { "because": "a residual resource names its recovery", "keyword": "required", "path": "/residual/0", "instance": { "complete": false, "steps": [], "residual": [{ "kind": "database", "identity": "LoomQualify_run1" }] } },
+    { "because": "a cleanup step is one of the owned-resource steps", "keyword": "enum", "path": "/steps/0/step", "instance": { "complete": true, "steps": [{ "step": "delete-repository", "outcome": "done" }], "residual": [] } }
+  ]
+}

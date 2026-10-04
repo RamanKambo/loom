@@ -1,0 +1,12 @@
+{
+  "definition": "CatalogueAgentTool",
+  "valid": [
+    { "tool": "loom.workspace", "action": "inspect", "input": "WorkspaceInput", "data": "WorkspaceInspectData", "presence": ["workspace-inspect"], "examples": [{ "description": "Inspect a checkout.", "input": { "action": "inspect", "path": "services/payments" } }] },
+    { "tool": "loom.diagram", "input": "DiagramInput", "data": "DiagramData", "presence": [], "examples": [] }
+  ],
+  "invalid": [
+    { "because": "an action is a lower-case word", "keyword": "pattern", "path": "/action", "instance": { "tool": "loom.workspace", "action": "Inspect", "input": "WorkspaceInput", "data": "WorkspaceInspectData", "presence": [], "examples": [] } },
+    { "because": "an agent tool names its result definition", "keyword": "required", "path": "", "instance": { "tool": "loom.workspace", "action": "inspect", "input": "WorkspaceInput", "presence": [], "examples": [] } },
+    { "because": "an agent tool is a loom tool", "keyword": "pattern", "path": "/tool", "instance": { "tool": "shell.exec", "input": "WorkspaceInput", "data": "WorkspaceInspectData", "presence": [], "examples": [] } }
+  ]
+}

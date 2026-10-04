@@ -164,7 +164,7 @@
         "kind": { "enum": ["function", "command", "tool", "file", "record"] },
         "input": { "description": "Schema pointer of the input contract.", "type": "string", "pattern": "^[a-z]+\\.schema\\.json#/\\$defs/[A-Za-z]+$|^none$" },
         "output": { "description": "Schema pointer of the output contract.", "type": "string", "pattern": "^[a-z]+\\.schema\\.json#/\\$defs/[A-Za-z]+$|^none$" },
-        "refusals": { "type": "array", "items": { "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"] } },
+        "refusals": { "type": "array", "items": { "$ref": "result.schema.json#/$defs/RefusalCause" } },
         "effects": { "enum": ["none", "reads", "writes", "executes"] },
         "concurrency": { "$ref": "common.schema.json#/$defs/Text" }
       }

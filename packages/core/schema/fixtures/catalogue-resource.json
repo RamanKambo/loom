@@ -1,0 +1,12 @@
+{
+  "definition": "CatalogueResource",
+  "valid": [
+    { "uri": "loom://workspaces/{workspaceId}/records/{kind}/{id}", "purpose": "One record of an open workspace.", "contents": "RecordResource", "scope": "session", "exposure": "none", "reason": "Catalogued before it is listed." },
+    { "uri": "loom://guide/engineering", "purpose": "The engineering method.", "contents": "GuideResource", "scope": "server", "exposure": "listed" }
+  ],
+  "invalid": [
+    { "because": "a resource lives under the loom scheme", "keyword": "pattern", "path": "/uri", "instance": { "uri": "file:///etc/loom", "purpose": "A file.", "contents": "GuideResource", "scope": "server", "exposure": "listed" } },
+    { "because": "a resource is listed or not", "keyword": "enum", "path": "/exposure", "instance": { "uri": "loom://guide/engineering", "purpose": "The engineering method.", "contents": "GuideResource", "scope": "server", "exposure": "hidden" } },
+    { "because": "a resource is the same for every session or scoped to one", "keyword": "enum", "path": "/scope", "instance": { "uri": "loom://guide/engineering", "purpose": "The engineering method.", "contents": "GuideResource", "scope": "public", "exposure": "listed" } }
+  ]
+}

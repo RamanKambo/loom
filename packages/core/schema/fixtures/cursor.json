@@ -1,0 +1,8 @@
+{
+  "definition": "Cursor",
+  "valid": ["ctx1.sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.32", "run-1.page.2"],
+  "invalid": [
+    { "because": "a cursor is an opaque token, never a URL", "keyword": "pattern", "path": "", "instance": "https://example.com/next" },
+    { "because": "a cursor carries no command", "keyword": "pattern", "path": "", "instance": "page 2; rm -rf" }
+  ]
+}

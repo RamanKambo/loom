@@ -1,0 +1,9 @@
+{
+  "definition": "DiscoveryBudget",
+  "valid": [{}, { "maxBytes": 8192, "maxRecords": 32 }, { "maxBytes": 65536, "maxRecords": 200 }],
+  "invalid": [
+    { "because": "a page holds at most 64 KiB of data", "keyword": "maximum", "path": "/maxBytes", "instance": { "maxBytes": 65537 } },
+    { "because": "a page holds at most 200 records", "keyword": "maximum", "path": "/maxRecords", "instance": { "maxRecords": 201 } },
+    { "because": "a page holds at least one record", "keyword": "minimum", "path": "/maxRecords", "instance": { "maxRecords": 0 } }
+  ]
+}

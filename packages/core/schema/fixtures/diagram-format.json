@@ -1,0 +1,7 @@
+{
+  "definition": "DiagramFormat",
+  "valid": ["graph", "mermaid", "terminal-ascii", "terminal-unicode"],
+  "invalid": [
+    { "because": "a format names a rendering, never a renderer command", "keyword": "enum", "path": "", "instance": "mermaid-ascii --file in.mmd" }
+  ]
+}

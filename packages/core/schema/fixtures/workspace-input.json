@@ -1,0 +1,22 @@
+{
+  "definition": "WorkspaceInput",
+  "valid": [
+    { "action": "inspect", "path": "C:/repos/payments", "boundary": "C:/repos" },
+    {
+      "action": "initialize",
+      "path": "services/payments",
+      "declaration": { "configVersion": 1, "modelId": "payments", "modelKind": "implementation", "model": "model.json", "scope": { "payments": ["src"] }, "outputs": {}, "gates": {} },
+      "dryRun": false,
+      "expectedInspection": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    { "action": "open", "path": "services/payments", "access": "edit", "view": false },
+    { "action": "close", "workspaceId": "ws_3f9a1c7d" }
+  ],
+  "invalid": [
+    { "because": "an action outside the five is rejected", "keyword": "enum", "path": "/action", "instance": { "action": "delete", "workspaceId": "ws_3f9a1c7d" } },
+    { "because": "access is read or edit, never acceptance", "keyword": "enum", "path": "/access", "instance": { "action": "open", "path": "services/payments", "access": "accept" } },
+    { "because": "a declaration is validated as persistent configuration", "keyword": "required", "path": "/declaration", "instance": { "action": "initialize", "path": "services/payments", "declaration": { "configVersion": 1 }, "dryRun": true } },
+    { "because": "a handle is an opaque id, never a path", "keyword": "pattern", "path": "/workspaceId", "instance": { "action": "status", "workspaceId": "C:/repos/payments" } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "action": "status", "workspaceId": "ws_3f9a1c7d", "force": true } }
+  ]
+}

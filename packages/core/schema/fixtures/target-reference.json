@@ -1,0 +1,14 @@
+{
+  "definition": "TargetReference",
+  "valid": [
+    { "kind": "workspace" },
+    { "kind": "record", "ref": { "kind": "component", "id": "ordering" } },
+    { "kind": "record", "ref": { "kind": "edge", "id": "ordering|billing|runtime" } }
+  ],
+  "invalid": [
+    { "because": "a record id cannot carry a SQL connection string", "keyword": "pattern", "path": "/ref/id", "instance": { "kind": "record", "ref": { "kind": "storage", "id": "Server=.;Database=shop" } } },
+    { "because": "a record id cannot carry a URL", "keyword": "pattern", "path": "/ref/id", "instance": { "kind": "record", "ref": { "kind": "operation", "id": "https://example.com/run" } } },
+    { "because": "a target carries no command", "keyword": "additionalProperties", "path": "", "instance": { "kind": "workspace", "command": "sqlcmd -S . -i run.sql" } },
+    { "because": "a target is the workspace or one record", "keyword": "oneOf", "path": "", "instance": { "kind": "url", "ref": { "kind": "component", "id": "ordering" } } }
+  ]
+}

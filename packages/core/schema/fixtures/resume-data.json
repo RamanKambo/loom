@@ -1,0 +1,33 @@
+{
+  "definition": "ResumeData",
+  "valid": [
+    {
+      "outcome": { "statement": "Orders can be paid in one step.", "exclusions": ["Refunds."], "constraints": ["Amounts are exact decimals."] },
+      "phase": "specification",
+      "owningScopes": [{ "modelId": "shop", "component": "ordering", "roots": ["ordering"] }],
+      "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] },
+      "frozenContracts": [{ "ref": { "kind": "operation", "id": "order.get" }, "baseline": "bl-1", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "version": 1 }],
+      "blockingUnknowns": [
+        { "id": "unk.report-period", "question": "Which reporting period does the invoice report cover?", "affects": [{ "kind": "requirement", "id": "req.report" }], "blocks": ["specification"], "owner": "team-billing", "evidenceNeeded": "The billing product owner names the reporting period.", "recommendedAction": { "action": "Specify the report by calendar month until the period is named.", "reversible": true }, "resolution": "Decision by the billing product owner.", "status": "open" }
+      ],
+      "evidence": [{ "id": "ob.req-pay-order-paid", "claim": { "kind": "criterion", "ref": "req.pay-order.paid" }, "kinds": ["behavior"], "required": true, "status": "absent" }],
+      "pendingWork": [{ "workPackage": "wp.ordering.specification", "status": "in-progress" }],
+      "nextActions": []
+    },
+    {
+      "outcome": null,
+      "phase": "unplanned",
+      "owningScopes": [],
+      "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] },
+      "frozenContracts": [],
+      "blockingUnknowns": [],
+      "evidence": [],
+      "pendingWork": [],
+      "nextActions": []
+    }
+  ],
+  "invalid": [
+    { "because": "a resume names the revision vector its facts refer to", "keyword": "required", "path": "", "instance": { "outcome": null, "phase": "unplanned", "owningScopes": [], "frozenContracts": [], "blockingUnknowns": [], "evidence": [], "pendingWork": [], "nextActions": [] } },
+    { "because": "an outcome is recorded or null, never an empty statement", "keyword": "anyOf", "path": "/outcome", "instance": { "outcome": { "statement": "", "exclusions": [], "constraints": [] }, "phase": "unplanned", "owningScopes": [], "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] }, "frozenContracts": [], "blockingUnknowns": [], "evidence": [], "pendingWork": [], "nextActions": [] } }
+  ]
+}

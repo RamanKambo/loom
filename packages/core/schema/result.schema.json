@@ -327,12 +327,16 @@
         "continuation": { "type": "string" }
       }
     },
+    "RefusalCause": {
+      "description": "Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it.",
+      "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "cleanup-incomplete", "recovery-required"]
+    },
     "Refusal": {
       "type": "object",
       "additionalProperties": false,
       "required": ["cause", "message"],
       "properties": {
-        "cause": { "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base"] },
+        "cause": { "$ref": "#/$defs/RefusalCause" },
         "message": { "type": "string" }
       }
     },

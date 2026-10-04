@@ -1,0 +1,7 @@
+{
+  "definition": "RefusalCause",
+  "valid": ["stale-base", "unknown-handle", "cleanup-incomplete", "recovery-required"],
+  "invalid": [
+    { "because": "a refusal cause is one of the contract's causes, and restarting is never the ordinary remedy", "keyword": "enum", "path": "", "instance": "restart-required" }
+  ]
+}

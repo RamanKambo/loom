@@ -13,6 +13,24 @@ export interface CatalogueTool {
   presence: readonly CataloguePresenceRule[];
 }
 
+/** One action of an agent tool: its operation, result definition, effect, generated description and presence rules. */
+export interface AgentToolAction {
+  action?: string;
+  operation: string;
+  data: string;
+  effects: DescribeData['tools'][number]['effects'];
+  description: string;
+  presence: readonly CataloguePresenceRule[];
+}
+
+/** An agent tool the catalogue defines and the MCP server does not advertise: its input, its whole description and its actions. */
+export interface AgentTool {
+  name: string;
+  input: string;
+  description: string;
+  actions: readonly AgentToolAction[];
+}
+
 /** The authored operation catalogue, packages/core/schema/operations.json. */
 export const OPERATION_CATALOGUE: OperationCatalogue = {
   "catalogueVersion": 1,
@@ -149,6 +167,385 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
       "path": "(root)",
       "message": "send 'before' and 'after', or 'againstBaseline': true with an inline 'after' or with 'workspace': true",
       "fix": "name exactly one comparison"
+    },
+    {
+      "id": "workspace-inspect",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "inspect"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path"
+          ],
+          "absent": [
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "access",
+            "view",
+            "workspaceId"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "inspect takes 'path' and an optional 'boundary', and nothing else",
+      "fix": "send 'path', and 'boundary' to limit how far inspection reads"
+    },
+    {
+      "id": "workspace-initialize",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "initialize"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path",
+            "declaration",
+            "dryRun"
+          ],
+          "absent": [
+            "boundary",
+            "access",
+            "view",
+            "workspaceId"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "initialize takes 'path', 'declaration' and 'dryRun', and 'expectedInspection' when it writes",
+      "fix": "send 'path', 'declaration' and 'dryRun'"
+    },
+    {
+      "id": "workspace-initialize-apply",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "initialize"
+          ]
+        },
+        {
+          "member": "dryRun",
+          "in": [
+            false
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "expectedInspection"
+          ],
+          "absent": []
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "expectedInspection",
+      "message": "an initialization that writes names the inspection it was prepared against",
+      "fix": "send 'expectedInspection': the inspection digest inspect returned"
+    },
+    {
+      "id": "workspace-open",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "open"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path",
+            "access"
+          ],
+          "absent": [
+            "boundary",
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "workspaceId"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "open takes 'path' and 'access', and an optional 'view'",
+      "fix": "send 'path' and 'access': 'read' or 'edit'"
+    },
+    {
+      "id": "workspace-handle",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "status",
+            "close"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "workspaceId"
+          ],
+          "absent": [
+            "path",
+            "boundary",
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "access",
+            "view"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "status and close take only the 'workspaceId' that open returned",
+      "fix": "send the 'workspaceId' of a handle this session opened"
+    },
+    {
+      "id": "federation-inspect",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "inspect"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [],
+          "absent": [
+            "changes",
+            "expectedVector",
+            "proposalId",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "inspect takes only 'workspaceId'",
+      "fix": "send 'workspaceId' alone"
+    },
+    {
+      "id": "federation-plan",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "plan"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "changes",
+            "expectedVector"
+          ],
+          "absent": [
+            "proposalId",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "plan takes 'changes' and the 'expectedVector' they were prepared against",
+      "fix": "send 'changes' and 'expectedVector'"
+    },
+    {
+      "id": "federation-apply",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "apply"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "proposalId",
+            "expectedVector"
+          ],
+          "absent": [
+            "changes",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "apply takes the 'proposalId' a plan returned and the 'expectedVector' it was planned against",
+      "fix": "send 'proposalId' and 'expectedVector'"
+    },
+    {
+      "id": "federation-check",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "check"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [],
+          "absent": [
+            "changes",
+            "expectedVector",
+            "proposalId",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "check takes 'workspaceId' and an optional 'snapshotDigest'",
+      "fix": "send 'workspaceId', and 'snapshotDigest' to check another snapshot than the current one"
+    },
+    {
+      "id": "federation-publish",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "publish"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "export",
+            "expectedVector",
+            "purpose"
+          ],
+          "absent": [
+            "changes",
+            "proposalId",
+            "snapshotDigest"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "publish takes 'export', 'expectedVector' and 'purpose'",
+      "fix": "send 'export', 'expectedVector' and 'purpose': 'draft' or 'release'"
+    },
+    {
+      "id": "qualify-start",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "start"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy"
+          ],
+          "absent": [
+            "runId",
+            "cursor"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "start takes 'checks', 'target', 'expectedVector' and 'executionPolicy'",
+      "fix": "send the check ids, the target, the revision vector to qualify and the execution policy name"
+    },
+    {
+      "id": "qualify-status",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "status"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "runId"
+          ],
+          "absent": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "status takes 'runId' and an optional 'cursor'",
+      "fix": "send the 'runId' start returned"
+    },
+    {
+      "id": "qualify-cancel",
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "cancel"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "runId"
+          ],
+          "absent": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy",
+            "cursor"
+          ]
+        }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "cancel takes only 'runId'",
+      "fix": "send the 'runId' start returned"
     }
   ],
   "operations": [
@@ -1203,6 +1600,799 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
           ]
         }
       }
+    },
+    {
+      "id": "workspaceInspect",
+      "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest.",
+      "prerequisites": [
+        "a local path"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "invalid-input",
+          "when": "the path does not exist"
+        }
+      ],
+      "nextAction": {
+        "action": "initialize a workspace at a suggested placement",
+        "operation": "workspaceInitialize"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild exposes it, and the CLI commands add it as `workspace inspect [<path>] [--boundary <dir>]`."
+      },
+      "agentTool": {
+        "tool": "loom.workspace",
+        "action": "inspect",
+        "input": "WorkspaceInput",
+        "data": "WorkspaceInspectData",
+        "presence": [
+          "workspace-inspect"
+        ],
+        "examples": [
+          {
+            "description": "Inspect a checkout before placing a workspace in it.",
+            "input": {
+              "action": "inspect",
+              "path": "services/payments"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspaceInitialize",
+      "purpose": "Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal.",
+      "prerequisites": [
+        "the path's inspection digest",
+        "a declaration of the model id, kind, claims and members"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "invalid-input",
+          "when": "the declaration breaks the configuration contract or the path is no repository root"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the declaration claims a path another descriptor owns"
+        },
+        {
+          "cause": "stale-base",
+          "when": "the inspection changed since 'expectedInspection', and nothing is written"
+        }
+      ],
+      "nextAction": {
+        "action": "open the created workspace",
+        "operation": "workspaceOpen"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.workspace",
+        "action": "initialize",
+        "input": "WorkspaceInput",
+        "data": "WorkspaceInitializeData",
+        "presence": [
+          "workspace-initialize",
+          "workspace-initialize-apply"
+        ],
+        "examples": [
+          {
+            "description": "Propose the scaffold of an implementation workspace without writing it.",
+            "input": {
+              "action": "initialize",
+              "path": "services/payments",
+              "declaration": {
+                "configVersion": 1,
+                "modelId": "payments",
+                "modelKind": "implementation",
+                "model": "model.json",
+                "scope": {
+                  "payments": [
+                    "src"
+                  ]
+                },
+                "outputs": {},
+                "gates": {}
+              },
+              "dryRun": true
+            }
+          },
+          {
+            "description": "Create it against the inspection it was prepared from.",
+            "input": {
+              "action": "initialize",
+              "path": "services/payments",
+              "declaration": {
+                "configVersion": 1,
+                "modelId": "payments",
+                "modelKind": "implementation",
+                "model": "model.json",
+                "scope": {
+                  "payments": [
+                    "src"
+                  ]
+                },
+                "outputs": {},
+                "gates": {}
+              },
+              "dryRun": false,
+              "expectedInspection": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspaceOpen",
+      "purpose": "Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model.",
+      "prerequisites": [
+        "a governed workspace at the path"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the path; inspect and initialize one"
+        }
+      ],
+      "nextAction": {
+        "action": "read the workspace status",
+        "operation": "workspaceStatus"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild exposes it. A handle is scoped to one server session, so the command line has no form of it."
+      },
+      "agentTool": {
+        "tool": "loom.workspace",
+        "action": "open",
+        "input": "WorkspaceInput",
+        "data": "WorkspaceSummary",
+        "presence": [
+          "workspace-open"
+        ],
+        "examples": [
+          {
+            "description": "Open a workspace to read it, with its browser view.",
+            "input": {
+              "action": "open",
+              "path": "services/payments",
+              "access": "read"
+            }
+          },
+          {
+            "description": "Open it for editing without a browser view.",
+            "input": {
+              "action": "open",
+              "path": "services/payments",
+              "access": "edit",
+              "view": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspaceStatus",
+      "purpose": "Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions.",
+      "prerequisites": [
+        "a handle this session opened"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session; open the workspace again"
+        }
+      ],
+      "nextAction": {
+        "action": "follow a next action, or close the handle",
+        "operation": "workspaceClose"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild exposes it, and the CLI commands add it as `workspace status [<path>]`."
+      },
+      "agentTool": {
+        "tool": "loom.workspace",
+        "action": "status",
+        "input": "WorkspaceInput",
+        "data": "WorkspaceStatus",
+        "presence": [
+          "workspace-handle"
+        ],
+        "examples": [
+          {
+            "description": "Read the status of an open workspace.",
+            "input": {
+              "action": "status",
+              "workspaceId": "ws_3f9a1c7d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "workspaceClose",
+      "purpose": "Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure.",
+      "prerequisites": [
+        "a handle this session opened"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "cleanup-incomplete",
+          "when": "an owned resource remains, which the result names with its recovery"
+        }
+      ],
+      "nextAction": {
+        "action": "open the workspace again to continue",
+        "operation": "workspaceOpen"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild exposes it. A handle is scoped to one server session, so the command line has no form of it."
+      },
+      "agentTool": {
+        "tool": "loom.workspace",
+        "action": "close",
+        "input": "WorkspaceInput",
+        "data": "WorkspaceCloseData",
+        "presence": [
+          "workspace-handle"
+        ],
+        "examples": [
+          {
+            "description": "Close a handle and release what it owns.",
+            "input": {
+              "action": "close",
+              "workspaceId": "ws_3f9a1c7d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "federationInspect",
+      "purpose": "Inspect a composition: its direct members and pins, the roots each model claims, missing inputs and the dependency graph between models.",
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "the workspace declares no composition"
+        }
+      ],
+      "nextAction": {
+        "action": "plan a change to the composition",
+        "operation": "federationPlan"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.federation",
+        "action": "inspect",
+        "input": "FederationInput",
+        "data": "FederationInspectData",
+        "presence": [
+          "federation-inspect"
+        ],
+        "examples": [
+          {
+            "description": "Inspect the members and pins of an open composition.",
+            "input": {
+              "action": "inspect",
+              "workspaceId": "ws_3f9a1c7d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "federationPlan",
+      "purpose": "Plan typed changes to membership, agreements, export pins or output claims as an immutable proposal with its owner-local writes, impact, invalidated evidence and required acceptance, writing nothing.",
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'; the result names the current revisions"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "a change claims a root another model owns or edits another owner's record"
+        }
+      ],
+      "nextAction": {
+        "action": "apply the proposal against the same revision vector",
+        "operation": "federationApply"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.federation",
+        "action": "plan",
+        "input": "FederationInput",
+        "data": "ChangeProposal",
+        "presence": [
+          "federation-plan"
+        ],
+        "examples": [
+          {
+            "description": "Plan claiming the generated documentation root for the composition.",
+            "input": {
+              "action": "plan",
+              "workspaceId": "ws_3f9a1c7d",
+              "changes": [
+                {
+                  "change": "claimOutput",
+                  "path": "Docs/Loom"
+                }
+              ],
+              "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "federationApply",
+      "purpose": "Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable.",
+      "prerequisites": [
+        "a proposal a plan returned",
+        "the acceptance the owners' trusted policies require"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector', and nothing is written"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "an owner's trusted policy requires an acceptance the proposal lacks"
+        },
+        {
+          "cause": "recovery-required",
+          "when": "a journal holds an incomplete change"
+        }
+      ],
+      "nextAction": {
+        "action": "check the composed result",
+        "operation": "federationCheck"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.federation",
+        "action": "apply",
+        "input": "FederationInput",
+        "data": "FederationApplyData",
+        "presence": [
+          "federation-apply"
+        ],
+        "examples": [
+          {
+            "description": "Apply a planned proposal against the vector it was planned on.",
+            "input": {
+              "action": "apply",
+              "workspaceId": "ws_3f9a1c7d",
+              "proposalId": "prop-1",
+              "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "federationCheck",
+      "purpose": "Resolve a composition snapshot's closure and evaluate its composed validation and readiness, manufacturing no acceptance.",
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "'snapshotDigest' names no snapshot of the composition"
+        }
+      ],
+      "nextAction": {
+        "action": "publish the export or the agreements",
+        "operation": "federationPublish"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.federation",
+        "action": "check",
+        "input": "FederationInput",
+        "data": "FederationCheckData",
+        "presence": [
+          "federation-check"
+        ],
+        "examples": [
+          {
+            "description": "Check the current composition snapshot.",
+            "input": {
+              "action": "check",
+              "workspaceId": "ws_3f9a1c7d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "federationPublish",
+      "purpose": "Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence.",
+      "prerequisites": [
+        "a handle with the publish capability"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a release lacks its configured acceptance or evidence"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the export omits a record of its required closure"
+        }
+      ],
+      "nextAction": {
+        "action": "pin the published bundle in the consuming composition",
+        "operation": "federationPlan"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.federation",
+        "action": "publish",
+        "input": "FederationInput",
+        "data": "FederationPublishData",
+        "presence": [
+          "federation-publish"
+        ],
+        "examples": [
+          {
+            "description": "Publish a draft export of the payment capture operation.",
+            "input": {
+              "action": "publish",
+              "workspaceId": "ws_3f9a1c7d",
+              "export": {
+                "contract": "payments-export",
+                "version": 1,
+                "records": [
+                  {
+                    "kind": "operation",
+                    "id": "payment.capture"
+                  }
+                ]
+              },
+              "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "purpose": "draft"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "diagram",
+      "purpose": "Draw a diagram of one record or the whole workspace as the structured graph, Mermaid text or terminal text within a rendering budget, with the source vector it was drawn from.",
+      "prerequisites": [
+        "a handle this session opened",
+        "for a terminal format, a renderer provisioned in trusted configuration"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the target names no record of the model or the request breaks the tool input contract"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a terminal format is requested and no provisioned renderer is available"
+        }
+      ],
+      "nextAction": {
+        "action": "read the context of a record the diagram shows",
+        "operation": "context"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.diagram",
+        "input": "DiagramInput",
+        "data": "DiagramData",
+        "presence": [],
+        "examples": [
+          {
+            "description": "Draw the dependencies of the ordering component as Mermaid text.",
+            "input": {
+              "workspaceId": "ws_3f9a1c7d",
+              "target": {
+                "kind": "record",
+                "ref": {
+                  "kind": "component",
+                  "id": "ordering"
+                }
+              },
+              "scope": {
+                "kind": "dependency",
+                "depth": 1
+              },
+              "formats": [
+                "mermaid"
+              ],
+              "budget": {
+                "maxNodes": 50,
+                "maxBytes": 8192
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "qualifyStart",
+      "purpose": "Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes.",
+      "prerequisites": [
+        "a handle with the qualify capability",
+        "the revision vector the run must qualify, as 'expectedVector'",
+        "an execution policy naming a runner identity provisioned in trusted local configuration"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the trusted policy does not authorize a check, or the execution policy names no provisioned identity"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a check's native tool or runner is not provisioned, so qualification is not established"
+        }
+      ],
+      "nextAction": {
+        "action": "follow the run's progress",
+        "operation": "qualifyStatus"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.qualify",
+        "action": "start",
+        "input": "QualifyInput",
+        "data": "QualifyRun",
+        "presence": [
+          "qualify-start"
+        ],
+        "examples": [
+          {
+            "description": "Run the SQL behavior check against the workspace under the CI runner identity.",
+            "input": {
+              "action": "start",
+              "workspaceId": "ws_3f9a1c7d",
+              "checks": [
+                "sql.behavior"
+              ],
+              "target": {
+                "kind": "workspace"
+              },
+              "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "executionPolicy": "ci-runner"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "qualifyStatus",
+      "purpose": "Report a run's phase, a bounded page of its progress, the evidence it recorded and its cleanup.",
+      "prerequisites": [
+        "a run this session started"
+      ],
+      "effects": "reads",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId or runId names no handle or run of this session"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the cursor was not issued for this run"
+        }
+      ],
+      "nextAction": {
+        "action": "inspect the evidence the run recorded",
+        "operation": "evidence"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.qualify",
+        "action": "status",
+        "input": "QualifyInput",
+        "data": "QualifyRunStatus",
+        "presence": [
+          "qualify-status"
+        ],
+        "examples": [
+          {
+            "description": "Read the progress of a run.",
+            "input": {
+              "action": "status",
+              "workspaceId": "ws_3f9a1c7d",
+              "runId": "run-1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "qualifyCancel",
+      "purpose": "Request the cancellation of a run, idempotently, and report it completed only once its processes and resources have settled.",
+      "prerequisites": [
+        "a run this session started"
+      ],
+      "effects": "writes",
+      "refusals": [
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId or runId names no handle or run of this session"
+        },
+        {
+          "cause": "cleanup-incomplete",
+          "when": "the run left an owned resource, which the result names with its recovery"
+        }
+      ],
+      "nextAction": {
+        "action": "read the run's final status",
+        "operation": "qualifyStatus"
+      },
+      "exposure": {
+        "mcp": "none",
+        "cli": "none",
+        "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it."
+      },
+      "agentTool": {
+        "tool": "loom.qualify",
+        "action": "cancel",
+        "input": "QualifyInput",
+        "data": "QualifyCancelData",
+        "presence": [
+          "qualify-cancel"
+        ],
+        "examples": [
+          {
+            "description": "Cancel a run.",
+            "input": {
+              "action": "cancel",
+              "workspaceId": "ws_3f9a1c7d",
+              "runId": "run-1"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "loom://guide/engineering",
+      "purpose": "The engineering method the model encodes: the outcome first, responsibilities and workflows before interfaces, types, mutations and failure behavior before implementation, and evidence bound to its exact inputs.",
+      "contents": "GuideResource",
+      "scope": "server",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://guide/workflow",
+      "purpose": "The order of work an agent follows: identify the workspace and the outcome, read the context, preview and apply changes through the owning model, check readiness and qualify the implementation.",
+      "contents": "GuideResource",
+      "scope": "server",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://guide/capabilities",
+      "purpose": "What this build supports and what each kind of proof does not establish.",
+      "contents": "GuideResource",
+      "scope": "server",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://workspaces/{workspaceId}/status",
+      "purpose": "The status of one open workspace, for the session that holds its handle.",
+      "contents": "WorkspaceStatus",
+      "scope": "session",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
+    },
+    {
+      "uri": "loom://workspaces/{workspaceId}/records/{kind}/{id}",
+      "purpose": "One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page.",
+      "contents": "RecordResource",
+      "scope": "session",
+      "exposure": "none",
+      "reason": "Catalogued before it is listed; the server rebuild serves it."
     }
   ]
 };
@@ -1606,6 +2796,573 @@ export const MCP_TOOLS: readonly CatalogueTool[] = [
         "path": "(root)",
         "message": "the request must carry exactly one of 'patch' or 'patches'",
         "fix": "send one patch as 'patch' or a batch as 'patches'"
+      }
+    ]
+  }
+];
+
+/** Every agent tool the server does not advertise, in catalogue order. */
+export const AGENT_TOOLS: readonly AgentTool[] = [
+  {
+    "name": "loom.workspace",
+    "input": "WorkspaceInput",
+    "description": "Action 'inspect': Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'. Action 'initialize': Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal. Prerequisites: the path's inspection digest; a declaration of the model id, kind, claims and members. Effects: can persist changes. Refused as invalid-input when the declaration breaks the configuration contract or the path is no repository root; as policy-failure when the declaration claims a path another descriptor owns; as stale-base when the inspection changed since 'expectedInspection', and nothing is written. When 'action' is 'initialize', send 'path' and 'declaration' and 'dryRun' without 'boundary' or 'access' or 'view' or 'workspaceId'. When 'action' is 'initialize' and 'dryRun' is false, send 'expectedInspection'. Next: open the created workspace with loom.workspace action 'open'. Action 'open': Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'. Action 'status': Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions. Prerequisites: a handle this session opened. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; open the workspace again. When 'action' is 'status' or 'close', send 'workspaceId' without 'path' or 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view'. Next: follow a next action, or close the handle with loom.workspace action 'close'. Action 'close': Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure. Prerequisites: a handle this session opened. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as cleanup-incomplete when an owned resource remains, which the result names with its recovery. Next: open the workspace again to continue with loom.workspace action 'open'.",
+    "actions": [
+      {
+        "action": "inspect",
+        "operation": "workspaceInspect",
+        "data": "WorkspaceInspectData",
+        "effects": "reads",
+        "description": "Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'.",
+        "presence": [
+          {
+            "id": "workspace-inspect",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "inspect"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "path"
+                ],
+                "absent": [
+                  "declaration",
+                  "dryRun",
+                  "expectedInspection",
+                  "access",
+                  "view",
+                  "workspaceId"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "inspect takes 'path' and an optional 'boundary', and nothing else",
+            "fix": "send 'path', and 'boundary' to limit how far inspection reads"
+          }
+        ]
+      },
+      {
+        "action": "initialize",
+        "operation": "workspaceInitialize",
+        "data": "WorkspaceInitializeData",
+        "effects": "writes",
+        "description": "Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal. Prerequisites: the path's inspection digest; a declaration of the model id, kind, claims and members. Effects: can persist changes. Refused as invalid-input when the declaration breaks the configuration contract or the path is no repository root; as policy-failure when the declaration claims a path another descriptor owns; as stale-base when the inspection changed since 'expectedInspection', and nothing is written. When 'action' is 'initialize', send 'path' and 'declaration' and 'dryRun' without 'boundary' or 'access' or 'view' or 'workspaceId'. When 'action' is 'initialize' and 'dryRun' is false, send 'expectedInspection'. Next: open the created workspace with loom.workspace action 'open'.",
+        "presence": [
+          {
+            "id": "workspace-initialize",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "initialize"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "path",
+                  "declaration",
+                  "dryRun"
+                ],
+                "absent": [
+                  "boundary",
+                  "access",
+                  "view",
+                  "workspaceId"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "initialize takes 'path', 'declaration' and 'dryRun', and 'expectedInspection' when it writes",
+            "fix": "send 'path', 'declaration' and 'dryRun'"
+          },
+          {
+            "id": "workspace-initialize-apply",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "initialize"
+                ]
+              },
+              {
+                "member": "dryRun",
+                "in": [
+                  false
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "expectedInspection"
+                ],
+                "absent": []
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "expectedInspection",
+            "message": "an initialization that writes names the inspection it was prepared against",
+            "fix": "send 'expectedInspection': the inspection digest inspect returned"
+          }
+        ]
+      },
+      {
+        "action": "open",
+        "operation": "workspaceOpen",
+        "data": "WorkspaceSummary",
+        "effects": "reads",
+        "description": "Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'.",
+        "presence": [
+          {
+            "id": "workspace-open",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "open"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "path",
+                  "access"
+                ],
+                "absent": [
+                  "boundary",
+                  "declaration",
+                  "dryRun",
+                  "expectedInspection",
+                  "workspaceId"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "open takes 'path' and 'access', and an optional 'view'",
+            "fix": "send 'path' and 'access': 'read' or 'edit'"
+          }
+        ]
+      },
+      {
+        "action": "status",
+        "operation": "workspaceStatus",
+        "data": "WorkspaceStatus",
+        "effects": "reads",
+        "description": "Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions. Prerequisites: a handle this session opened. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; open the workspace again. When 'action' is 'status' or 'close', send 'workspaceId' without 'path' or 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view'. Next: follow a next action, or close the handle with loom.workspace action 'close'.",
+        "presence": [
+          {
+            "id": "workspace-handle",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "status",
+                  "close"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "workspaceId"
+                ],
+                "absent": [
+                  "path",
+                  "boundary",
+                  "declaration",
+                  "dryRun",
+                  "expectedInspection",
+                  "access",
+                  "view"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "status and close take only the 'workspaceId' that open returned",
+            "fix": "send the 'workspaceId' of a handle this session opened"
+          }
+        ]
+      },
+      {
+        "action": "close",
+        "operation": "workspaceClose",
+        "data": "WorkspaceCloseData",
+        "effects": "writes",
+        "description": "Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure. Prerequisites: a handle this session opened. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as cleanup-incomplete when an owned resource remains, which the result names with its recovery. When 'action' is 'status' or 'close', send 'workspaceId' without 'path' or 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view'. Next: open the workspace again to continue with loom.workspace action 'open'.",
+        "presence": [
+          {
+            "id": "workspace-handle",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "status",
+                  "close"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "workspaceId"
+                ],
+                "absent": [
+                  "path",
+                  "boundary",
+                  "declaration",
+                  "dryRun",
+                  "expectedInspection",
+                  "access",
+                  "view"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "status and close take only the 'workspaceId' that open returned",
+            "fix": "send the 'workspaceId' of a handle this session opened"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "loom.federation",
+    "input": "FederationInput",
+    "description": "Action 'inspect': Inspect a composition: its direct members and pins, the roots each model claims, missing inputs and the dependency graph between models. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as unmet-prerequisite when the workspace declares no composition. When 'action' is 'inspect', omit 'changes' and 'expectedVector' and 'proposalId' and 'snapshotDigest' and 'export' and 'purpose'. Next: plan a change to the composition with loom.federation action 'plan'. Action 'plan': Plan typed changes to membership, agreements, export pins or output claims as an immutable proposal with its owner-local writes, impact, invalidated evidence and required acceptance, writing nothing. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; the result names the current revisions; as policy-failure when a change claims a root another model owns or edits another owner's record. When 'action' is 'plan', send 'changes' and 'expectedVector' without 'proposalId' or 'snapshotDigest' or 'export' or 'purpose'. Next: apply the proposal against the same revision vector with loom.federation action 'apply'. Action 'apply': Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable. Prerequisites: a proposal a plan returned; the acceptance the owners' trusted policies require. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector', and nothing is written; as unmet-prerequisite when an owner's trusted policy requires an acceptance the proposal lacks; as recovery-required when a journal holds an incomplete change. When 'action' is 'apply', send 'proposalId' and 'expectedVector' without 'changes' or 'snapshotDigest' or 'export' or 'purpose'. Next: check the composed result with loom.federation action 'check'. Action 'check': Resolve a composition snapshot's closure and evaluate its composed validation and readiness, manufacturing no acceptance. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as unresolved-context when 'snapshotDigest' names no snapshot of the composition. When 'action' is 'check', omit 'changes' and 'expectedVector' and 'proposalId' and 'export' and 'purpose'. Next: publish the export or the agreements with loom.federation action 'publish'. Action 'publish': Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence. Prerequisites: a handle with the publish capability. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as unmet-prerequisite when a release lacks its configured acceptance or evidence; as policy-failure when the export omits a record of its required closure. When 'action' is 'publish', send 'export' and 'expectedVector' and 'purpose' without 'changes' or 'proposalId' or 'snapshotDigest'. Next: pin the published bundle in the consuming composition with loom.federation action 'plan'.",
+    "actions": [
+      {
+        "action": "inspect",
+        "operation": "federationInspect",
+        "data": "FederationInspectData",
+        "effects": "reads",
+        "description": "Inspect a composition: its direct members and pins, the roots each model claims, missing inputs and the dependency graph between models. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as unmet-prerequisite when the workspace declares no composition. When 'action' is 'inspect', omit 'changes' and 'expectedVector' and 'proposalId' and 'snapshotDigest' and 'export' and 'purpose'. Next: plan a change to the composition with loom.federation action 'plan'.",
+        "presence": [
+          {
+            "id": "federation-inspect",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "inspect"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [],
+                "absent": [
+                  "changes",
+                  "expectedVector",
+                  "proposalId",
+                  "snapshotDigest",
+                  "export",
+                  "purpose"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "inspect takes only 'workspaceId'",
+            "fix": "send 'workspaceId' alone"
+          }
+        ]
+      },
+      {
+        "action": "plan",
+        "operation": "federationPlan",
+        "data": "ChangeProposal",
+        "effects": "reads",
+        "description": "Plan typed changes to membership, agreements, export pins or output claims as an immutable proposal with its owner-local writes, impact, invalidated evidence and required acceptance, writing nothing. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; the result names the current revisions; as policy-failure when a change claims a root another model owns or edits another owner's record. When 'action' is 'plan', send 'changes' and 'expectedVector' without 'proposalId' or 'snapshotDigest' or 'export' or 'purpose'. Next: apply the proposal against the same revision vector with loom.federation action 'apply'.",
+        "presence": [
+          {
+            "id": "federation-plan",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "plan"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "changes",
+                  "expectedVector"
+                ],
+                "absent": [
+                  "proposalId",
+                  "snapshotDigest",
+                  "export",
+                  "purpose"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "plan takes 'changes' and the 'expectedVector' they were prepared against",
+            "fix": "send 'changes' and 'expectedVector'"
+          }
+        ]
+      },
+      {
+        "action": "apply",
+        "operation": "federationApply",
+        "data": "FederationApplyData",
+        "effects": "writes",
+        "description": "Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable. Prerequisites: a proposal a plan returned; the acceptance the owners' trusted policies require. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector', and nothing is written; as unmet-prerequisite when an owner's trusted policy requires an acceptance the proposal lacks; as recovery-required when a journal holds an incomplete change. When 'action' is 'apply', send 'proposalId' and 'expectedVector' without 'changes' or 'snapshotDigest' or 'export' or 'purpose'. Next: check the composed result with loom.federation action 'check'.",
+        "presence": [
+          {
+            "id": "federation-apply",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "apply"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "proposalId",
+                  "expectedVector"
+                ],
+                "absent": [
+                  "changes",
+                  "snapshotDigest",
+                  "export",
+                  "purpose"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "apply takes the 'proposalId' a plan returned and the 'expectedVector' it was planned against",
+            "fix": "send 'proposalId' and 'expectedVector'"
+          }
+        ]
+      },
+      {
+        "action": "check",
+        "operation": "federationCheck",
+        "data": "FederationCheckData",
+        "effects": "reads",
+        "description": "Resolve a composition snapshot's closure and evaluate its composed validation and readiness, manufacturing no acceptance. Prerequisites: a handle on a composition or mixed workspace. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as unresolved-context when 'snapshotDigest' names no snapshot of the composition. When 'action' is 'check', omit 'changes' and 'expectedVector' and 'proposalId' and 'export' and 'purpose'. Next: publish the export or the agreements with loom.federation action 'publish'.",
+        "presence": [
+          {
+            "id": "federation-check",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "check"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [],
+                "absent": [
+                  "changes",
+                  "expectedVector",
+                  "proposalId",
+                  "export",
+                  "purpose"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "check takes 'workspaceId' and an optional 'snapshotDigest'",
+            "fix": "send 'workspaceId', and 'snapshotDigest' to check another snapshot than the current one"
+          }
+        ]
+      },
+      {
+        "action": "publish",
+        "operation": "federationPublish",
+        "data": "FederationPublishData",
+        "effects": "writes",
+        "description": "Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence. Prerequisites: a handle with the publish capability. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as unmet-prerequisite when a release lacks its configured acceptance or evidence; as policy-failure when the export omits a record of its required closure. When 'action' is 'publish', send 'export' and 'expectedVector' and 'purpose' without 'changes' or 'proposalId' or 'snapshotDigest'. Next: pin the published bundle in the consuming composition with loom.federation action 'plan'.",
+        "presence": [
+          {
+            "id": "federation-publish",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "publish"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "export",
+                  "expectedVector",
+                  "purpose"
+                ],
+                "absent": [
+                  "changes",
+                  "proposalId",
+                  "snapshotDigest"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "publish takes 'export', 'expectedVector' and 'purpose'",
+            "fix": "send 'export', 'expectedVector' and 'purpose': 'draft' or 'release'"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "loom.diagram",
+    "input": "DiagramInput",
+    "description": "Draw a diagram of one record or the whole workspace as the structured graph, Mermaid text or terminal text within a rendering budget, with the source vector it was drawn from. Prerequisites: a handle this session opened; for a terminal format, a renderer provisioned in trusted configuration. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as invalid-input when the target names no record of the model or the request breaks the tool input contract; as unmet-prerequisite when a terminal format is requested and no provisioned renderer is available. Next: read the context of a record the diagram shows with loom.context.",
+    "actions": [
+      {
+        "operation": "diagram",
+        "data": "DiagramData",
+        "effects": "reads",
+        "description": "Draw a diagram of one record or the whole workspace as the structured graph, Mermaid text or terminal text within a rendering budget, with the source vector it was drawn from. Prerequisites: a handle this session opened; for a terminal format, a renderer provisioned in trusted configuration. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; as invalid-input when the target names no record of the model or the request breaks the tool input contract; as unmet-prerequisite when a terminal format is requested and no provisioned renderer is available. Next: read the context of a record the diagram shows with loom.context.",
+        "presence": []
+      }
+    ]
+  },
+  {
+    "name": "loom.qualify",
+    "input": "QualifyInput",
+    "description": "Action 'start': Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes. Prerequisites: a handle with the qualify capability; the revision vector the run must qualify, as 'expectedVector'; an execution policy naming a runner identity provisioned in trusted local configuration. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as policy-failure when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; as unmet-prerequisite when a check's native tool or runner is not provisioned, so qualification is not established. When 'action' is 'start', send 'checks' and 'target' and 'expectedVector' and 'executionPolicy' without 'runId' or 'cursor'. Next: follow the run's progress with loom.qualify action 'status'. Action 'status': Report a run's phase, a bounded page of its progress, the evidence it recorded and its cleanup. Prerequisites: a run this session started. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId or runId names no handle or run of this session; as invalid-input when the cursor was not issued for this run. When 'action' is 'status', send 'runId' without 'checks' or 'target' or 'expectedVector' or 'executionPolicy'. Next: inspect the evidence the run recorded with the command 'evidence'. Action 'cancel': Request the cancellation of a run, idempotently, and report it completed only once its processes and resources have settled. Prerequisites: a run this session started. Effects: can persist changes. Refused as unknown-handle when the workspaceId or runId names no handle or run of this session; as cleanup-incomplete when the run left an owned resource, which the result names with its recovery. When 'action' is 'cancel', send 'runId' without 'checks' or 'target' or 'expectedVector' or 'executionPolicy' or 'cursor'. Next: read the run's final status with loom.qualify action 'status'.",
+    "actions": [
+      {
+        "action": "start",
+        "operation": "qualifyStart",
+        "data": "QualifyRun",
+        "effects": "writes",
+        "description": "Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes. Prerequisites: a handle with the qualify capability; the revision vector the run must qualify, as 'expectedVector'; an execution policy naming a runner identity provisioned in trusted local configuration. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as stale-base when an input changed since 'expectedVector'; as policy-failure when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; as unmet-prerequisite when a check's native tool or runner is not provisioned, so qualification is not established. When 'action' is 'start', send 'checks' and 'target' and 'expectedVector' and 'executionPolicy' without 'runId' or 'cursor'. Next: follow the run's progress with loom.qualify action 'status'.",
+        "presence": [
+          {
+            "id": "qualify-start",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "start"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "checks",
+                  "target",
+                  "expectedVector",
+                  "executionPolicy"
+                ],
+                "absent": [
+                  "runId",
+                  "cursor"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "start takes 'checks', 'target', 'expectedVector' and 'executionPolicy'",
+            "fix": "send the check ids, the target, the revision vector to qualify and the execution policy name"
+          }
+        ]
+      },
+      {
+        "action": "status",
+        "operation": "qualifyStatus",
+        "data": "QualifyRunStatus",
+        "effects": "reads",
+        "description": "Report a run's phase, a bounded page of its progress, the evidence it recorded and its cleanup. Prerequisites: a run this session started. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId or runId names no handle or run of this session; as invalid-input when the cursor was not issued for this run. When 'action' is 'status', send 'runId' without 'checks' or 'target' or 'expectedVector' or 'executionPolicy'. Next: inspect the evidence the run recorded with the command 'evidence'.",
+        "presence": [
+          {
+            "id": "qualify-status",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "status"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "runId"
+                ],
+                "absent": [
+                  "checks",
+                  "target",
+                  "expectedVector",
+                  "executionPolicy"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "status takes 'runId' and an optional 'cursor'",
+            "fix": "send the 'runId' start returned"
+          }
+        ]
+      },
+      {
+        "action": "cancel",
+        "operation": "qualifyCancel",
+        "data": "QualifyCancelData",
+        "effects": "writes",
+        "description": "Request the cancellation of a run, idempotently, and report it completed only once its processes and resources have settled. Prerequisites: a run this session started. Effects: can persist changes. Refused as unknown-handle when the workspaceId or runId names no handle or run of this session; as cleanup-incomplete when the run left an owned resource, which the result names with its recovery. When 'action' is 'cancel', send 'runId' without 'checks' or 'target' or 'expectedVector' or 'executionPolicy' or 'cursor'. Next: read the run's final status with loom.qualify action 'status'.",
+        "presence": [
+          {
+            "id": "qualify-cancel",
+            "when": [
+              {
+                "member": "action",
+                "in": [
+                  "cancel"
+                ]
+              }
+            ],
+            "accept": [
+              {
+                "present": [
+                  "runId"
+                ],
+                "absent": [
+                  "checks",
+                  "target",
+                  "expectedVector",
+                  "executionPolicy",
+                  "cursor"
+                ]
+              }
+            ],
+            "code": "STRUCTURAL_INVALID",
+            "path": "(root)",
+            "message": "cancel takes only 'runId'",
+            "fix": "send the 'runId' start returned"
+          }
+        ]
       }
     ]
   }
