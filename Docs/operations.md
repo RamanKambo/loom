@@ -1,7 +1,7 @@
 <!-- Generated from the Loom contract. Do not edit; edit the authored contract and regenerate. -->
 # Loom operations
 
-Source: the operation catalogue `packages/core/schema/operations.json`, whose shape is `OperationCatalogue` in `packages/core/schema/tools.schema.json`. `npm run generate` renders this reference, the MCP tool descriptions, the CLI usage text and the tools and examples of `loom.describe` from it, and `npm run build` fails when any of them differs from a fresh rendering.
+Source: the operation catalogue `packages/core/schema/operations.json`, whose shape is `OperationCatalogue` in `packages/core/schema/tools.schema.json`. `npm run generate` renders this reference, the MCP tool descriptions, the CLI usage text, the tools, entry points, proof limits and examples of `loom.describe` and the capabilities guide from it, and `npm run build` fails when any of them differs from a fresh rendering.
 
 ## Command line
 
@@ -28,7 +28,7 @@ The server lists these tools in this order, each with the description generated 
 11. `loom.checkReadiness`, operation [checkReadiness](#checkreadiness)
 12. `loom.planChange`, operation [planChange](#planchange)
 
-Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the `loom://schema/<Definition>` resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most 8192 bytes, and the orientation instructions the server returns at initialization take at most 2400 UTF-8 bytes.
+Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the `loom://schema/<Definition>` resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most 8192 bytes, and the orientation instructions the server returns at initialization take at most 2400 UTF-8 bytes. The orientation is authored in `Docs/guides/orientation.md`, takes 1907 of those bytes, and opens the summary of `loom.describe`.
 
 The catalogue also defines these agent tools, which the server does not advertise. Each operation states its action, input, result data, presence rules and examples:
 
@@ -37,27 +37,54 @@ The catalogue also defines these agent tools, which the server does not advertis
 - `loom.diagram`: [diagram](#diagram)
 - `loom.qualify`: [qualifyStart](#qualifystart), [qualifyStatus](#qualifystatus), [qualifyCancel](#qualifycancel)
 
+## Workflow
+
+The summary of `loom.describe` lists these steps of the agent workflow as its entry points, each with the interfaces that perform it:
+
+1. Orient on what this build supports and what each kind of proof establishes: `loom.describe`.
+2. Identify the workspace and the requested outcome, and read the context, constraints, evidence and unresolved decisions of the task: `loom.context`.
+3. Preview a change through the owning model, then apply it against the same revision: `loom.planChange`, `loom.mutate`.
+4. Check readiness for the actual task and implement only the scope its work package permits: `loom.checkReadiness`.
+5. Regenerate the artifacts from the model and check them for drift: `loom.projectAll`, the command 'check'.
+6. Qualify the real implementation and bind its evidence to the exact inputs: the command 'qualify', the command 'evidence'.
+
+## Proof limits
+
+Each limit states what the results of its operations do not establish. `loom.describe` with `operation` returns the limits of that operation, deduplicated, and a full page of its `limits` section returns every limit of this build once; the tool descriptions repeat none of them.
+
+| Limit | Text | Operations |
+| --- | --- | --- |
+| `validation-scope` | Model validation establishes conformance to the declared rule set; it does not establish that the requirements are correct or complete. | [validate](#validate), [mutate](#mutate), [diff](#diff), [planChange](#planchange), [checkReadiness](#checkreadiness), [check](#check), [checkAll](#checkall), [federationCheck](#federationcheck) |
+| `generated-equality` | Generated-file equality establishes that artifacts match their inputs, not that an implementation conforms. | [project](#project), [projectAll](#projectall), [write](#write), [docs](#docs), [docsCheck](#docscheck), [check](#check), [checkAll](#checkall) |
+| `supplied-records` | Readiness, acceptance and qualification are evaluated only over the baseline, acceptance, evidence and policy records supplied; their provenance is verified by the adapter. | [diff](#diff), [planChange](#planchange), [checkReadiness](#checkreadiness), [context](#context), [check](#check), [checkAll](#checkall), [qualify](#qualify), [evidence](#evidence), [federationCheck](#federationcheck), [qualifyStart](#qualifystart) |
+| `predicates` | A prose predicate is never evaluated; an expression predicate is type-checked, never run against live data. | [validate](#validate), [mutate](#mutate), [planChange](#planchange), [check](#check), [checkAll](#checkall) |
+
+Every profile's own proof limits, stated in `packages/core/schema/profiles`, apply to the operations that depend on profiles: [check](#check), [checkAll](#checkall), [write](#write), [docs](#docs), [project](#project), [projectAll](#projectall), [qualify](#qualify), [diagram](#diagram), [qualifyStart](#qualifystart).
+
 ## Resources
 
 Besides the schema resources, the catalogue defines these resources. A `session` resource is readable only by the session that holds the workspace handle.
 
 | Resource | Returns | Scope | Listed | Purpose |
 | --- | --- | --- | --- | --- |
-| `loom://guide/engineering` | `GuideResource` | server | no | The engineering method the model encodes: the outcome first, responsibilities and workflows before interfaces, types, mutations and failure behavior before implementation, and evidence bound to its exact inputs. |
-| `loom://guide/workflow` | `GuideResource` | server | no | The order of work an agent follows: identify the workspace and the outcome, read the context, preview and apply changes through the owning model, check readiness and qualify the implementation. |
-| `loom://guide/capabilities` | `GuideResource` | server | no | What this build supports and what each kind of proof does not establish. |
+| `loom://guide/engineering` | `GuideResource` | server | yes | The engineering method the model encodes: the outcome first, responsibilities and workflows before interfaces, types, mutations and failure behavior before implementation, and evidence bound to its exact inputs. |
+| `loom://guide/workflow` | `GuideResource` | server | yes | The order of work an agent follows: identify the workspace and the outcome, read the context, preview and apply changes through the owning model, check readiness and qualify the implementation. |
+| `loom://guide/capabilities` | `GuideResource` | server | yes | What this build supports and what each kind of proof does not establish. |
 | `loom://workspaces/{workspaceId}/status` | `WorkspaceStatus` | session | no | The status of one open workspace, for the session that holds its handle. |
 | `loom://workspaces/{workspaceId}/records/{kind}/{id}` | `RecordResource` | session | no | One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page. |
 | `loom://workspaces/{workspaceId}/diagrams/{diagramId}` | `DiagramResource` | session | no | One diagram of an open workspace, structured and as Mermaid text, which a render result points to when the diagram is too large to carry inline. |
 
 Not listed:
 
-- `loom://guide/engineering`: Catalogued before it is listed; the server rebuild serves it.
-- `loom://guide/workflow`: Catalogued before it is listed; the server rebuild serves it.
-- `loom://guide/capabilities`: Catalogued before it is listed; the server rebuild serves it.
 - `loom://workspaces/{workspaceId}/status`: Catalogued before it is listed; the server rebuild serves it.
 - `loom://workspaces/{workspaceId}/records/{kind}/{id}`: Catalogued before it is listed; the server rebuild serves it.
 - `loom://workspaces/{workspaceId}/diagrams/{diagramId}`: Catalogued before it is listed; the server rebuild serves it.
+
+The guides, each returned with the digest of its text and the contract digest:
+
+- `loom://guide/engineering`: authored in `Docs/guides/engineering.md`
+- `loom://guide/workflow`: authored in `Docs/guides/workflow.md`
+- `loom://guide/capabilities`: generated from the operation catalogue and the profiles
 
 ## Rendering budget
 
@@ -124,6 +151,7 @@ Validate a model, inline or the workspace model under its verified baseline, acc
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the request breaks the tool input contract or the model breaks the structural contract; `unresolved-context` when 'workspace': true finds no workspace model governing the server directory.
 - Next action: preview the change that clears a finding, through [planChange](#planchange).
+- Proof limits: `validation-scope`, `predicates`.
 - MCP tool: `loom.validate`, input `ValidateInput`, result data `ValidateData`.
 - Command: none.
 - Not exposed: The command line validates inside check, together with ownership, the baseline comparison and the installed outputs.
@@ -144,6 +172,7 @@ Scaffold .loom with model.json, loom.json, state.json and .gitignore at a reposi
 - Effects: `writes`, can persist changes.
 - Refusals: `invalid-input` when the directory is not a repository root, already holds a .loom or yields a scaffold that fails validation; `policy-failure` when an ancestor's or a descendant's descriptor claims the path or cannot be read; `unmet-prerequisite` when with --force, an authority file of the existing .loom needs repair by its owner.
 - Next action: declare the components and their roots in the scope of loom.json, then check the workspace, through [check](#check).
+- Proof limits: none.
 - MCP tool: none.
 - Command: `init [--force]`.
 - Not exposed: The MCP server serves a workspace that already exists; initializing one is a command-line step.
@@ -164,6 +193,7 @@ Check one model in order, its ownership and configuration, its validity, its com
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unresolved-context` when no model applies because neither --model nor a governing workspace names one.
 - Next action: install current outputs once the model is corrected, through [write](#write).
+- Proof limits: `validation-scope`, `generated-equality`, `supplied-records`, `predicates`, every profile's proof limits.
 - MCP tool: none.
 - Command: `check [--model <path>] [--out <dir>]`.
 - Not exposed: Agents validate with loom.validate and compare with loom.diff; the installed outputs and their manifest are checked on the command line.
@@ -190,6 +220,7 @@ Check every descriptor under the boundary, the global disjointness of their clai
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: none.
 - Next action: check a reported descriptor on its own from its repository root, through [check](#check).
+- Proof limits: `validation-scope`, `generated-equality`, `supplied-records`, `predicates`, every profile's proof limits.
 - MCP tool: none.
 - Command: `check --all [--boundary <dir>]`.
 - Not exposed: Discovery across every descriptor of a boundary is a repository walk the command line performs; the MCP server serves one workspace.
@@ -210,6 +241,7 @@ Install every artifact the workspace's projection profile enables, with the read
 - Effects: `writes`, can persist changes.
 - Refusals: `unresolved-context` when no model applies, or no workspace governs an installation without --out; `invalid-input` when the model has error findings while projecting into a directory; `policy-failure` when the bundle fails its checks, for example an output collision or a protected target, and nothing is written.
 - Next action: confirm that the installed outputs are current, through [check](#check).
+- Proof limits: `generated-equality`, every profile's proof limits.
 - MCP tool: none.
 - Command: `write [--out <dir>] [--draft]`.
 - Not exposed: loom.project and loom.projectAll return projections as data; installing them into the repository is a command-line step.
@@ -236,6 +268,7 @@ Install the documentation bundle, every enabled artifact with the readiness, cov
 - Effects: `writes`, can persist changes.
 - Refusals: `unresolved-context` when no model applies, or no workspace governs an installation without --out; `invalid-input` when the model has error findings while projecting into a directory; `policy-failure` when the bundle fails its checks, for example an output collision or a protected target, and nothing is written.
 - Next action: check the documents, their links and the installed views, through [docsCheck](#docscheck).
+- Proof limits: `generated-equality`, every profile's proof limits.
 - MCP tool: none.
 - Command: `docs [--out <dir>] [--draft]`.
 - Not exposed: loom.project and loom.projectAll return projections as data; installing them into the repository is a command-line step.
@@ -256,6 +289,7 @@ Check the README, the Docs documents and the package source comments for broken 
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: none.
 - Next action: regenerate the views from the model rather than editing them, through [docs](#docs).
+- Proof limits: `generated-equality`.
 - MCP tool: none.
 - Command: `docs --check`.
 - Not exposed: The documentation checks walk the repository's files on the command line; the MCP server returns projections as data.
@@ -276,6 +310,7 @@ Run the documentation checks over this Loom installation's own repository and ad
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: none.
 - Next action: name each reported capability descriptively, as the current release states it.
+- Proof limits: none.
 - MCP tool: none.
 - Command: `docs --check --self`.
 - Not exposed: The documentation checks walk the repository's files on the command line; the MCP server returns projections as data.
@@ -296,6 +331,7 @@ Name the model and component that claim a path by whole segments, or report the 
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: none.
 - Next action: check the owning model from its repository root, through [check](#check).
+- Proof limits: none.
 - MCP tool: none.
 - Command: `owner [<path>]`.
 - Not exposed: Path ownership is resolved across every descriptor on the command line; the MCP server serves one workspace.
@@ -316,6 +352,7 @@ Migrate a model document to the current model format, writing the result only to
 - Effects: `writes`, can persist changes.
 - Refusals: `invalid-input` when no registered migration leads from the document's format to the current one.
 - Next action: check the migrated document before it replaces the model, through [check](#check).
+- Proof limits: none.
 - MCP tool: none.
 - Command: `migrate [--model <path>] [--to <file>]`.
 - Not exposed: A migration reads and writes model documents as files on the command line; the MCP tools take and return models as data.
@@ -336,6 +373,7 @@ Record a baseline of the workspace model at its current revision, accepted by a 
 - Effects: `writes`, can persist changes.
 - Refusals: `unresolved-context` when no workspace governs the directory; `invalid-input` when the acceptance record is missing or the baseline cannot be recorded.
 - Next action: commit the baseline to the trusted ref through review, then check the workspace against it, through [check](#check).
+- Proof limits: none.
 - MCP tool: none.
 - Command: `baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]`.
 - Not exposed: The MCP tools never record a baseline or an acceptance; both are recorded on the command line and trusted once they reach the trusted ref through review or carry a signature the policy lists.
@@ -356,6 +394,7 @@ Record an acceptance of the current model revision, as a baseline or a change, b
 - Effects: `writes`, can persist changes.
 - Refusals: `unresolved-context` when no workspace governs the directory; `unmet-prerequisite` when no policy is named; `invalid-input` when the acceptance record cannot be stored.
 - Next action: commit the acceptance to the trusted ref through review, then record the baseline it accepts, through [baselineCreate](#baselinecreate).
+- Proof limits: none.
 - MCP tool: none.
 - Command: `accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]`.
 - Not exposed: The MCP tools never record a baseline or an acceptance; both are recorded on the command line and trusted once they reach the trusted ref through review or carry a signature the policy lists.
@@ -376,6 +415,7 @@ Apply one patch or an atomic batch to a model, inline as a pure calculation or t
 - Effects: `writes`, can persist changes.
 - Refusals: `invalid-input` when a patch or the resulting model is invalid, and the model is unchanged; `policy-failure` when a breaking or unclassified change lacks its version bump or acknowledgement; `stale-base` when the workspace model changed since the expected revision, and nothing is written; `unresolved-context` when no governed workspace serves a persistent change.
 - Next action: check readiness for the task the change serves, through [checkReadiness](#checkreadiness).
+- Proof limits: `validation-scope`, `predicates`.
 - MCP tool: `loom.mutate`, input `MutateInput`, result data `MutateData`.
 - Command: `mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]`.
 
@@ -426,6 +466,7 @@ Compare two models, or a candidate against the trusted accepted baseline, giving
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the request or a model breaks its contract; `unresolved-context` when no trusted accepted baseline is available, or 'workspace': true finds no workspace model.
 - Next action: preview a repair of a breaking change, through [planChange](#planchange).
+- Proof limits: `validation-scope`, `supplied-records`.
 - MCP tool: `loom.diff`, input `DiffInput`, result data `DiffData`.
 - Command: none.
 - Not exposed: The command line compares the model with the trusted accepted baseline inside check.
@@ -446,6 +487,7 @@ Project a model to one target with its source-to-output coverage manifest, runni
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the request breaks its contract or the model has error findings; `policy-failure` when outside a draft, the model uses a construct the target's profile does not support.
 - Next action: qualify the projected artifacts with their profile checks, through [qualify](#qualify).
+- Proof limits: `generated-equality`, every profile's proof limits.
 - MCP tool: `loom.project`, input `ProjectInput`, result data `ProjectData`.
 - Command: none.
 - Not exposed: The command line writes projections into files with write --out.
@@ -466,6 +508,7 @@ Project a model to every target, with per-component artifact instances and cover
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the request breaks its contract or the model has error findings; `policy-failure` when outside a draft, the model uses a construct a target's profile does not support.
 - Next action: qualify the projected artifacts with their profile checks, through [qualify](#qualify).
+- Proof limits: `generated-equality`, every profile's proof limits.
 - MCP tool: `loom.projectAll`, input `ProjectAllInput`, result data `ProjectData`.
 - Command: none.
 - Not exposed: The command line writes every projection into a directory with write --out, or installs the enabled ones with write.
@@ -486,6 +529,7 @@ Serialize a model to canonical JSON or YAML, failing closed on an invalid model.
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the model breaks its structural contract or has error findings.
 - Next action: store the canonical text as the model document.
+- Proof limits: none.
 - MCP tool: `loom.export`, input `ExportInput`, result data `ExportData`.
 - Command: none.
 - Not exposed: The command line reads and writes model documents as files, and migrate writes the canonical form.
@@ -502,6 +546,7 @@ Parse a model from JSON or YAML text and check its structure, returning the mode
 - Effects: `none`, persists nothing.
 - Refusals: `invalid-input` when the text does not parse or breaks the structural contract.
 - Next action: validate the imported model against every rule, through [validate](#validate).
+- Proof limits: none.
 - MCP tool: `loom.import`, input `ImportInput`, result data `ImportData`.
 - Command: none.
 - Not exposed: The command line reads model documents from files with --model.
@@ -518,6 +563,7 @@ Run the native-tool checks of the profiles the workspace enables, or of named pr
 - Effects: `writes`, can persist changes.
 - Refusals: `unresolved-context` when no workspace governs the directory and --self is not given.
 - Next action: inspect the evidence the run produced, through [evidence](#evidence).
+- Proof limits: `supplied-records`, every profile's proof limits.
 - MCP tool: none.
 - Command: `qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]`.
 - Not exposed: Native tools run only in the qualification adapter, whose interfaces the command line consumes and the MCP server does not.
@@ -544,6 +590,7 @@ List the stored evidence with each record's trust under the trusted policy, or s
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unresolved-context` when no workspace governs the directory, or the named record is not stored.
 - Next action: run again a check whose evidence failed or went stale, through [qualify](#qualify).
+- Proof limits: `supplied-records`.
 - MCP tool: none.
 - Command: `evidence list` or `evidence show <id>`.
 - Not exposed: The evidence store is read on the command line; loom.context and loom.checkReadiness report the evidence obligations of their scope.
@@ -564,6 +611,7 @@ Check the capability register qualification/capabilities.json, every code symbol
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: none.
 - Next action: supply the results of every case reported without one.
+- Proof limits: none.
 - MCP tool: none.
 - Command: `coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>]` or `coverage --list-cases`.
 - Not exposed: The capability register belongs to the repository that holds it and is checked on the command line.
@@ -584,6 +632,7 @@ Run Loom's self-test, which qualifies Loom's own engine and never an adopting sy
 - Effects: `none`, persists nothing.
 - Refusals: none.
 - Next action: describe what this build supports, through [describe](#describe).
+- Proof limits: none.
 - MCP tool: `loom.selftest`, input `SelftestInput`, result data `SelftestData`.
 - Command: `--self-test`.
 
@@ -601,45 +650,80 @@ Examples:
 
 ### describe
 
-Describe what this build supports: record kinds, patch operations, finding codes, comparison rules, projection targets, profiles with their proof limits, tools, examples and unavailable features.
+Describe what this build supports: by default an orientation summary with the workflow entry points, the tools, selected capability facts and the guide and resource links, with 'detail': 'full' the requested sections a page at a time within the discovery budget, and with 'operation' the proof limits of one operation.
 
 - Prerequisites: none.
 - Effects: `none`, persists nothing.
-- Refusals: none.
+- Refusals: `invalid-input` when the request breaks its contract, names no catalogue operation, or sends a cursor issued for another request; `stale-base` when the cursor was issued by another build; the refusal names the request that starts again.
 - Next action: read the required context of the component or task at hand, through [context](#context).
+- Proof limits: none.
 - MCP tool: `loom.describe`, input `DescribeInput`, result data `DescribeData`.
-- Command: `describe [--sections a,b] [--profile <id>]`.
+- Command: `describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]`.
+
+Presence rules of `loom.describe`, checked before anything runs:
+
+- Send 'operation' without 'detail' or 'sections' or 'profile', or omit 'operation'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `(root)`.
+- Send 'detail', or omit 'sections' and 'profile'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `(root)`.
+- When 'detail' is 'summary', omit 'sections' and 'profile'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `(root)`.
 
 Description of `loom.describe`:
 
-> Describe what this build supports: record kinds, patch operations, finding codes, comparison rules, projection targets, profiles with their proof limits, tools, examples and unavailable features. Prerequisites: none. Effects: persists nothing. Next: read the required context of the component or task at hand with loom.context.
+> Describe what this build supports: by default an orientation summary with the workflow entry points, the tools, selected capability facts and the guide and resource links, with 'detail': 'full' the requested sections a page at a time within the discovery budget, and with 'operation' the proof limits of one operation. Prerequisites: none. Effects: persists nothing. Refused as invalid-input when the request breaks its contract, names no catalogue operation, or sends a cursor issued for another request; as stale-base when the cursor was issued by another build; the refusal names the request that starts again. Send 'operation' without 'detail' or 'sections' or 'profile', or omit 'operation'. Send 'detail', or omit 'sections' and 'profile'. When 'detail' is 'summary', omit 'sections' and 'profile'. Next: read the required context of the component or task at hand with loom.context.
 
 Examples:
 
-- List the patch operations only.
+- The orientation summary.
+
+  ```json
+  {}
+  ```
+
+- The first page of the patch operations.
 
   ```json
   {
+    "detail": "full",
     "sections": [
       "patches"
     ]
   }
   ```
 
-- List the patch operations only.
+- What the result of a projection does not establish.
+
+  ```json
+  {
+    "operation": "project"
+  }
+  ```
+
+- The orientation summary.
 
   ```sh
-  node packages/cli/dist/index.js describe --sections patches
+  node packages/cli/dist/index.js describe
+  ```
+
+- The first page of the patch operations.
+
+  ```sh
+  node packages/cli/dist/index.js describe --detail full --sections patches
+  ```
+
+- What the result of a projection does not establish.
+
+  ```sh
+  node packages/cli/dist/index.js describe --operation project
   ```
 
 ### context
 
-Retrieve the required context of a component, record, claim or task within a declared budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, record text coming back as data and never as an instruction.
+Retrieve the required context of a component, record, claim or task a page at a time within a discovery budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, or for a resume target the recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns, evidence, pending work and next actions, record text coming back as data and never as an instruction.
 
-- Prerequisites: a model, inline or the workspace model; a target and a budget.
+- Prerequisites: a model, inline or the workspace model; a target, with an optional budget whose members take their defaults.
 - Effects: `reads`, reads persisted state and persists nothing.
-- Refusals: `invalid-input` when the request names no target or budget, or breaks its contract; `stale-base` when a continuation or modelRevision belongs to another model revision; `unresolved-context` when 'workspace': true finds no workspace model.
+- Refusals: `invalid-input` when the request names no target, breaks its contract, or sends a continuation issued for another target or budget; `stale-base` when a continuation or modelRevision belongs to another revision; the refusal names the request that starts again; `unresolved-context` when 'workspace': true finds no workspace model, or no recorded progress is supplied for a resume target.
 - Next action: follow the continuation while completeness lists omissions, then check readiness for the task, through [checkReadiness](#checkreadiness).
+- Proof limits: `supplied-records`.
 - MCP tool: `loom.context`, input `ContextInput`, result data `ContextData`.
 - Command: `context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]`.
 
@@ -649,7 +733,7 @@ Presence rules of `loom.context`, checked before anything runs:
 
 Description of `loom.context`:
 
-> Retrieve the required context of a component, record, claim or task within a declared budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, record text coming back as data and never as an instruction. Prerequisites: a model, inline or the workspace model; a target and a budget. Effects: reads persisted state and persists nothing. Refused as invalid-input when the request names no target or budget, or breaks its contract; as stale-base when a continuation or modelRevision belongs to another model revision; as unresolved-context when 'workspace': true finds no workspace model. Send 'model' without 'workspace', or send 'workspace' without 'model'. Next: follow the continuation while completeness lists omissions, then check readiness for the task with loom.checkReadiness.
+> Retrieve the required context of a component, record, claim or task a page at a time within a discovery budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, or for a resume target the recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns, evidence, pending work and next actions, record text coming back as data and never as an instruction. Prerequisites: a model, inline or the workspace model; a target, with an optional budget whose members take their defaults. Effects: reads persisted state and persists nothing. Refused as invalid-input when the request names no target, breaks its contract, or sends a continuation issued for another target or budget; as stale-base when a continuation or modelRevision belongs to another revision; the refusal names the request that starts again; as unresolved-context when 'workspace': true finds no workspace model, or no recorded progress is supplied for a resume target. Send 'model' without 'workspace', or send 'workspace' without 'model'. Next: follow the continuation while completeness lists omissions, then check readiness for the task with loom.checkReadiness.
 
 Examples:
 
@@ -685,6 +769,7 @@ Evaluate whether a task is ready, blocked or unresolved, with the exact missing 
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `invalid-input` when the request names no task or breaks its contract; `stale-base` when the model is not at the requested candidateRevision; `unresolved-context` when 'workspace': true finds no workspace model.
 - Next action: read the context of a missing prerequisite, or start the allowed next work, through [context](#context).
+- Proof limits: `validation-scope`, `supplied-records`.
 - MCP tool: `loom.checkReadiness`, input `CheckReadinessInput`, result data `ReadinessData`.
 - Command: `readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...]` or `readiness --task <file>`.
 
@@ -727,6 +812,7 @@ Preview a change against a base revision without persisting it: the delta, compa
 - Effects: `none`, persists nothing.
 - Refusals: `stale-base` when the model is not at the base revision; `invalid-input` when a patch or the resulting model is invalid; `policy-failure` when a breaking or unclassified change lacks its version bump or acknowledgement.
 - Next action: apply the change against the same revision, through [mutate](#mutate).
+- Proof limits: `validation-scope`, `supplied-records`, `predicates`.
 - MCP tool: `loom.planChange`, input `PlanChangeInput`, result data `PlanChangeData`.
 - Command: `plan --patch <file> [--base <revision>] [--ack id,...]`.
 
@@ -778,6 +864,7 @@ Inspect a local path: its repository, the descriptors that own or overlap it, an
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `invalid-input` when the path does not exist.
 - Next action: initialize a workspace at a suggested placement, through [workspaceInitialize](#workspaceinitialize).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.workspace`, action `inspect`, input `WorkspaceInput`, result data `WorkspaceInspectData`; the server does not advertise it.
 - Command: none.
@@ -810,6 +897,7 @@ Initialize a workspace from a declaration validated as persistent configuration:
 - Effects: `writes`, can persist changes.
 - Refusals: `invalid-input` when the declaration breaks the configuration contract or the path is no repository root; `policy-failure` when the declaration claims a path another descriptor owns; `stale-base` when the inspection changed since 'expectedInspection', and nothing is written.
 - Next action: open the created workspace, through [workspaceOpen](#workspaceopen).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.workspace`, action `initialize`, input `WorkspaceInput`, result data `WorkspaceInitializeData`; the server does not advertise it.
 - Command: none.
@@ -881,6 +969,7 @@ Open a workspace for this session with read or edit access, returning its handle
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unresolved-context` when no workspace governs the path; inspect and initialize one.
 - Next action: read the workspace status, through [workspaceStatus](#workspacestatus).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.workspace`, action `open`, input `WorkspaceInput`, result data `WorkspaceSummary`; the server does not advertise it.
 - Command: none.
@@ -925,6 +1014,7 @@ Report an open workspace's current revisions, the resources it serves, its pendi
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; open the workspace again.
 - Next action: follow a next action, or close the handle, through [workspaceClose](#workspaceclose).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.workspace`, action `status`, input `WorkspaceInput`, result data `WorkspaceStatus`; the server does not advertise it.
 - Command: none.
@@ -957,6 +1047,7 @@ Close a handle: cancel or await its runs, detach its watchers, revoke its browse
 - Effects: `writes`, can persist changes.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `cleanup-incomplete` when an owned resource remains, which the result names with its recovery.
 - Next action: open the workspace again to continue, through [workspaceOpen](#workspaceopen).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.workspace`, action `close`, input `WorkspaceInput`, result data `WorkspaceCloseData`; the server does not advertise it.
 - Command: none.
@@ -989,6 +1080,7 @@ Inspect a composition: its direct members and pins, the roots each model claims,
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `unmet-prerequisite` when the workspace declares no composition.
 - Next action: plan a change to the composition, through [federationPlan](#federationplan).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `inspect`, input `FederationInput`, result data `FederationInspectData`; the server does not advertise it.
 - Command: none.
@@ -1021,6 +1113,7 @@ Plan typed changes to membership, agreements, export pins or output claims as an
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `stale-base` when an input changed since 'expectedVector'; the result names the current revisions; `policy-failure` when a change claims a root another model owns or edits another owner's record.
 - Next action: apply the proposal against the same revision vector, through [federationApply](#federationapply).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `plan`, input `FederationInput`, result data `ChangeProposal`; the server does not advertise it.
 - Command: none.
@@ -1060,6 +1153,7 @@ Apply a planned proposal as journaled owner-local writes in canonical repository
 - Effects: `writes`, can persist changes.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle was opened with read access; `stale-base` when an input changed since 'expectedVector', and nothing is written; `unmet-prerequisite` when an owner's trusted policy requires an acceptance the proposal lacks; `recovery-required` when a journal holds an incomplete change.
 - Next action: check the composed result, through [federationCheck](#federationcheck).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `apply`, input `FederationInput`, result data `FederationApplyData`; the server does not advertise it.
 - Command: none.
@@ -1094,6 +1188,7 @@ Resolve a composition snapshot's closure and evaluate its composed validation an
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `unresolved-context` when 'snapshotDigest' names no snapshot of the composition.
 - Next action: publish the export or the agreements, through [federationPublish](#federationpublish).
+- Proof limits: `validation-scope`, `supplied-records`.
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `check`, input `FederationInput`, result data `FederationCheckData`; the server does not advertise it.
 - Command: none.
@@ -1126,6 +1221,7 @@ Publish an immutable bundle, a member's export or a composition's agreements; a 
 - Effects: `writes`, can persist changes.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle lacks the publish capability; `stale-base` when an input changed since 'expectedVector'; `unmet-prerequisite` when a release lacks its configured acceptance or evidence; `policy-failure` when the export omits a record of its required closure.
 - Next action: pin the published bundle in the consuming composition, through [federationPlan](#federationplan).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.federation`, action `publish`, input `FederationInput`, result data `FederationPublishData`; the server does not advertise it.
 - Command: none.
@@ -1170,6 +1266,7 @@ Draw a diagram of one record or the whole workspace as the structured graph, Mer
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `invalid-input` when the target names no record of the model or the request breaks the tool input contract; `unmet-prerequisite` when a terminal format is requested and no provisioned renderer is available.
 - Next action: read the context of a record the diagram shows, through [context](#context).
+- Proof limits: every profile's proof limits.
 - MCP tool: none.
 - Agent tool: `loom.diagram`, input `DiagramInput`, result data `DiagramData`; the server does not advertise it.
 - Command: none.
@@ -1215,6 +1312,7 @@ Start a qualification run of named profile checks against one record or the whol
 - Effects: `writes`, can persist changes.
 - Refusals: `unknown-handle` when the workspaceId names no handle of this session; `access-denied` when the handle lacks the qualify capability; `stale-base` when an input changed since 'expectedVector'; `policy-failure` when the trusted policy does not authorize a check, or the execution policy names no provisioned identity; `unmet-prerequisite` when a check's native tool or runner is not provisioned, so qualification is not established.
 - Next action: follow the run's progress, through [qualifyStatus](#qualifystatus).
+- Proof limits: `supplied-records`, every profile's proof limits.
 - MCP tool: none.
 - Agent tool: `loom.qualify`, action `start`, input `QualifyInput`, result data `QualifyRun`; the server does not advertise it.
 - Command: none.
@@ -1255,6 +1353,7 @@ Report a run's phase, a bounded page of its progress, the evidence it recorded a
 - Effects: `reads`, reads persisted state and persists nothing.
 - Refusals: `unknown-handle` when the workspaceId or runId names no handle or run of this session; `invalid-input` when the cursor was not issued for this run.
 - Next action: inspect the evidence the run recorded, through [evidence](#evidence).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.qualify`, action `status`, input `QualifyInput`, result data `QualifyRunStatus`; the server does not advertise it.
 - Command: none.
@@ -1288,6 +1387,7 @@ Request the cancellation of a run, idempotently, and report it completed only on
 - Effects: `writes`, can persist changes.
 - Refusals: `unknown-handle` when the workspaceId or runId names no handle or run of this session; `cleanup-incomplete` when the run left an owned resource, which the result names with its recovery.
 - Next action: read the run's final status, through [qualifyStatus](#qualifystatus).
+- Proof limits: none.
 - MCP tool: none.
 - Agent tool: `loom.qualify`, action `cancel`, input `QualifyInput`, result data `QualifyCancelData`; the server does not advertise it.
 - Command: none.

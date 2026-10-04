@@ -1,7 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolRequestSchema, ListResourcesRequestSchema, ListToolsRequestSchema, McpError, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { asFinding, canonicalStringify, envelope, refusal } from '@loom/core';
+import { ORIENTATION_TEXT, asFinding, canonicalStringify, envelope, refusal } from '@loom/core';
 import type { ResultEnvelope } from '@loom/core';
 import { RESOURCE_NOT_FOUND, listResources, readResource } from './resources.js';
 import { executeTool, toolDefinitions, type ToolContext } from './tools.js';
@@ -21,17 +21,19 @@ export interface LoomServer {
 
 /**
  * Build the Loom MCP server on the low-level SDK Server with JSON Schema tool
- * contracts. Tools advertise compact schemas whose deep members name the
- * schema resources holding their full contract, which the server serves. The
- * tool list and every result follow the negotiated protocol version: a client
- * without structured tool results gets the result envelope as text plus an
- * explicit compatibility finding.
+ * contracts. Initialization returns the orientation as the server's
+ * instructions, which orient an agent and authorize nothing. Tools advertise
+ * compact schemas whose deep members name the schema resources holding their
+ * full contract, which the server serves beside the guidance. The tool list
+ * and every result follow the negotiated protocol version: a client without
+ * structured tool results gets the result envelope as text plus an explicit
+ * compatibility finding.
  */
 export function createLoomServer(options: LoomServerOptions = {}): LoomServer {
   const ctx: ToolContext = { workspace: options.workspace ?? process.cwd(), ...(options.trustedRef ? { trustedRef: options.trustedRef } : {}) };
   let negotiated: string | undefined;
   const structured = (): boolean => negotiated === undefined || negotiated >= STRUCTURED_SINCE;
-  const server = new Server({ name: 'loom', version: '1.0.0' }, { capabilities: { tools: {}, resources: {} } });
+  const server = new Server({ name: 'loom', version: '1.0.0' }, { capabilities: { tools: {}, resources: {} }, instructions: ORIENTATION_TEXT });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolDefinitions(structured()) }));
 

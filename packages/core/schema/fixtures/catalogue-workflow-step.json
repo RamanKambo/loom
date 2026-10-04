@@ -1,0 +1,11 @@
+{
+  "definition": "CatalogueWorkflowStep",
+  "valid": [
+    { "step": "Preview a change through the owning model, then apply it against the same revision", "operations": ["planChange", "mutate"] }
+  ],
+  "invalid": [
+    { "because": "a step names at least one operation that performs it", "keyword": "minItems", "path": "/operations", "instance": { "step": "Preview a change", "operations": [] } },
+    { "because": "a step is a clause without a closing period", "keyword": "pattern", "path": "/step", "instance": { "step": "Preview a change.", "operations": ["planChange"] } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "step": "Preview a change", "operations": ["planChange"], "optional": true } }
+  ]
+}

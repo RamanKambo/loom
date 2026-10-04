@@ -1,0 +1,11 @@
+{
+  "definition": "CatalogueProofLimit",
+  "valid": [
+    { "id": "generated-equality", "text": "Generated-file equality establishes that artifacts match their inputs, not that an implementation conforms.", "operations": ["project", "check"] }
+  ],
+  "invalid": [
+    { "because": "a proof limit applies to at least one operation", "keyword": "minItems", "path": "/operations", "instance": { "id": "generated-equality", "text": "Generated-file equality is not conformance.", "operations": [] } },
+    { "because": "a proof limit is one sentence closed by a period", "keyword": "pattern", "path": "/text", "instance": { "id": "generated-equality", "text": "generated-file equality is not conformance", "operations": ["project"] } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "id": "generated-equality", "text": "Generated-file equality is not conformance.", "operations": ["project"], "profiles": ["sql"] } }
+  ]
+}

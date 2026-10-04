@@ -1,14 +1,19 @@
 import type {
   CheckReadinessInput,
+  Completeness,
+  ContextData,
   ContextInput,
   DescribeInput,
   DiffData,
+  Finding,
   Model,
   Patch,
   PlanChangeData,
+  RecordRef,
   ResultEnvelope,
   States,
 } from './generated/types.js';
+import { MCP_TOOLS } from './generated/operations.js';
 import { FINDING } from './codes.js';
 import { validate } from './validate.js';
 import { mutate } from './mutate.js';
@@ -17,7 +22,11 @@ import { indexModel } from './records.js';
 import type { EvaluationInputs } from './inputs.js';
 import { asFinding, defaultStates, envelope, loadOrRefuse, refusal, validationState, workspaceRefusal } from './envelope.js';
 import { describe } from './describe.js';
-import { retrieveContext } from './retrieval.js';
+import { retrieveContext, type ContextRequest } from './retrieval.js';
+import { resumeContext, type ResumeInputs } from './resume.js';
+import { nextAction } from './discovery.js';
+import { unmetPresenceRules } from './operations.js';
+import { schemaErrors } from './schema-runtime.js';
 import { checkReadiness } from './readiness.js';
 import { classifyChange, compareBaseline } from './baseline.js';
 import { deriveObligations, evaluateEvidence, invalidatedBy } from './evidence.js';
@@ -32,26 +41,105 @@ function statesFor(model: Model, inputs: EvaluationInputs): States {
   return states;
 }
 
-export function describeTool(input: DescribeInput = {}): ResultEnvelope {
-  return envelope('loom.describe', { model: null, findings: [], data: describe(input), states: defaultStates({ state: 'notEvaluated', reasons: [] }) });
+/** The structural findings of a value against one contract definition, each at the member path of the request that holds it. */
+function contractFindings(definition: string, value: unknown, at: string): Finding[] {
+  return schemaErrors(definition, value).map((e) => asFinding(FINDING.STRUCTURAL_INVALID, `${at}${e.pointer}` || '(root)', e.message, `send a value that satisfies ${definition}`));
 }
 
-export function contextTool(input: Partial<ContextInput> & { model?: unknown }, inputs: EvaluationInputs = {}): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.context');
-  const loaded = loadOrRefuse('loom.context', input.model);
+/** The presence rules the catalogue states for one MCP tool, which the core applies too so every adapter refuses alike. */
+const presenceOf = (tool: string): NonNullable<(typeof MCP_TOOLS)[number]['presence']> => MCP_TOOLS.find((t) => t.name === tool)?.presence ?? [];
+
+/**
+ * One page of the description of this build. The request is checked against the catalogue's
+ * presence rules and the input contract first, because the command line calls this without the MCP
+ * server's checks; a stale or foreign cursor is refused with the request that starts again.
+ */
+export function describeTool(input: DescribeInput = {}): ResultEnvelope {
+  const tool = 'loom.describe';
+  const unmet = unmetPresenceRules(presenceOf(tool), input as Record<string, unknown>).map((r) => asFinding(r.code, r.path, r.message, r.fix));
+  const findings = unmet.length ? unmet : contractFindings('DescribeInput', input, '');
+  if (findings.length) return envelope(tool, { model: null, findings, refusal: refusal('invalid-input', 'The request does not satisfy the tool input contract.') });
+  const r = describe(input);
+  if (!r.ok) return envelope(tool, { model: null, findings: r.findings, refusal: refusal(r.cause, r.message, r.nextActions) });
+  return envelope(tool, { model: null, findings: [], data: r.data, completeness: r.completeness, states: defaultStates({ state: 'notEvaluated', reasons: [] }) });
+}
+
+/** What an adapter adds to a context request beyond its arguments. */
+export interface ContextOptions {
+  /** The revision a page answers for and a continuation binds: the digest of the revision vector the adapter evaluated, or the model revision when absent. */
+  revision?: string;
+  /** The URI of the record resource that returns one record whole, where the adapter serves record resources. */
+  recordResource?: (ref: RecordRef) => string;
+  /** The recorded progress of the workspace, which answers a resume target. */
+  resume?: ResumeInputs;
+  /** The members that address the same model in a follow-up call, such as `{ workspace: true }`; without them a next action repeats the inline model. */
+  address?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * The states of a context page. A truncated page establishes neither coverage nor readiness, so its
+ * readiness and qualification stay not evaluated whatever the supplied evidence would give.
+ */
+function pageStates(model: Model, inputs: EvaluationInputs, completeness: Completeness): States {
+  const states = statesFor(model, inputs);
+  if (!completeness.truncated) return states;
+  states.readiness = { state: 'notEvaluated', reasons: [{ code: FINDING.READINESS_INPUT_MISSING, message: 'The context is truncated, so it establishes no readiness; follow its continuation, then check readiness for the task.', refs: [] }] };
+  states.qualification = { state: 'notEvaluated', reasons: [{ code: FINDING.QUALIFICATION_NOT_ESTABLISHED, message: 'The context is truncated, so it establishes neither coverage nor qualification; follow its continuation.', refs: [] }] };
+  return states;
+}
+
+/**
+ * One page of the required context of a target, or for a resume target the recorded progress the
+ * adapter supplies. A continuation or revision that no longer applies is refused with the current
+ * revisions in the envelope and the request that starts again as the refusal's next action.
+ */
+export function contextTool(input: Partial<ContextInput> & { model?: unknown }, inputs: EvaluationInputs = {}, options: ContextOptions = {}): ResultEnvelope {
+  const tool = 'loom.context';
+  if (input.workspace) return workspaceRefusal(tool);
+  const loaded = loadOrRefuse(tool, input.model);
   if ('refused' in loaded) return loaded.refused;
-  if (!input.target || !input.budget) {
-    return envelope('loom.context', { model: loaded.model, findings: [asFinding(FINDING.READINESS_INPUT_MISSING, '(root)', 'a context request names a target and a budget', 'send target and budget')], refusal: refusal('invalid-input', 'The request has no target or budget.') });
+  const model = loaded.model;
+  const target = input.target;
+  if (!target) {
+    return envelope(tool, { model, findings: [asFinding(FINDING.READINESS_INPUT_MISSING, '(root)', 'a context request names a target', 'send the target of the context')], refusal: refusal('invalid-input', 'The request has no target.') });
   }
-  const request: Parameters<typeof retrieveContext>[1] = { target: input.target, budget: input.budget };
-  if (input.continuation !== undefined) request.continuation = input.continuation;
-  if (input.modelRevision !== undefined) request.modelRevision = input.modelRevision;
-  const r = retrieveContext(loaded.model, request, inputs);
-  if (!r.ok) {
-    const findings = r.cause === 'stale-base' ? [asFinding(FINDING.STALE_BASE_REVISION, '(root)', r.message, 'request the context again without the stale continuation or revision')] : [];
-    return envelope('loom.context', { model: loaded.model, findings, refusal: refusal(r.cause, r.message) });
+  const structural = [...(input.budget !== undefined ? contractFindings('DiscoveryBudget', input.budget, '/budget') : []), ...(input.continuation !== undefined ? contractFindings('Cursor', input.continuation, '/continuation') : [])];
+  if (structural.length) return envelope(tool, { model, findings: structural, refusal: refusal('invalid-input', 'The request does not satisfy the tool input contract.') });
+  const address = options.address ?? (target.kind === 'resume' ? options.resume?.address : undefined) ?? { model };
+  const again = nextAction('Retrieve the context again from its first page at the current revision.', tool, { ...address, target, ...(input.budget !== undefined ? { budget: input.budget } : {}) });
+  // A refusal the same request without its continuation would not repeat concerns the continuation; any other invalid input is a budget too small for the page.
+  const refused = (cause: 'stale-base' | 'unresolved-context' | 'invalid-input', message: string, restart: boolean): ResultEnvelope => {
+    const findings =
+      cause === 'stale-base'
+        ? [asFinding(FINDING.STALE_BASE_REVISION, '(root)', message, 'request the context again from its first page, as the refusal names it')]
+        : cause === 'invalid-input'
+          ? restart
+            ? [asFinding(FINDING.STRUCTURAL_INVALID, 'continuation', message, 'send the continuation of the page before with the same target and budget, or start again without one')]
+            : [asFinding(FINDING.STRUCTURAL_INVALID, 'budget', message, 'raise maxBytes of the budget, up to its maximum')]
+          : [];
+    return envelope(tool, { model, findings, refusal: refusal(cause, message, restart ? [again] : []) });
+  };
+  let data: ContextData;
+  let completeness: Completeness;
+  if (target.kind === 'resume') {
+    if (!options.resume) return refused('unresolved-context', 'A resume target is answered from the recorded progress of a workspace, which the workspace adapter supplies; none was supplied for this request.', false);
+    const r = resumeContext(model, options.resume, { ...(input.budget !== undefined ? { budget: input.budget } : {}), ...(input.continuation !== undefined ? { continuation: input.continuation } : {}) });
+    if (!r.ok) return refused(r.cause, r.message, r.restart);
+    data = { target, resume: r.data };
+    completeness = r.completeness;
+  } else {
+    const request: ContextRequest = { target };
+    if (input.budget !== undefined) request.budget = input.budget;
+    if (input.continuation !== undefined) request.continuation = input.continuation;
+    if (input.modelRevision !== undefined) request.modelRevision = input.modelRevision;
+    if (options.revision !== undefined) request.revision = options.revision;
+    if (options.recordResource !== undefined) request.recordResource = options.recordResource;
+    const r = retrieveContext(model, request, inputs);
+    if (!r.ok) return refused(r.cause, r.message, r.restart);
+    data = r.data;
+    completeness = r.completeness;
   }
-  return envelope('loom.context', { model: loaded.model, findings: [], data: r.data, completeness: r.completeness, states: statesFor(loaded.model, inputs) });
+  return envelope(tool, { model, findings: [], data, completeness, states: pageStates(model, inputs, completeness) });
 }
 
 export function checkReadinessTool(input: Partial<CheckReadinessInput> & { model?: unknown }, inputs: EvaluationInputs = {}): ResultEnvelope {

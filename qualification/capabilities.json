@@ -2,6 +2,46 @@
   "registerVersion": 1,
   "capabilities": [
     {
+      "id": "agent.describe",
+      "description": "loom.describe returns the orientation summary by default: the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links within the default discovery budget; 'detail': 'full' returns the requested sections a page at a time, 'operation' returns the deduplicated proof limits of one operation, every omitted part, section or record is listed in completeness, and a cursor binds the request and the build that issued it.",
+      "code": ["packages/core/src/describe.ts#describe","packages/core/src/describe.ts#TOOL_SUMMARIES","packages/core/src/discovery.ts#fillPage","packages/core/src/discovery.ts#pageCompleteness","packages/core/src/discovery.ts#checkContinuation","packages/core/src/tools.ts#describeTool","packages/cli/src/commands.ts#cmdDescribe"],
+      "contract": ["tools.schema.json#/$defs/DescribeInput","tools.schema.json#/$defs/DescribeData","tools.schema.json#/$defs/DescribeSection","tools.schema.json#/$defs/DiscoveryBudget","tools.schema.json#/$defs/Cursor","result.schema.json#/$defs/Completeness","fixtures/describe-input.json","fixtures/describe-data.json","fixtures/describe-section.json","operations.json"],
+      "verification": ["core.selftest.describe-pages","mcp-server.mcp.the-default-description-is-the-orientation-summary-within-the-default-budget-and-a-full-description-pages-every-section-with-explicit-continuations","cli.cli.describe-lists-every-tool-and-finding-code","cli.cli.describe-returns-the-proof-limits-of-one-operation-and-refuses-a-section-without-a-full-detail"],
+      "negativeVerification": ["core.selftest.describe-pages","cli.cli.describe-returns-the-proof-limits-of-one-operation-and-refuses-a-section-without-a-full-detail"],
+      "proofLimits": "The byte budget is measured over the canonical JSON of the data; a client's own rendering of the text fallback is larger and is reported beside it by the MCP smoke test, not budgeted.",
+      "environments": ["process"]
+    },
+    {
+      "id": "agent.guidance",
+      "description": "The engineering and workflow guides are hand-authored in Docs/guides and the capabilities guide is generated from the operation catalogue and the profiles; generation embeds each with the digest of its text and reports drift, the core returns each as a GuideResource with that digest and the contract digest, and the MCP server lists and serves the catalogued guides.",
+      "code": ["packages/core/scripts/generate.mjs#guideSources","packages/core/scripts/generate.mjs#capabilitiesGuide","packages/core/scripts/generate.mjs#guidanceModule","packages/core/src/guidance.ts#guides","packages/core/src/guidance.ts#guide","packages/mcp-server/src/resources.ts#listResources","packages/mcp-server/src/resources.ts#readResource"],
+      "contract": ["tools.schema.json#/$defs/GuideResource","operations.json","icd/core.json","icd/mcp.json","Docs/guides/engineering.md","Docs/guides/workflow.md","fixtures/guide-resource.json"],
+      "verification": ["core.selftest.orientation-and-guidance","mcp-server.mcp.the-server-lists-the-guides-with-the-digests-of-their-text-and-contract-and-refuses-a-guide-the-catalogue-does-not-define","cli.contract.generation-embeds-each-guide-with-the-digest-of-its-text-reports-a-hand-edit-of-a-guide-as-drift-and-refuses-an-orientation-over-the-instructions-budget","cli.contract.generation-refuses-a-guide-resource-without-a-source-an-authored-copy-of-a-generated-guide-a-guide-without-a-title-and-an-orientation-that-is-missing"],
+      "negativeVerification": ["cli.contract.generation-embeds-each-guide-with-the-digest-of-its-text-reports-a-hand-edit-of-a-guide-as-drift-and-refuses-an-orientation-over-the-instructions-budget","cli.contract.generation-refuses-a-guide-resource-without-a-source-an-authored-copy-of-a-generated-guide-a-guide-without-a-title-and-an-orientation-that-is-missing","mcp-server.mcp.the-server-lists-the-guides-with-the-digests-of-their-text-and-contract-and-refuses-a-guide-the-catalogue-does-not-define"],
+      "proofLimits": "The cases check that the guides are embedded, digested and served, and that the engineering guide states its ten stages; whether an agent follows them is not established.",
+      "environments": ["process"]
+    },
+    {
+      "id": "agent.orientation",
+      "description": "The MCP server returns the orientation authored in Docs/guides/orientation.md as its initialization instructions, the same text the describe summary opens with, and generation refuses an orientation over mcp.instructionsBudget UTF-8 bytes.",
+      "code": ["packages/core/scripts/generate.mjs#guideSources","packages/core/src/guidance.ts#ORIENTATION_TEXT","packages/mcp-server/src/server.ts#createLoomServer"],
+      "contract": ["operations.json","tools.schema.json#/$defs/OperationCatalogue/properties/mcp","icd/mcp.json","Docs/guides/orientation.md"],
+      "verification": ["mcp-server.mcp.initialization-returns-the-orientation-as-the-server-instructions-within-the-instructions-budget","core.selftest.orientation-and-guidance","cli.contract.generation-embeds-each-guide-with-the-digest-of-its-text-reports-a-hand-edit-of-a-guide-as-drift-and-refuses-an-orientation-over-the-instructions-budget"],
+      "negativeVerification": ["cli.contract.generation-embeds-each-guide-with-the-digest-of-its-text-reports-a-hand-edit-of-a-guide-as-drift-and-refuses-an-orientation-over-the-instructions-budget"],
+      "proofLimits": "Initialization instructions are a protocol feature the client decides how to present; the cases establish what the server returns, not what a client shows.",
+      "environments": ["process"]
+    },
+    {
+      "id": "agent.resume",
+      "description": "A resume target of loom.context is answered from the recorded progress the workspace adapter supplies as ResumeInputs: the outcome, phase, owning scopes, revision vector, the contracts the accepted baseline froze, the open unknowns that block work, the relevant evidence, the pending work and concrete next actions whose arguments satisfy their tools' inputs, within the discovery budget and with a continuation bound to the revision vector. Only recorded progress is reported, and a resume without recorded progress is refused.",
+      "code": ["packages/core/src/resume.ts#resumeContext","packages/core/src/resume.ts#ResumeInputs","packages/core/src/tools.ts#contextTool","packages/core/src/discovery.ts#nextAction"],
+      "contract": ["tools.schema.json#/$defs/ContextResumeTarget","tools.schema.json#/$defs/ResumeData","tools.schema.json#/$defs/ContextData","tools.schema.json#/$defs/NextAction","fixtures/resume-data.json","fixtures/context-data.json","fixtures/context-input.json"],
+      "verification": ["core.selftest.resume"],
+      "negativeVerification": ["core.selftest.resume"],
+      "proofLimits": "The cases supply the recorded progress directly; reading it from a workspace is the workspace adapter's, and no case here exercises that adapter.",
+      "environments": ["process"]
+    },
+    {
       "id": "cli.check",
       "description": "`loom check` evaluates ownership, configuration, validity, the comparison with the trusted accepted baseline and the installed outputs and manifest, or a directory of projections with --out, and never writes.",
       "code": ["packages/cli/src/commands.ts#cmdCheck","packages/cli/src/commands.ts#checkOne","packages/cli/src/commands.ts#directoryDrift"],
@@ -59,9 +99,9 @@
     },
     {
       "id": "contract.operations",
-      "description": "Every operation is authored once in the operation catalogue with its purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP and command-line exposures; generation checks its references, vocabularies and examples and derives the MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md, the build fails on drift, and a test fails on a catalogued tool or command without a handler or a handler without a catalogue entry.",
-      "code": ["packages/core/scripts/generate.mjs#catalogueProblems","packages/core/scripts/generate.mjs#operationViews","packages/core/scripts/generate.mjs#toolDescription","packages/core/scripts/generate.mjs#cliUsage","packages/core/scripts/generate.mjs#operationReference","packages/core/src/generated/operations.ts#MCP_TOOLS","packages/core/src/generated/operations.ts#CLI_USAGE","packages/core/src/operations.ts#handlerGaps","packages/core/src/describe.ts#TOOL_EFFECTS","packages/mcp-server/src/tools.ts#presenceFindings","packages/mcp-server/src/tools.ts#HANDLED_TOOLS","packages/cli/src/cli.ts#HANDLED_COMMANDS"],
-      "contract": ["operations.json","tools.schema.json#/$defs/OperationCatalogue","tools.schema.json#/$defs/CatalogueOperation","tools.schema.json#/$defs/CataloguePresenceRule","fixtures/operation-catalogue.json","fixtures/catalogue-operation.json","fixtures/catalogue-presence-rule.json","Docs/operations.md","icd/schema.json"],
+      "description": "Every operation is authored once in the operation catalogue with its purpose, prerequisites, effects, refusals, next action, presence rules, examples and its MCP and command-line exposures; generation checks its references, vocabularies and examples and derives the MCP tool list and descriptions, the tools, entry points and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md, the build fails on drift, and a test fails on a catalogued tool or command without a handler or a handler without a catalogue entry.",
+      "code": ["packages/core/scripts/generate.mjs#catalogueProblems","packages/core/scripts/generate.mjs#operationViews","packages/core/scripts/generate.mjs#toolDescription","packages/core/scripts/generate.mjs#cliUsage","packages/core/scripts/generate.mjs#operationReference","packages/core/src/generated/operations.ts#MCP_TOOLS","packages/core/src/generated/operations.ts#WORKFLOW","packages/core/src/generated/operations.ts#CLI_USAGE","packages/core/src/operations.ts#handlerGaps","packages/core/src/describe.ts#TOOL_SUMMARIES","packages/mcp-server/src/tools.ts#presenceFindings","packages/mcp-server/src/tools.ts#HANDLED_TOOLS","packages/cli/src/cli.ts#HANDLED_COMMANDS"],
+      "contract": ["operations.json","tools.schema.json#/$defs/OperationCatalogue","tools.schema.json#/$defs/CatalogueOperation","tools.schema.json#/$defs/CataloguePresenceRule","tools.schema.json#/$defs/CatalogueWorkflowStep","fixtures/operation-catalogue.json","fixtures/catalogue-operation.json","fixtures/catalogue-presence-rule.json","fixtures/catalogue-workflow-step.json","Docs/operations.md","icd/schema.json"],
       "verification": ["cli.contract.every-mcp-example-of-the-operation-catalogue-satisfies-the-input-definition-of-its-tool","cli.contract.generation-refuses-an-operation-catalogue-whose-examples-references-vocabularies-or-exposures-do-not-hold","cli.contract.generate-check-refuses-a-hand-edit-of-the-generated-operation-reference","cli.cli.every-command-the-operation-catalogue-exposes-has-a-handler-and-every-handler-a-catalogue-entry","cli.cli.the-cli-without-a-command-prints-usage-and-an-unknown-command-is-a-usage-error","cli.cli.describe-lists-every-tool-and-finding-code","mcp-server.mcp.every-tool-the-operation-catalogue-exposes-has-a-handler-and-every-handler-a-catalogue-entry","mcp-server.mcp.every-tool-lists-the-input-and-output-schemas-generated-from-the-contract-and-a-request-outside-its-input-schema-is-refused-before-anything-runs","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs","core.selftest.generated-wording"]
     },
     {
@@ -70,6 +110,16 @@
       "code": ["packages/core/src/project.ts#artifactProfile","packages/core/src/project.ts#unsupportedConstructs","packages/qualification/src/run.ts#resolveChecks","packages/qualification/src/tools.ts#satisfies"],
       "contract": ["profile.schema.json#/$defs/ProfileDefinition","profiles/sql.json","profiles/csharp.json","profiles/typescript.json","profiles/powershell.json","profiles/powershell-pester6.json","profiles/openapi.json"],
       "verification": ["core.selftest.projection-instances","core.selftest.unsupported-constructs","qualification.framework.a-tool-outside-the-version-policy-is-unknown-and-its-actual-version-is-recorded","qualification.framework.version-policies-compare-numerically","qualification.framework.a-required-check-whose-tool-is-missing-is-unknown-and-keeps-the-aggregate-from-pass"]
+    },
+    {
+      "id": "contract.proof-limits",
+      "description": "The proof limits of the operations have one home, the proofLimits of the operation catalogue, each with the operations it applies to; each profile's own limits apply to the operations the catalogue marks as depending on profiles. loom.describe returns the deduplicated limits of one operation, the summary returns none, a full page of the limits section returns every limit once, and no generated tool description lists every profile or repeats a limit.",
+      "code": ["packages/core/scripts/generate.mjs#catalogueProblems","packages/core/src/describe.ts#proofLimits","packages/core/src/describe.ts#toolDescriptions","packages/core/src/describe.ts#descriptionProblems"],
+      "contract": ["operations.json","tools.schema.json#/$defs/CatalogueProofLimit","tools.schema.json#/$defs/CatalogueOperation/properties/dependsOnProfiles","fixtures/catalogue-proof-limit.json","fixtures/catalogue-operation.json","Docs/operations.md"],
+      "verification": ["core.selftest.orientation-and-guidance","core.selftest.describe-pages","cli.contract.generation-refuses-proof-limits-and-workflow-steps-that-name-no-catalogue-operation","cli.cli.describe-returns-the-proof-limits-of-one-operation-and-refuses-a-section-without-a-full-detail"],
+      "negativeVerification": ["core.selftest.orientation-and-guidance","cli.contract.generation-refuses-proof-limits-and-workflow-steps-that-name-no-catalogue-operation"],
+      "proofLimits": "Deduplication compares the exact text of each limit; two limits worded differently that state one fact are both returned.",
+      "environments": ["process"]
     },
     {
       "id": "contract.qualification-run",
@@ -521,10 +571,13 @@
     },
     {
       "id": "mcp.context",
-      "description": "loom.context returns the required context of a component, record, claim or task within a declared budget, nearest first, with completeness naming what it omitted and a continuation bound to one model revision.",
-      "code": ["packages/core/src/retrieval.ts#retrieveContext","packages/core/src/retrieval.ts#continuationToken","packages/core/src/tools.ts#contextTool","packages/mcp-server/src/tools.ts#executeTool"],
-      "contract": ["tools.schema.json#/$defs/ContextInput","tools.schema.json#/$defs/ContextData","result.schema.json#/$defs/Completeness"],
-      "verification": ["core.selftest.context-and-previews","mcp-server.mcp.an-inline-diff-with-an-invalid-side-is-marked-provisional-and-a-stale-context-continuation-is-refused","mcp-server.mcp.record-text-that-reads-as-an-instruction-is-returned-as-data-and-changes-no-state-finding-or-file","cli.cli.context-is-bounded-names-its-continuation-and-refuses-a-continuation-of-another-revision"]
+      "description": "loom.context returns the required context of a component, record, claim or task a page at a time within the discovery budget, nearest first, with completeness naming every section it leaves for later pages and every record too large for any page, which a record resource returns whole where the adapter serves one. A continuation binds the target, the budget and the revision, the model revision or the digest of a supplied revision vector; a changed one is refused with the current revisions and the request that starts again, and a truncated page establishes neither coverage nor readiness.",
+      "code": ["packages/core/src/retrieval.ts#retrieveContext","packages/core/src/discovery.ts#continuationToken","packages/core/src/discovery.ts#checkContinuation","packages/core/src/discovery.ts#fillPage","packages/core/src/tools.ts#contextTool","packages/core/src/tools.ts#pageStates","packages/cli/src/commands.ts#cmdContext","packages/mcp-server/src/tools.ts#executeTool"],
+      "contract": ["tools.schema.json#/$defs/ContextInput","tools.schema.json#/$defs/ContextData","tools.schema.json#/$defs/DiscoveryBudget","tools.schema.json#/$defs/OversizedRecord","tools.schema.json#/$defs/Cursor","result.schema.json#/$defs/Completeness","result.schema.json#/$defs/Refusal","fixtures/context-input.json","fixtures/context-data.json","fixtures/refusal.json","fixtures/cursor.json"],
+      "verification": ["core.selftest.context-and-previews","core.selftest.context-pages","mcp-server.mcp.an-inline-diff-with-an-invalid-side-is-marked-provisional-and-a-stale-context-continuation-is-refused","mcp-server.mcp.a-workspace-context-continuation-from-before-the-model-changed-is-refused-with-the-request-that-starts-again-addressed-to-the-workspace","mcp-server.mcp.record-text-that-reads-as-an-instruction-is-returned-as-data-and-changes-no-state-finding-or-file","cli.cli.context-is-bounded-names-its-continuation-and-refuses-a-continuation-of-another-revision"],
+      "negativeVerification": ["core.selftest.context-pages","mcp-server.mcp.a-workspace-context-continuation-from-before-the-model-changed-is-refused-with-the-request-that-starts-again-addressed-to-the-workspace"],
+      "proofLimits": "The MCP server and the command line serve no record resource, so an oversized record's summary with its resource reference is exercised through the core with a supplied resource; over those adapters the record is listed in completeness.",
+      "environments": ["process"]
     },
     {
       "id": "mcp.data-not-instructions",

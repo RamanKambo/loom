@@ -337,7 +337,8 @@
       "required": ["cause", "message"],
       "properties": {
         "cause": { "$ref": "#/$defs/RefusalCause" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "nextActions": { "description": "Concrete actions that would let the request succeed, such as asking again from the first page once a continuation went stale; each one's arguments satisfy its tool's input.", "type": "array", "items": { "$ref": "tools.schema.json#/$defs/NextAction" } }
       }
     },
     "ResultEnvelope": {

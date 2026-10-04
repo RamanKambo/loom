@@ -471,15 +471,42 @@ test('context is bounded, names its continuation and refuses a continuation of a
   assert.ok(token);
   const next = loom(dir, 'context', '--kind', 'component', '--id', 'ordering', '--max-records', '3', '--continuation', token);
   assert.equal(next.status, 0, next.stdout);
-  const stale = loom(dir, 'context', '--kind', 'component', '--id', 'ordering', '--continuation', `ctx1.${textHash('another')}.3`);
+  const stale = loom(dir, 'context', '--kind', 'component', '--id', 'ordering', '--max-records', '3', '--continuation', token.replace(modelRevision(sampleModel()), textHash('another')));
   assert.equal(stale.env.refusal?.cause, 'stale-base');
+  assert.equal((stale.env.refusal?.nextActions?.[0]?.arguments as Record<string, unknown> | undefined)?.['workspace'], true, 'the request that starts again addresses the workspace');
+  const otherBudget = loom(dir, 'context', '--kind', 'component', '--id', 'ordering', '--max-records', '4', '--continuation', token);
+  assert.equal(otherBudget.env.refusal?.cause, 'invalid-input', 'a continuation binds the budget it was issued for');
+  const tooMany = loom(dir, 'context', '--kind', 'component', '--id', 'ordering', '--max-records', '1000');
+  assert.equal(tooMany.env.refusal?.cause, 'invalid-input', 'a budget above its maximum is refused');
 });
 
 test('describe lists every tool and finding code', () => {
   const r = loom(scratch(), 'describe');
-  assert.equal(r.status, 0);
-  const data = r.env.data as { tools: unknown[]; findingCodes: unknown[] };
-  assert.ok(data.tools.length >= 12 && data.findingCodes.length > 100);
+  assert.equal(r.status, 0, r.stdout);
+  const data = r.env.data as { orientation: string; tools: unknown[]; findingCodes?: unknown[] };
+  assert.ok(data.orientation.length > 0 && data.tools.length >= 12 && data.findingCodes === undefined, 'the default is the summary');
+  const codes: unknown[] = [];
+  let cursor: string | undefined;
+  let pages = 0;
+  do {
+    const page = loom(scratch(), 'describe', '--detail', 'full', '--sections', 'findings', ...(cursor ? ['--cursor', cursor] : []));
+    assert.equal(page.status, 0, page.stdout);
+    codes.push(...((page.env.data as { findingCodes?: unknown[] }).findingCodes ?? []));
+    cursor = page.env.completeness.continuation;
+    pages++;
+  } while (cursor !== undefined && pages < 50);
+  assert.ok(pages > 1 && codes.length > 100, `${codes.length} finding codes over ${pages} pages`);
+});
+
+test('describe returns the proof limits of one operation and refuses a section without a full detail', () => {
+  const limits = loom(scratch(), 'describe', '--operation', 'project');
+  assert.equal(limits.status, 0, limits.stdout);
+  const texts = (limits.env.data as { proofLimits: string[] }).proofLimits;
+  assert.ok(texts.length > 1 && new Set(texts).size === texts.length, 'each limit once');
+  const summarySection = loom(scratch(), 'describe', '--detail', 'summary', '--sections', 'findings');
+  assert.equal(summarySection.status, 1, summarySection.stdout);
+  assert.equal(summarySection.env.refusal?.cause, 'invalid-input');
+  assert.equal(loom(scratch(), 'describe', '--operation', 'nothing').env.refusal?.cause, 'invalid-input');
 });
 
 test('docs installs the views with evaluated inputs and docs --check reports broken links, unknown records and history markers', () => {

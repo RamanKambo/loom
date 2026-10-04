@@ -11,12 +11,34 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
-import { AGENT_TOOLS, CONTRACT_DIGEST, MCP_TOOL_BUDGET, TOOL_EXAMPLES, canonicalStringify, checkReadinessTool, compareBaselineTool, exportYaml, handlerGaps, modelRevision, planChangeTool, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
-import type { EvidenceRecord, LoomConfig, Model, MutateData, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
+import {
+  AGENT_TOOLS,
+  CONTRACT_DIGEST,
+  DISCOVERY_LIMITS,
+  FINDING_RULES,
+  MCP_INSTRUCTIONS_BUDGET,
+  MCP_TOOL_BUDGET,
+  OPERATION_CATALOGUE,
+  ORIENTATION_TEXT,
+  TOOL_EXAMPLES,
+  canonicalStringify,
+  checkReadinessTool,
+  compareBaselineTool,
+  exportYaml,
+  guides,
+  handlerGaps,
+  modelRevision,
+  planChangeTool,
+  renderTarget,
+  sampleModel,
+  schemaErrors,
+  textHash,
+} from '@loom/core';
+import type { DescribeData, EvidenceRecord, GuideResource, LoomConfig, Model, MutateData, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
 import { gatherEvaluationInputs, putEvidence, signRecord } from '@loom/workspace';
 import { commitAll, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { createLoomServer } from '../server.js';
-import { RESOURCE_NOT_FOUND } from '../resources.js';
+import { RESOURCE_NOT_FOUND, guideFamily } from '../resources.js';
 import { HANDLED_TOOLS, TOOL_CONTRACTS, advertisedDefinitions, budgetProblems, inputSchemaOf, outputSchemaOf, schemaResource, schemaUri, type ToolDefinition } from '../tools.js';
 
 type FormatsPlugin = (ajv: unknown, opts?: unknown) => unknown;
@@ -200,8 +222,86 @@ test('an inline diff with an invalid side is marked provisional and a stale cont
   broken.mutations[0]!.from = ['$absent', 'placed'];
   const d = await call(client, 'loom.diff', { before: model, after: broken });
   assert.equal((d.data as { provisional: boolean }).provisional, true);
-  const c = await call(client, 'loom.context', { model, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 3 }, continuation: `ctx1.${textHash('other')}.3` });
+  const request = { model, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 3 } };
+  const first = await call(client, 'loom.context', request);
+  const token = first.completeness.continuation as string;
+  const c = await call(client, 'loom.context', { ...request, continuation: token.replace(modelRevision(model), textHash('other')) });
   assert.equal(c.refusal?.cause, 'stale-base');
+});
+
+test('a workspace context continuation from before the model changed is refused with the request that starts again, addressed to the workspace', async () => {
+  const dir = workspace();
+  const client = await inMemory(dir);
+  const request = { workspace: true, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 3 } };
+  const first = await call(client, 'loom.context', request);
+  assert.equal(first.outcome, 'ok', JSON.stringify(first.refusal));
+  const modelPath = join(dir, '.loom', 'model.json');
+  const edited = JSON.parse(readFileSync(modelPath, 'utf8')) as Model;
+  edited.operations.find((o) => o.id === 'order.get')!.description = 'Reads one order by its id.';
+  writeFileSync(modelPath, `${JSON.stringify(edited, null, 2)}\n`);
+  const stale = await call(client, 'loom.context', { ...request, continuation: first.completeness.continuation });
+  assert.equal(stale.refusal?.cause, 'stale-base');
+  assert.equal(stale.revisions.model, modelRevision(edited), 'the refusal names the current revision');
+  const again = stale.refusal?.nextActions?.[0];
+  assert.ok(again, 'the refusal names the request that starts again');
+  assert.deepEqual(again.arguments, { workspace: true, target: request.target, budget: request.budget });
+  assert.deepEqual(schemaErrors('ContextInput', again.arguments), []);
+  const restarted = await call(client, again.tool, again.arguments as Record<string, unknown>);
+  assert.equal(restarted.outcome, 'ok', JSON.stringify(restarted.refusal));
+});
+
+test('initialization returns the orientation as the server instructions, within the instructions budget', async () => {
+  const client = await inMemory();
+  const instructions = client.getInstructions() ?? '';
+  assert.equal(instructions, ORIENTATION_TEXT);
+  assert.ok(Buffer.byteLength(instructions, 'utf8') <= MCP_INSTRUCTIONS_BUDGET, `${Buffer.byteLength(instructions, 'utf8')} bytes`);
+  for (const step of ['workspace', 'context', 'readiness', 'evidence']) assert.ok(instructions.includes(step), `the orientation names ${step}`);
+});
+
+test('the default description is the orientation summary within the default budget, and a full description pages every section with explicit continuations', async () => {
+  const client = await inMemory();
+  const summary = await call(client, 'loom.describe', {});
+  const data = summary.data as DescribeData;
+  assert.equal(data.orientation, ORIENTATION_TEXT);
+  assert.ok(Buffer.byteLength(JSON.stringify(data), 'utf8') <= DISCOVERY_LIMITS.defaultBytes, 'the summary fits the default budget');
+  assert.deepEqual((data.tools ?? []).map((t) => t.name), TOOL_CONTRACTS.map((t) => t.name), 'the summary lists every tool');
+  assert.equal(data.findingCodes, undefined, 'the summary carries no full section');
+  let cursor: string | undefined;
+  const codes: string[] = [];
+  let pages = 0;
+  do {
+    const page = await call(client, 'loom.describe', { detail: 'full', sections: ['findings'], ...(cursor ? { cursor } : {}) });
+    assert.equal(page.outcome, 'ok', JSON.stringify(page.refusal));
+    assert.ok(Buffer.byteLength(JSON.stringify(page.data), 'utf8') <= DISCOVERY_LIMITS.defaultBytes);
+    codes.push(...((page.data as DescribeData).findingCodes ?? []).map((f) => f.code));
+    cursor = page.completeness.continuation;
+    pages++;
+  } while (cursor !== undefined && pages < 50);
+  assert.ok(pages > 1, 'the finding codes take more than one page');
+  assert.deepEqual(codes.sort(), Object.keys(FINDING_RULES).sort(), 'following the cursor returns every finding code once');
+  const limits = await call(client, 'loom.describe', { operation: 'validate' });
+  assert.ok(((limits.data as DescribeData).proofLimits ?? []).length > 0 && (limits.data as DescribeData).orientation === undefined, 'an operation gets its proof limits alone');
+  const refused = await call(client, 'loom.describe', { operation: 'validate', detail: 'full' });
+  assert.equal(refused.refusal?.cause, 'invalid-input');
+});
+
+test('the server lists the guides with the digests of their text and contract, and refuses a guide the catalogue does not define', async () => {
+  const client = await inMemory();
+  const { resources } = await client.listResources();
+  const listed = resources.filter((r) => r.uri.startsWith('loom://guide/')).map((r) => r.uri);
+  assert.deepEqual(listed, guides().map((g) => g.uri));
+  for (const uri of listed) {
+    const served = JSON.parse(((await client.readResource({ uri })).contents[0] as { text: string }).text) as GuideResource;
+    assert.deepEqual(schemaErrors('GuideResource', served), []);
+    assert.equal(served.contentDigest, textHash(served.text));
+    assert.equal(served.contractDigest, CONTRACT_DIGEST);
+  }
+  const engineering = JSON.parse(((await client.readResource({ uri: 'loom://guide/engineering' })).contents[0] as { text: string }).text) as GuideResource;
+  for (const stage of ['Establish the outcome', 'Take inventory', 'Release and operate']) assert.ok(engineering.text.includes(stage), stage);
+  await assert.rejects(client.readResource({ uri: 'loom://guide/start' }), (err: unknown) => err instanceof McpError && err.code === RESOURCE_NOT_FOUND);
+  const unlisted = guideFamily(OPERATION_CATALOGUE.resources.map((r) => (r.uri === 'loom://guide/engineering' ? { ...r, exposure: 'none' as const, reason: 'Not listed.' } : r)));
+  assert.ok(!unlisted.list().some((r) => r.uri === 'loom://guide/engineering') && unlisted.read('loom://guide/engineering') === null, 'a guide the catalogue does not list is neither listed nor served');
+  assert.ok(unlisted.read('loom://guide/workflow') !== null, 'the listed guides are still served');
 });
 
 /** The fixture with a narrower permission on order.get: a breaking security change, kept at the accepted version unless `version` raises it. */
@@ -365,7 +465,8 @@ test('every compact input schema accepts the catalogue examples, and every compa
 
 test('the server lists the schema resources the advertised schemas name, serves each with its full contract, and refuses an unknown one as not found', async () => {
   const client = await inMemory();
-  const { resources } = await client.listResources();
+  const { resources: all } = await client.listResources();
+  const resources = all.filter((r) => r.uri.startsWith(schemaUri('')));
   assert.deepEqual(resources.map((r) => r.uri), advertisedDefinitions().map(schemaUri));
   for (const r of resources) {
     const read = await client.readResource({ uri: r.uri });

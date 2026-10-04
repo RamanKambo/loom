@@ -60,6 +60,37 @@
       "fix": "name exactly one comparison"
     },
     {
+      "id": "describe-operation",
+      "accept": [
+        { "present": ["operation"], "absent": ["detail", "sections", "profile"] },
+        { "present": [], "absent": ["operation"] }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "'operation' asks for the proof limits of one operation alone",
+      "fix": "send 'operation' without 'detail', 'sections' or 'profile', or leave it out"
+    },
+    {
+      "id": "describe-sections-detail",
+      "accept": [
+        { "present": ["detail"], "absent": [] },
+        { "present": [], "absent": ["sections", "profile"] }
+      ],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "'sections' and 'profile' select the sections of a full description",
+      "fix": "send 'detail': 'full' with 'sections' or 'profile'"
+    },
+    {
+      "id": "describe-summary",
+      "when": [{ "member": "detail", "in": ["summary"] }],
+      "accept": [{ "present": [], "absent": ["sections", "profile"] }],
+      "code": "STRUCTURAL_INVALID",
+      "path": "(root)",
+      "message": "the summary carries no sections; 'sections' and 'profile' select the sections of a full description",
+      "fix": "send 'detail': 'full' with 'sections' or 'profile', or leave both out"
+    },
+    {
       "id": "workspace-inspect",
       "when": [{ "member": "action", "in": ["inspect"] }],
       "accept": [{ "present": ["path"], "absent": ["declaration", "dryRun", "expectedInspection", "access", "view", "workspaceId"] }],
@@ -216,6 +247,7 @@
       "purpose": "Check one model in order, its ownership and configuration, its validity, its comparison with the trusted accepted baseline and its installed outputs and manifest, or with --out a directory of projections, without writing.",
       "prerequisites": ["a governed workspace, or a model document named with --model, which outside a workspace is checked in validation-only mode"],
       "effects": "reads",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unresolved-context", "when": "no model applies because neither --model nor a governing workspace names one" }
       ],
@@ -238,6 +270,7 @@
       "purpose": "Check every descriptor under the boundary, the global disjointness of their claims and whether the walk covered the whole boundary.",
       "prerequisites": ["a boundary to walk, named with --boundary or found from the working directory"],
       "effects": "reads",
+      "dependsOnProfiles": true,
       "refusals": [],
       "nextAction": { "action": "check a reported descriptor on its own from its repository root", "operation": "check" },
       "exposure": {
@@ -251,6 +284,7 @@
       "purpose": "Install every artifact the workspace's projection profile enables, with the readiness, coverage and evidence views evaluated under the verified inputs, or with --out write every projection into a directory.",
       "prerequisites": ["a governed workspace, or a model document and --out <dir>"],
       "effects": "writes",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unresolved-context", "when": "no model applies, or no workspace governs an installation without --out" },
         { "cause": "invalid-input", "when": "the model has error findings while projecting into a directory" },
@@ -275,6 +309,7 @@
       "purpose": "Install the documentation bundle, every enabled artifact with the readiness, coverage and evidence views evaluated, exactly as write installs it.",
       "prerequisites": ["a governed workspace, or a model document and --out <dir>"],
       "effects": "writes",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unresolved-context", "when": "no model applies, or no workspace governs an installation without --out" },
         { "cause": "invalid-input", "when": "the model has error findings while projecting into a directory" },
@@ -449,6 +484,7 @@
       "purpose": "Project a model to one target with its source-to-output coverage manifest, running no external validator and failing closed on error findings, while a draft renders an explicitly incomplete artifact that never qualifies.",
       "prerequisites": ["a model, inline or the workspace model"],
       "effects": "none",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "invalid-input", "when": "the request breaks its contract or the model has error findings" },
         { "cause": "policy-failure", "when": "outside a draft, the model uses a construct the target's profile does not support" }
@@ -465,6 +501,7 @@
       "purpose": "Project a model to every target, with per-component artifact instances and coverage manifests, failing closed as project does.",
       "prerequisites": ["a model, inline or the workspace model"],
       "effects": "none",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "invalid-input", "when": "the request breaks its contract or the model has error findings" },
         { "cause": "policy-failure", "when": "outside a draft, the model uses a construct a target's profile does not support" }
@@ -514,6 +551,7 @@
         "the native tools the checks name, within their version policies, a missing one yielding UNKNOWN and never PASS"
       ],
       "effects": "writes",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unresolved-context", "when": "no workspace governs the directory and --self is not given" }
       ],
@@ -580,31 +618,46 @@
     },
     {
       "id": "describe",
-      "purpose": "Describe what this build supports: record kinds, patch operations, finding codes, comparison rules, projection targets, profiles with their proof limits, tools, examples and unavailable features.",
+      "purpose": "Describe what this build supports: by default an orientation summary with the workflow entry points, the tools, selected capability facts and the guide and resource links, with 'detail': 'full' the requested sections a page at a time within the discovery budget, and with 'operation' the proof limits of one operation.",
       "prerequisites": [],
       "effects": "none",
-      "refusals": [],
+      "refusals": [
+        { "cause": "invalid-input", "when": "the request breaks its contract, names no catalogue operation, or sends a cursor issued for another request" },
+        { "cause": "stale-base", "when": "the cursor was issued by another build; the refusal names the request that starts again" }
+      ],
       "nextAction": { "action": "read the required context of the component or task at hand", "operation": "context" },
       "exposure": {
         "mcp": {
           "tool": "loom.describe",
           "input": "DescribeInput",
           "data": "DescribeData",
-          "presence": [],
-          "examples": [{ "description": "List the patch operations only.", "input": { "sections": ["patches"] } }]
+          "presence": ["describe-operation", "describe-sections-detail", "describe-summary"],
+          "examples": [
+            { "description": "The orientation summary.", "input": {} },
+            { "description": "The first page of the patch operations.", "input": { "detail": "full", "sections": ["patches"] } },
+            { "description": "What the result of a projection does not establish.", "input": { "operation": "project" } }
+          ]
         },
-        "cli": { "command": "describe", "usage": ["describe [--sections a,b] [--profile <id>]"], "examples": [{ "description": "List the patch operations only.", "command": "describe --sections patches" }] }
+        "cli": {
+          "command": "describe",
+          "usage": ["describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]"],
+          "examples": [
+            { "description": "The orientation summary.", "command": "describe" },
+            { "description": "The first page of the patch operations.", "command": "describe --detail full --sections patches" },
+            { "description": "What the result of a projection does not establish.", "command": "describe --operation project" }
+          ]
+        }
       }
     },
     {
       "id": "context",
-      "purpose": "Retrieve the required context of a component, record, claim or task within a declared budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, record text coming back as data and never as an instruction.",
-      "prerequisites": ["a model, inline or the workspace model", "a target and a budget"],
+      "purpose": "Retrieve the required context of a component, record, claim or task a page at a time within a discovery budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, or for a resume target the recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns, evidence, pending work and next actions, record text coming back as data and never as an instruction.",
+      "prerequisites": ["a model, inline or the workspace model", "a target, with an optional budget whose members take their defaults"],
       "effects": "reads",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request names no target or budget, or breaks its contract" },
-        { "cause": "stale-base", "when": "a continuation or modelRevision belongs to another model revision" },
-        { "cause": "unresolved-context", "when": "'workspace': true finds no workspace model" }
+        { "cause": "invalid-input", "when": "the request names no target, breaks its contract, or sends a continuation issued for another target or budget" },
+        { "cause": "stale-base", "when": "a continuation or modelRevision belongs to another revision; the refusal names the request that starts again" },
+        { "cause": "unresolved-context", "when": "'workspace': true finds no workspace model, or no recorded progress is supplied for a resume target" }
       ],
       "nextAction": { "action": "follow the continuation while completeness lists omissions, then check readiness for the task", "operation": "checkReadiness" },
       "exposure": {
@@ -920,6 +973,7 @@
       "purpose": "Draw a diagram of one record or the whole workspace as the structured graph, Mermaid text or terminal text within a rendering budget, with the source vector it was drawn from.",
       "prerequisites": ["a handle this session opened", "for a terminal format, a renderer provisioned in trusted configuration"],
       "effects": "reads",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
         { "cause": "invalid-input", "when": "the target names no record of the model or the request breaks the tool input contract" },
@@ -945,6 +999,7 @@
       "purpose": "Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes.",
       "prerequisites": ["a handle with the qualify capability", "the revision vector the run must qualify, as 'expectedVector'", "an execution policy naming a runner identity provisioned in trusted local configuration"],
       "effects": "writes",
+      "dependsOnProfiles": true,
       "refusals": [
         { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
         { "cause": "access-denied", "when": "the handle lacks the qualify capability" },
@@ -1009,30 +1064,57 @@
       }
     }
   ],
+  "workflow": [
+    { "step": "Orient on what this build supports and what each kind of proof establishes", "operations": ["describe"] },
+    { "step": "Identify the workspace and the requested outcome, and read the context, constraints, evidence and unresolved decisions of the task", "operations": ["context"] },
+    { "step": "Preview a change through the owning model, then apply it against the same revision", "operations": ["planChange", "mutate"] },
+    { "step": "Check readiness for the actual task and implement only the scope its work package permits", "operations": ["checkReadiness"] },
+    { "step": "Regenerate the artifacts from the model and check them for drift", "operations": ["projectAll", "check"] },
+    { "step": "Qualify the real implementation and bind its evidence to the exact inputs", "operations": ["qualify", "evidence"] }
+  ],
+  "proofLimits": [
+    {
+      "id": "validation-scope",
+      "text": "Model validation establishes conformance to the declared rule set; it does not establish that the requirements are correct or complete.",
+      "operations": ["validate", "mutate", "diff", "planChange", "checkReadiness", "check", "checkAll", "federationCheck"]
+    },
+    {
+      "id": "generated-equality",
+      "text": "Generated-file equality establishes that artifacts match their inputs, not that an implementation conforms.",
+      "operations": ["project", "projectAll", "write", "docs", "docsCheck", "check", "checkAll"]
+    },
+    {
+      "id": "supplied-records",
+      "text": "Readiness, acceptance and qualification are evaluated only over the baseline, acceptance, evidence and policy records supplied; their provenance is verified by the adapter.",
+      "operations": ["diff", "planChange", "checkReadiness", "context", "check", "checkAll", "qualify", "evidence", "federationCheck", "qualifyStart"]
+    },
+    {
+      "id": "predicates",
+      "text": "A prose predicate is never evaluated; an expression predicate is type-checked, never run against live data.",
+      "operations": ["validate", "mutate", "planChange", "check", "checkAll"]
+    }
+  ],
   "resources": [
     {
       "uri": "loom://guide/engineering",
       "purpose": "The engineering method the model encodes: the outcome first, responsibilities and workflows before interfaces, types, mutations and failure behavior before implementation, and evidence bound to its exact inputs.",
       "contents": "GuideResource",
       "scope": "server",
-      "exposure": "none",
-      "reason": "Catalogued before it is listed; the server rebuild serves it."
+      "exposure": "listed"
     },
     {
       "uri": "loom://guide/workflow",
       "purpose": "The order of work an agent follows: identify the workspace and the outcome, read the context, preview and apply changes through the owning model, check readiness and qualify the implementation.",
       "contents": "GuideResource",
       "scope": "server",
-      "exposure": "none",
-      "reason": "Catalogued before it is listed; the server rebuild serves it."
+      "exposure": "listed"
     },
     {
       "uri": "loom://guide/capabilities",
       "purpose": "What this build supports and what each kind of proof does not establish.",
       "contents": "GuideResource",
       "scope": "server",
-      "exposure": "none",
-      "reason": "Catalogued before it is listed; the server rebuild serves it."
+      "exposure": "listed"
     },
     {
       "uri": "loom://workspaces/{workspaceId}/status",

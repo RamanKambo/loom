@@ -61,7 +61,8 @@ Source: `packages/core/schema/icd/core.json`, `qualification.json` and `mcp.json
 | Which artifacts a projection profile enables | `packages/core/schema/projection-profiles/<id>.json` |
 | Projection targets, their file names and instancing | `TARGETS` in `packages/core/src/project.ts` |
 | A component's interfaces and refusals | `packages/core/schema/icd/<component>.json` |
-| Every operation: its purpose, prerequisites, effects, refusals, next action, MCP tool, command, usage and examples | [Docs/operations.md](Docs/operations.md), generated from `packages/core/schema/operations.json` |
+| Every operation: its purpose, prerequisites, effects, refusals, next action, proof limits, MCP tool, command, usage and examples | [Docs/operations.md](Docs/operations.md), generated from `packages/core/schema/operations.json` |
+| The orientation, the engineering method and the agent workflow | [Docs/guides/orientation.md](Docs/guides/orientation.md), [engineering.md](Docs/guides/engineering.md) and [workflow.md](Docs/guides/workflow.md); the capabilities guide is generated from the operation catalogue and the profiles |
 | How workflow integration persists state and obtains acceptance | [Docs/workflow-integration.md](Docs/workflow-integration.md) |
 | The fixture model every test and the designer load | `packages/core/src/sample.ts` |
 | Unresolved questions about Loom | [Docs/ToDo.md](Docs/ToDo.md) |
@@ -75,7 +76,7 @@ The commands below run from the repository root after `npm install`. `npm run bu
 | Command | Proof |
 | --- | --- |
 | `npm run build` | The generated contract artifacts match the authored schemas (`generate --check`), then every package compiles |
-| `npm run generate` | Regenerates `packages/core/schema/patch.schema.json`, `packages/core/src/generated/*` and `Docs/operations.md`; those files are never edited by hand |
+| `npm run generate` | Regenerates `packages/core/schema/patch.schema.json`, `packages/core/src/generated/*` and `Docs/operations.md`, embedding the guides of `Docs/guides` with the digest of each; those generated files are never edited by hand |
 | `npm run self-test` | The engine battery, the drift gate, and every profile check run against Loom's own fixtures under `qualification/policy.json` |
 | `npm run test:workspace`, `test:qualification`, `test:cli`, `test:mcp` | The adapters' node:test suites |
 | `npm run test:fixtures` | Every case of `qualification/fixtures` meets its authored expectation through the core and, in a governed workspace, the CLI, and its named native checks give their stated results |
@@ -98,6 +99,10 @@ An explicit `--model <path>` selects a document. Inside a governed workspace the
 Source: `packages/mcp-server/src/server.ts`, `tools.ts` and `resources.ts`, `packages/core/schema/icd/mcp.json` and the operation catalogue `packages/core/schema/operations.json`.
 
 The server speaks the Model Context Protocol over stdio. Its tools, in the order it lists them and with the descriptions generated from their catalogue entries, are listed in [Docs/operations.md](Docs/operations.md#mcp-server). Each tool advertises compact input and output schemas derived from the contract bundle: they keep the top-level members, their requirements and their simple types, and every deeper value names the `loom://schema/<Definition>` resource that holds its full contract with the contract digest. The server lists the resources its advertised schemas name and serves any definition of the bundle; an unknown one is a resource-not-found error. Every input is validated against the full contract before anything runs, every result is structured content with a text fallback, and one tool's advertised definition stays within the tool budget, `mcp.toolBudget` of the catalogue.
+
+At initialization the server returns the orientation of [Docs/guides/orientation.md](Docs/guides/orientation.md) as its instructions, held by generation to the byte budget `mcp.instructionsBudget` of the catalogue. It lists the guides `loom://guide/engineering`, `loom://guide/workflow` and `loom://guide/capabilities`, each returned with the digest of its text and the contract digest.
+
+Discovery is bounded by the page budget whose defaults and maxima are those of `DiscoveryBudget` in `packages/core/schema/tools.schema.json`, counted over the data of a result alone. `loom.describe` returns the orientation summary by default, the requested sections a page at a time with `detail: "full"`, and the deduplicated proof limits of one operation with `operation`. `loom.context` returns one page of a target's required context, or for a resume target the recorded progress of the workspace. Every omitted part, section or record is listed in the result's completeness, with the continuation that retrieves what later pages hold; a continuation binds the request and the revision it was issued for, and one that no longer applies is refused with the request that starts again.
 
 The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectedRevision` and is refused as `stale-base` when the model changed since that revision; `loom.planChange` and a `dryRun` mutation never write.
 
@@ -131,7 +136,7 @@ A model document carries its format version in `version`, separately from every 
 
 Source: `packages/core/schema/profiles` and `packages/core/schema/projection-profiles`.
 
-Each profile file states its supported constructs, its unsupported constructs and whether using one refuses the projection or permits only a marked draft, the native tools it requires with their version policy, its proof limits and its fixed check definitions. The adoption conventions of the C#, TypeScript, SQL and PowerShell conformance artifacts are stated in the `supports` entries of `csharp.json`, `typescript.json`, `sql.json`, `powershell.json` and `powershell-pester6.json`.
+Each profile file states its supported constructs, its unsupported constructs and whether using one refuses the projection or permits only a marked draft, the native tools it requires with their version policy, its proof limits and its fixed check definitions. A profile's proof limits apply to the operations the operation catalogue marks as depending on profiles; the limits of the operations themselves are the `proofLimits` of `packages/core/schema/operations.json`, each with the operations it applies to. The adoption conventions of the C#, TypeScript, SQL and PowerShell conformance artifacts are stated in the `supports` entries of `csharp.json`, `typescript.json`, `sql.json`, `powershell.json` and `powershell-pester6.json`.
 
 The required native tools are provisioned by the developer or the pipeline; no adapter installs one. A check whose tool is absent, outside its version policy, unreadable or interrupted, or whose database connection or login fails, reports `UNKNOWN`, and a required `UNKNOWN` never yields a qualified result.
 

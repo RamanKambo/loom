@@ -1,27 +1,31 @@
-import type { AffectedElement, ContextData, ContextItem, ContextTarget, Completeness, Model, RecordRef, SourceRef } from './generated/types.js';
-import { canonicalJson } from './canonical.js';
+import type { AffectedElement, Completeness, ContextData, ContextItem, ContextTarget, DiscoveryBudget, Model, OversizedRecord, RecordRef, SourceRef } from './generated/types.js';
 import { canonicalHash, modelRevision, recordHash } from './hash.js';
 import { indexModel, findRecord, type ModelIndex } from './records.js';
 import { DependencyGraph } from './graph.js';
 import type { EvaluationInputs } from './inputs.js';
 import { ownersOf, refKey, resolveScope } from './scope.js';
 import { deriveObligations, evaluateEvidence } from './evidence.js';
+import { checkContinuation, continuationToken, dataBytes, fillPage, pageCompleteness, resolveBudget, type PageEntry, type ResolvedBudget } from './discovery.js';
 
 export interface ContextRequest {
   target: ContextTarget;
-  budget: { maxRecords: number; maxBytes?: number };
+  /** The page budget; a member left out takes its default. */
+  budget?: DiscoveryBudget;
   continuation?: string;
   modelRevision?: string;
+  /**
+   * The revision the page answers for, which a continuation binds: the digest of the revision vector
+   * the adapter evaluated the model under, or the model revision when absent, as in inline mode.
+   */
+  revision?: string;
+  /** The URI of the record resource that returns one record whole, where the adapter serves one; an oversized record is then summarized with it. */
+  recordResource?: (ref: RecordRef) => string;
 }
 
+/** One page, or a refusal; `restart` marks a refusal the same request without its continuation or revision would not repeat. */
 export type ContextResult =
   | { ok: true; data: ContextData; completeness: Completeness }
-  | { ok: false; cause: 'stale-base' | 'unresolved-context' | 'invalid-input'; message: string };
-
-const TOKEN = /^ctx1\.(sha256:[0-9a-f]{64})\.(\d+)$/;
-
-/** A continuation names the model revision it was issued for and the offset to resume at. */
-export const continuationToken = (revision: string, offset: number): string => `ctx1.${revision}.${offset}`;
+  | { ok: false; cause: 'stale-base' | 'unresolved-context' | 'invalid-input'; message: string; restart: boolean };
 
 interface Entry {
   ref: RecordRef;
@@ -71,37 +75,35 @@ const sourcesOf = (record: Record<string, unknown>): SourceRef[] | undefined => 
   return undefined;
 };
 
+/** The summary of a record too large for any page: its size and the resource that returns it whole. */
+function oversized(item: ContextItem, budget: ResolvedBudget, resource: string, revision: string): OversizedRecord {
+  const bytes = dataBytes(item.record);
+  return { ref: item.ref, hash: item.hash, bytes, summary: `The ${item.ref.kind} '${item.ref.id}' takes ${bytes} bytes of canonical JSON, more than a page of ${budget.maxBytes} bytes holds; its record resource returns it whole.`, resource, revision };
+}
+
 /**
- * The required context of a component, record, claim or task: its dependency
- * closure with sources, owners, baseline status, constraints and decisions,
- * within a record and byte budget. Truncation is never silent: every omitted
- * record is listed with the continuation that retrieves it, and a
- * continuation issued for another revision is refused. Record text is
- * returned as data.
+ * One page of the required context of a component, record, claim or task: the constraints and
+ * decisions that apply, the records of its dependency closure nearest first with sources, owners and
+ * baseline status, and the evidence obligations of its scope, within the budget. The completeness
+ * names every section the page leaves for later pages with the continuation that retrieves it, and
+ * every record too large for any page, which the record resource returns whole where the adapter
+ * serves one. A continuation binds the target, the budget and the revision; a changed one is
+ * refused. Record text is returned as data.
  */
 export function retrieveContext(model: Model, request: ContextRequest, inputs: EvaluationInputs = {}): ContextResult {
-  const revision = modelRevision(model);
-  if (request.modelRevision !== undefined && request.modelRevision !== revision) {
-    return { ok: false, cause: 'stale-base', message: `the model is at ${revision}, not the requested ${request.modelRevision}` };
+  const current = modelRevision(model);
+  if (request.modelRevision !== undefined && request.modelRevision !== current) {
+    return { ok: false, cause: 'stale-base', message: `the model is at ${current}, not the requested ${request.modelRevision}`, restart: true };
   }
-  let offset = 0;
-  if (request.continuation !== undefined) {
-    const m = TOKEN.exec(request.continuation);
-    if (!m) return { ok: false, cause: 'invalid-input', message: 'the continuation token is malformed' };
-    if (m[1] !== revision) return { ok: false, cause: 'stale-base', message: `the continuation was issued for ${m[1]}, but the model is at ${revision}` };
-    offset = Number(m[2]);
-  }
+  const revision = request.revision ?? current;
+  const budget = resolveBudget(request.budget);
   const index = indexModel(model);
   const start = startsOf(index, request.target);
-  if (!start) return { ok: false, cause: 'unresolved-context', message: 'the context target names no record in the model' };
+  if (!start) return { ok: false, cause: 'unresolved-context', message: 'the context target names no record in the model', restart: false };
   const graph = new DependencyGraph(index);
   const entries = closure(graph, start.starts, start.depth);
   const base = inputs.baseline?.model;
-  const items: ContextItem[] = [];
-  let bytes = 0;
-  let i = offset;
-  for (; i < entries.length; i++) {
-    const e = entries[i]!;
+  const items: ContextItem[] = entries.map((e) => {
     const record = findRecord(index, e.ref) as Record<string, unknown>;
     const item: ContextItem = { ref: e.ref, record: record as ContextItem['record'], hash: canonicalHash(record), why: e.why };
     const owner = ownersOf(index, e.ref)[0];
@@ -112,27 +114,35 @@ export function retrieveContext(model: Model, request: ContextRequest, inputs: E
       const was = recordHash(base, e.ref);
       item.baseline = was === null ? { id: inputs.baseline.record.id, status: 'new' } : { id: inputs.baseline.record.id, status: was === item.hash ? 'accepted' : 'changed', hash: was };
     }
-    const size = canonicalJson(item).length;
-    if (items.length >= request.budget.maxRecords || (request.budget.maxBytes !== undefined && items.length > 0 && bytes + size > request.budget.maxBytes)) break;
-    items.push(item);
-    bytes += size;
-  }
-  const remaining = entries.slice(i);
-  const continuation = remaining.length ? continuationToken(revision, i) : undefined;
+    return item;
+  });
   const touches = (refs: readonly RecordRef[]) => refs.some((r) => entries.some((e) => refKey(e.ref) === refKey(r)) || ownersOf(index, r).some((c) => entries.some((e) => e.ref.kind === 'component' && e.ref.id === c)));
   const constraints = model.constraints.filter((c) => touches(c.appliesTo)).map((c) => c.id).sort();
   const decisions = model.decisions.filter((d) => touches(d.affects)).map((d) => d.id).sort();
   const scope = request.target.kind === 'task' && request.target.task ? resolveScope(index, request.target.task) : request.target.kind === 'component' && request.target.ref ? resolveScope(index, { mode: 'component', components: [request.target.ref.id] }) : undefined;
   const obligations = scope ? deriveObligations(model, scope, inputs) : [];
   const evidence = inputs.evidence === undefined ? obligations : evaluateEvidence(model, obligations, inputs).obligations;
-  const completeness: Completeness = {
-    complete: offset === 0 && remaining.length === 0,
-    truncated: remaining.length > 0,
-    omitted: [
-      ...(offset > 0 ? entries.slice(0, offset).map((e) => ({ ref: e.ref, reason: 'not-requested' as const })) : []),
-      ...remaining.map((e) => ({ ref: e.ref, reason: 'budget' as const, continuation: continuation! })),
-    ],
-  };
-  if (continuation) completeness.continuation = continuation;
-  return { ok: true, data: { target: request.target, items, required: entries.map((e) => e.ref), constraints, decisions, evidence }, completeness };
+  // The small entries that frame the records come first, the obligations last, so the first page names what applies.
+  const sequence: PageEntry[] = [
+    ...constraints.map((id) => ({ member: 'constraints', section: 'constraints', key: id, value: id })),
+    ...decisions.map((id) => ({ member: 'decisions', section: 'decisions', key: id, value: id })),
+    ...items.map((item) => ({ member: 'items', section: 'items', key: refKey(item.ref), value: item, ref: item.ref })),
+    ...evidence.map((o) => ({ member: 'evidence', section: 'evidence', key: o.id, value: o })),
+  ];
+  const filters = { target: request.target, budget };
+  let offset = 0;
+  if (request.continuation !== undefined) {
+    const check = checkContinuation(request.continuation, 'context', revision, filters, sequence.length);
+    if (!check.ok) return { ok: false, cause: check.cause, message: check.message, restart: true };
+    offset = check.offset;
+  }
+  const head = { target: request.target, total: entries.length, items: [], oversized: [], constraints: [], decisions: [], evidence: [] };
+  if (dataBytes(head) > budget.maxBytes) return { ok: false, cause: 'invalid-input', message: `a page of ${budget.maxBytes} bytes cannot hold the ${dataBytes(head)} bytes every page of this target repeats; raise maxBytes`, restart: false };
+  const resource = request.recordResource;
+  const standIn = resource
+    ? (e: PageEntry): PageEntry | null => (e.member === 'items' && e.ref ? { member: 'oversized', section: 'items', key: e.key, ref: e.ref, value: oversized(e.value as ContextItem, budget, resource(e.ref), current) } : null)
+    : undefined;
+  const page = fillPage(head, sequence, offset, budget, undefined, standIn);
+  const continuation = page.next < sequence.length ? continuationToken('context', revision, filters, page.next) : undefined;
+  return { ok: true, data: page.data as unknown as ContextData, completeness: pageCompleteness(sequence, offset, page, continuation) };
 }

@@ -1,0 +1,16 @@
+{
+  "definition": "Refusal",
+  "valid": [
+    { "cause": "invalid-input", "message": "The request does not satisfy the tool input contract." },
+    {
+      "cause": "stale-base",
+      "message": "The continuation was issued for another revision.",
+      "nextActions": [{ "purpose": "Retrieve the context again from its first page at the current revision.", "tool": "loom.context", "arguments": { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }]
+    }
+  ],
+  "invalid": [
+    { "because": "a next action names a Loom tool, never a shell command", "keyword": "pattern", "path": "/nextActions/0/tool", "instance": { "cause": "stale-base", "message": "Stale.", "nextActions": [{ "purpose": "Pull again.", "tool": "git pull", "arguments": {}, "prerequisites": [], "effects": "reads", "blockedBy": [] }] } },
+    { "because": "a refusal names its cause", "keyword": "required", "path": "", "instance": { "message": "Refused." } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "cause": "stale-base", "message": "Stale.", "retry": true } }
+  ]
+}

@@ -23,7 +23,21 @@
       "nextAction": { "action": "read the required context" },
       "exposure": {
         "mcp": { "tool": "loom.describe", "input": "DescribeInput", "data": "DescribeData", "presence": [], "examples": [] },
-        "cli": { "command": "describe", "usage": ["describe [--sections a,b]"], "examples": [{ "description": "List the patch operations only.", "command": "describe --sections patches" }] }
+        "cli": { "command": "describe", "usage": ["describe [--detail summary|full] [--sections a,b]"], "examples": [{ "description": "The first page of the patch operations.", "command": "describe --detail full --sections patches" }] }
+      }
+    },
+    {
+      "id": "project",
+      "purpose": "Project a model to one target.",
+      "prerequisites": ["a model, inline or the workspace model"],
+      "effects": "none",
+      "dependsOnProfiles": true,
+      "refusals": [{ "cause": "invalid-input", "when": "the model has error findings" }],
+      "nextAction": { "action": "qualify the projected artifacts" },
+      "exposure": {
+        "mcp": { "tool": "loom.project", "input": "ProjectInput", "data": "ProjectData", "presence": ["model-or-workspace"], "examples": [] },
+        "cli": "none",
+        "reason": "The command line writes projections with write --out."
       }
     },
     {
@@ -41,6 +55,7 @@
     { "because": "a purpose is one sentence closed by a period", "keyword": "pattern", "path": "/purpose", "instance": { "id": "describe", "purpose": "describe what this build supports", "prerequisites": [], "effects": "none", "refusals": [], "nextAction": { "action": "read the context" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." } } },
     { "because": "a prerequisite is a clause without a closing period", "keyword": "pattern", "path": "/prerequisites/0", "instance": { "id": "describe", "purpose": "Describe this build.", "prerequisites": ["A governed workspace."], "effects": "none", "refusals": [], "nextAction": { "action": "read the context" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." } } },
     { "because": "an exposure is 'none' or names its interface", "keyword": "oneOf", "path": "/exposure/cli", "instance": { "id": "describe", "purpose": "Describe this build.", "prerequisites": [], "effects": "none", "refusals": [], "nextAction": { "action": "read the context" }, "exposure": { "mcp": "none", "cli": "hidden", "reason": "Not exposed." } } },
-    { "because": "an unknown operation member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "id": "describe", "purpose": "Describe this build.", "prerequisites": [], "effects": "none", "refusals": [], "nextAction": { "action": "read the context" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." }, "notes": "x" } }
+    { "because": "an unknown operation member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "id": "describe", "purpose": "Describe this build.", "prerequisites": [], "effects": "none", "refusals": [], "nextAction": { "action": "read the context" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." }, "notes": "x" } },
+    { "because": "whether an operation depends on the profiles is true or false", "keyword": "type", "path": "/dependsOnProfiles", "instance": { "id": "project", "purpose": "Project a model.", "prerequisites": [], "effects": "none", "dependsOnProfiles": "yes", "refusals": [], "nextAction": { "action": "qualify it" }, "exposure": { "mcp": "none", "cli": "none", "reason": "Not exposed." } } }
   ]
 }

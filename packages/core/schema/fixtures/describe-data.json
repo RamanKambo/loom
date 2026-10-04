@@ -1,0 +1,34 @@
+{
+  "definition": "DescribeData",
+  "valid": [
+    {
+      "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resultVersion": 1,
+      "modelFormat": 1,
+      "orientation": "Loom keeps an explicit engineering model and checks the consequences of each declared decision.",
+      "entryPoints": [{ "step": "Read the context of the task", "interfaces": ["loom.context"] }],
+      "tools": [{ "name": "loom.context", "effects": "reads", "purpose": "Retrieve the required context of a component." }],
+      "capabilities": { "sections": [{ "section": "findings", "records": 181 }], "profiles": ["sql", "openapi"] },
+      "guides": [{ "uri": "loom://guide/workflow", "title": "The agent workflow", "contentDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }],
+      "resources": [{ "uri": "loom://workspaces/{workspaceId}/status", "contents": "WorkspaceStatus", "scope": "session", "listed": false }]
+    },
+    {
+      "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resultVersion": 1,
+      "modelFormat": 1,
+      "findingCodes": [{ "code": "DANGLING_REF", "severity": "error", "rule": "Every reference resolves." }]
+    },
+    {
+      "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resultVersion": 1,
+      "modelFormat": 1,
+      "proofLimits": ["Parsing proves syntax only."]
+    }
+  ],
+  "invalid": [
+    { "because": "a page names the contract digest it describes", "keyword": "required", "path": "", "instance": { "resultVersion": 1, "modelFormat": 1, "proofLimits": ["Parsing proves syntax only."] } },
+    { "because": "a tool summary names its effect in the effect vocabulary", "keyword": "enum", "path": "/tools/0/effects", "instance": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1, "modelFormat": 1, "tools": [{ "name": "loom.context", "effects": "executes", "purpose": "Retrieve context." }] } },
+    { "because": "a guide link lives under loom://guide/", "keyword": "pattern", "path": "/guides/0/uri", "instance": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1, "modelFormat": 1, "guides": [{ "uri": "https://example.com/guide", "title": "Guide", "contentDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }] } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1, "modelFormat": 1, "everything": true } }
+  ]
+}

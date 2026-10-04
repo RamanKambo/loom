@@ -95,16 +95,22 @@
     },
     "SelftestInput": { "type": "object", "additionalProperties": false, "properties": {} },
     "DescribeInput": {
+      "description": "The arguments of loom.describe. Without 'detail' the result is the orientation summary; 'detail': 'full' returns the requested sections a page at a time within the budget, 'cursor' continues where a page ended, and 'operation' returns the proof limits of one operation alone. Every omitted part, section or record is listed in the result's completeness.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "profile": { "type": "string" },
-        "resultVersion": { "type": "integer", "minimum": 1 },
-        "sections": {
-          "type": "array",
-          "items": { "enum": ["records", "patches", "findings", "comparison", "projections", "profiles", "tools", "examples", "limits"] }
-        }
+        "detail": { "description": "'summary', the default, returns the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links; 'full' returns the requested sections a page at a time, never an unbounded dump.", "enum": ["summary", "full"], "default": "summary" },
+        "sections": { "description": "The sections a full description returns; every section when absent.", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/DescribeSection" } },
+        "profile": { "description": "Return only this profile in the profiles section.", "type": "string" },
+        "operation": { "description": "A catalogue operation id: return only the proof limits of that operation, deduplicated.", "type": "string", "pattern": "^[a-z][A-Za-z]*$" },
+        "cursor": { "description": "The continuation of the page before; it binds the request and the build that issued it.", "$ref": "#/$defs/Cursor" },
+        "budget": { "$ref": "#/$defs/DiscoveryBudget" },
+        "resultVersion": { "type": "integer", "minimum": 1 }
       }
+    },
+    "DescribeSection": {
+      "description": "A section of a full description. Pages return the sections in this order: record kinds, patch operations, finding codes, comparison rules, projection targets, profiles, tools, examples, unavailable features and proof limits.",
+      "enum": ["records", "patches", "findings", "comparison", "projections", "profiles", "tools", "examples", "unavailable", "limits"]
     },
     "ContextTarget": {
       "type": "object",
@@ -117,24 +123,17 @@
       }
     },
     "ContextInput": {
+      "description": "The arguments of loom.context: the model, the target and an optional discovery budget whose members take their defaults when left out. 'continuation' continues where a page ended; it binds the target, the budget and the revision it was issued for.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["target", "budget"],
+      "required": ["target"],
       "properties": {
         "model": { "$ref": "model.schema.json#/$defs/Model" },
         "workspace": { "const": true },
         "modelRevision": { "$ref": "common.schema.json#/$defs/Hash" },
-        "target": { "$ref": "#/$defs/ContextTarget" },
-        "budget": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["maxRecords"],
-          "properties": {
-            "maxRecords": { "type": "integer", "minimum": 1, "maximum": 10000 },
-            "maxBytes": { "type": "integer", "minimum": 256 }
-          }
-        },
-        "continuation": { "type": "string" }
+        "target": { "oneOf": [{ "$ref": "#/$defs/ContextTarget" }, { "$ref": "#/$defs/ContextResumeTarget" }] },
+        "budget": { "$ref": "#/$defs/DiscoveryBudget" },
+        "continuation": { "$ref": "#/$defs/Cursor" }
       },
       "oneOf": [{ "required": ["model"] }, { "required": ["workspace"] }]
     },
@@ -486,13 +485,78 @@
       }
     },
     "DescribeData": {
+      "description": "One page of loom.describe. A summary carries the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links; a full page carries the records of the requested sections that fit the budget; the answer for an operation carries its proof limits. A member is present exactly when its part or section is on the page, and the result's completeness lists every omitted one.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["contractDigest", "resultVersion", "modelFormat", "records", "patchOperations", "findingCodes", "comparisonRules", "projectionTargets", "profiles", "tools", "examples", "unavailable", "proofLimits"],
+      "required": ["contractDigest", "resultVersion", "modelFormat"],
       "properties": {
         "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" },
         "resultVersion": { "const": 1 },
         "modelFormat": { "const": 1 },
+        "orientation": { "description": "The orientation the server also returns at initialization.", "$ref": "common.schema.json#/$defs/Text" },
+        "entryPoints": {
+          "description": "The steps of the agent workflow in order, each with the interfaces that perform it.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step", "interfaces"],
+            "properties": {
+              "step": { "$ref": "common.schema.json#/$defs/Text" },
+              "interfaces": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Text" } }
+            }
+          }
+        },
+        "capabilities": {
+          "description": "Selected facts of this build: how many records each full section holds, and the profile ids.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sections", "profiles"],
+          "properties": {
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["section", "records"],
+                "properties": {
+                  "section": { "$ref": "#/$defs/DescribeSection" },
+                  "records": { "type": "integer", "minimum": 0 }
+                }
+              }
+            },
+            "profiles": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } }
+          }
+        },
+        "guides": {
+          "description": "The guidance resources, each with the digest of its text.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["uri", "title", "contentDigest"],
+            "properties": {
+              "uri": { "type": "string", "pattern": "^loom://guide/[a-z]+$" },
+              "title": { "$ref": "common.schema.json#/$defs/Text" },
+              "contentDigest": { "$ref": "common.schema.json#/$defs/Hash" }
+            }
+          }
+        },
+        "resources": {
+          "description": "The resources the operation catalogue defines beside the schema resources, and whether the server lists them.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["uri", "contents", "scope", "listed"],
+            "properties": {
+              "uri": { "type": "string", "pattern": "^loom://[a-z]+(/([a-z]+|\\{[a-z][A-Za-z]*\\}))*$" },
+              "contents": { "type": "string", "pattern": "^[A-Z][A-Za-z]*$" },
+              "scope": { "enum": ["server", "session"] },
+              "listed": { "type": "boolean" }
+            }
+          }
+        },
         "records": {
           "type": "array",
           "items": {
@@ -563,14 +627,16 @@
         },
         "profiles": { "type": "array", "items": { "$ref": "profile.schema.json#/$defs/ProfileDefinition" } },
         "tools": {
+          "description": "The tools the MCP server lists, in its order, each with its effect on persisted state and its purpose.",
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "effects"],
+            "required": ["name", "effects", "purpose"],
             "properties": {
-              "name": { "type": "string" },
-              "effects": { "$ref": "#/$defs/ToolEffect" }
+              "name": { "type": "string", "pattern": "^loom\\.[a-z][A-Za-z]*$" },
+              "effects": { "$ref": "#/$defs/ToolEffect" },
+              "purpose": { "$ref": "common.schema.json#/$defs/Text" }
             }
           }
         },
@@ -599,7 +665,7 @@
             }
           }
         },
-        "proofLimits": { "type": "array", "items": { "type": "string" } }
+        "proofLimits": { "description": "Deduplicated proof limits: those of the requested operation, or of the whole build on a full page.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } }
       }
     },
     "ContextItem": {
@@ -626,17 +692,21 @@
       }
     },
     "ContextData": {
+      "description": "One page of loom.context. For a component, record, claim or task it carries the constraints, decisions, records and evidence obligations of the required closure that fit the budget, nearest first; for a resume target it carries the resume state. The result's completeness names what the page omitted and the continuation that retrieves it.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["target", "items", "required", "constraints", "decisions", "evidence"],
+      "required": ["target"],
       "properties": {
-        "target": { "$ref": "#/$defs/ContextTarget" },
+        "target": { "oneOf": [{ "$ref": "#/$defs/ContextTarget" }, { "$ref": "#/$defs/ContextResumeTarget" }] },
+        "total": { "description": "How many records the required closure holds, on this page or not.", "type": "integer", "minimum": 0 },
         "items": { "type": "array", "items": { "$ref": "#/$defs/ContextItem" } },
-        "required": { "description": "Every record in the required dependency closure, returned or not.", "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
+        "oversized": { "description": "Records of the closure too large for any page of this budget, each with the record resource that returns it whole.", "type": "array", "items": { "$ref": "#/$defs/OversizedRecord" } },
         "constraints": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
         "decisions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Id" } },
-        "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceObligation" } }
-      }
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/EvidenceObligation" } },
+        "resume": { "$ref": "#/$defs/ResumeData" }
+      },
+      "oneOf": [{ "required": ["total", "items", "oversized", "constraints", "decisions", "evidence"] }, { "required": ["resume"] }]
     },
     "ReadinessData": {
       "type": "object",
@@ -1454,22 +1524,12 @@
       }
     },
     "DiscoveryBudget": {
-      "description": "The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.",
+      "description": "The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. A member left out takes its default. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "maxBytes": { "type": "integer", "minimum": 1024, "maximum": 65536, "default": 8192 },
         "maxRecords": { "type": "integer", "minimum": 1, "maximum": 200, "default": 32 }
-      }
-    },
-    "DescribePage": {
-      "description": "How much of loom.describe one call returns. 'summary', the default, returns descriptions and selected capability facts; 'full' returns the requested sections a page at a time within the budget, never an unbounded dump. Every omitted section or record is listed in the result's completeness.",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "detail": { "enum": ["summary", "full"], "default": "summary" },
-        "cursor": { "$ref": "#/$defs/Cursor" },
-        "budget": { "$ref": "#/$defs/DiscoveryBudget" }
       }
     },
     "OversizedRecord": {
@@ -1565,10 +1625,10 @@
       }
     },
     "OperationCatalogue": {
-      "description": "Every operation and resource Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.",
+      "description": "Every operation and resource Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools, entry points, proof limits and examples of loom.describe, the capabilities guide, the CLI usage text and dispatch words and Docs/operations.md are generated from it.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["catalogueVersion", "cli", "mcp", "presenceRules", "operations", "resources"],
+      "required": ["catalogueVersion", "cli", "mcp", "presenceRules", "operations", "workflow", "proofLimits", "resources"],
       "properties": {
         "catalogueVersion": { "const": 1 },
         "mcp": {
@@ -1607,7 +1667,30 @@
         },
         "presenceRules": { "type": "array", "items": { "$ref": "#/$defs/CataloguePresenceRule" } },
         "operations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/CatalogueOperation" } },
+        "workflow": { "description": "The steps of the agent workflow in order, each with the operations that perform it; the summary of loom.describe lists them as its entry points.", "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/CatalogueWorkflowStep" } },
+        "proofLimits": { "description": "What the results of the operations do not establish, each limit with the operations it applies to. This list is the one home of those limits; each profile holds its own, which apply to the operations marked as depending on profiles.", "type": "array", "items": { "$ref": "#/$defs/CatalogueProofLimit" } },
         "resources": { "description": "The resources beside the schema resources, each with the URI or URI template the server serves it at; this list is the one home of those URI forms.", "type": "array", "items": { "$ref": "#/$defs/CatalogueResource" } }
+      }
+    },
+    "CatalogueWorkflowStep": {
+      "description": "One step of the agent workflow and the operations that perform it, in the order they are used.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "operations"],
+      "properties": {
+        "step": { "description": "A clause without a closing period.", "type": "string", "pattern": "^[A-Z].*[^.;]$" },
+        "operations": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z]*$" } }
+      }
+    },
+    "CatalogueProofLimit": {
+      "description": "One proof limit: what the results of the named operations do not establish.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text", "operations"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/Id" },
+        "text": { "description": "One sentence.", "type": "string", "pattern": "^[A-Z].*[.]$" },
+        "operations": { "description": "The operations whose results the limit applies to.", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z]*$" } }
       }
     },
     "CatalogueOperation": {
@@ -1620,6 +1703,7 @@
         "purpose": { "description": "One sentence.", "type": "string", "pattern": "^[A-Z].*[.]$" },
         "prerequisites": { "description": "Clauses, each without a closing period.", "type": "array", "items": { "type": "string", "pattern": "^[a-z'(].*[^.;]$" } },
         "effects": { "description": "The effect on persisted state, named in the vocabulary of ToolEffect.", "type": "string", "pattern": "^[a-z]+$" },
+        "dependsOnProfiles": { "description": "True when the operation's result depends on the language and interface profiles, as a projection, a check or a qualification does, so every profile's proof limits apply to it.", "type": "boolean" },
         "refusals": {
           "description": "The important refusals: a cause of the result envelope's Refusal and when it is given.",
           "type": "array",

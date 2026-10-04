@@ -1,8 +1,9 @@
 // Contract generator. Inputs: schema/*.schema.json (authored once), schema/profiles/*.json,
-// schema/icd/*.json and the operation catalogue schema/operations.json. Outputs:
-// schema/patch.schema.json (derived from the model schema), src/generated/* and the operation
-// reference Docs/operations.md. `--check` regenerates in memory and exits 1 on any difference, so CI
-// fails on drift between the authored contract and everything derived from it.
+// schema/icd/*.json, the operation catalogue schema/operations.json and the hand-authored guidance
+// Docs/guides/*.md. Outputs: schema/patch.schema.json (derived from the model schema),
+// src/generated/* and the operation reference Docs/operations.md. `--check` regenerates in memory
+// and exits 1 on any difference, so CI fails on drift between the authored sources and everything
+// derived from them.
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -18,6 +19,8 @@ const CHECK = process.argv.includes('--check');
 const PATCH_FILE = 'patch.schema.json';
 const CATALOGUE_FILE = 'operations.json';
 const REFERENCE_FILE = join(ROOT, '..', '..', 'Docs', 'operations.md');
+const GUIDE_DIR = join(ROOT, '..', '..', 'Docs', 'guides');
+const ORIENTATION_FILE = 'orientation.md';
 const NOTICE_FILE = join(ROOT, 'src', 'projections', 'notice.ts');
 const BUNDLE_ID = 'urn:loom:schema';
 
@@ -394,9 +397,10 @@ function loadData(ajv, bundled) {
 // What the catalogue schema cannot state: unique names, references that resolve, vocabularies owned
 // by the result contract, a reason exactly where an interface is 'none', presence rules naming members
 // of their input and values those members admit, examples that satisfy their input definition or
-// start with their command, agent-tool actions covering their input's 'action' exactly once, and
-// resource templates whose variables name required members of what the resource returns. Every
-// problem is reported at once, so one run shows the whole repair.
+// start with their command, agent-tool actions covering their input's 'action' exactly once,
+// resource templates whose variables name required members of what the resource returns, and proof
+// limits and workflow steps naming operations that exist. Every problem is reported at once, so one
+// run shows the whole repair.
 function catalogueProblems(catalogue, bundled, ajv) {
   const problems = [];
   const defs = bundled.$defs;
@@ -477,6 +481,14 @@ function catalogueProblems(catalogue, bundled, ajv) {
     for (const m of r.uri.matchAll(/\{([A-Za-z]+)\}/g)) if (!required.has(m[1])) problems.push(`${at}: its variable '{${m[1]}}' names no required member of ${r.contents}`);
   }
   for (const r of catalogue.presenceRules) if (!named.has(r.id)) problems.push(`presence rule '${r.id}' is named by no tool`);
+  const limit = unique('proof limit');
+  for (const p of catalogue.proofLimits) {
+    limit(p.id);
+    for (const id of p.operations) if (!operations.has(id)) problems.push(`proof limit '${p.id}' names no operation '${id}'`);
+  }
+  catalogue.workflow.forEach((s, i) => {
+    for (const id of s.operations) if (!operations.has(id)) problems.push(`workflow step ${i + 1} names no operation '${id}'`);
+  });
   return problems;
 
   // The checks an advertised MCP tool and a catalogued agent tool share.
@@ -728,15 +740,16 @@ function markdownNotice() {
   return form.replace('${SOURCE_NOTICE}', notice);
 }
 
-function operationReference(catalogue, defs, tools, agentTools, rules, operations) {
+function operationReference(catalogue, defs, tools, agentTools, rules, operations, workflow, guidance) {
   const c = catalogue.cli;
   const options = c.commonOptions.map((o) => (o.purpose ? `${code(o.usage)} ${o.purpose}` : code(o.usage))).join(', ');
   const unlisted = catalogue.resources.filter((r) => r.exposure === 'none');
+  const dependent = catalogue.operations.filter((o) => o.dependsOnProfiles === true);
   const L = [
     markdownNotice(),
     '# Loom operations',
     '',
-    `Source: the operation catalogue ${code(`packages/core/schema/${CATALOGUE_FILE}`)}, whose shape is ${code('OperationCatalogue')} in ${code('packages/core/schema/tools.schema.json')}. ${code('npm run generate')} renders this reference, the MCP tool descriptions, the CLI usage text and the tools and examples of ${code('loom.describe')} from it, and ${code('npm run build')} fails when any of them differs from a fresh rendering.`,
+    `Source: the operation catalogue ${code(`packages/core/schema/${CATALOGUE_FILE}`)}, whose shape is ${code('OperationCatalogue')} in ${code('packages/core/schema/tools.schema.json')}. ${code('npm run generate')} renders this reference, the MCP tool descriptions, the CLI usage text, the tools, entry points, proof limits and examples of ${code('loom.describe')} and the capabilities guide from it, and ${code('npm run build')} fails when any of them differs from a fresh rendering.`,
     '',
     '## Command line',
     '',
@@ -752,7 +765,7 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
     '',
     ...tools.map((t, i) => `${i + 1}. ${code(t.name)}, operation ${anchor(operations.get(t.operation))}`),
     '',
-    `Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the ${code('loom://schema/<Definition>')} resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most ${catalogue.mcp.toolBudget} bytes, and the orientation instructions the server returns at initialization take at most ${catalogue.mcp.instructionsBudget} UTF-8 bytes.`,
+    `Each tool advertises compact input and output schemas derived from the contract bundle. A compact schema keeps the top-level members, their requirements and their simple types, and replaces deeper content with a value whose description names the ${code('loom://schema/<Definition>')} resource holding its full contract; the server serves those resources and validates every call against the full contract. One tool's advertised definition takes at most ${catalogue.mcp.toolBudget} bytes, and the orientation instructions the server returns at initialization take at most ${catalogue.mcp.instructionsBudget} UTF-8 bytes. The orientation is authored in ${code(`Docs/guides/${ORIENTATION_FILE}`)}, takes ${guidance.orientation.bytes} of those bytes, and opens the summary of ${code('loom.describe')}.`,
     ...(agentTools.length
       ? [
           '',
@@ -762,6 +775,22 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
         ]
       : []),
     '',
+    '## Workflow',
+    '',
+    `The summary of ${code('loom.describe')} lists these steps of the agent workflow as its entry points, each with the interfaces that perform it:`,
+    '',
+    ...workflow.map((s, i) => `${i + 1}. ${s.step}: ${s.interfaces.map((x) => (x.startsWith('loom.') ? code(x) : x)).join(', ')}.`),
+    '',
+    '## Proof limits',
+    '',
+    `Each limit states what the results of its operations do not establish. ${code('loom.describe')} with ${code('operation')} returns the limits of that operation, deduplicated, and a full page of its ${code('limits')} section returns every limit of this build once; the tool descriptions repeat none of them.`,
+    '',
+    '| Limit | Text | Operations |',
+    '| --- | --- | --- |',
+    ...catalogue.proofLimits.map((p) => `| ${code(p.id)} | ${p.text} | ${p.operations.map((id) => anchor(operations.get(id))).join(', ')} |`),
+    '',
+    `Every profile's own proof limits, stated in ${code('packages/core/schema/profiles')}, apply to the operations that depend on profiles: ${dependent.map(anchor).join(', ')}.`,
+    '',
     '## Resources',
     '',
     `Besides the schema resources, the catalogue defines these resources. A ${code('session')} resource is readable only by the session that holds the workspace handle.`,
@@ -770,6 +799,10 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
     '| --- | --- | --- | --- | --- |',
     ...catalogue.resources.map((r) => `| ${code(r.uri)} | ${code(r.contents)} | ${r.scope} | ${r.exposure === 'listed' ? 'yes' : 'no'} | ${r.purpose} |`),
     ...(unlisted.length ? ['', 'Not listed:', '', ...unlisted.map((r) => `- ${code(r.uri)}: ${r.reason}`)] : []),
+    '',
+    'The guides, each returned with the digest of its text and the contract digest:',
+    '',
+    ...guidance.guides.map((g) => `- ${code(g.uri)}: ${g.source === null ? 'generated from the operation catalogue and the profiles' : `authored in ${code(g.source)}`}`),
     '',
     '## Rendering budget',
     '',
@@ -793,6 +826,9 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
     L.push(`- Effects: ${code(op.effects)}, ${EFFECT_TEXT[op.effects]}.`);
     L.push(`- Refusals: ${op.refusals.length ? `${op.refusals.map((r) => `${code(r.cause)} when ${r.when}`).join('; ')}.` : 'none.'}`);
     L.push(`- Next action: ${op.nextAction.action}${target ? `, through ${anchor(target)}` : ''}.`);
+    const limits = catalogue.proofLimits.filter((p) => p.operations.includes(op.id)).map((p) => code(p.id));
+    const profileLimits = op.dependsOnProfiles === true ? "every profile's proof limits" : null;
+    L.push(`- Proof limits: ${limits.length || profileLimits ? `${[...limits, ...(profileLimits ? [profileLimits] : [])].join(', ')}.` : 'none.'}`);
     const agent = op.agentTool;
     const contract = contractOf(op);
     const subject = agent === undefined ? code(mcp === 'none' ? '' : mcp.tool) : agent.action === undefined ? code(agent.tool) : `action ${code(agent.action)} of ${code(agent.tool)}`;
@@ -821,8 +857,12 @@ function operationReference(catalogue, defs, tools, agentTools, rules, operation
   return `${L.join('\n')}\n`;
 }
 
-/** Every view of the catalogue: the generated module the adapters read, and the operation reference, whose rendering budget is read from the contract definitions. */
-function operationViews(catalogue, defs) {
+/**
+ * Every view of the catalogue: the generated module the adapters read, the guidance, whose
+ * capabilities guide lists the tools, and the operation reference, whose rendering budget is read
+ * from the contract definitions.
+ */
+function operationViews(catalogue, defs, profiles) {
   const rules = new Map(catalogue.presenceRules.map((r) => [r.id, r]));
   const operations = new Map(catalogue.operations.map((o) => [o.id, o]));
   const exposed = catalogue.operations.filter((o) => o.exposure.mcp !== 'none');
@@ -850,17 +890,18 @@ function operationViews(catalogue, defs) {
     return { name, input: ops[0].agentTool.input, description: agentToolDescription(ops, rules, operations), actions };
   });
   const commands = [...new Set(catalogue.operations.filter((o) => o.exposure.cli !== 'none').map((o) => commandWord(o.exposure.cli.command)))];
+  const workflow = catalogue.workflow.map((s) => ({ step: s.step, interfaces: s.operations.map((id) => interfaceOf(operations.get(id))) }));
   const json = (v) => JSON.stringify(v, null, 2);
   const module = [
     BANNER,
-    "import type { CataloguePresenceRule, DescribeData, OperationCatalogue } from './types.js';\n",
+    "import type { CataloguePresenceRule, DescribeData, OperationCatalogue, ToolEffect } from './types.js';\n",
     '/** One MCP tool as the server lists it: its operation, input and result definitions, effect, generated description and presence rules. */',
     'export interface CatalogueTool {',
     '  name: string;',
     '  operation: string;',
     '  input: string;',
     '  data: string;',
-    "  effects: DescribeData['tools'][number]['effects'];",
+    '  effects: ToolEffect;',
     '  description: string;',
     '  presence: readonly CataloguePresenceRule[];',
     '}\n',
@@ -869,7 +910,7 @@ function operationViews(catalogue, defs) {
     '  action?: string;',
     '  operation: string;',
     '  data: string;',
-    "  effects: DescribeData['tools'][number]['effects'];",
+    '  effects: ToolEffect;',
     '  description: string;',
     '  presence: readonly CataloguePresenceRule[];',
     '}\n',
@@ -887,7 +928,9 @@ function operationViews(catalogue, defs) {
     '/** Every agent tool the server does not advertise, in catalogue order. */',
     `export const AGENT_TOOLS: readonly AgentTool[] = ${json(agentTools)};\n`,
     "/** The MCP examples, in the shape of DescribeData's examples. */",
-    `export const TOOL_EXAMPLES: DescribeData['examples'] = ${json(examples)};\n`,
+    `export const TOOL_EXAMPLES: NonNullable<DescribeData['examples']> = ${json(examples)};\n`,
+    '/** The steps of the agent workflow, each with the interfaces that perform it: the entry points of the describe summary. */',
+    `export const WORKFLOW: NonNullable<DescribeData['entryPoints']> = ${json(workflow)};\n`,
     '/** The command words the CLI dispatches on, in catalogue order. */',
     `export const CLI_COMMANDS: readonly string[] = ${json(commands)};\n`,
     "/** The most bytes one tool's advertised definition may take: name, description, input and output schema, serialized as JSON. */",
@@ -897,7 +940,103 @@ function operationViews(catalogue, defs) {
     '/** The CLI usage text. */',
     `export const CLI_USAGE = ${JSON.stringify(cliUsage(catalogue))};\n`,
   ].join('\n');
-  return { module, reference: operationReference(catalogue, defs, tools, agentTools, rules, operations) };
+  const guidance = guideSources(catalogue, { tools, agentTools, operations }, profiles);
+  return { module, guidance, reference: operationReference(catalogue, defs, tools, agentTools, rules, operations, workflow, guidance) };
+}
+
+// ---------- guidance: the orientation and the guide resources ----------
+
+const GUIDE_PREFIX = 'loom://guide/';
+
+/**
+ * The capabilities guide, generated from the catalogue and the profiles so it cannot disagree with
+ * what this build advertises: the tools, the proof limits of the operations and each profile with
+ * its own limits, unsupported constructs and checks.
+ */
+function capabilitiesGuide(catalogue, profiles, tools, agentTools, operations) {
+  const dependent = catalogue.operations.filter((o) => o.dependsOnProfiles === true).map((o) => o.id);
+  const L = [
+    '# What this build supports',
+    '',
+    'This guide is generated from the operation catalogue and the profiles of this build. A proof limit states what a result does not establish, so a passing result never stands in for the evidence the limit names.',
+    '',
+    '## Tools',
+    '',
+    'The MCP server lists these tools, each with its effect on persisted state:',
+    '',
+    ...tools.map((t) => `- ${code(t.name)} (${t.effects}): ${operations.get(t.operation).purpose}`),
+  ];
+  if (agentTools.length) {
+    L.push('', 'The catalogue also defines these agent tools, which the server does not advertise:', '');
+    for (const t of agentTools) L.push(`- ${code(t.name)}: ${t.actions.map((a) => a.action ?? a.operation).join(', ')}`);
+  }
+  L.push('', '## Proof limits of the operations', '');
+  for (const p of catalogue.proofLimits) L.push(`- ${p.text} It applies to ${p.operations.join(', ')}.`);
+  L.push('', `Every profile's own proof limits apply to the operations that depend on profiles: ${dependent.join(', ')}.`, '', '## Profiles');
+  for (const p of profiles) {
+    L.push('', `### ${p.id}`, '', `A ${p.kind} profile, version ${p.version}. ${p.description}`, '');
+    for (const limit of p.proofLimits) L.push(`- Proof limit: ${limit}`);
+    L.push(`- Unsupported constructs: ${p.unsupported.length ? p.unsupported.map((u) => u.construct).join(', ') : 'none'}.`);
+    L.push(`- Checks: ${p.checks.length ? p.checks.map((c) => c.id).join(', ') : 'none'}.`);
+  }
+  return `${L.join('\n')}\n`;
+}
+
+/** The guides generation renders rather than reads, by guide name. */
+const GENERATED_GUIDES = { capabilities: capabilitiesGuide };
+
+/**
+ * The orientation and every guide resource of the catalogue. A guide is authored as
+ * Docs/guides/<name>.md unless generation renders it; every authored guide but the orientation has a
+ * catalogue resource and every guide resource has a source. The orientation is held to the
+ * instructions budget here, because a client may truncate or drop instructions that exceed it.
+ */
+function guideSources(catalogue, views, profiles) {
+  if (!existsSync(GUIDE_DIR)) fail(`${GUIDE_DIR} is missing; the orientation and the guides are authored there`);
+  const read = (file) => readFileSync(join(GUIDE_DIR, file), 'utf8').replace(/\r\n/g, '\n');
+  const titleOf = (name, text) => {
+    const m = /^# (\S.*)\n/.exec(text);
+    if (!m) fail(`guide '${name}' does not open with a level-one heading, its title`);
+    return m[1];
+  };
+  if (!existsSync(join(GUIDE_DIR, ORIENTATION_FILE))) fail(`Docs/guides/${ORIENTATION_FILE} is missing; the server returns it at initialization`);
+  const orientationText = read(ORIENTATION_FILE);
+  const bytes = Buffer.byteLength(orientationText, 'utf8');
+  if (bytes > catalogue.mcp.instructionsBudget) fail(`Docs/guides/${ORIENTATION_FILE} takes ${bytes} UTF-8 bytes, over the instructions budget of ${catalogue.mcp.instructionsBudget} (mcp.instructionsBudget of ${CATALOGUE_FILE})`);
+  const authored = readdirSync(GUIDE_DIR).filter((f) => f.endsWith('.md') && f !== ORIENTATION_FILE).sort();
+  const catalogued = catalogue.resources.filter((r) => r.contents === 'GuideResource');
+  const names = new Set();
+  const guides = catalogued.map((r) => {
+    if (!r.uri.startsWith(GUIDE_PREFIX) || !/^[a-z]+$/.test(r.uri.slice(GUIDE_PREFIX.length))) fail(`resource '${r.uri}' returns a GuideResource but is not a loom://guide/<name> URI`);
+    const name = r.uri.slice(GUIDE_PREFIX.length);
+    names.add(name);
+    const render = GENERATED_GUIDES[name];
+    if (render && authored.includes(`${name}.md`)) fail(`guide '${name}' is generated, so Docs/guides/${name}.md would be a second source`);
+    if (!render && !authored.includes(`${name}.md`)) fail(`resource '${r.uri}' has no source; author Docs/guides/${name}.md`);
+    const text = render ? render(catalogue, profiles, views.tools, views.agentTools, views.operations) : read(`${name}.md`);
+    return { uri: r.uri, title: titleOf(name, text), text, contentDigest: sha256(text), source: render ? null : `Docs/guides/${name}.md` };
+  });
+  for (const f of authored) if (!names.has(f.slice(0, -3))) fail(`Docs/guides/${f} is no catalogue resource; add ${GUIDE_PREFIX}${f.slice(0, -3)} to the resources of ${CATALOGUE_FILE}`);
+  return { orientation: { text: orientationText, contentDigest: sha256(orientationText), bytes, source: `Docs/guides/${ORIENTATION_FILE}` }, guides };
+}
+
+function guidanceModule(guidance) {
+  const json = (v) => JSON.stringify(v, null, 2);
+  return [
+    BANNER,
+    '/** One guide as generation embeds it: its URI, title, exact text, the digest of that text and the file it was authored in, or null when generation renders it. */',
+    'export interface EmbeddedGuide {',
+    '  uri: string;',
+    '  title: string;',
+    '  text: string;',
+    '  contentDigest: string;',
+    '  source: string | null;',
+    '}\n',
+    '/** The orientation the MCP server returns at initialization and the summary of loom.describe opens with: its exact text, the digest and the UTF-8 size of that text, and the file it was authored in. */',
+    `export const ORIENTATION: { readonly text: string; readonly contentDigest: string; readonly bytes: number; readonly source: string } = ${json(guidance.orientation)};\n`,
+    '/** Every guide resource of the operation catalogue, in catalogue order. */',
+    `export const GUIDES: readonly EmbeddedGuide[] = ${json(guidance.guides)};\n`,
+  ].join('\n');
 }
 
 // ---------- emit ----------
@@ -950,7 +1089,7 @@ async function generate() {
     .replace(new RegExp(String.raw` \*\n${provenance}`, 'g'), '');
 
   const json = (v) => JSON.stringify(v, null, 2);
-  const views = operationViews(data.operations, bundled.$defs);
+  const views = operationViews(data.operations, bundled.$defs, data.profiles);
   const outputs = new Map([
     [join(SCHEMA_DIR, PATCH_FILE), `${json(patch.schema)}\n`],
     [join(OUT_DIR, 'types.ts'), `${BANNER}/* eslint-disable */\n${types}`],
@@ -985,6 +1124,7 @@ async function generate() {
       ].join('\n'),
     ],
     [join(OUT_DIR, 'operations.ts'), views.module],
+    [join(OUT_DIR, 'guides.ts'), guidanceModule(views.guidance)],
     [REFERENCE_FILE, views.reference],
   ]);
 

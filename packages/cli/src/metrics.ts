@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { CONTRACT_DIGEST, FINDING_RULES, SCHEMA_BUNDLE, contextTool, declaredContradictions, sampleModel, seededRegressions } from '@loom/core';
+import { CONTRACT_DIGEST, DISCOVERY_LIMITS, FINDING_RULES, SCHEMA_BUNDLE, contextTool, declaredContradictions, sampleModel, seededRegressions } from '@loom/core';
 import type { FindingCode, MetricsReport, Model, RunRecord } from '@loom/core';
 import { ENGINE_VERSION } from '@loom/workspace';
 import { evaluateFixtures, readFixtureSets, type CaseOutcome, type Expectation } from './fixtures.js';
@@ -66,16 +66,17 @@ function manualDuplication(root: string): MetricsReport['manualDuplication'] {
   return { handMaintainedStructuralDeclarations: found, files: files.sort() };
 }
 
-/** The context tool's answer for every component of the sample and of the model of each fixture set's first case, within one fixed budget. */
+/** The context tool's first page for every component of the sample and of the model of each fixture set's first case, within the largest budget a page allows. */
 function contextSize(root: string): MetricsReport['contextSize'] {
   const models: Array<[string, Model]> = [['sample', sampleModel()]];
   for (const set of readFixtureSets(root)) {
     const first = set.cases[0];
     if (first) models.push([set.id, JSON.parse(readFileSync(join(root, ...`${set.dir}/${first.model}`.split('/')), 'utf8')) as Model]);
   }
+  const budget = { maxBytes: DISCOVERY_LIMITS.maxBytes, maxRecords: DISCOVERY_LIMITS.maxRecords };
   return models.flatMap(([name, model]) =>
     model.components.map((c) => {
-      const env = contextTool({ model, target: { kind: 'component', ref: { kind: 'component', id: c.id } }, budget: { maxRecords: 200 } });
+      const env = contextTool({ model, target: { kind: 'component', ref: { kind: 'component', id: c.id } }, budget });
       const items = (env.data as { items?: unknown[] } | undefined)?.items ?? [];
       return { target: `${name}/component:${c.id}`, records: items.length, bytes: Buffer.byteLength(JSON.stringify(items)), truncated: env.completeness.truncated };
     }),

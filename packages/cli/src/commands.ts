@@ -27,6 +27,7 @@ import type {
   Acceptance,
   ContextTarget,
   DescribeInput,
+  DiscoveryBudget,
   Finding,
   MetricsReport,
   Model,
@@ -477,7 +478,7 @@ export async function cmdQualify(ctx: Context): Promise<CommandResult> {
   if (unknownProfiles.length) throw new UsageError(`unknown profile(s): ${unknownProfiles.join(', ')}`);
   const checks = list(a, 'checks') ?? checksFor(s.workspace, list(a, 'profile'));
   const unknownChecks = checks.filter((id) => !known.has(id));
-  if (unknownChecks.length) throw new UsageError(`unknown check(s): ${unknownChecks.join(', ')}; loom describe --sections profiles lists them`);
+  if (unknownChecks.length) throw new UsageError(`unknown check(s): ${unknownChecks.join(', ')}; describe --detail full --sections profiles lists them`);
   const fixturesFile = flag(a, 'fixtures');
   const fixtures = (fixturesFile ? readJsonFile(resolve(ctx.cwd, fixturesFile), 'fixtures file') : {}) as Fixtures;
   if (!fixtures.baseline && s.inputs.baseline) fixtures.baseline = s.inputs.baseline.model;
@@ -532,6 +533,13 @@ export function cmdEvidence(ctx: Context): CommandResult {
   throw new UsageError("evidence needs the subcommand 'list' or 'show <id>'");
 }
 
+/** The page budget the --max-bytes and --max-records flags name; a flag left out leaves its member to the default. */
+function budgetOf(a: Args): DiscoveryBudget | undefined {
+  const maxBytes = integer(a, 'max-bytes');
+  const maxRecords = integer(a, 'max-records');
+  return maxBytes === undefined && maxRecords === undefined ? undefined : { ...(maxBytes !== undefined ? { maxBytes } : {}), ...(maxRecords !== undefined ? { maxRecords } : {}) };
+}
+
 export function cmdContext(ctx: Context): CommandResult {
   const s = session(ctx);
   if (!s.model) return noModel('loom.context', s);
@@ -541,14 +549,30 @@ export function cmdContext(ctx: Context): CommandResult {
   if (kind === 'task') target = { kind, task: taskOf(ctx) };
   else if (kind === 'component') target = { kind, ref: { kind: 'component', id: required(a, 'id') } };
   else target = { kind, ref: { kind: required(a, 'record-kind') as RecordKind, id: required(a, 'id') } };
-  const maxBytes = integer(a, 'max-bytes');
+  const budget = budgetOf(a);
   const continuation = flag(a, 'continuation');
-  const env = contextTool({ model: s.model, target, budget: { maxRecords: integer(a, 'max-records') ?? 50, ...(maxBytes !== undefined ? { maxBytes } : {}) }, ...(continuation ? { continuation } : {}) }, s.inputs);
+  // In workspace mode the request that starts again addresses the workspace, never a copy of its model.
+  const options = s.mode === 'workspace' ? { address: { workspace: true } } : {};
+  const env = contextTool({ model: s.model, target, ...(budget ? { budget } : {}), ...(continuation ? { continuation } : {}) }, s.inputs, options);
   return { env: stampSession(env, s) };
 }
 
 export function cmdDescribe(ctx: Context): CommandResult {
-  const sections = list(ctx.args, 'sections') as DescribeInput['sections'];
-  const profile = flag(ctx.args, 'profile');
-  return { env: describeTool({ ...(sections ? { sections } : {}), ...(profile ? { profile } : {}) }) };
+  const a = ctx.args;
+  const detail = flag(a, 'detail') as DescribeInput['detail'];
+  const sections = list(a, 'sections') as DescribeInput['sections'];
+  const profile = flag(a, 'profile');
+  const operation = flag(a, 'operation');
+  const cursor = flag(a, 'cursor');
+  const budget = budgetOf(a);
+  return {
+    env: describeTool({
+      ...(detail ? { detail } : {}),
+      ...(sections ? { sections } : {}),
+      ...(profile ? { profile } : {}),
+      ...(operation ? { operation } : {}),
+      ...(cursor ? { cursor } : {}),
+      ...(budget ? { budget } : {}),
+    }),
+  };
 }

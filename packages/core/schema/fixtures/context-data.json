@@ -1,0 +1,33 @@
+{
+  "definition": "ContextData",
+  "valid": [
+    {
+      "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } },
+      "total": 3,
+      "items": [],
+      "oversized": [{ "ref": { "kind": "type", "id": "order" }, "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 70000, "summary": "The type 'order' takes 70000 bytes of canonical JSON, more than the page budget.", "resource": "loom://workspaces/ws_3f9a1c7d/records/type/order", "revision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }],
+      "constraints": ["con.exact-money"],
+      "decisions": [],
+      "evidence": []
+    },
+    {
+      "target": { "kind": "resume" },
+      "resume": {
+        "outcome": null,
+        "phase": "unplanned",
+        "owningScopes": [],
+        "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] },
+        "frozenContracts": [],
+        "blockingUnknowns": [],
+        "evidence": [],
+        "pendingWork": [],
+        "nextActions": []
+      }
+    }
+  ],
+  "invalid": [
+    { "because": "a page carries either the members of a context page or the resume state", "keyword": "oneOf", "path": "", "instance": { "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } } },
+    { "because": "a page never carries a context page and a resume state at once", "keyword": "oneOf", "path": "", "instance": { "target": { "kind": "resume" }, "total": 0, "items": [], "oversized": [], "constraints": [], "decisions": [], "evidence": [], "resume": { "outcome": null, "phase": "unplanned", "owningScopes": [], "revisionVector": { "vectorVersion": 1, "models": [{ "modelId": "shop", "model": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "config": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy": null, "contract": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "generator": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "imports": [] }] }, "frozenContracts": [], "blockingUnknowns": [], "evidence": [], "pendingWork": [], "nextActions": [] } } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "total": 0, "items": [], "oversized": [], "constraints": [], "decisions": [], "evidence": [], "required": [] } }
+  ]
+}

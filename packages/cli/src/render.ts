@@ -20,7 +20,10 @@ export function renderEnvelope(env: ResultEnvelope, log: Log, detail: string[] =
   const counts = (['error', 'warning', 'info'] as const).map((sev) => `${env.findings.filter((f) => f.severity === sev).length} ${sev}`).join(', ');
   log(`  findings: ${env.findings.length} (${counts})`);
   for (const f of env.findings) for (const line of renderFinding(f)) log(line);
-  if (!env.completeness.complete) log(`  incomplete: ${env.completeness.omitted.length} omitted${env.completeness.continuation ? `; continue with --continuation ${env.completeness.continuation}` : ''}`);
+  // loom.describe continues with --cursor, after its input member; every other paged command with --continuation.
+  const resume = env.tool === 'loom.describe' ? '--cursor' : '--continuation';
+  if (!env.completeness.complete) log(`  incomplete: ${env.completeness.omitted.length} omitted${env.completeness.continuation ? `; continue with ${resume} ${env.completeness.continuation}` : ''}`);
+  for (const a of env.refusal?.nextActions ?? []) log(`  next: ${a.purpose}`);
 }
 
 /** Exit status: 0 when the result is ok with no error finding, 1 for a refusal or any error finding. */

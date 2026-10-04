@@ -1798,9 +1798,12 @@ export const ICDS: readonly Icd[] = [
         "kind": "function",
         "input": "tools.schema.json#/$defs/DescribeInput",
         "output": "result.schema.json#/$defs/ResultEnvelope",
-        "refusals": [],
+        "refusals": [
+          "invalid-input",
+          "stale-base"
+        ],
         "effects": "none",
-        "concurrency": "Pure; content is fixed by the contract digest."
+        "concurrency": "Pure; the orientation summary by default, the requested sections a page at a time within the discovery budget, or the deduplicated proof limits of one operation. The content is fixed by the contract digest and the embedded guides, and a cursor binds the request and both."
       },
       {
         "name": "context",
@@ -1809,10 +1812,11 @@ export const ICDS: readonly Icd[] = [
         "output": "result.schema.json#/$defs/ResultEnvelope",
         "refusals": [
           "invalid-input",
+          "stale-base",
           "unresolved-context"
         ],
         "effects": "none",
-        "concurrency": "Pure; a continuation token is derived from the model revision and the target."
+        "concurrency": "Pure; one page within the discovery budget, whose continuation binds the target, the budget and the revision it answers for: the model revision, or the digest of the revision vector the adapter supplies. A resume target is answered from the recorded progress the adapter supplies, never from inferred progress, and a truncated page establishes neither coverage nor readiness."
       },
       {
         "name": "checkReadiness",
@@ -1880,7 +1884,7 @@ export const ICDS: readonly Icd[] = [
         "output": "tools.schema.json#/$defs/GuideResource",
         "refusals": [],
         "effects": "none",
-        "concurrency": "Pure; each guide's text and its digests are fixed by the contract digest it names."
+        "concurrency": "Pure; the orientation and every guide are embedded when the contract is generated, and each guide is returned with the digest of its text and the contract digest it describes."
       },
       {
         "name": "resolveComposition",
@@ -2114,7 +2118,7 @@ export const ICDS: readonly Icd[] = [
         "output": "none",
         "refusals": [],
         "effects": "none",
-        "concurrency": "One concise orientation text returned at initialization, the same for every session under one contract digest and at most mcp.instructionsBudget UTF-8 bytes of the operation catalogue."
+        "concurrency": "One concise orientation text returned at initialization, the same for every session of one build and at most mcp.instructionsBudget UTF-8 bytes of the operation catalogue, which generation enforces."
       },
       {
         "name": "guideResources",
@@ -2123,7 +2127,7 @@ export const ICDS: readonly Icd[] = [
         "output": "tools.schema.json#/$defs/GuideResource",
         "refusals": [],
         "effects": "none",
-        "concurrency": "The guidance at loom://guide/engineering, loom://guide/workflow and loom://guide/capabilities, the same for every session and fixed by the contract digest each names."
+        "concurrency": "The guidance at loom://guide/engineering, loom://guide/workflow and loom://guide/capabilities, the same for every session of one build, each with the digest of its text and the contract digest it describes."
       },
       {
         "name": "workspaceStatusResource",

@@ -91,7 +91,8 @@ export function envelope(tool: string, parts: EnvelopeParts): ResultEnvelope {
   return env;
 }
 
-export const refusal = (cause: Refusal['cause'], message: string): Refusal => ({ cause, message });
+/** A refusal; `nextActions` names the concrete requests that would succeed instead, when there are any. */
+export const refusal = (cause: Refusal['cause'], message: string, nextActions: NonNullable<Refusal['nextActions']> = []): Refusal => (nextActions.length ? { cause, message, nextActions } : { cause, message });
 export const asFinding = (code: Finding['code'], path: string, message: string, fix: string): Finding => ({ code, severity: FINDING_RULES[code].severity, path, message, fix });
 
 /** Structurally load an untrusted model value, or return the refusal envelope for it. */

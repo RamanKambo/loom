@@ -23,6 +23,7 @@ import { CONTRADICTIONS } from './contradictions.js';
 import { DIFF_CASES } from './diffs.js';
 import { REGRESSIONS } from './regressions.js';
 import { EVALUATION_SECTIONS } from './evaluation.js';
+import { DISCOVERY_SECTIONS } from './discovery.js';
 import { PROJECTION_SECTIONS } from './projections.js';
 import { assert, assertThrows, codesOf, errorsOf, fresh, observe, pick, SelfTestFailure, type Tally } from './harness.js';
 
@@ -318,6 +319,7 @@ const SECTIONS: readonly Section[] = [
     },
   },
   ...EVALUATION_SECTIONS,
+  ...DISCOVERY_SECTIONS,
   {
     name: 'code accounting',
     run: (t) => {

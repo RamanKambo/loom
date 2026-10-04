@@ -1,0 +1,8 @@
+{
+  "definition": "DescribeSection",
+  "valid": ["records", "patches", "limits"],
+  "invalid": [
+    { "because": "the summary is a detail level, not a section", "keyword": "enum", "path": "", "instance": "summary" },
+    { "because": "sections are named by their section names, not by the members that carry them", "keyword": "enum", "path": "", "instance": "findingCodes" }
+  ]
+}

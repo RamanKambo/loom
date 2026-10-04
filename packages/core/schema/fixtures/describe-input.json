@@ -1,0 +1,17 @@
+{
+  "definition": "DescribeInput",
+  "valid": [
+    {},
+    { "detail": "summary" },
+    { "detail": "full", "sections": ["findings", "limits"], "cursor": "describe.sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.0123456789abcdef.32", "budget": { "maxBytes": 16384, "maxRecords": 64 } },
+    { "detail": "full", "profile": "sql" },
+    { "operation": "project", "budget": { "maxBytes": 1024 } }
+  ],
+  "invalid": [
+    { "because": "detail is a summary or a paginated full page, never an unbounded dump", "keyword": "enum", "path": "/detail", "instance": { "detail": "all" } },
+    { "because": "a page budget stays within the maxima", "keyword": "maximum", "path": "/budget/maxBytes", "instance": { "detail": "full", "budget": { "maxBytes": 1048576 } } },
+    { "because": "a section is one the description defines", "keyword": "enum", "path": "/sections/0", "instance": { "detail": "full", "sections": ["summary"] } },
+    { "because": "an operation is named by its catalogue id", "keyword": "pattern", "path": "/operation", "instance": { "operation": "Project things" } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "detail": "full", "page": 2 } }
+  ]
+}

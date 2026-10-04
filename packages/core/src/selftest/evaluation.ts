@@ -11,7 +11,6 @@ import { deriveObligations, evaluateEvidence } from '../evidence.js';
 import { checkReadiness, designOrder, recomputeReadiness } from '../readiness.js';
 import { checkReadinessTool, compareBaselineTool, contextTool, describeTool, evaluateEvidenceTool, planChangeTool } from '../tools.js';
 import { mutateTool } from '../envelope.js';
-import { continuationToken } from '../retrieval.js';
 import { baselineAccepted, resolveScope } from '../scope.js';
 import { mutate } from '../mutate.js';
 import { exportYaml, importModel } from '../exportModel.js';
@@ -375,13 +374,21 @@ export const EVALUATION_SECTIONS: readonly Section[] = [
       const m = sampleModel();
       const target = { kind: 'component' as const, ref: { kind: 'component' as const, id: 'ordering' } };
       const first = contextTool({ model: m, target, budget: { maxRecords: 3 } });
-      const page = first.data as { items: unknown[]; required: unknown[] };
-      assert(t, first.outcome === 'ok' && page.items.length === 3 && first.completeness.truncated && first.completeness.continuation !== undefined && first.completeness.omitted.length === page.required.length - 3, 'a budgeted context marks what it omitted and how to retrieve it');
-      const second = contextTool({ model: m, target, budget: { maxRecords: 1000 }, continuation: first.completeness.continuation! });
-      assert(t, second.outcome === 'ok' && (second.data as { items: unknown[] }).items.length === page.required.length - 3 && !second.completeness.truncated, 'the continuation retrieves the rest');
-      const stale = contextTool({ model: m, target, budget: { maxRecords: 3 }, continuation: continuationToken(HASH('7'), 3) });
+      const page = first.data as { items: unknown[]; total: number; constraints: unknown[]; decisions: unknown[] };
+      const carried = page.constraints.length + page.decisions.length + page.items.length;
+      assert(t, first.outcome === 'ok' && carried === 3 && first.completeness.truncated && first.completeness.continuation !== undefined && first.completeness.omitted.some((o) => o.section === 'items' && o.reason === 'budget' && o.continuation === first.completeness.continuation), 'a budgeted context marks what it omitted and how to retrieve it');
+      let items = page.items.length;
+      let token: string | undefined = first.completeness.continuation;
+      let last = first;
+      while (token !== undefined) {
+        last = contextTool({ model: m, target, budget: { maxRecords: 3 }, continuation: token });
+        items += ((last.data as { items?: unknown[] } | undefined)?.items ?? []).length;
+        token = last.completeness.continuation;
+      }
+      assert(t, last.outcome === 'ok' && items === page.total && !last.completeness.truncated, `following the continuations retrieves every record of the closure: ${items} of ${page.total}`);
+      const stale = contextTool({ model: m, target, budget: { maxRecords: 3 }, continuation: (first.completeness.continuation as string).replace(modelRevision(m), HASH('7')) });
       assert(t, stale.refusal?.cause === 'stale-base' && codesOf(observe(t, stale.findings)).includes('STALE_BASE_REVISION'), 'a continuation for another revision is refused');
-      for (const env of [first, second, stale]) assert(t, schemaErrors('ResultEnvelope', env).length === 0, `the context result satisfies the result contract: ${JSON.stringify(schemaErrors('ResultEnvelope', env))}`);
+      for (const env of [first, last, stale]) assert(t, schemaErrors('ResultEnvelope', env).length === 0, `the context result satisfies the result contract: ${JSON.stringify(schemaErrors('ResultEnvelope', env))}`);
       assert(t, schemaErrors('ContextData', first.data).length === 0, 'the context payload satisfies its contract');
       const wrongBase = planChangeTool({ model: m, baseRevision: HASH('8'), patch: { op: 'clearSystemProfile' } });
       assert(t, wrongBase.refusal?.cause === 'stale-base', 'a change planned against another revision is refused');

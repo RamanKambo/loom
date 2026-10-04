@@ -344,7 +344,8 @@ const HANDLERS: Record<string, (c: Call) => ResultEnvelope> = {
   'loom.import': (c) => importTool(c.args),
   'loom.selftest': () => envelope('loom.selftest', { model: null, findings: [], states: defaultStates({ state: 'notEvaluated', reasons: [] }), data: quietSelfTest() }),
   'loom.describe': (c) => describeTool(c.args),
-  'loom.context': (c) => c.stamp(contextTool(c.local(), c.inputs)),
+  // A follow-up action addresses the workspace the way this call did, never by repeating its model.
+  'loom.context': (c) => c.stamp(contextTool(c.local(), c.inputs, c.inWorkspace ? { address: { workspace: true } } : {})),
   'loom.checkReadiness': (c) => c.stamp(checkReadinessTool(c.local(), c.inputs)),
   'loom.planChange': (c) => c.stamp(planChangeTool(c.local(), c.inputs)),
 };

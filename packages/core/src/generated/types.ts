@@ -787,6 +787,20 @@ export type Severity = 'error' | 'warning' | 'info';
  */
 export type ToolEffect = 'none' | 'reads' | 'writes';
 /**
+ * A section of a full description. Pages return the sections in this order: record kinds, patch operations, finding codes, comparison rules, projection targets, profiles, tools, examples, unavailable features and proof limits.
+ */
+export type DescribeSection =
+  | 'records'
+  | 'patches'
+  | 'findings'
+  | 'comparison'
+  | 'projections'
+  | 'profiles'
+  | 'tools'
+  | 'examples'
+  | 'unavailable'
+  | 'limits';
+/**
  * The stage of work a workspace is in.
  */
 export type WorkflowPhase =
@@ -7450,6 +7464,40 @@ export interface Completeness {
 export interface Refusal {
   cause: RefusalCause;
   message: string;
+  /**
+   * Concrete actions that would let the request succeed, such as asking again from the first page once a continuation went stale; each one's arguments satisfy its tool's input.
+   */
+  nextActions?: NextAction[];
+}
+/**
+ * A next step offered to the caller: its purpose, the tool and the arguments that perform it, what it needs, what it changes and what blocks it. The arguments satisfy that tool's input, and an action never invents authorization.
+ */
+export interface NextAction {
+  purpose: Text;
+  tool: string;
+  arguments: {};
+  prerequisites: Text[];
+  effects: ToolEffect;
+  blockedBy: Prerequisite[];
+}
+export interface Prerequisite {
+  ref: RecordRef;
+  requirement:
+    | 'contract'
+    | 'implementation'
+    | 'evidence'
+    | 'decision'
+    | 'unknown'
+    | 'assumption'
+    | 'baseline'
+    | 'acceptance'
+    | 'policy'
+    | 'validation';
+  maturityRequired?: Maturity;
+  maturityActual?: Maturity;
+  revision?: string;
+  code: FindingCode;
+  message: string;
 }
 /**
  * Every CLI, MCP and designer result. 'data' carries the tool-specific payload declared by the tool's output contract.
@@ -7519,12 +7567,41 @@ export interface ImportInput {
   format?: 'json' | 'yaml';
 }
 export interface SelftestInput {}
+/**
+ * The arguments of loom.describe. Without 'detail' the result is the orientation summary; 'detail': 'full' returns the requested sections a page at a time within the budget, 'cursor' continues where a page ended, and 'operation' returns the proof limits of one operation alone. Every omitted part, section or record is listed in the result's completeness.
+ */
 export interface DescribeInput {
+  /**
+   * 'summary', the default, returns the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links; 'full' returns the requested sections a page at a time, never an unbounded dump.
+   */
+  detail?: 'summary' | 'full';
+  /**
+   * The sections a full description returns; every section when absent.
+   *
+   * @minItems 1
+   */
+  sections?: DescribeSection[];
+  /**
+   * Return only this profile in the profiles section.
+   */
   profile?: string;
+  /**
+   * A catalogue operation id: return only the proof limits of that operation, deduplicated.
+   */
+  operation?: string;
+  /**
+   * An opaque continuation token. It binds the filters and the revision vector of the request that issued it, and a changed input invalidates it.
+   */
+  cursor?: string;
+  budget?: DiscoveryBudget;
   resultVersion?: number;
-  sections?: (
-    'records' | 'patches' | 'findings' | 'comparison' | 'projections' | 'profiles' | 'tools' | 'examples' | 'limits'
-  )[];
+}
+/**
+ * The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. A member left out takes its default. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.
+ */
+export interface DiscoveryBudget {
+  maxBytes?: number;
+  maxRecords?: number;
 }
 export interface ContextTarget {
   kind: 'component' | 'record' | 'claim' | 'task';
@@ -7546,16 +7623,22 @@ export interface TaskSpec {
     kind: SubstituteKind;
   }[];
 }
+/**
+ * The arguments of loom.context: the model, the target and an optional discovery budget whose members take their defaults when left out. 'continuation' continues where a page ended; it binds the target, the budget and the revision it was issued for.
+ */
 export interface ContextInput {
   model?: Model;
   workspace?: true;
   modelRevision?: Hash;
-  target: ContextTarget;
-  budget: {
-    maxRecords: number;
-    maxBytes?: number;
-  };
-  continuation?: string;
+  target: ContextTarget | ContextResumeTarget;
+  budget?: DiscoveryBudget;
+  continuation?: Cursor;
+}
+/**
+ * A context target of kind 'resume': the state a resumed session restates before it continues, answered by ResumeData.
+ */
+export interface ContextResumeTarget {
+  kind: 'resume';
 }
 export interface CheckReadinessInput {
   model?: Model;
@@ -7575,25 +7658,6 @@ export interface PlanChangeInput {
    */
   patches?: Patch[];
   acknowledgeBreaking?: string[];
-}
-export interface Prerequisite {
-  ref: RecordRef;
-  requirement:
-    | 'contract'
-    | 'implementation'
-    | 'evidence'
-    | 'decision'
-    | 'unknown'
-    | 'assumption'
-    | 'baseline'
-    | 'acceptance'
-    | 'policy'
-    | 'validation';
-  maturityRequired?: Maturity;
-  maturityActual?: Maturity;
-  revision?: string;
-  code: FindingCode;
-  message: string;
 }
 export interface AppliedSubstitute {
   dependency: RecordRef;
@@ -7749,28 +7813,72 @@ export interface SelftestData {
     failure?: string;
   }[];
 }
+/**
+ * One page of loom.describe. A summary carries the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links; a full page carries the records of the requested sections that fit the budget; the answer for an operation carries its proof limits. A member is present exactly when its part or section is on the page, and the result's completeness lists every omitted one.
+ */
 export interface DescribeData {
   contractDigest: Hash;
   resultVersion: 1;
   modelFormat: 1;
-  records: {
+  /**
+   * Non-empty prose. An unknown value is recorded as an unknown record, never as an empty string.
+   */
+  orientation?: string;
+  /**
+   * The steps of the agent workflow in order, each with the interfaces that perform it.
+   */
+  entryPoints?: {
+    step: Text;
+    /**
+     * @minItems 1
+     */
+    interfaces: Text[];
+  }[];
+  /**
+   * Selected facts of this build: how many records each full section holds, and the profile ids.
+   */
+  capabilities?: {
+    sections: {
+      section: DescribeSection;
+      records: number;
+    }[];
+    profiles: Id[];
+  };
+  /**
+   * The guidance resources, each with the digest of its text.
+   */
+  guides?: {
+    uri: string;
+    title: Text;
+    contentDigest: Hash;
+  }[];
+  /**
+   * The resources the operation catalogue defines beside the schema resources, and whether the server lists them.
+   */
+  resources?: {
+    uri: string;
+    contents: string;
+    scope: 'server' | 'session';
+    listed: boolean;
+  }[];
+  records?: {
     collection: string;
     kind: RecordKind;
     definition: string;
     key: string[];
   }[];
-  patchOperations: {
+  patchOperations?: {
     op: string;
     collection: string;
     items?: string;
     definition: string;
   }[];
-  findingCodes: {
+  findingCodes?: {
     code: FindingCode;
     severity: Severity;
     rule: string;
   }[];
-  comparisonRules: {
+  comparisonRules?: {
     rule: string;
     /**
      * 'contextual' when the kind is decided per change, for example by the consumers of an added enum value.
@@ -7779,26 +7887,33 @@ export interface DescribeData {
     dimension: Dimension | 'contextual';
     description: string;
   }[];
-  projectionTargets: {
+  projectionTargets?: {
     target: ProjectionTarget;
     files: string[];
     instancing: 'singleton' | 'per-component';
   }[];
-  profiles: ProfileDefinition[];
-  tools: {
+  profiles?: ProfileDefinition[];
+  /**
+   * The tools the MCP server lists, in its order, each with its effect on persisted state and its purpose.
+   */
+  tools?: {
     name: string;
     effects: ToolEffect;
+    purpose: Text;
   }[];
-  examples: {
+  examples?: {
     tool: string;
     description: string;
     input: {};
   }[];
-  unavailable: {
+  unavailable?: {
     feature: string;
     reason: string;
   }[];
-  proofLimits: string[];
+  /**
+   * Deduplicated proof limits: those of the requested operation, or of the whole build on a full page.
+   */
+  proofLimits?: Text[];
 }
 export interface ContextItem {
   ref: RecordRef;
@@ -7816,16 +7931,91 @@ export interface ContextItem {
     hash?: Hash;
   };
 }
+/**
+ * One page of loom.context. For a component, record, claim or task it carries the constraints, decisions, records and evidence obligations of the required closure that fit the budget, nearest first; for a resume target it carries the resume state. The result's completeness names what the page omitted and the continuation that retrieves it.
+ */
 export interface ContextData {
-  target: ContextTarget;
-  items: ContextItem[];
+  target: ContextTarget | ContextResumeTarget;
   /**
-   * Every record in the required dependency closure, returned or not.
+   * How many records the required closure holds, on this page or not.
    */
-  required: RecordRef[];
-  constraints: Id[];
-  decisions: Id[];
+  total?: number;
+  items?: ContextItem[];
+  /**
+   * Records of the closure too large for any page of this budget, each with the record resource that returns it whole.
+   */
+  oversized?: OversizedRecord[];
+  constraints?: Id[];
+  decisions?: Id[];
+  evidence?: EvidenceObligation[];
+  resume?: ResumeData;
+}
+/**
+ * A record too large for a discovery page: its reference, hash, size and summary, and the revision-bound record resource that returns it whole. A page never omits a record's existence.
+ */
+export interface OversizedRecord {
+  ref: RecordRef;
+  hash: Hash;
+  /**
+   * The size of the record's canonical JSON.
+   */
+  bytes: number;
+  summary: string;
+  /**
+   * The URI of the record resource.
+   */
+  resource: string;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  revision: string;
+}
+/**
+ * What a resumed session needs before it continues, at one revision vector: the outcome, the phase, the owning scopes, the frozen contracts, the unknowns that block work, the relevant evidence, the pending work and concrete next actions. Omitted entries are listed in the result's completeness, and a truncated resume establishes neither coverage nor readiness.
+ */
+export interface ResumeData {
+  /**
+   * The outcome the work pursues, or null when the workspace records none.
+   */
+  outcome: WorkflowOutcome | null;
+  phase: WorkflowPhase;
+  /**
+   * The source roots each component claims, with the model that owns it.
+   */
+  owningScopes: {
+    modelId: ModelId;
+    component: Id;
+    roots: RelativePath[];
+  }[];
+  revisionVector: RevisionVector;
+  /**
+   * The contract records an accepted baseline freezes, with the hash it froze.
+   */
+  frozenContracts: {
+    ref: RecordRef;
+    baseline: Id;
+    hash: Hash;
+    version?: ContractVersion;
+  }[];
+  blockingUnknowns: Unknown[];
   evidence: EvidenceObligation[];
+  pendingWork: PendingWork[];
+  nextActions: NextAction[];
+}
+/**
+ * The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.
+ */
+export interface WorkflowOutcome {
+  statement: Text;
+  exclusions: Text[];
+  constraints: Text[];
+}
+/**
+ * A work package that is not done, and whether it is planned, in progress or blocked.
+ */
+export interface PendingWork {
+  workPackage: string;
+  status: 'planned' | 'in-progress' | 'blocked';
 }
 export interface ReadinessData {
   task: TaskSpec;
@@ -7878,17 +8068,6 @@ export interface WorkspaceHandle {
   viewUrl?: string;
 }
 /**
- * A next step offered to the caller: its purpose, the tool and the arguments that perform it, what it needs, what it changes and what blocks it. The arguments satisfy that tool's input, and an action never invents authorization.
- */
-export interface NextAction {
-  purpose: Text;
-  tool: string;
-  arguments: {};
-  prerequisites: Text[];
-  effects: ToolEffect;
-  blockedBy: Prerequisite[];
-}
-/**
  * A bounded summary of one workspace at one revision vector: its handle, phase, scope, imports, open unknowns, pending work and next actions, with completeness naming what it omitted. It never carries credentials or the whole model.
  */
 export interface WorkspaceSummary {
@@ -7910,13 +8089,6 @@ export interface WorkspaceSummary {
   pendingWork: PendingWork[];
   nextActions: NextAction[];
   completeness: Completeness;
-}
-/**
- * A work package that is not done, and whether it is planned, in progress or blocked.
- */
-export interface PendingWork {
-  workPackage: string;
-  status: 'planned' | 'in-progress' | 'blocked';
 }
 /**
  * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
@@ -8658,87 +8830,6 @@ export interface BrowserRejection {
   message: string;
 }
 /**
- * The size of one discovery page, counted over its data representation alone, without the bounded envelope or the protocol's structured and text duplication. The defaults and maxima stated here are the only home of those numbers. A record too large for a page is returned as an OversizedRecord.
- */
-export interface DiscoveryBudget {
-  maxBytes?: number;
-  maxRecords?: number;
-}
-/**
- * How much of loom.describe one call returns. 'summary', the default, returns descriptions and selected capability facts; 'full' returns the requested sections a page at a time within the budget, never an unbounded dump. Every omitted section or record is listed in the result's completeness.
- */
-export interface DescribePage {
-  detail?: 'summary' | 'full';
-  cursor?: Cursor;
-  budget?: DiscoveryBudget;
-}
-/**
- * A record too large for a discovery page: its reference, hash, size and summary, and the revision-bound record resource that returns it whole. A page never omits a record's existence.
- */
-export interface OversizedRecord {
-  ref: RecordRef;
-  hash: Hash;
-  /**
-   * The size of the record's canonical JSON.
-   */
-  bytes: number;
-  summary: string;
-  /**
-   * The URI of the record resource.
-   */
-  resource: string;
-  /**
-   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
-   */
-  revision: string;
-}
-/**
- * A context target of kind 'resume': the state a resumed session restates before it continues, answered by ResumeData.
- */
-export interface ContextResumeTarget {
-  kind: 'resume';
-}
-/**
- * What a resumed session needs before it continues, at one revision vector: the outcome, the phase, the owning scopes, the frozen contracts, the unknowns that block work, the relevant evidence, the pending work and concrete next actions. Omitted entries are listed in the result's completeness, and a truncated resume establishes neither coverage nor readiness.
- */
-export interface ResumeData {
-  /**
-   * The outcome the work pursues, or null when the workspace records none.
-   */
-  outcome: WorkflowOutcome | null;
-  phase: WorkflowPhase;
-  /**
-   * The source roots each component claims, with the model that owns it.
-   */
-  owningScopes: {
-    modelId: ModelId;
-    component: Id;
-    roots: RelativePath[];
-  }[];
-  revisionVector: RevisionVector;
-  /**
-   * The contract records an accepted baseline freezes, with the hash it froze.
-   */
-  frozenContracts: {
-    ref: RecordRef;
-    baseline: Id;
-    hash: Hash;
-    version?: ContractVersion;
-  }[];
-  blockingUnknowns: Unknown[];
-  evidence: EvidenceObligation[];
-  pendingWork: PendingWork[];
-  nextActions: NextAction[];
-}
-/**
- * The outcome the work pursues, what it excludes and its hard constraints: what a resumed session restates before it continues.
- */
-export interface WorkflowOutcome {
-  statement: Text;
-  exclusions: Text[];
-  constraints: Text[];
-}
-/**
  * The text of one guidance resource, with the digest of its content and the contract digest it describes.
  */
 export interface GuideResource {
@@ -8766,7 +8857,7 @@ export interface RecordResource {
   record: {};
 }
 /**
- * Every operation and resource Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools and examples of loom.describe, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
+ * Every operation and resource Loom exposes or catalogues, authored once in operations.json. The MCP tool list and descriptions, the tools, entry points, proof limits and examples of loom.describe, the capabilities guide, the CLI usage text and dispatch words and Docs/operations.md are generated from it.
  */
 export interface OperationCatalogue {
   catalogueVersion: 1;
@@ -8804,6 +8895,16 @@ export interface OperationCatalogue {
    * @minItems 1
    */
   operations: CatalogueOperation[];
+  /**
+   * The steps of the agent workflow in order, each with the operations that perform it; the summary of loom.describe lists them as its entry points.
+   *
+   * @minItems 1
+   */
+  workflow: CatalogueWorkflowStep[];
+  /**
+   * What the results of the operations do not establish, each limit with the operations it applies to. This list is the one home of those limits; each profile holds its own, which apply to the operations marked as depending on profiles.
+   */
+  proofLimits: CatalogueProofLimit[];
   /**
    * The resources beside the schema resources, each with the URI or URI template the server serves it at; this list is the one home of those URI forms.
    */
@@ -8859,6 +8960,10 @@ export interface CatalogueOperation {
    * The effect on persisted state, named in the vocabulary of ToolEffect.
    */
   effects: string;
+  /**
+   * True when the operation's result depends on the language and interface profiles, as a projection, a check or a qualification does, so every profile's proof limits apply to it.
+   */
+  dependsOnProfiles?: boolean;
   /**
    * The important refusals: a cause of the result envelope's Refusal and when it is given.
    */
@@ -8954,6 +9059,35 @@ export interface CatalogueAgentTool {
      */
     input: {};
   }[];
+}
+/**
+ * One step of the agent workflow and the operations that perform it, in the order they are used.
+ */
+export interface CatalogueWorkflowStep {
+  /**
+   * A clause without a closing period.
+   */
+  step: string;
+  /**
+   * @minItems 1
+   */
+  operations: string[];
+}
+/**
+ * One proof limit: what the results of the named operations do not establish.
+ */
+export interface CatalogueProofLimit {
+  id: Id;
+  /**
+   * One sentence.
+   */
+  text: string;
+  /**
+   * The operations whose results the limit applies to.
+   *
+   * @minItems 1
+   */
+  operations: string[];
 }
 /**
  * A resource of the MCP server beside the schema resources: its URI or URI template, its purpose, the definition of what it returns, whether it reads the same for every session or only for the requesting one, and whether the server lists it. Every variable of a template names a required member of what the resource returns.

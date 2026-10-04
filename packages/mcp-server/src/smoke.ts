@@ -7,8 +7,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
-import { MCP_TOOL_BUDGET, canonicalStringify, exportModel, modelRevision, sampleModel, textHash } from '@loom/core';
-import type { LoomConfig, Model, ResultEnvelope } from '@loom/core';
+import { CONTRACT_DIGEST, DISCOVERY_LIMITS, MCP_INSTRUCTIONS_BUDGET, MCP_TOOL_BUDGET, ORIENTATION_TEXT, canonicalStringify, dataBytes, exportModel, guides, modelRevision, sampleModel, schemaErrors, textHash, utf8Bytes } from '@loom/core';
+import type { GuideResource, LoomConfig, Model, ResultEnvelope } from '@loom/core';
 import { initWorkspace } from '@loom/workspace';
 import { createLoomServer } from './server.js';
 import { TOOL_CONTRACTS, advertisedBytes, budgetProblems, contractOutputSchemaOf, schemaUri, type ToolDefinition } from './tools.js';
@@ -65,16 +65,22 @@ function pointedDefinitions(node: unknown, out = new Set<string>()): Set<string>
 }
 
 /**
- * Non-interactive proof of the server over the real protocol: every tool lists
- * a compact input and output schema within the tool budget, every schema
- * resource those schemas name is listed and compiles, every result validates
- * against the full contract and is accepted by the advertised schema, refusals
- * are typed, a persistent mutation cannot overwrite a concurrent one, a dry run
- * writes nothing, and a client without structured results receives an explicit
+ * Non-interactive proof of the server over the real protocol: initialization
+ * returns the orientation within the instructions budget, every tool lists a
+ * compact input and output schema within the tool budget, every schema
+ * resource those schemas name is listed and compiles, every guide is listed
+ * with the digests of its text and contract, the default description stays
+ * within the default discovery budget, every result validates against the full
+ * contract and is accepted by the advertised schema, refusals are typed, a
+ * persistent mutation cannot overwrite a concurrent one, a dry run writes
+ * nothing, and a client without structured results receives an explicit
  * compatibility result.
  */
 async function main(): Promise<void> {
   const client = await connect();
+  const instructions = client.getInstructions() ?? '';
+  expect(instructions === ORIENTATION_TEXT, 'initialization returns the orientation as the server instructions');
+  expect(utf8Bytes(instructions) <= MCP_INSTRUCTIONS_BUDGET, `the instructions take ${utf8Bytes(instructions)} UTF-8 bytes, over the budget of ${MCP_INSTRUCTIONS_BUDGET}`);
   const list = await client.listTools();
   expect(list.tools.length === TOOL_CONTRACTS.length, `expected ${TOOL_CONTRACTS.length} tools, got ${list.tools.length}`);
   const listBytes = Buffer.byteLength(JSON.stringify(list), 'utf8');
@@ -101,6 +107,13 @@ async function main(): Promise<void> {
     const text = (read.contents[0] as { text?: string } | undefined)?.text ?? '';
     new Ajv2020({ strict: false, allErrors: true, allowUnionTypes: true, validateFormats: false }).compile(JSON.parse(text) as object);
   }
+  for (const g of guides()) {
+    expect(listed.has(g.uri), `${g.uri} is not listed`);
+    const read = await client.readResource({ uri: g.uri });
+    const served = JSON.parse((read.contents[0] as { text?: string } | undefined)?.text ?? '{}') as GuideResource;
+    expect(schemaErrors('GuideResource', served).length === 0, `${g.uri} does not satisfy GuideResource: ${JSON.stringify(schemaErrors('GuideResource', served))}`);
+    expect(served.contentDigest === textHash(served.text) && served.contractDigest === CONTRACT_DIGEST, `${g.uri} names another digest than its text's or the contract's`);
+  }
   const conform = (name: string, structured: unknown): void => {
     const full = contractValidators.get(name);
     expect(Boolean(full && full(structured)), `${name} structuredContent does not match the full contract of its result: ${JSON.stringify(full?.errors?.slice(0, 3))}`);
@@ -118,7 +131,7 @@ async function main(): Promise<void> {
     ['loom.export', { model, format: 'yaml' }],
     ['loom.import', { text: exportModel(model) }],
     ['loom.selftest', {}],
-    ['loom.describe', { sections: ['tools', 'limits'] }],
+    ['loom.describe', { detail: 'full', sections: ['tools', 'limits'] }],
     ['loom.context', { model, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 5 } }],
     ['loom.checkReadiness', { model, task: { class: 'implementation', mode: 'component', components: ['ordering'] } }],
     ['loom.planChange', { model, baseRevision: modelRevision(model), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order.' } } }],
@@ -129,8 +142,14 @@ async function main(): Promise<void> {
     expect(canonicalStringify(r.structured) === r.text, `${name} text fallback differs from structuredContent`);
     expect(r.env.outcome === 'ok', `${name} was refused: ${JSON.stringify(r.env.refusal)} ${JSON.stringify(r.env.findings.slice(0, 2))}`);
   }
-  const context = await call(client, 'loom.context', cases[9]?.[1] as Record<string, unknown>);
+  const contextArgs = cases.find(([name]) => name === 'loom.context')?.[1] as Record<string, unknown>;
+  const context = await call(client, 'loom.context', contextArgs);
   expect(!context.env.completeness.complete && typeof context.env.completeness.continuation === 'string', 'a context result over its budget names its omissions and continuation');
+  const summary = await call(client, 'loom.describe', {});
+  conform('loom.describe', summary.structured);
+  const summaryBytes = dataBytes(summary.env.data);
+  expect(summaryBytes <= DISCOVERY_LIMITS.defaultBytes, `the default description takes ${summaryBytes} bytes of data, over the default budget of ${DISCOVERY_LIMITS.defaultBytes}`);
+  const staleToken = (context.env.completeness.continuation as string).replace(modelRevision(model), textHash('another'));
 
   const refusals: Array<[string, Record<string, unknown>, string]> = [
     ['loom.mutate', { model, patch: { op: 'update', collection: 'mutations', id: 'order.pay', set: { gaurd: { form: 'prose', text: 'x' } } } }, 'PATCH_INVALID'],
@@ -138,13 +157,16 @@ async function main(): Promise<void> {
     ['loom.validate', { model, extra: true }, 'STRUCTURAL_INVALID'],
     ['loom.validate', { model: { version: 2 } }, 'MODEL_FORMAT_UNSUPPORTED'],
     ['loom.planChange', { model, baseRevision: textHash('another revision'), patch: { op: 'clearSystemProfile' } }, 'STALE_BASE_REVISION'],
-    ['loom.context', { model, target: { kind: 'component', ref: { kind: 'component', id: 'ordering' } }, budget: { maxRecords: 5 }, continuation: `ctx1.${textHash('another')}.5` }, 'STALE_BASE_REVISION'],
+    ['loom.context', { ...contextArgs, continuation: staleToken }, 'STALE_BASE_REVISION'],
+    ['loom.describe', { detail: 'summary', sections: ['findings'] }, 'STRUCTURAL_INVALID'],
   ];
   for (const [name, args, code] of refusals) {
     const r = await call(client, name, args);
     conform(name, r.structured);
     expect(r.env.outcome === 'refused' && r.env.findings.some((f) => f.code === code), `${name} should refuse with ${code}, got ${r.env.outcome} ${r.env.findings.map((f) => f.code).join(',')}`);
   }
+  const replan = (await call(client, 'loom.context', { ...contextArgs, continuation: staleToken })).env.refusal?.nextActions?.[0];
+  expect(replan?.tool === 'loom.context' && (replan.arguments as Record<string, unknown>)['continuation'] === undefined, 'a stale continuation is refused with the request that starts again');
 
   const ws = fixtureWorkspace();
   try {
@@ -194,6 +216,7 @@ async function main(): Promise<void> {
   expect(!('structuredContent' in result) && (JSON.parse(text) as ResultEnvelope).findings.some((f) => f.code === 'CLIENT_CAPABILITY_UNSUPPORTED'), 'an older client receives the envelope as text with an explicit compatibility finding');
 
   console.log(`loom mcp: tools/list takes ${listBytes} bytes for ${list.tools.length} tools (budget ${MCP_TOOL_BUDGET * list.tools.length}); the largest tool, ${largest.name}, takes ${advertisedBytes(largest)} bytes (budget ${MCP_TOOL_BUDGET}); ${pointed.size} schema resources named, listed and compiled.`);
+  console.log(`loom mcp: the instructions take ${utf8Bytes(instructions)} UTF-8 bytes (budget ${MCP_INSTRUCTIONS_BUDGET}); the default description takes ${summaryBytes} bytes of data (budget ${DISCOVERY_LIMITS.defaultBytes}) and ${utf8Bytes(summary.text)} bytes as the text of its whole envelope; ${guides().length} guides listed with their digests.`);
   console.log(`loom mcp smoke PASS: ${list.tools.length} tools with compact input and output schemas; ${cases.length} results and ${refusals.length} typed refusals conform to the full contract and to their advertised output schemas.`);
   process.exit(0);
 }

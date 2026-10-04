@@ -27,6 +27,7 @@ function contractCopy(t: TestContext): string {
   }
   mkdirSync(join(dir, 'Docs'), { recursive: true });
   cpSync(join(LOOM_ROOT, 'Docs', 'operations.md'), join(dir, 'Docs', 'operations.md'));
+  cpSync(join(LOOM_ROOT, 'Docs', 'guides'), join(dir, 'Docs', 'guides'), { recursive: true });
   symlinkSync(join(LOOM_ROOT, 'node_modules'), modules, 'junction');
   t.after(() => {
     // The junction goes first, so removing the copy can never reach the installation's modules.
@@ -219,7 +220,7 @@ test('generation refuses agent tools and resources whose actions, conditions, ex
     rule('workspace-open').when = [{ member: 'mode', in: ['open'] }];
     rule('qualify-cancel').when = [{ member: 'action', in: ['abort'] }];
     catalogue.resources[0]!.contents = 'NoSuchContents';
-    delete catalogue.resources[1]!.reason;
+    catalogue.resources[1]!.reason = 'A listed resource needs no reason.';
     catalogue.resources[3]!.uri = 'loom://workspaces/{workspaceId}/runs/{runId}';
   });
   const r = generate(core, '--check');
@@ -236,6 +237,60 @@ test('generation refuses agent tools and resources whose actions, conditions, ex
     /resource 'loom:\/\/guide\/workflow': a reason is given exactly when the server does not list the resource/,
     /resource 'loom:\/\/workspaces\/\{workspaceId\}\/runs\/\{runId\}': its variable '\{runId\}' names no required member of WorkspaceStatus/,
   ]) assert.match(r.output, problem);
+});
+
+test('generation embeds each guide with the digest of its text, reports a hand edit of a guide as drift, and refuses an orientation over the instructions budget', (t) => {
+  const core = contractCopy(t);
+  const guidesDir = join(core, '..', '..', 'Docs', 'guides');
+  const embedded = readFileSync(join(core, 'src', 'generated', 'guides.ts'), 'utf8');
+  for (const name of ['orientation', 'engineering', 'workflow']) {
+    const text = readFileSync(join(guidesDir, `${name}.md`), 'utf8').replace(/\r\n/g, '\n');
+    assert.ok(embedded.includes(JSON.stringify(text)), `${name}.md is embedded verbatim`);
+  }
+  writeFileSync(join(guidesDir, 'workflow.md'), `${readFileSync(join(guidesDir, 'workflow.md'), 'utf8')}\nAn added sentence.\n`);
+  const drifted = generate(core, '--check');
+  assert.equal(drifted.status, 1, drifted.output);
+  assert.match(drifted.output, /stale: .*guides\.ts/);
+  const budget = (JSON.parse(readFileSync(join(core, 'schema', 'operations.json'), 'utf8')) as OperationCatalogue).mcp.instructionsBudget;
+  writeFileSync(join(guidesDir, 'orientation.md'), `# Loom orientation\n\n${'Read the context first. '.repeat(Math.ceil(budget / 24))}\n`);
+  const over = generate(core);
+  assert.equal(over.status, 1, over.output);
+  assert.match(over.output, /orientation\.md takes \d+ UTF-8 bytes, over the instructions budget of \d+/);
+  writeFileSync(join(guidesDir, 'orientation.md'), '# Loom orientation\n\nRead the context first.\n');
+  writeFileSync(join(guidesDir, 'stray.md'), '# A stray guide\n\nNo resource lists it.\n');
+  const stray = generate(core);
+  assert.equal(stray.status, 1, stray.output);
+  assert.match(stray.output, /Docs\/guides\/stray\.md is no catalogue resource/);
+});
+
+test('generation refuses a guide resource without a source, an authored copy of a generated guide, a guide without a title and an orientation that is missing', (t) => {
+  const cases: Array<[string, (core: string, guidesDir: string) => void, RegExp]> = [
+    ['a catalogued guide without a source', (core) => editJson(join(core, 'schema', 'operations.json'), (doc) => (doc as unknown as OperationCatalogue).resources.push({ uri: 'loom://guide/missing', purpose: 'A guide nobody wrote.', contents: 'GuideResource', scope: 'server', exposure: 'listed' })), /resource 'loom:\/\/guide\/missing' has no source; author Docs\/guides\/missing\.md/],
+    ['a guide resource outside loom://guide/', (core) => editJson(join(core, 'schema', 'operations.json'), (doc) => (doc as unknown as OperationCatalogue).resources.push({ uri: 'loom://help/engineering', purpose: 'A misplaced guide.', contents: 'GuideResource', scope: 'server', exposure: 'listed' })), /resource 'loom:\/\/help\/engineering' returns a GuideResource but is not a loom:\/\/guide\/<name> URI/],
+    ['an authored copy of the generated guide', (_core, guidesDir) => writeFileSync(join(guidesDir, 'capabilities.md'), '# Capabilities\n\nA second source.\n'), /guide 'capabilities' is generated, so Docs\/guides\/capabilities\.md would be a second source/],
+    ['a guide without its title', (_core, guidesDir) => writeFileSync(join(guidesDir, 'workflow.md'), 'The agent workflow, without a heading.\n'), /guide 'workflow' does not open with a level-one heading/],
+    ['a missing orientation', (_core, guidesDir) => unlinkSync(join(guidesDir, 'orientation.md')), /Docs\/guides\/orientation\.md is missing/],
+  ];
+  for (const [label, edit, problem] of cases) {
+    const core = contractCopy(t);
+    edit(core, join(core, '..', '..', 'Docs', 'guides'));
+    const r = generate(core);
+    assert.equal(r.status, 1, `${label}: ${r.output}`);
+    assert.match(r.output, problem, label);
+  }
+});
+
+test('generation refuses proof limits and workflow steps that name no catalogue operation', (t) => {
+  const core = contractCopy(t);
+  editJson(join(core, 'schema', 'operations.json'), (doc) => {
+    const catalogue = doc as unknown as OperationCatalogue;
+    catalogue.proofLimits[0]!.operations.push('nothing');
+    catalogue.proofLimits.push({ ...catalogue.proofLimits[1]! });
+    catalogue.workflow[0]!.operations.push('elsewhere');
+  });
+  const r = generate(core, '--check');
+  assert.equal(r.status, 1, r.output);
+  for (const problem of [/proof limit '[a-z-]+' names no operation 'nothing'/, /proof limit '[a-z-]+' is declared twice/, /workflow step 1 names no operation 'elsewhere'/]) assert.match(r.output, problem);
 });
 
 test('generation refuses a default that its own schema rejects, such as a rendering default above its maximum', (t) => {

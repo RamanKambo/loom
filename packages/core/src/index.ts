@@ -3,7 +3,7 @@ export { SCHEMA_BUNDLE, SCHEMA_BUNDLE_ID } from './generated/schemas.js';
 export { CONTRACT_DIGEST, SCHEMA_VOCABULARY } from './generated/digest.js';
 export { COLLECTIONS, FIELD_PATHS, REFERENCE_FIELDS, KEYED_ARRAYS, ORDERED_ARRAYS, PATCH_VARIANTS } from './generated/registry.js';
 export { PROFILES, PROJECTION_PROFILES, ICDS } from './generated/contracts.js';
-export { OPERATION_CATALOGUE, MCP_TOOLS, AGENT_TOOLS, MCP_TOOL_BUDGET, MCP_INSTRUCTIONS_BUDGET, TOOL_EXAMPLES, CLI_COMMANDS, CLI_USAGE } from './generated/operations.js';
+export { OPERATION_CATALOGUE, MCP_TOOLS, AGENT_TOOLS, MCP_TOOL_BUDGET, MCP_INSTRUCTIONS_BUDGET, TOOL_EXAMPLES, WORKFLOW, CLI_COMMANDS, CLI_USAGE } from './generated/operations.js';
 export type { CatalogueTool, AgentTool, AgentToolAction } from './generated/operations.js';
 export { handlerGaps, unmetPresenceRules } from './operations.js';
 
@@ -95,11 +95,30 @@ export { deriveObligations, evaluateEvidence, invalidatedBy, changedInputs, unha
 export type { EvidenceEvaluation } from './evidence.js';
 export { checkReadiness, recomputeReadiness, designOrder, makeMaturity } from './readiness.js';
 export type { ReadinessResult, Recompute } from './readiness.js';
-export { retrieveContext, continuationToken } from './retrieval.js';
+export {
+  DISCOVERY_LIMITS,
+  resolveBudget,
+  utf8Bytes,
+  dataBytes,
+  continuationToken,
+  readContinuation,
+  filtersDigest,
+  checkContinuation,
+  fillPage,
+  pageCompleteness,
+  toolEffects,
+  nextAction,
+} from './discovery.js';
+export type { ResolvedBudget, ContinuationKind, Continuation, ContinuationCheck, PageEntry, Page } from './discovery.js';
+export { retrieveContext } from './retrieval.js';
 export type { ContextRequest, ContextResult } from './retrieval.js';
-export { describe, TOOL_EFFECTS } from './describe.js';
+export { resumeContext, RESUME_TARGET } from './resume.js';
+export type { ResumeInputs, ResumeResult } from './resume.js';
+export { ORIENTATION_TEXT, GUIDANCE_REVISION, guides, guide } from './guidance.js';
+export { describe, proofLimits, toolDescriptions, descriptionProblems, TOOL_SUMMARIES, DESCRIBE_SECTIONS } from './describe.js';
+export type { DescribeResult } from './describe.js';
 export { describeTool, contextTool, checkReadinessTool, planChangeTool, compareBaselineTool, evaluateEvidenceTool } from './tools.js';
-export type { PlanChangeToolInput } from './tools.js';
+export type { PlanChangeToolInput, ContextOptions } from './tools.js';
 export { prohibitedMarkers } from './wording.js';
 export type { MarkerKind, ProhibitedMarker } from './wording.js';
 export { sampleModel } from './sample.js';
