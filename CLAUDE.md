@@ -72,6 +72,9 @@ the open-items register. Workspace scripts: @package.json
   | The size budget of one advertised MCP tool definition | `mcp.toolBudget` in `packages/core/schema/operations.json`; the smoke test holds every tool and tools/list to it |
   | The UTF-8 byte budget of the initialize orientation | `mcp.instructionsBudget` in `packages/core/schema/operations.json`, generated as `MCP_INSTRUCTIONS_BUDGET` |
   | The URI forms of the server's resources (guides, workspace status, records) | `resources` in `packages/core/schema/operations.json` |
+  | The workflow entry points of the `loom.describe` summary, in order | `workflow` in `packages/core/schema/operations.json` |
+  | Each core proof limit's text and the operations it applies to | `proofLimits` in `packages/core/schema/operations.json`; a profile's own limits stay in its profile and apply to the operations marked `dependsOnProfiles` |
+  | The orientation, engineering and workflow guide text | `Docs/guides/*.md`, embedded with each content digest into `packages/core/src/generated/guides.ts` by `npm run generate`; `loom://guide/capabilities` is generated from the catalogue and the profiles |
   | Discovery page defaults and maxima (bytes and records) | `DiscoveryBudget` in `packages/core/schema/tools.schema.json`: its `default` and `maximum` keywords |
   | Diagram rendering budget defaults, minima and maxima (nodes, bytes, width, duration in ms, memory) | `RenderingBudget` in `packages/core/schema/diagram.schema.json`: its `default`, `minimum` and `maximum` keywords |
   | The diagram kinds | `DiagramKind` in `packages/core/schema/diagram.schema.json` |

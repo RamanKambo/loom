@@ -1,19 +1,19 @@
 {
   "contextSize": [
     {
-      "bytes": 47977,
-      "records": 62,
+      "bytes": 49198,
+      "records": 63,
       "target": "sample/component:ordering",
       "truncated": false
     },
     {
-      "bytes": 42747,
-      "records": 53,
+      "bytes": 43960,
+      "records": 54,
       "target": "sample/component:fulfillment",
       "truncated": false
     },
     {
-      "bytes": 34173,
+      "bytes": 34763,
       "records": 42,
       "target": "sample/component:billing",
       "truncated": false
@@ -98,7 +98,7 @@
     }
   ],
   "engine": {
-    "contractDigest": "sha256:baef9861569b1172daec7ab28026b4f3fd3581a522e8b43e26fa421529dd1a17",
+    "contractDigest": "sha256:ca166683f256ef3f9777701c9326262cedbfefe328049498581d33c4d4c90b7d",
     "version": "1.0.0"
   },
   "escapedContradictions": {
