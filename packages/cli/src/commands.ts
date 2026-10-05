@@ -31,7 +31,9 @@ import type {
   Finding,
   MetricsReport,
   Model,
+  ModelKind,
   MutateData,
+  MutationExpectation,
   Patch,
   QualificationState,
   RecordKind,
@@ -210,7 +212,7 @@ function checkAll(ctx: Context): CommandResult {
     findings.push(...one.findings.map((f) => ({ ...f, path: `${d.location}:${f.path}` })));
     models.push({ descriptor: d.location, outcome: one.outcome, validation: one.states.validation.state, acceptance: one.states.acceptance.state, errors, revision: one.revisions.model });
   }
-  if (!walk.coverage.complete && !findings.some((f) => f.code === 'SCOPE_UNRESOLVED')) {
+  if (!walk.coverage.complete && !findings.some((f) => f.code === 'SCOPE_UNRESOLVED' || f.code === 'CHECKOUT_MISSING' || f.code === 'DESCRIPTOR_UNREADABLE')) {
     findings.push(asFinding('SCOPE_UNRESOLVED', walk.coverage.boundary, 'the walk did not inspect the whole boundary, so global disjointness is not established', 'check out every declared submodule and repair every unreadable descriptor, then check again'));
   }
   const states: States = defaultStates(models.length ? { state: invalid ? 'invalid' : 'valid', reasons: [] } : NOT_EVALUATED);
@@ -229,7 +231,9 @@ export function cmdCheck(ctx: Context): CommandResult {
 
 export function cmdInit(ctx: Context): CommandResult {
   const boundary = flag(ctx.args, 'boundary');
-  return { env: initWorkspace(ctx.cwd, { ...(has(ctx.args, 'force') ? { force: true } : {}), ...(boundary ? { boundary: resolve(ctx.cwd, boundary) } : {}) }) };
+  const modelId = required(ctx.args, 'model-id');
+  const modelKind = required(ctx.args, 'model-kind') as ModelKind;
+  return { env: initWorkspace(ctx.cwd, { modelId, modelKind, ...(has(ctx.args, 'force') ? { force: true } : {}), ...(boundary ? { boundary: resolve(ctx.cwd, boundary) } : {}) }) };
 }
 
 /** Install the bundle: every enabled artifact, with readiness, coverage and evidence views evaluated under the verified inputs. */
@@ -412,16 +416,22 @@ export function cmdPlan(ctx: Context): CommandResult {
 
 /**
  * A persistent mutation through the workspace adapter, the one the MCP server
- * performs too: refused unless the workspace model is still at the expected
- * revision, computed by the pure core, then written under the workspace lock,
- * which rechecks the base revision. The patch file is read only once the
- * revision holds.
+ * performs too: refused unless the model, configuration, trusted policy and
+ * import pins are all still at the expectation this command was prepared
+ * against, computed by the pure core, then written under the workspace lock,
+ * which rechecks that expectation. The patch file is read only once it holds.
  */
-export function cmdMutate(ctx: Context): CommandResult {
+export async function cmdMutate(ctx: Context): Promise<CommandResult> {
   const s = session(ctx);
   if (!s.workspace || !s.model || s.mode !== 'workspace') return noWorkspace('loom.mutate', s);
-  const expected = required(ctx.args, 'expected');
-  const env = mutateWorkspace(s, expected, () => ({ ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun: has(ctx.args, 'dry-run') }));
+  const policyFlag = required(ctx.args, 'expected-policy');
+  const expectation: MutationExpectation = {
+    model: required(ctx.args, 'expected-model'),
+    config: required(ctx.args, 'expected-config'),
+    policy: policyFlag === 'none' ? null : policyFlag,
+    imports: required(ctx.args, 'expected-imports'),
+  };
+  const env = await mutateWorkspace(s, expectation, () => ({ ...patchesOf(ctx), acknowledgeBreaking: list(ctx.args, 'ack') ?? [], dryRun: has(ctx.args, 'dry-run') }));
   const data = env.data as MutateData | undefined;
   return data?.committed === true ? { env, detail: [`committed revision ${data.revision ?? ''}`] } : { env };
 }

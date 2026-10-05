@@ -11,7 +11,7 @@
       "description": "Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["configVersion", "model", "scope", "outputs", "gates"],
+      "required": ["configVersion", "modelId", "modelKind", "model", "scope", "outputs", "gates"],
       "properties": {
         "configVersion": { "const": 1 },
         "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
@@ -195,13 +195,13 @@
       }
     },
     "InstallJournal": {
-      "description": "Recoverable record of one bundle installation. Each file is replaced atomically; the bundle as a whole is complete only when every entry is installed and the manifest matches.",
+      "description": "Recoverable record of one installed file set: a projection bundle, a workspace scaffold or any other set this adapter installs. Each file is replaced atomically; the set as a whole is complete only when every entry is installed and, for a bundle with a manifest, the manifest matches.",
       "type": "object",
       "additionalProperties": false,
       "required": ["journalVersion", "bundle", "state", "entries"],
       "properties": {
         "journalVersion": { "const": 1 },
-        "bundle": { "description": "Hash of the manifest being installed.", "$ref": "common.schema.json#/$defs/Hash" },
+        "bundle": { "description": "Hash of the file set being installed: a projection bundle's manifest, or the canonical hash of a scaffold's writes for an initialization.", "$ref": "common.schema.json#/$defs/Hash" },
         "state": { "enum": ["staged", "installing", "complete", "failed"] },
         "entries": {
           "type": "array",

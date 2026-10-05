@@ -1,0 +1,17 @@
+{
+  "id": "19",
+  "subject": "Qualify Windows PowerShell 5.1 alongside PowerShell 7, with edition as a dimension of the Pester 5 and Pester 6 profiles",
+  "description": "WHY: loomrefinements.md §Qualification coverage: \"A PowerShell check declares its real executable edition and version. Support Windows PowerShell 5.1 … alongside declared PowerShell 7 profiles; do not substitute one for the other. Discover the compatible Pester/runtime pair and run it.\"\n\nFROM TASK 8 (the contract; names are final):\n- ToolName has `pwsh` (Core) and `powershell` (Windows PowerShell 5.1 Desktop), as separate tools. PowerShellEdition is Desktop|Core. VersionPolicy.edition and EvidenceRecord.tool.edition are optional (profile.schema.json, assurance.schema.json).\n- tools.ts already has a minimal `case 'powershell'` locator (which('powershell'), version via $PSVersionTable). Nothing enforces VersionPolicy.edition yet.\n- This task makes the edition binding: a PowerShell check's evidence records tool.edition as reported by `$PSVersionTable.PSEdition`, and a version policy with an edition rejects the other edition. The generator has no if/then keyword, so \"a PowerShell tool's evidence states its edition\" is enforced in code, with a positive and a negative test.\n\nGROUNDING:\n- Before task 8, ToolName had pwsh only and VersionPolicy had no edition.\n- Tool discovery finds pwsh on PATH only (tools.ts:198-203) and lists Pester through pwsh only (:204-211).\n- runPwsh: exec.ts:110-120. The runner hard-codes pwsh ≥7.4 (runners/powershell.ts:37, :51, :55, :57-58).\n- Profiles: powershell.json (Pester 5, ≥5.7.0) and powershell-pester6.json (Pester 6).\n- The Pester 6.x manifests declare PowerShellVersion '5.1'.\n\nPROVISIONED (owner, measured 2026-10-03 12:48:10Z, AMC-D-PF3XTNPM):\n- `powershell.exe` 5.1.26100.9444 Desktop imports Pester 6.2.0 from C:\\Program Files\\WindowsPowerShell\\Modules\\Pester\\6.2.0, side by side with the inbox 3.4.0.\n- pwsh 7.6.6 had Pester 6.2.0, 6.1.0, 6.0.1, 6.0.0, 5.8.0 and 5.7.1 (11:50Z).\n\nCHANGE:\n- Edition is a dimension of the existing Pester-major profiles, not a separate profile.\n  - Each of powershell.json and powershell-pester6.json declares the editions it supports (Core ≥7.4; Desktop 5.1) with an edition-aware version policy.\n  - The adopting component declares its edition(s).\n  - Each check runs once per declared edition, on that edition's executable with that edition's Pester. Pester 6 is preferred wherever the profile allows it.\n- Discover powershell.exe (Desktop); list Pester per edition by running that edition; runPwsh takes the edition; the runner reads `$PSVersionTable.PSEdition` and the loaded Pester version back.\n- Add a 5.1-compatible conforming and violating fixture pair, if the existing fixtures use 7-only syntax. Keep the fixtures' roles (Tools/loom/CLAUDE.md).\n- Both editions must PASS on the conforming fixtures and FAIL on the violating ones.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/qualification/dist/test/framework.test.js; node --test --test-concurrency=1 --test-name-pattern \"pwsh|pester|powershell\" packages/qualification/dist/test/native.test.js.\nWORKER: Sonnet, fresh.",
+  "activeForm": "Adding Windows PowerShell 5.1 qualification",
+  "status": "pending",
+  "blocks": [
+    "37"
+  ],
+  "blockedBy": [
+    "18",
+    "32"
+  ],
+  "metadata": {
+    "milestone": "d"
+  }
+}

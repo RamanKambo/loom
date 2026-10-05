@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { COLLECTIONS, envelope, revisionsOf, schemaErrors, validate } from '@loom/core';
-import type { Finding, LoomConfig, Model, ResultEnvelope, WorkflowState } from '@loom/core';
+import type { Finding, LoomConfig, Model, ModelKind, ResultEnvelope, WorkflowState } from '@loom/core';
 import { CONFIG_FILE, LOOM_DIR, STATE_FILE, checkConfig, readConfig, readModelDocument, readState } from './config.js';
 import { ancestorDescriptors, discoverAll, type Descriptor } from './discover.js';
 import { finding, hasErrors, refusal } from './findings.js';
@@ -9,9 +9,9 @@ import { documentText, toPosix } from './fsx.js';
 import { containsPath, realPathOf, relativeTo, samePath } from './paths.js';
 import { findBoundary, findRepositoryRoot } from './repo.js';
 
-const MODEL_FILE = 'model.json';
-const GITIGNORE = '.gitignore';
-const GITIGNORE_TEXT = '/cache\n';
+export const MODEL_FILE = 'model.json';
+export const GITIGNORE = '.gitignore';
+export const GITIGNORE_TEXT = '/cache\n';
 
 /** The initial model: one placeholder component whose purpose says its responsibilities are unspecified, every other record array empty. */
 export function scaffoldModel(): Model {
@@ -20,13 +20,23 @@ export function scaffoldModel(): Model {
   return model;
 }
 
-export const scaffoldConfig = (): LoomConfig => ({ configVersion: 1, model: MODEL_FILE, projectionProfile: 'none', scope: { workspace: ['.'] }, outputs: {}, gates: {} });
+/** The declared stable model identity and kind. Product code invents neither: both are required, real values the caller declares. */
+export const scaffoldConfig = (modelId: string, modelKind: ModelKind): LoomConfig => ({
+  configVersion: 1,
+  modelId,
+  modelKind,
+  model: MODEL_FILE,
+  projectionProfile: 'none',
+  scope: { workspace: ['.'] },
+  outputs: {},
+  gates: {},
+});
 
 export const scaffoldState = (): WorkflowState => ({ stateVersion: 1, phase: 'unplanned', sealed: false });
 
 /** What init installs and the filesystem steps that install it; a test replaces one to force the failure init must survive. */
 export interface InitSteps {
-  scaffold(): { model: Model; config: LoomConfig; state: WorkflowState };
+  scaffold(modelId: string, modelKind: ModelKind): { model: Model; config: LoomConfig; state: WorkflowState };
   /** Creates an empty staging directory inside `parent` and returns its path. */
   stage(parent: string): string;
   write(path: string, text: string): void;
@@ -36,7 +46,7 @@ export interface InitSteps {
 }
 
 export const INIT_STEPS: InitSteps = {
-  scaffold: () => ({ model: scaffoldModel(), config: scaffoldConfig(), state: scaffoldState() }),
+  scaffold: (modelId, modelKind) => ({ model: scaffoldModel(), config: scaffoldConfig(modelId, modelKind), state: scaffoldState() }),
   stage: (parent) => mkdtempSync(join(parent, '.loom-staging-')),
   write: (path, text) => writeFileSync(path, text),
   install: (staging, loomDir) => renameSync(staging, loomDir),
@@ -47,18 +57,21 @@ export interface InitOptions {
   /** Restore missing non-authoritative scaffolding (.gitignore) in an existing .loom; never replaces an authority file. */
   force?: boolean;
   boundary?: string;
+  /** The declared stable model identity. Product code invents no default. */
+  modelId: string;
+  modelKind: ModelKind;
 }
 
 const result = (findings: Finding[], data: { written: string[] }, model: Model | null, refused?: { cause: 'invalid-input' | 'unresolved-context' | 'unmet-prerequisite' | 'policy-failure' | 'stale-base'; message: string }): ResultEnvelope =>
   envelope('workspace.init', { model, findings, data, ...(refused ? { refusal: refusal(refused.cause, refused.message) } : {}) });
 
 /** Disjointness of the proposed scope against every readable descriptor; an unreadable one makes disjointness unverifiable. */
-function overlapWith(proposedRoot: string, others: readonly Descriptor[]): Finding[] {
+export function overlapWith(proposedRoot: string, others: readonly Descriptor[]): Finding[] {
   const out: Finding[] = [];
   const proposed = realPathOf(proposedRoot);
   for (const d of others) {
     if (!d.readable) {
-      out.push(finding('SCOPE_UNRESOLVED', d.location, `descriptor ${d.location} cannot be read, so disjointness of the proposed scope cannot be verified`, `repair ${d.location}, then run init again`));
+      out.push(finding('DESCRIPTOR_UNREADABLE', d.location, `descriptor ${d.location} cannot be read, so disjointness of the proposed scope cannot be verified`, `repair ${d.location}, then run init again`));
       continue;
     }
     const hit = d.claims.find((c) => containsPath(c.real, proposed) || containsPath(proposed, c.real));
@@ -76,7 +89,7 @@ function overlapWith(proposedRoot: string, others: readonly Descriptor[]): Findi
  * or phase completion, never touches a child repository, and never stages or
  * commits: the four files are left for their owner to review and track.
  */
-export function initWorkspace(cwd: string, options: InitOptions = {}, steps: InitSteps = INIT_STEPS): ResultEnvelope {
+export function initWorkspace(cwd: string, options: InitOptions, steps: InitSteps = INIT_STEPS): ResultEnvelope {
   const dir = resolve(cwd);
   const repoRoot = findRepositoryRoot(dir);
   if (!repoRoot || !samePath(repoRoot, dir)) {
@@ -86,7 +99,7 @@ export function initWorkspace(cwd: string, options: InitOptions = {}, steps: Ini
   const loomDir = join(dir, LOOM_DIR);
   if (existsSync(loomDir)) return reinit(dir, loomDir, options);
 
-  const { model, config, state } = steps.scaffold();
+  const { model, config, state } = steps.scaffold(options.modelId, options.modelKind);
   const findings: Finding[] = [];
   findings.push(...validate(model).filter((f) => f.severity === 'error'));
   for (const e of schemaErrors('LoomConfig', config)) findings.push(finding('CONFIG_INVALID', `${LOOM_DIR}/${CONFIG_FILE}#${e.pointer}`, e.message, 'correct the scaffold'));
@@ -97,7 +110,7 @@ export function initWorkspace(cwd: string, options: InitOptions = {}, steps: Ini
   const ancestors = containsPath(boundary, dir) && !samePath(boundary, dir) ? ancestorDescriptors(join(dir, '..'), boundary) : [];
   const descendants = discoverAll(dir, { cacheDir: null }).descriptors.filter((d) => !samePath(d.home, dir));
   findings.push(...overlapWith(dir, [...ancestors, ...descendants]));
-  if (hasErrors(findings)) return result(findings, { written: [] }, model, { cause: findings.some((f) => f.code === 'SCOPE_OVERLAP' || f.code === 'SCOPE_UNRESOLVED') ? 'policy-failure' : 'invalid-input', message: 'the scaffold was not installed' });
+  if (hasErrors(findings)) return result(findings, { written: [] }, model, { cause: findings.some((f) => f.code === 'SCOPE_OVERLAP' || f.code === 'DESCRIPTOR_UNREADABLE' || f.code === 'CHECKOUT_MISSING') ? 'policy-failure' : 'invalid-input', message: 'the scaffold was not installed' });
 
   let staging: string | undefined;
   try {

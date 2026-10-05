@@ -1,0 +1,15 @@
+{
+  "id": "29",
+  "subject": "Advertise compact MCP tool schemas and serve the full contract as resources, with a per-tool size budget in smoke",
+  "description": "RESULT (2026-10-03, AMC-D-PF3XTNPM), Loom commit 33c37c8 (push failed: GHES redirects, ignored per decision 8). Worker: the contract author (resumed), verified by the orchestrator.\n\nDELIVERED:\n- tools.ts: inputSchemaOf and outputSchemaOf are compact. They keep top-level members, required lists, scalars (enums of 32 values or fewer) and small objects of up to 8 scalar members inline. Deeper content becomes an opaque typed value whose description names loom://schema/<Definition>. contractOutputSchemaOf keeps the full schema.\n- resources.ts: resource families keyed by URI prefix (task 21 adds guide, status and record families). The schema family lists the 45 definitions the advertised schemas name, and reads any bundle definition with its closure and the contract digest in $comment. An unknown resource raises McpError -32002.\n- server.ts declares the resources capability. Full input validation is unchanged (test: a deep-invalid argument is refused).\n- The budget's single home is operations.json `mcp.toolBudget: 8192` (OperationCatalogue.mcp, required), emitted as MCP_TOOL_BUDGET.\n- smoke validates every structuredContent against the full contract and the advertised output schema, compiles every named schema resource, and enforces the per-tool budget and a tools/list budget of the per-tool budget times the tool count.\n- Docs: README (components, build and test, MCP server), CLAUDE.md, the generated Docs/operations.md, icd/mcp.json (schemaResources), icd/workflow-integration.json, capability mcp.compact-schemas.\n\nMEASURED: tools/list 3,299,843 bytes before (cef1617; planChange 414,182 bytes) and 38,071 bytes after; the largest tool, loom.planChange, is 4,354 bytes.\n\nVERIFIED (orchestrator, once): npm run build → generate --check 8 artifacts current, 71 fixture cases, digest sha256:28c5b9f4…; mcp.test.js 20/20; smoke PASS (\"12 results and 6 typed refusals conform to the full contract and to their advertised output schemas\"); docs --check --self findings 0. The worker also ran contract.test 9/9 and the core battery PASS.\n\nACCEPTED DEVIATIONS: a bounded resources/list rather than a template (resources/templates/list is not handled); the digest is carried in $comment; inlined scalars drop their definition's description.\nCrosswalk evidence recorded on #394.",
+  "activeForm": "Compacting advertised MCP tool schemas",
+  "owner": "contract-author (Opus worker)",
+  "status": "completed",
+  "blocks": [
+    "5",
+    "21"
+  ],
+  "blockedBy": [
+    "4"
+  ]
+}

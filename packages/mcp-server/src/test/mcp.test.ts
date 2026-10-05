@@ -21,12 +21,14 @@ import {
   OPERATION_CATALOGUE,
   ORIENTATION_TEXT,
   TOOL_EXAMPLES,
+  canonicalHash,
   canonicalStringify,
   checkReadinessTool,
   compareBaselineTool,
   exportYaml,
   guides,
   handlerGaps,
+  importPinsOf,
   modelRevision,
   planChangeTool,
   renderTarget,
@@ -34,8 +36,8 @@ import {
   schemaErrors,
   textHash,
 } from '@loom/core';
-import type { DescribeData, EvidenceRecord, GuideResource, LoomConfig, Model, MutateData, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
-import { gatherEvaluationInputs, putEvidence, signRecord } from '@loom/workspace';
+import type { DescribeData, EvidenceRecord, GuideResource, LoomConfig, Model, MutateData, MutationExpectation, Patch, PlanChangeData, Policy, ResultEnvelope, TaskSpec } from '@loom/core';
+import { currentPolicy, gatherEvaluationInputs, policyHash, putEvidence, signRecord } from '@loom/workspace';
 import { commitAll, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { createLoomServer } from '../server.js';
 import { RESOURCE_NOT_FOUND, guideFamily } from '../resources.js';
@@ -78,7 +80,7 @@ async function inMemory(workspace?: string): Promise<Client> {
 
 function workspace(model: Model = sampleModel(), gates: LoomConfig['gates'] = {}): string {
   const dir = gitInit(scratch());
-  const init = spawnSync(process.execPath, [CLI, 'init'], { cwd: dir, encoding: 'utf8' });
+  const init = spawnSync(process.execPath, [CLI, 'init', '--model-id', 'sample', '--model-kind', 'implementation'], { cwd: dir, encoding: 'utf8' });
   assert.equal(init.status, 0, init.stdout);
   writeFileSync(join(dir, '.loom', 'model.json'), `${JSON.stringify(model, null, 2)}\n`);
   for (const c of model.components) mkdirSync(join(dir, c.id), { recursive: true });
@@ -86,6 +88,13 @@ function workspace(model: Model = sampleModel(), gates: LoomConfig['gates'] = {}
   const config = JSON.parse(readFileSync(configPath, 'utf8')) as LoomConfig;
   writeJson(configPath, { ...config, scope: Object.fromEntries(model.components.map((c) => [c.id, [c.id]])), gates });
   return dir;
+}
+
+/** The MutationExpectation a workspace mutate is prepared against, read fresh from the workspace it addresses. */
+function expectationFor(dir: string, modelHash: string): MutationExpectation {
+  const config = JSON.parse(readFileSync(join(dir, '.loom', 'loom.json'), 'utf8')) as LoomConfig;
+  const policy = currentPolicy(dir, config).policy;
+  return { model: modelHash, config: canonicalHash(config), policy: policy ? policyHash(policy) : null, imports: canonicalHash(importPinsOf(config)) };
 }
 
 const POLICY: Policy = {
@@ -127,7 +136,7 @@ test('two server processes on one workspace: of two writers on one base revision
       await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER, '--workspace', dir], stderr: 'ignore' }));
       clients.push(client);
     }
-    const edit = (text: string): Record<string, unknown> => ({ workspace: true, expectedRevision: base, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: text } } });
+    const edit = (text: string): Record<string, unknown> => ({ workspace: true, expectation: expectationFor(dir, base), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: text } } });
     const results = await Promise.all(clients.map((c, i) => call(c, 'loom.mutate', edit(`Written by writer ${i}.`))));
     assert.equal(results.filter((r) => r.outcome === 'ok').length, 1, JSON.stringify(results.map((r) => r.refusal)));
     const loser = results.find((r) => r.outcome === 'refused') as ResultEnvelope;
@@ -142,7 +151,7 @@ test('a workspace mutation without its expected revision is refused before anyth
   const client = await inMemory(workspace());
   const r = await call(client, 'loom.mutate', { workspace: true, patch: { op: 'clearSystemProfile' } });
   assert.equal(r.outcome, 'refused');
-  assert.ok(r.findings.some((f) => f.path === 'expectedRevision'));
+  assert.ok(r.findings.some((f) => f.path === 'expectation'));
 });
 
 test('the server refuses a workspace request when no workspace governs its directory', async () => {
@@ -391,7 +400,7 @@ test('a workspace mutation that alters an artifact lists the evidence about it i
   const client = await inMemory(dir);
   const modelPath = join(dir, '.loom', 'model.json');
   const before = readFileSync(modelPath, 'utf8');
-  const args = { workspace: true, expectedRevision: modelRevision(sampleModel()), patch: WIDEN_NOTE, acknowledgeBreaking: ['ordering.orders'] };
+  const args = { workspace: true, expectation: expectationFor(dir, modelRevision(sampleModel())), patch: WIDEN_NOTE, acknowledgeBreaking: ['ordering.orders'] };
   const dry = await call(client, 'loom.mutate', { ...args, dryRun: true });
   assert.equal(dry.outcome, 'ok', JSON.stringify(dry.findings));
   assert.deepEqual((dry.data as MutateData).invalidatedEvidence.map((e) => e.evidence), [evidence]);
@@ -404,7 +413,7 @@ test('a workspace mutation that alters an artifact lists the evidence about it i
 test('a workspace mutation that leaves an artifact alone lists no evidence about it in its dry run', async () => {
   const { dir } = governedWithDdlEvidence();
   const client = await inMemory(dir);
-  const dry = await call(client, 'loom.mutate', { workspace: true, expectedRevision: modelRevision(sampleModel()), dryRun: true, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } } });
+  const dry = await call(client, 'loom.mutate', { workspace: true, expectation: expectationFor(dir, modelRevision(sampleModel())), dryRun: true, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } } });
   assert.equal(dry.outcome, 'ok', JSON.stringify(dry.findings));
   assert.deepEqual((dry.data as MutateData).invalidatedEvidence, []);
 });

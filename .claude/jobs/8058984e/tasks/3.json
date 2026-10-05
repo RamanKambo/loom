@@ -1,0 +1,15 @@
+{
+  "id": "3",
+  "subject": "Add a repository-wording gate that fails on internal requirement labels in Loom's explanatory text",
+  "description": "RESULT (2026-10-03, AMC-D-PF3XTNPM), Loom commit 61b5b0a (push failed: GHES \"Maximum (20) redirects followed\", ignored per decision 8). Done by the orchestrator inline: a small single-area change.\n\nDESIGN:\n- The patterns have one home in core: packages/core/src/wording.ts#prohibitedMarkers. It finds labels (an upper-case prefix of two or more characters, a hyphen and a number, minus a standards and licence prefix allowlist), iteration labels (phase/iteration/milestone/sprint/wave/increment/gate/release/round N, vN, except when followed by \".<digit>\") and generation terms (legacy, backward(s) compat*, \"new in <version>\", \"<adjective> generation\"). It also removes technology tokens with a version suffix of their own (stateDiagram-v2).\n- Single-letter labels (D-3) are not matched, because the shape equals domain identifiers such as account A-1, which the spec's legitimate-content statement protects.\n- \"no longer\" was left out: a measured scan of all tracked files found 3 uses, all describing runtime or domain state.\n- The scan before any change found no marker in the tree (2026-10-03).\n- The rule applies only to Loom's own repository: `docs --check --self` (root = loomRoot) and the CLI self-test. Plain `docs --check` for an adopter is unchanged, because an adopter's \"legacy system\" is legitimate.\n- With --self, the link and history checks cover every markdown file and every comment under the root.\n- New finding: DOCUMENT_PROHIBITED_MARKER (error) in FindingCode, FINDING_RULES and RAISED_ELSEWHERE ('CLI documentation check').\n- Contract digest changed to sha256:58da5ae7… (before task 9's baseline, so no change record is needed).\n\nVERIFIED:\n- npm run build: generate --check 6 artifacts current, 56 fixture cases passed.\n- Core battery: \"loom self-test PASS: 24 sections, 2318 assertions\", including the new section \"generated wording\". A planted \"phase 2.\" at first escaped the iteration lookahead; the guard fired, and the pattern was fixed.\n- node --test --test-name-pattern \"docs\" cli.test.js: tests 4, pass 4, fail 0.\n- `docs --check --self`: findings 0.\n- coverage --check with this run's TAP: 124 capabilities, 232 cases, no CODE/CONTRACT/CASE_UNKNOWN finding; docs.release-wording has 0 findings. The remaining CASE_FAILED come from suites not supplied, which task 28 provides.\n- The CLI self-test stage (selftest.ts#runSelfTest) is exercised in task 28's full run.\n\nDOCS: README CLI table (docs --check --self row, --self-test row), the cli.ts usage, Tools/loom/CLAUDE.md:18 (self-test stages), and the capability docs.release-wording.\nCrosswalk evidence recorded on #14, #15, #18, #19 and #423 (shared statements accumulate evidence).",
+  "activeForm": "Adding repository-wording gate",
+  "status": "completed",
+  "blocks": [
+    "4"
+  ],
+  "blockedBy": [
+    "2",
+    "33",
+    "34"
+  ]
+}

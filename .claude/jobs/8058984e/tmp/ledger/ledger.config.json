@@ -1,0 +1,15 @@
+{
+  "repo": "C:/Users/nnbfdh8/Codebase/Tools/loom",
+  "stateDir": "C:/Users/nnbfdh8/.claude/jobs/8058984e/tmp/ledger/state",
+  "evidenceDir": "C:/Users/nnbfdh8/.claude/jobs/8058984e/evidence",
+  "transcriptsDir": "C:/Users/nnbfdh8/.claude/projects/C--Users-nnbfdh8-Codebase",
+  "orchestratorSession": "8058984e-22ea-4252-bd8e-5551551a62b9",
+  "lockTtlMinutes": 180,
+  "cpuLimitPercent": 70,
+  "cpuWaitLimitSeconds": 1800,
+  "cpuPollSeconds": 15,
+  "workerContextLimitTokens": 600000,
+  "verificationPolicy": "spot-check",
+  "milestones": { "a": [10, 14, 21, 22] },
+  "baselineCommit": "930bde44c222ed57269e08425e91b4f480d82b5a"
+}

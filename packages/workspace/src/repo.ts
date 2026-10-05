@@ -1,10 +1,24 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { segmentsOf } from './paths.js';
 
 /** A repository root holds '.git': a directory for a top-level clone, a file for a submodule checkout. */
 export const isRepositoryRoot = (dir: string): boolean => existsSync(join(dir, '.git'));
+
+/**
+ * The repository's real Git directory: `.git` itself for an ordinary clone, or
+ * the target a `.git` file's `gitdir:` line names for a worktree or submodule
+ * checkout. A lock placed here is never an index, ref or gitlink.
+ */
+export function gitDirOf(repoRoot: string): string {
+  const dotGit = join(repoRoot, '.git');
+  if (statSync(dotGit).isDirectory()) return dotGit;
+  const text = readFileSync(dotGit, 'utf8');
+  const m = /^gitdir:\s*(.+?)\s*$/m.exec(text);
+  const target = m?.[1] ?? dotGit;
+  return isAbsolute(target) ? resolve(target) : resolve(repoRoot, target);
+}
 
 /** The nearest enclosing repository root of `start`, itself included; null outside any repository. */
 export function findRepositoryRoot(start: string): string | null {
@@ -101,4 +115,20 @@ export function headRevision(repoRoot: string): string | null {
 export function isDirty(repoRoot: string): boolean {
   const out = tryGit(repoRoot, ['status', '--porcelain', '--untracked-files=no']);
   return out !== null && out.trim() !== '';
+}
+
+/** Repository-relative paths Git's index tracks under `pathspec`, read from the index only. */
+export function trackedPaths(repoRoot: string, pathspec: string): string[] {
+  const out = tryGit(repoRoot, ['ls-files', '-z', '--', pathspec]);
+  return out ? out.split('\0').filter(Boolean) : [];
+}
+
+/** Repository-relative paths Git reports untracked and not ignored under `pathspec`, read from status only. */
+export function untrackedPaths(repoRoot: string, pathspec: string): string[] {
+  const out = tryGit(repoRoot, ['status', '--porcelain', '-z', '--untracked-files=all', '--', pathspec]);
+  if (!out) return [];
+  return out
+    .split('\0')
+    .filter((line) => line.startsWith('?? '))
+    .map((line) => line.slice(3));
 }

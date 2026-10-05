@@ -1,11 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { generateKeyPairSync } from 'node:crypto';
 import { canonicalHash, sampleModel, schemaErrors, type Change, type CheckDefinition, type Model, type Policy } from '@loom/core';
 import { initWorkspace, listEvidence, readTrustedEvidence, verifyRecord } from '@loom/workspace';
-import { commitAll, gitInit, scratch } from '@loom/workspace/testing';
+import { commitAll, foldModelId, gitInit, scratch } from '@loom/workspace/testing';
+
+/** Every fixture declares a real modelId, folded from its own directory name, and modelKind 'implementation'; init invents no default. */
+const implOf = (dir: string): { modelId: string; modelKind: 'implementation' } => ({ modelId: foldModelId(basename(dir)), modelKind: 'implementation' });
 import { exec, runPwsh, lastJsonLine } from '../exec.js';
 import { aggregate } from '../policy.js';
 import { runChecks, runInputDigest } from '../run.js';
@@ -207,7 +210,7 @@ test('a storing run puts every signed record into the workspace evidence store, 
   process.env['LOOM_TEST_STORE_KEY'] = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
   const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, implOf(root)).outcome, 'ok');
   commitAll(root, 'workspace');
   const { set, done } = sampleArtifacts();
   try {
@@ -222,7 +225,7 @@ test('a storing run puts every signed record into the workspace evidence store, 
     assert.ok(readTrustedEvidence(root, selfPolicy()).evidence.every((e) => !e.trusted), 'a policy that does not list the key trusts none of them');
 
     const blocked = gitInit(scratch());
-    assert.equal(initWorkspace(blocked).outcome, 'ok');
+    assert.equal(initWorkspace(blocked, implOf(blocked)).outcome, 'ok');
     writeFileSync(join(blocked, '.loom', 'evidence'), 'not a directory');
     const refused = await runChecks({ root: blocked, model: sampleModel(), checks: [check('t.stored.pass')], artifacts: set, runners: { 't.stored.pass': passing }, store: true });
     assert.equal(refused.evidence.length, 1, 'the run still returns its record');
@@ -235,7 +238,7 @@ test('a storing run puts every signed record into the workspace evidence store, 
 
 test('a storing run writes its records only after its last check has finished', async () => {
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, implOf(root)).outcome, 'ok');
   commitAll(root, 'workspace');
   const seen: number[] = [];
   const observing: Runner = async () => {

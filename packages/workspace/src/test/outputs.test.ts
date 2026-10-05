@@ -1,22 +1,25 @@
 import { strict as assert } from 'node:assert';
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { sampleModel } from '@loom/core';
 import type { InstallJournal, LoomConfig, Model, ProjectionTarget } from '@loom/core';
 import { openWorkspace, type Workspace } from '../config.js';
 import { initWorkspace, scaffoldConfig } from '../init.js';
-import { checkOutputs, collisionFindings, installOutputs, journalPath, planOutputs, recoverInstall } from '../outputs.js';
-import { codes, gitInit, readJsonFile, scratch, withCode, writeJson } from '../testing/helpers.js';
+import { checkOutputs, collisionFindings, installOutputs, journalPath, planOutputs, recoverInstall, type OutputSteps } from '../outputs.js';
+import { codes, foldModelId, gitInit, readJsonFile, scratch, withCode, writeJson } from '../testing/helpers.js';
 
 const TARGETS: ProjectionTarget[] = ['reference', 'yaml', 'sql'];
+
+/** Every fixture declares a real modelId, folded from its own directory name, and modelKind 'implementation'; init invents no default. */
+const cfg = (dir: string): [string, 'implementation'] => [foldModelId(basename(dir)), 'implementation'];
 
 /** A governed workspace holding the sample model, with the given output routing. */
 function sampleWorkspace(outputs: LoomConfig['outputs'] = {}): Workspace {
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, { modelId: foldModelId(basename(root)), modelKind: 'implementation' }).outcome, 'ok');
   writeJson(join(root, '.loom', 'model.json'), sampleModel());
-  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(), projectionProfile: 'documentation', scope: { ordering: ['.'] }, outputs });
+  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(...cfg(root)), projectionProfile: 'documentation', scope: { ordering: ['.'] }, outputs });
   return reopen(root);
 }
 
@@ -81,14 +84,14 @@ test('a protected target is refused before anything is written', () => {
 
 test("an output another model's manifest lists is a collision", () => {
   const parent = gitInit(scratch());
-  initWorkspace(parent);
+  initWorkspace(parent, { modelId: foldModelId(basename(parent)), modelKind: 'implementation' });
   writeJson(join(parent, '.loom', 'model.json'), sampleModel());
-  writeJson(join(parent, '.loom', 'loom.json'), { ...scaffoldConfig(), scope: { ordering: ['.'] }, outputs: { 'reference.md': 'child/Docs/Loom/' } });
+  writeJson(join(parent, '.loom', 'loom.json'), { ...scaffoldConfig(...cfg(parent)), scope: { ordering: ['.'] }, outputs: { 'reference.md': 'child/Docs/Loom/' } });
   const parentWs = reopen(parent);
   assert.equal(installOutputs(parentWs, { targets: ['reference'] }).outcome, 'ok');
   const child = gitInit(join(parent, 'child'));
   writeJson(join(child, '.loom', 'model.json'), sampleModel());
-  writeJson(join(child, '.loom', 'loom.json'), { ...scaffoldConfig(), scope: { ordering: ['.'] } });
+  writeJson(join(child, '.loom', 'loom.json'), { ...scaffoldConfig(...cfg(child)), scope: { ordering: ['.'] } });
   writeJson(join(child, '.loom', 'state.json'), { stateVersion: 1, phase: 'unplanned', sealed: false });
   const childWs = reopen(child);
   const env = installOutputs(childWs, { targets: ['reference'] });
@@ -138,6 +141,49 @@ test('an interrupted installation stays visibly incomplete until it is recovered
   assert.equal(recovered.outcome, 'ok', JSON.stringify(recovered));
   assert.deepEqual(codes(checkOutputs(ws, { targets: TARGETS }).findings), []);
   assert.equal(readJsonFile<InstallJournal>(journalPath(ws)).state, 'complete');
+});
+
+test('installOutputs refuses a write target that a link redirects outside the workspace after planning, and writes nothing through the link', () => {
+  const ws = sampleWorkspace();
+  const outside = scratch();
+  const steps: OutputSteps = {
+    write: (path, content) => {
+      writeFileSync(path, content);
+      // Planted only once planning is behind us: between writing the first component's staged file and the third's, a link redirects the third's directory.
+      if (path.includes(join('Loom', 'ordering'))) symlinkSync(outside, join(ws.root, 'Docs', 'Loom', 'billing'), 'junction');
+    },
+    rename: (from, to) => renameSync(from, to),
+  };
+  const env = installOutputs(ws, { targets: ['sql'] }, steps);
+  assert.equal(env.outcome, 'refused');
+  assert.ok(codes(env.findings).includes('WRITE_OUTSIDE_WORKSPACE'), JSON.stringify(env.findings));
+  assert.equal(env.refusal?.cause, 'policy-failure');
+  assert.equal(existsSync(join(outside, 'schema.sql')), false, 'nothing was written through the redirected link');
+  assert.equal(existsSync(join(ws.root, 'Docs', 'Loom', 'billing', 'schema.sql')), false);
+  assert.equal(readJsonFile<InstallJournal>(journalPath(ws)).state, 'failed');
+});
+
+test('installOutputs refuses a rename target that a link redirects outside the workspace after staging, catching it before any file is renamed', () => {
+  const ws = sampleWorkspace();
+  const outside = scratch();
+  const steps: OutputSteps = {
+    write: (path, content) => {
+      writeFileSync(path, content);
+      // Planted after every component's staged file is written, so the rename phase alone meets the redirect.
+      if (path.includes(join('Loom', 'billing'))) {
+        rmSync(join(ws.root, 'Docs', 'Loom', 'ordering'), { recursive: true, force: true });
+        symlinkSync(outside, join(ws.root, 'Docs', 'Loom', 'ordering'), 'junction');
+      }
+    },
+    rename: (from, to) => renameSync(from, to),
+  };
+  const env = installOutputs(ws, { targets: ['sql'] }, steps);
+  assert.equal(env.outcome, 'refused');
+  assert.ok(codes(env.findings).includes('WRITE_OUTSIDE_WORKSPACE'), JSON.stringify(env.findings));
+  assert.equal(env.refusal?.cause, 'policy-failure');
+  assert.equal(existsSync(join(outside, 'schema.sql')), false, 'nothing was written through the redirected link');
+  assert.equal(existsSync(join(ws.root, 'Docs', 'Loom', 'fulfillment', 'schema.sql')), false, 'the rename phase stops before renaming any file once a redirect is met');
+  assert.equal(readJsonFile<InstallJournal>(journalPath(ws)).state, 'failed');
 });
 
 test('a target this engine does not render fails closed instead of being skipped', () => {

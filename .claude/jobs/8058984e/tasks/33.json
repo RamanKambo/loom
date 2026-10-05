@@ -1,0 +1,11 @@
+{
+  "id": "33",
+  "subject": "Create the loom-worker agent definition and confirm this session can dispatch it",
+  "description": "RESULT (2026-10-03, AMC-D-PF3XTNPM):\n- Codebase/.claude/agents/loom-worker.md created and committed in the superproject as 4651008 (\"chore(agents): add the loom-worker agent definition\"). `claude plugin validate .claude/agents` (Claude Code 2.1.288): \"Validation passed\".\n- Frontmatter: name, description, `disallowedTools: Agent, Workflow, SendMessage, Bash, PowerShell` (it cannot re-delegate or message workers, and its shell is the WindowsPowershellDesktop console), no model pin.\n- Body: identity, Scope, Questions, Shell, Method, Prohibitions, Builder return format (claude-doctrine reference 12 §1, §3, §5).\n- Visibility: this session cannot dispatch it. Agent(subagent_type \"loom-worker\") returned \"Agent type 'loom-worker' not found. Available agents: claude, claude-code-guide, Explore, general-purpose, Plan, statusline-setup\", because the watcher covers only agents directories that existed at session start (sub-agents.md:254). Fallback recorded in the task 1 WORKER rule.\n- Push: `git push origin main` failed with \"Maximum (20) redirects followed\" against the GHES remote; recorded and ignored (decision 8).\n- Also delivered: plan-gate.mjs gained EVIDENCE_MISSING (self-test 11 checks), and crosswalk.mjs (list/evidence) was added beside it; task 1 records both.",
+  "activeForm": "Creating the loom-worker agent definition",
+  "status": "completed",
+  "blocks": [
+    "3"
+  ],
+  "blockedBy": []
+}

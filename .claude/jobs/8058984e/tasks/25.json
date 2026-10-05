@@ -1,0 +1,16 @@
+{
+  "id": "25",
+  "subject": "Add Playwright browser end-to-end tests that drive the real MCP server, browser host and built designer",
+  "description": "WHY: loomrefinements.md §Acceptance scenarios: \"Do not call … a browser build proof of workspace attachment\"; \"Angular URL\", \"concurrent browser and agent edits\", \"browser security\" and \"several workspaces\" need real browser evidence.\n\nGROUNDING:\n- No Playwright or Cypress is installed in Tools/loom/node_modules or apps/designer/node_modules.\n- %LOCALAPPDATA%\\ms-playwright\\b holds 18 browser entries, with an unknown version match.\n- The only global package is @playwright/mcp@0.0.83 (measured 11:50:25Z).\n\nCHANGE:\n- Declare @playwright/test in apps/designer, in its own lockfile. Use the cached chromium if its version matches; otherwise install it per decision 6b.\n- The end-to-end test starts the real MCP server over stdio, opens a workspace through loom.workspace and loads viewUrl. It asserts:\n  - the actual model is shown, not the sample;\n  - every tab renders;\n  - concurrent edits by the browser and the agent: one wins, and the stale draft survives with its conflict;\n  - a wrong Origin and an expired token are refused;\n  - a disconnect gives the offline snapshot;\n  - two workspaces in two tabs never retarget each other.\n\nAREA TESTS: from apps/designer, npx playwright test.\nWORKER: Sonnet, fresh.",
+  "activeForm": "Adding browser end-to-end tests",
+  "status": "pending",
+  "blocks": [
+    "26"
+  ],
+  "blockedBy": [
+    "24"
+  ],
+  "metadata": {
+    "milestone": "e"
+  }
+}

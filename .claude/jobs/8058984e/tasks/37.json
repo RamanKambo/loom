@@ -1,0 +1,24 @@
+{
+  "id": "37",
+  "subject": "Expose qualification run control through loom.qualify and the CLI qualify commands, over the run table",
+  "description": "MILESTONE d (SQL qualification), last task: it ends the milestone, so it also runs the milestone-end check below.\n\nWHY: the spec's agent-tools rows for loom.qualify start, status and cancel, its rule that long work is asynchronous and native checks never block status, cancellation, other workspaces or browser events, its queued-request and cancellation rules, and its rule that run control gets equivalent CLI commands. Split out of tasks 21 and 22 on 2026-10-04 (milestone goal), because run control needs the coordinator (16), verified cleanup and recovery (17) and the providers (18).\n\nGROUNDING:\n- Contracts: QualifyRun, QualifyRunStatus (cleanup is CleanupState; progress events have an optional cause), QualifyCancelData (cleanup is RunCleanup), RunPhase, RunRecord, AllocationJournal, RunLease (decisions 12 and 13); the catalogue entry for loom.qualify (qualifyStart refuses access-denied).\n- @loom/qualification is not yet a dependency of packages/mcp-server; this task adds it.\n- The CLI has no session, so its run control works across processes through task 16's allocation journal.\n\nCHANGE:\n- MCP: expose loom.qualify start|status|cancel per decision 11. A run table holds each run: start returns the handle after preflight, status pages bounded progress with a cursor, and cancel is idempotent. 'requested' versus 'completed' cancellation follows the run phase, and completed comes only once processes and resources have settled. A waiting request stays queued with a visible cancellation path.\n- The run table emits qualification.progress, qualification.completed and cleanup.changed, so the browser host (task 23) can stream them.\n- CLI: `qualify start|status|cancel|recover`, with the shared envelope under --json. `qualify cancel` is idempotent, with a repeated-cancel test.\n- Update the README MCP and CLI sections and icd/mcp.json and icd/cli.json in this change.\n\nMILESTONE-END CHECK (d), run whatever the host load (task 1, owner rule of 2026-10-05):\n- Native SQL success, native SQL failure and cancellation, laptop resource pressure, and actual implementation tests, each with current evidence from real LocalDB runs and a negative control.\n- The service provider is reported unqualified on this host (decision 6c).\n- Then run the plan gate, commit, push and bump the superproject pointer.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/mcp-server/dist/test/mcp.test.js; npm run smoke:mcp; node --test --test-concurrency=1 packages/cli/dist/test/cli.test.js; node --test --test-concurrency=1 packages/qualification/dist/test/lifecycle.test.js; node packages/cli/dist/index.js docs --check --self. Afterwards `SqlLocalDB info` lists no loom-* instance.\nWORKER: the milestone-d SQL implementer, resumed.",
+  "activeForm": "Exposing qualification run control over MCP and the CLI",
+  "status": "pending",
+  "blocks": [
+    "23",
+    "26"
+  ],
+  "blockedBy": [
+    "16",
+    "17",
+    "18",
+    "19",
+    "21",
+    "22",
+    "27",
+    "32"
+  ],
+  "metadata": {
+    "milestone": "d"
+  }
+}

@@ -49,7 +49,7 @@ export function createLoomServer(options: LoomServerOptions = {}): LoomServer {
     let env: ResultEnvelope;
     let isError = false;
     try {
-      env = executeTool(request.params.name, request.params.arguments ?? {}, ctx);
+      env = await executeTool(request.params.name, request.params.arguments ?? {}, ctx);
     } catch (err) {
       isError = true;
       env = envelope(request.params.name.replace(/[^A-Za-z.]/g, '') || 'loom.unknown', { model: null, findings: [], refusal: refusal('unresolved-context', `the tool failed: ${(err as Error).message}`) });

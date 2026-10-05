@@ -5,6 +5,10 @@
       "path": "C:/repos/payments",
       "repository": { "isRepository": true, "isRoot": true, "commit": "a9ce204", "dirty": false },
       "ownership": { "path": ".", "status": "ungoverned", "candidates": [] },
+      "composition": null,
+      "models": [],
+      "submodules": [],
+      "affectedPaths": { "tracked": [], "untracked": [] },
       "placements": [{ "root": ".", "modelKind": "implementation", "reasons": ["The repository root holds the service's source and no descriptor claims it."] }],
       "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
@@ -12,12 +16,18 @@
       "path": "services/payments/src",
       "repository": { "isRepository": true, "isRoot": false },
       "ownership": { "path": "services/payments/src", "status": "owned", "owner": { "descriptor": "services/payments/.loom", "component": "payments", "root": "services/payments/src" }, "candidates": [{ "descriptor": "services/payments/.loom", "claims": true, "component": "payments", "readable": true }] },
+      "composition": { "descriptor": ".loom", "modelId": "shop", "listed": true },
+      "models": [{ "descriptor": ".loom", "readable": true, "modelId": "payments", "modelKind": "implementation" }],
+      "submodules": [{ "path": "libs/shared", "checkedOut": false, "hasDescriptor": false }],
+      "affectedPaths": { "tracked": ["src/index.ts"], "untracked": ["src/new.ts"] },
       "placements": [],
       "inspectionDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     }
   ],
   "invalid": [
-    { "because": "a suggested placement names its reasons", "keyword": "minItems", "path": "/placements/0/reasons", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "placements": [{ "root": ".", "modelKind": "implementation", "reasons": [] }], "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
-    { "because": "an inspection carries the digest an initialization names", "keyword": "required", "path": "", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "placements": [] } }
+    { "because": "a suggested placement names its reasons", "keyword": "minItems", "path": "/placements/0/reasons", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "composition": null, "models": [], "submodules": [], "affectedPaths": { "tracked": [], "untracked": [] }, "placements": [{ "root": ".", "modelKind": "implementation", "reasons": [] }], "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
+    { "because": "an inspection carries the digest an initialization names", "keyword": "required", "path": "", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "composition": null, "models": [], "submodules": [], "affectedPaths": { "tracked": [], "untracked": [] }, "placements": [] } },
+    { "because": "inspection reports the direct submodules a .gitmodules declares even when none is readable", "keyword": "required", "path": "", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "composition": null, "models": [], "affectedPaths": { "tracked": [], "untracked": [] }, "placements": [], "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
+    { "because": "an inspection carries no member outside its contract", "keyword": "additionalProperties", "path": "", "instance": { "path": "C:/repos/payments", "repository": { "isRepository": true, "isRoot": true }, "ownership": { "path": ".", "status": "ungoverned", "candidates": [] }, "composition": null, "models": [], "submodules": [], "affectedPaths": { "tracked": [], "untracked": [] }, "placements": [], "inspectionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "extra": true } }
   ]
 }

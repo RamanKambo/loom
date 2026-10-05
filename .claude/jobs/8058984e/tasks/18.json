@@ -1,0 +1,18 @@
+{
+  "id": "18",
+  "subject": "Add the dedicated developer-edition SQL service provider with startup-state restore and blocked reporting",
+  "description": "WHY: loomrefinements.md §Provider choice and dormant state; acceptance scenario \"Service provider: startup state restored; wrong service and missing permissions cause no mutation\".\n\nGROUNDING: this host has no MSSQL* service and no `HKLM:\\SOFTWARE\\Microsoft\\Microsoft SQL Server\\Instance Names\\SQL` key (measured 2026-10-03 11:49:26Z, AMC-D-PF3XTNPM, user allianzde). The provider cannot be qualified here, and the release reports it unqualified per decision 6c.\n\nCHANGE:\n- Provider abstraction: localdb | developer-service, mapped to trusted local configuration. No arbitrary endpoint, no connection string.\n- The dedicated service is named explicitly and normally has Manual startup.\n- A Disabled service changes startup mode only under an explicitly pre-authorized policy, and is restored after the run.\n- Without that authority, or without service permission, the provider reports blocked.\n- An already running service is never taken over: refuse acquisition and report it.\n- Never alter startup silently, install SQL or request elevation.\n- Tests use a fake service controller for the decision logic only: wrong service, missing permission, running service, Disabled without policy. Each asserts that no mutation call was made. Real-service evidence stays unqualified on this host.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/qualification/dist/test/framework.test.js; node --test --test-concurrency=1 packages/qualification/dist/test/lifecycle.test.js.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Adding developer-service SQL provider",
+  "status": "pending",
+  "blocks": [
+    "19",
+    "32",
+    "37"
+  ],
+  "blockedBy": [
+    "17"
+  ],
+  "metadata": {
+    "milestone": "d"
+  }
+}

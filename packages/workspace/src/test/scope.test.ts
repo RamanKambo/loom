@@ -1,13 +1,17 @@
 import { strict as assert } from 'node:assert';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import type { LoomConfig, Model } from '@loom/core';
 import { openWorkspace } from '../config.js';
 import { discoverAll, resolveModel, resolveOwner } from '../discover.js';
-import { initWorkspace, scaffoldConfig, scaffoldModel, scaffoldState } from '../init.js';
+import { initWorkspace, scaffoldConfig, scaffoldModel, scaffoldState, type InitOptions } from '../init.js';
 import { containsPath, isCaseSensitive } from '../paths.js';
-import { codes, gitInit, readJsonFile, scratch, withCode, writeJson } from '../testing/helpers.js';
+import { codes, foldModelId, gitInit, readJsonFile, scratch, withCode, writeJson } from '../testing/helpers.js';
+
+/** Every fixture declares a real modelId, folded from its own directory name, and modelKind 'implementation'; init invents no default. */
+const implOf = (dir: string): InitOptions => ({ modelId: foldModelId(basename(dir)), modelKind: 'implementation' });
+const cfg = (dir: string): [string, 'implementation'] => [foldModelId(basename(dir)), 'implementation'];
 
 /** Write a descriptor by hand, as a copied or manually authored .loom would be. */
 function manualDescriptor(home: string, config: LoomConfig, model: Model = scaffoldModel()): void {
@@ -25,7 +29,7 @@ function withComponents(...ids: string[]): Model {
 test("'workspace' at '.' beside an overlapping component root fails", () => {
   const root = gitInit(scratch());
   mkdirSync(join(root, 'sql'));
-  manualDescriptor(root, { ...scaffoldConfig(), scope: { workspace: ['.'], sql: ['sql'] } }, withComponents('workspace', 'sql'));
+  manualDescriptor(root, { ...scaffoldConfig(...cfg(root)), scope: { workspace: ['.'], sql: ['sql'] } }, withComponents('workspace', 'sql'));
   const ws = openWorkspace(root);
   assert.ok(codes(ws.findings).includes('SCOPE_COMPONENT_ROOT_OVERLAP'), JSON.stringify(ws.findings));
 });
@@ -33,7 +37,7 @@ test("'workspace' at '.' beside an overlapping component root fails", () => {
 test('a narrowed configuration claims exactly its roots, by whole path segment', () => {
   const root = gitInit(scratch());
   for (const d of ['src/api', 'src/db', 'src/apiary']) mkdirSync(join(root, d), { recursive: true });
-  manualDescriptor(root, { ...scaffoldConfig(), scope: { api: ['src/api'], db: ['src/db'] } }, withComponents('api', 'db'));
+  manualDescriptor(root, { ...scaffoldConfig(...cfg(root)), scope: { api: ['src/api'], db: ['src/db'] } }, withComponents('api', 'db'));
   assert.equal(openWorkspace(root).findings.filter((f) => f.severity === 'error').length, 0);
   const api = resolveOwner(join(root, 'src', 'api', 'handler.ts'));
   assert.equal(api.result.status, 'owned');
@@ -55,7 +59,7 @@ test('containment compares whole segments', () => {
 test('an unclaimed sibling gets an explicit no-owner result, not the nearest unrelated model', () => {
   const sp = gitInit(scratch());
   const a = gitInit(join(sp, 'a'));
-  assert.equal(initWorkspace(a).outcome, 'ok');
+  assert.equal(initWorkspace(a, implOf(a)).outcome, 'ok');
   const b = gitInit(join(sp, 'b'));
   writeFileSync(join(b, 'tool.ps1'), '');
   const owner = resolveOwner(join(b, 'tool.ps1'));
@@ -69,9 +73,9 @@ test('an unclaimed sibling gets an explicit no-owner result, not the nearest unr
 
 test('a claiming child plus a claiming parent is an overlap naming both, never a first match', () => {
   const parent = gitInit(scratch());
-  initWorkspace(parent);
+  initWorkspace(parent, implOf(parent));
   const child = gitInit(join(parent, 'child'));
-  manualDescriptor(child, scaffoldConfig());
+  manualDescriptor(child, scaffoldConfig(...cfg(child)));
   const owner = resolveOwner(join(child, 'file.txt'));
   assert.equal(owner.result.status, 'overlap');
   const f = withCode(owner.findings, 'SCOPE_OVERLAP');
@@ -82,13 +86,13 @@ test('a claiming child plus a claiming parent is an overlap naming both, never a
 
 test('an unreadable descriptor makes ownership unresolved', () => {
   const parent = gitInit(scratch());
-  initWorkspace(parent);
+  initWorkspace(parent, implOf(parent));
   const child = gitInit(join(parent, 'child'));
   mkdirSync(join(child, '.loom'));
   writeFileSync(join(child, '.loom', 'loom.json'), '{');
   const owner = resolveOwner(join(child, 'x.txt'));
   assert.equal(owner.result.status, 'unresolved');
-  assert.deepEqual(codes(owner.findings), ['SCOPE_UNRESOLVED']);
+  assert.deepEqual(codes(owner.findings), ['DESCRIPTOR_UNREADABLE']);
   const all = discoverAll(parent, { cacheDir: null });
   assert.equal(all.coverage.complete, false);
   assert.deepEqual(all.coverage.unreadable, ['child/.loom']);
@@ -97,7 +101,7 @@ test('an unreadable descriptor makes ownership unresolved', () => {
 test('a declared submodule without a checkout makes coverage incomplete and ownership inside it unresolved', () => {
   const root = gitInit(scratch());
   writeFileSync(join(root, '.gitmodules'), '[submodule "missing"]\n\tpath = libs/missing\n\turl = ../missing.git\n');
-  initWorkspace(root);
+  initWorkspace(root, implOf(root));
   const all = discoverAll(root, { cacheDir: null });
   assert.equal(all.coverage.complete, false);
   assert.deepEqual(all.coverage.missing, ['libs/missing']);
@@ -108,7 +112,7 @@ test('a scope root that escapes the workspace through a junction is rejected', (
   const root = gitInit(scratch());
   const outside = scratch();
   symlinkSync(outside, join(root, 'linked'), 'junction');
-  manualDescriptor(root, { ...scaffoldConfig(), scope: { workspace: ['linked'] } });
+  manualDescriptor(root, { ...scaffoldConfig(...cfg(root)), scope: { workspace: ['linked'] } });
   const ws = openWorkspace(root);
   const f = withCode(ws.findings, 'SCOPE_ROOT_INVALID');
   assert.equal(f.length, 1, JSON.stringify(ws.findings));
@@ -118,7 +122,7 @@ test('a scope root that escapes the workspace through a junction is rejected', (
 test('a case-variant path resolves under the probed case sensitivity of the volume', () => {
   const root = gitInit(scratch());
   mkdirSync(join(root, 'src', 'App'), { recursive: true });
-  manualDescriptor(root, { ...scaffoldConfig(), scope: { app: ['src/App'] } }, withComponents('app'));
+  manualDescriptor(root, { ...scaffoldConfig(...cfg(root)), scope: { app: ['src/App'] } }, withComponents('app'));
   const sensitive = isCaseSensitive(root);
   const owner = resolveOwner(join(root, 'SRC', 'app', 'main.ts'));
   assert.equal(owner.result.status, sensitive ? 'ungoverned' : 'owned');
@@ -126,14 +130,14 @@ test('a case-variant path resolves under the probed case sensitivity of the volu
 
 test('creating a child descriptor invalidates the cached discovery result', () => {
   const parent = gitInit(scratch());
-  initWorkspace(parent);
+  initWorkspace(parent, implOf(parent));
   const first = discoverAll(parent);
   assert.equal(first.cached, false);
   const second = discoverAll(parent);
   assert.equal(second.cached, true);
   assert.deepEqual(second.coverage, first.coverage);
   const child = gitInit(join(parent, 'child'));
-  manualDescriptor(child, scaffoldConfig());
+  manualDescriptor(child, scaffoldConfig(...cfg(child)));
   const third = discoverAll(parent);
   assert.equal(third.cached, false);
   assert.deepEqual(third.coverage.descriptors, ['.loom', 'child/.loom']);
@@ -144,7 +148,7 @@ test('creating a child descriptor invalidates the cached discovery result', () =
 
 test('an explicit model path keeps the governing workspace; outside one it is validation-only', () => {
   const root = gitInit(scratch());
-  initWorkspace(root);
+  initWorkspace(root, implOf(root));
   writeJson(join(root, 'candidate.json'), scaffoldModel());
   const governed = resolveModel(root, { model: 'candidate.json' });
   assert.equal(governed.mode, 'explicit');
@@ -160,11 +164,11 @@ test('an explicit model path keeps the governing workspace; outside one it is va
 
 test('discovery inside a governed child resolves the ancestor owner across a nearer non-claiming descriptor', () => {
   const parent = gitInit(scratch());
-  manualDescriptor(parent, { ...scaffoldConfig(), scope: { sql: ['child/sql'] } }, withComponents('sql'));
+  manualDescriptor(parent, { ...scaffoldConfig(...cfg(parent)), scope: { sql: ['child/sql'] } }, withComponents('sql'));
   const child = gitInit(join(parent, 'child'));
   mkdirSync(join(child, 'sql'));
   mkdirSync(join(child, 'app'));
-  manualDescriptor(child, { ...scaffoldConfig(), scope: { app: ['app'] } }, withComponents('app'));
+  manualDescriptor(child, { ...scaffoldConfig(...cfg(child)), scope: { app: ['app'] } }, withComponents('app'));
   const owner = resolveOwner(join(child, 'sql', 'tables.sql'));
   assert.equal(owner.result.status, 'owned');
   assert.equal(owner.result.owner?.descriptor, '.loom');
@@ -176,7 +180,7 @@ test('discovery inside a governed child resolves the ancestor owner across a nea
 
 test('a configuration is checked against its contract, the model it governs and the phase the workspace is in', () => {
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, implOf(root)).outcome, 'ok');
   assert.equal(openWorkspace(root).findings.filter((f) => f.severity === 'error').length, 0, 'the scaffold checks clean');
   const configPath = join(root, '.loom', 'loom.json');
   const scaffold = readJsonFile<LoomConfig>(configPath);

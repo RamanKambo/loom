@@ -1,0 +1,20 @@
+{
+  "id": "22",
+  "subject": "Add the CLI workspace lifecycle commands generated from the operation catalogue, and close milestone a",
+  "description": "MILESTONE a (agent experience), last task: it ends the milestone, so it also runs the milestone-end check below. Scope since 2026-10-04: the federation commands and the composition gating of check moved to task 35, `diagram` to task 36, and `qualify start|status|cancel|recover` to task 37.\n\nWHY: the spec's agent-tools section requires equivalent CLI commands generated from the same operation catalogue for workspace lifecycle, composition, diagrams and run control, with existing CLI functionality preserved and exact help and examples published from the catalogue.\n\nGROUNDING:\n- The dispatch table (cli.ts:112-129) and USAGE (cli.ts:31-57) come from the catalogue as of task 4.\n- The README CLI table is README.md:84-105.\n- Inputs: task 14 (inspect, declaration-driven initialize with a dry-run digest, status; `init` already requires `--model-id` and `--model-kind`, and `mutate` takes `--expected-model/-config/-policy/-imports`, decision 22) and task 21 (the catalogue entries as served).\n- The catalogue's exposure reasons name the CLI forms: `workspace inspect [<path>] [--boundary <dir>]` and `workspace status [<path>]` (operations.json workspaceInspect and workspaceStatus).\n\nCHANGE:\n- Expose as CLI commands: `workspace inspect`; `workspace status` (revisions, pending runs, next actions); `init --dry-run` and `init --apply --expected-inspection <digest>`, declaration-driven.\n- Workspace open and close stay MCP-only, with the catalogue's stated reason that handles are scoped to a server session.\n- Each prints the shared envelope with --json.\n- Update the README CLI table in this change.\n- Existing commands keep their behaviour.\n\nMILESTONE-END CHECK (a): the scenarios fresh agent connection, resume after context loss, different clients and several workspaces. Each has current evidence at the layer the spec names: the real MCP server driven through the SDK client for both supported client classes, and real workspaces on disk. Each has a negative control: a retargeting attempt refused, inferred progress absent, an unsupported schema construct rejected. Then run the plan gate, commit, push and bump the superproject pointer.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/cli/dist/test/cli.test.js; node --test --test-concurrency=1 packages/cli/dist/test/concurrency.test.js; node packages/cli/dist/index.js docs --check. The ledger suite file suites/task-22.json is written before the brief, with limits about three times the durations measured at the commit before it.\nWORKER: a fresh loom-worker (Sonnet 5, effort high) with a brief in the 12-agent-prompt-anatomy order; the task 21 worker is reused only if its recorded context is well under the 200K limit, because a resumed context is re-read on every turn.",
+  "activeForm": "Adding CLI parity commands",
+  "status": "pending",
+  "blocks": [
+    "11",
+    "26",
+    "35",
+    "36",
+    "37"
+  ],
+  "blockedBy": [
+    "21"
+  ],
+  "metadata": {
+    "milestone": "a"
+  }
+}

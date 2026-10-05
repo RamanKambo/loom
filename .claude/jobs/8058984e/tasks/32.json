@@ -1,0 +1,18 @@
+{
+  "id": "32",
+  "subject": "Close the SQL qualification coverage rows: data-level constraints, procedure mutations and business assertions, multi-session concurrency, and runtime-role authorization",
+  "description": "WHY: the spec's qualification-coverage table requires:\n- positive and negative fixtures for keys, references, nullability, checks and defaults;\n- procedures checked for actual signatures, result shapes, permitted mutations and authored business assertions;\n- separate multi-session concurrency cases where required;\n- runtime-role permissions and forbidden access, using representative engine identities.\n\nGROUNDING:\n- sql.json checks: build, parse, catalog, behavior, transaction, migration, operations (:113-239).\n- sql.catalog compares the catalog only (:154-171).\n- sql.behavior runs the generated read-only signature and result-shape checks (projections/sql.ts:421-429). Its limit at sql.json:192 excludes unasserted business behavior.\n- sql.transaction is single-session; its limit at :216 says isolation under concurrent load is not established.\n- No authorization check exists, and sql.build's limits exclude permissions (:107, :130).\n- Whether the runner fixtures already hold data-level constraint cases is UNKNOWN; measure first.\n\nCHANGE (packages/qualification, through the task 16–17 coordinator):\n- sql.constraints: insert and update fixtures that must succeed or fail for each key, reference, nullability, check and default.\n- Procedures: execute each procedure against the adopting implementation and assert that it writes only the tables and columns its declared mutations permit. Also run the authored business assertions in the fixture set. Generated read-only checks never stand in for them.\n- sql.concurrency: separate sessions for the concurrency requirements the model declares, asserting the declared outcome.\n- sql.authorization: create representative roles and users in the disposable database, EXECUTE AS each identity, and assert the permitted and forbidden operations from the model's authority records.\n- Each check gets:\n  - a conforming fixture that passes and a violating one that fails, in examples/;\n  - a proof limit;\n  - a profile entry;\n  - a capability entry.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 --test-name-pattern \"constraints|mutation|assertion|concurrency|authorization\" packages/qualification/dist/test/native.test.js; node --test --test-concurrency=1 packages/qualification/dist/test/lifecycle.test.js. Afterwards `SqlLocalDB info` shows no loom-* instance.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Closing SQL qualification coverage rows",
+  "status": "pending",
+  "blocks": [
+    "19",
+    "28",
+    "37"
+  ],
+  "blockedBy": [
+    "18"
+  ],
+  "metadata": {
+    "milestone": "d"
+  }
+}

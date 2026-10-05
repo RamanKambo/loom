@@ -584,7 +584,7 @@ export type ProjectionTarget =
   | 'coverage-matrix'
   | 'evidence-index';
 /**
- * Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs.
+ * Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, a path outside the server's configured allowed roots, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs, or a path inside an allowed root.
  */
 export type RefusalCause =
   | 'invalid-input'
@@ -754,6 +754,10 @@ export type FindingCode =
   | 'SCOPE_COMPONENT_ROOT_OVERLAP'
   | 'SCOPE_UNRESOLVED'
   | 'SCOPE_NO_OWNER'
+  | 'CHECKOUT_MISSING'
+  | 'DESCRIPTOR_UNREADABLE'
+  | 'ROOT_INACCESSIBLE'
+  | 'WRITE_OUTSIDE_WORKSPACE'
   | 'INIT_NOT_REPOSITORY_ROOT'
   | 'INIT_ALREADY_INITIALIZED'
   | 'INIT_REPAIR_REQUIRED'
@@ -7401,6 +7405,10 @@ export interface RevisionSet {
     id: string;
     version: number;
   };
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  imports?: string;
   sources?: SourceRevision[];
 }
 /**
@@ -7521,7 +7529,7 @@ export interface ValidateInput {
   workspace?: true;
 }
 /**
- * Exactly one of 'patch' or 'patches'. A workspace mutation is persistent and requires 'expectedRevision'; an inline-model mutation is a pure calculation.
+ * Exactly one of 'patch' or 'patches'. A workspace mutation is persistent and requires 'expectation', the MutationExpectation it was prepared against; an inline-model mutation is a pure calculation.
  */
 export interface MutateInput {
   model?: Model;
@@ -7532,8 +7540,23 @@ export interface MutateInput {
    */
   patches?: Patch[];
   acknowledgeBreaking?: string[];
-  expectedRevision?: Hash;
+  expectation?: MutationExpectation;
   dryRun?: boolean;
+}
+/**
+ * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
+ */
+export interface MutationExpectation {
+  model: Hash;
+  config: Hash;
+  /**
+   * Hash of the trusted policy, or null when the workspace names none.
+   */
+  policy: Hash | null;
+  /**
+   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
+   */
+  imports: string;
 }
 /**
  * Compare two inline models, or the candidate (inline or workspace) against the trusted accepted baseline.
@@ -8091,21 +8114,6 @@ export interface WorkspaceSummary {
   completeness: Completeness;
 }
 /**
- * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
- */
-export interface MutationExpectation {
-  model: Hash;
-  config: Hash;
-  /**
-   * Hash of the trusted policy, or null when the workspace names none.
-   */
-  policy: Hash | null;
-  /**
-   * SHA-256 digest of the canonical JSON (sorted keys, no insignificant whitespace) or of the exact bytes of a file.
-   */
-  imports: string;
-}
-/**
  * An immutable proposal for a change across one or more models, bound to the revision vector it was planned against: every write with its owner and expected old and new hashes, the impact, the evidence it invalidates and the acceptance it requires.
  */
 export interface ChangeProposal {
@@ -8185,8 +8193,8 @@ export interface WorkspaceInput {
  */
 export interface LoomConfig {
   configVersion: 1;
-  modelId?: ModelId;
-  modelKind?: ModelKind;
+  modelId: ModelId;
+  modelKind: ModelKind;
   /**
    * Explicit composition: the direct members, the roots registered as delegated to them and the output roots this workspace claims. Filesystem nesting alone confers neither membership nor authority, and an unlisted child .loom under this workspace's claims is an overlap.
    */
@@ -8349,7 +8357,7 @@ export interface QualifyInput {
   cursor?: Cursor;
 }
 /**
- * What inspection found at a path, without writing: the repository, who owns the path, where a workspace could be placed with the reasons, and the inspection digest an initialization names as its expectation.
+ * What inspection found at a path, without writing: the repository, who owns the path, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, where a workspace could be placed with the reasons, and the inspection digest an initialization names as its expectation.
  */
 export interface WorkspaceInspectData {
   /**
@@ -8367,7 +8375,45 @@ export interface WorkspaceInspectData {
   };
   ownership: OwnershipResult;
   /**
-   * Where a workspace could be placed, most suitable first, each with its reasons; empty when a workspace already governs the path.
+   * Enclosing composition, or null.
+   */
+  composition: null | {
+    /**
+     * Repository-relative path with forward slashes. Absolute paths, drive letters, backslashes and '..' segments are rejected.
+     */
+    descriptor: string;
+    modelId: ModelId;
+    /**
+     * Whether the target repository is one of its members.
+     */
+    listed: boolean;
+  };
+  /**
+   * Models here and in direct submodules.
+   */
+  models: {
+    descriptor: RelativePath;
+    readable: boolean;
+    modelId?: ModelId;
+    modelKind?: ModelKind;
+  }[];
+  /**
+   * Declared submodules and checkout state.
+   */
+  submodules: {
+    path: RelativePath;
+    checkedOut: boolean;
+    hasDescriptor: boolean;
+  }[];
+  /**
+   * Tracked and untracked paths, bounded.
+   */
+  affectedPaths: {
+    tracked: RelativePath[];
+    untracked: RelativePath[];
+  };
+  /**
+   * Suggested placements, most suitable first; empty once a workspace governs the path.
    */
   placements: {
     /**
@@ -8386,7 +8432,7 @@ export interface WorkspaceInspectData {
   inspectionDigest: string;
 }
 /**
- * Who owns the path, relative to its repository root.
+ * Who owns the path, among ancestor descriptors.
  */
 export interface OwnershipResult {
   path: RelativePath;
@@ -9117,8 +9163,8 @@ export interface CatalogueResource {
  */
 export interface LoomConfig1 {
   configVersion: 1;
-  modelId?: ModelId;
-  modelKind?: ModelKind;
+  modelId: ModelId;
+  modelKind: ModelKind;
   /**
    * Explicit composition: the direct members, the roots registered as delegated to them and the output roots this workspace claims. Filesystem nesting alone confers neither membership nor authority, and an unlisted child .loom under this workspace's claims is an overlap.
    */
@@ -9229,7 +9275,7 @@ export interface OutputManifest {
   artifacts: ManifestArtifact[];
 }
 /**
- * Recoverable record of one bundle installation. Each file is replaced atomically; the bundle as a whole is complete only when every entry is installed and the manifest matches.
+ * Recoverable record of one installed file set: a projection bundle, a workspace scaffold or any other set this adapter installs. Each file is replaced atomically; the set as a whole is complete only when every entry is installed and, for a bundle with a manifest, the manifest matches.
  */
 export interface InstallJournal {
   journalVersion: 1;

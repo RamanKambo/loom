@@ -1,0 +1,5 @@
+
+> loom-monorepo@1.0.0 build
+> node packages/core/scripts/generate.mjs --check && tsc -b
+
+generate --check: 9 artifacts current, 651 fixture cases passed, digest sha256:ca166683f256ef3f9777701c9326262cedbfefe328049498581d33c4d4c90b7d

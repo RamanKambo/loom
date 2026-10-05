@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: two server processes on one workspace: of two writers on one base revision exactly one succeeds
+ok 1 - two server processes on one workspace: of two writers on one base revision exactly one succeeds
+  ---
+  duration_ms: 8119.5766
+  type: 'test'
+  ...
+# Subtest: a workspace mutation without its expected revision is refused before anything runs
+ok 2 - a workspace mutation without its expected revision is refused before anything runs
+  ---
+  duration_ms: 1780.0416
+  type: 'test'
+  ...
+# Subtest: the server refuses a workspace request when no workspace governs its directory
+ok 3 - the server refuses a workspace request when no workspace governs its directory
+  ---
+  duration_ms: 300.0412
+  type: 'test'
+  ...
+# Subtest: core, CLI and MCP agree on readiness, acceptance and compatibility for one governed workspace
+ok 4 - core, CLI and MCP agree on readiness, acceptance and compatibility for one governed workspace
+  ---
+  duration_ms: 38420.2203
+  type: 'test'
+  ...
+# Subtest: core, CLI and MCP agree on the readiness cases of the independent fixtures
+ok 5 - core, CLI and MCP agree on the readiness cases of the independent fixtures
+  ---
+  duration_ms: 15272.7236
+  type: 'test'
+  ...
+# Subtest: an inline diff with an invalid side is marked provisional and a stale context continuation is refused
+ok 6 - an inline diff with an invalid side is marked provisional and a stale context continuation is refused
+  ---
+  duration_ms: 57.3819
+  type: 'test'
+  ...
+# Subtest: a workspace context continuation from before the model changed is refused with the request that starts again, addressed to the workspace
+ok 7 - a workspace context continuation from before the model changed is refused with the request that starts again, addressed to the workspace
+  ---
+  duration_ms: 3461.9121
+  type: 'test'
+  ...
+# Subtest: initialization returns the orientation as the server instructions, within the instructions budget
+ok 8 - initialization returns the orientation as the server instructions, within the instructions budget
+  ---
+  duration_ms: 1.6927
+  type: 'test'
+  ...
+# Subtest: the default description is the orientation summary within the default budget, and a full description pages every section with explicit continuations
+ok 9 - the default description is the orientation summary within the default budget, and a full description pages every section with explicit continuations
+  ---
+  duration_ms: 16.1628
+  type: 'test'
+  ...
+# Subtest: the server lists the guides with the digests of their text and contract, and refuses a guide the catalogue does not define
+ok 10 - the server lists the guides with the digests of their text and contract, and refuses a guide the catalogue does not define
+  ---
+  duration_ms: 16.7606
+  type: 'test'
+  ...
+# Subtest: a diff against the baseline reports a breaking change kept at the accepted version, for the workspace model and for an imported document
+ok 11 - a diff against the baseline reports a breaking change kept at the accepted version, for the workspace model and for an imported document
+  ---
+  duration_ms: 14218.84
+  type: 'test'
+  ...
+# Subtest: a diff against the baseline reports no unbumped version once the breaking change raises it
+ok 12 - a diff against the baseline reports no unbumped version once the breaking change raises it
+  ---
+  duration_ms: 14922.668
+  type: 'test'
+  ...
+# Subtest: a workspace change that alters an artifact invalidates the evidence about it, judged by the candidate rendering in the plan and in an inline diff
+ok 13 - a workspace change that alters an artifact invalidates the evidence about it, judged by the candidate rendering in the plan and in an inline diff
+  ---
+  duration_ms: 12434.35
+  type: 'test'
+  ...
+# Subtest: a workspace change that leaves an artifact alone keeps the evidence about it current in the plan and in an inline diff
+ok 14 - a workspace change that leaves an artifact alone keeps the evidence about it current in the plan and in an inline diff
+  ---
+  duration_ms: 19851.497
+  type: 'test'
+  ...
+# Subtest: a workspace mutation that alters an artifact lists the evidence about it in its dry run and when it commits
+ok 15 - a workspace mutation that alters an artifact lists the evidence about it in its dry run and when it commits
+  ---
+  duration_ms: 12374.2912
+  type: 'test'
+  ...
+# Subtest: a workspace mutation that leaves an artifact alone lists no evidence about it in its dry run
+ok 16 - a workspace mutation that leaves an artifact alone lists no evidence about it in its dry run
+  ---
+  duration_ms: 10551.6614
+  type: 'test'
+  ...
+# Subtest: every tool lists the input and output schemas generated from the contract, and a request outside its input schema is refused before anything runs
+ok 17 - every tool lists the input and output schemas generated from the contract, and a request outside its input schema is refused before anything runs
+  ---
+  duration_ms: 127.5811
+  type: 'test'
+  ...
+# Subtest: every tool the operation catalogue exposes has a handler, and every handler a catalogue entry
+ok 18 - every tool the operation catalogue exposes has a handler, and every handler a catalogue entry
+  ---
+  duration_ms: 0.3004
+  type: 'test'
+  ...
+# Subtest: an argument the compact input schema accepts is still validated against the full contract before anything runs
+ok 19 - an argument the compact input schema accepts is still validated against the full contract before anything runs
+  ---
+  duration_ms: 81.7783
+  type: 'test'
+  ...
+# Subtest: every compact input schema accepts the catalogue examples, and every compact output schema states the top level of its result
+ok 20 - every compact input schema accepts the catalogue examples, and every compact output schema states the top level of its result
+  ---
+  duration_ms: 163.9934
+  type: 'test'
+  ...
+# Subtest: the server lists the schema resources the advertised schemas name, serves each with its full contract, and refuses an unknown one as not found
+ok 21 - the server lists the schema resources the advertised schemas name, serves each with its full contract, and refuses an unknown one as not found
+  ---
+  duration_ms: 370.6811
+  type: 'test'
+  ...
+# Subtest: the tool budget fails a tool whose advertised definition, or a tool list, outgrows it
+ok 22 - the tool budget fails a tool whose advertised definition, or a tool list, outgrows it
+  ---
+  duration_ms: 35.0605
+  type: 'test'
+  ...
+# Subtest: every catalogued agent tool stays unadvertised, and compacted with each action's result it fits the tool budget with no root combinator in its input
+ok 23 - every catalogued agent tool stays unadvertised, and compacted with each action's result it fits the tool budget with no root combinator in its input
+  ---
+  duration_ms: 32.981
+  type: 'test'
+  ...
+# Subtest: record text that reads as an instruction is returned as data and changes no state, finding or file
+ok 24 - record text that reads as an instruction is returned as data and changes no state, finding or file
+  ---
+  duration_ms: 12257.8393
+  type: 'test'
+  ...
+# Subtest: a workspace result names the model, configuration, profile, policy and baseline revisions it was evaluated against, and an inline result only its own
+ok 25 - a workspace result names the model, configuration, profile, policy and baseline revisions it was evaluated against, and an inline result only its own
+  ---
+  duration_ms: 10472.1534
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 176548.3255

@@ -1,0 +1,21 @@
+{
+  "id": "10",
+  "subject": "Implement agent orientation in core: 2,400-byte guidance, bounded describe with paging, operation-relevant proof limits, resume context and bound continuations",
+  "description": "RESULT (2026-10-05, AMC-D-PF3XTNPM): Loom 846c39b (implementation) + e56e730 (single-home rows in CLAUDE.md, qualification/metrics.json re-recorded), pushed; superproject 087e088 points Tools/loom at e56e730, pushed. Ledger: check 10 findings 0, accepted, committed by `ledger commit 10` (HEAD^{tree} equals the accepted tree a5c0607d69c8…).\n\nDELIVERED (agent orientation in core): guidance from hand-authored Docs/guides embedded with digests (orientation 1907 of 2400 bytes); bounded describe (summary 7868 of 8192 bytes; full detail paged by a cursor bound to request and build; operation-scoped deduplicated proof limits from the catalogue); bounded context with continuations bound to target, filters, budget and revision vector; pure resumeContext over ResumeInputs; Refusal.nextActions for a stale continuation. Contract digest sha256:ca166683f256ef3f9777701c9326262cedbfefe328049498581d33c4d4c90b7d.\n\nDECISIONS: 19 (flat DescribeInput) and 20 (Refusal.nextActions) in task 2. Interim: resume over MCP and CLI refuses unresolved-context until the workspace adapter supplies ResumeInputs (tasks 14 and 21).\n\nEVIDENCE (ledger runs at tree a5c0607d69c8, ~/.claude/jobs/8058984e/evidence/10/): build ok; core battery 'loom self-test PASS: 28 sections, 2530 assertions'; contract 17/17; mcp 25/25 and rerun 25/25; cli 33/33; coverage-scope 0 findings on agent.describe, agent.guidance, agent.orientation, agent.resume, contract.proof-limits, mcp.context, contract.operations; docs findings 0; smoke PASS (45 s); designer 29/29 (36 s). Crosswalk: 54 of 54 statements carry evidence.\n\nEVIDENCE DECLARATION (suites/task-10.json), corrected and re-briefed once (rework 1): build expected a line npm never prints; coverage needed the scoped wrapper suites/coverage-scope.mjs; smoke's 30 s limit was below its measured 30–76 s, now 240 s; the designer regex could not read vitest's coloured output under the console's FORCE_COLOR=1, now ANSI-tolerant with a 120 s limit (measured 55 s).\n\nOPEN FOR THE OWNER: ledger verify audits baselineCommit 930bde4..HEAD, so 846c39b, made outside the ledger by a Bump-Submodules -CommitOutstanding run (2026-10-04 23:10:56 +0530), reports UNLEDGERED_COMMIT; recommendation: move ledger.config.json baselineCommit to 846c39b, since task 10's ledger evidence at its accepted tree covers 846c39b's content.",
+  "activeForm": "Implementing agent orientation in core",
+  "status": "completed",
+  "blocks": [
+    "11",
+    "14",
+    "21"
+  ],
+  "blockedBy": [
+    "9"
+  ],
+  "metadata": {
+    "milestone": "a",
+    "worker": "ae9ce83fa690f7ee5",
+    "workerKind": "loom-worker (Opus), the milestone-a implementer, resumed for 14, 21 and 22",
+    "paused": "2026-10-04 18:30: the owner asked to pause. When the worker returns, report status only. Do not verify, commit, resume or dispatch anything until the owner asks, despite the goal hook."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "31",
+  "subject": "Render parent aggregate system views over a resolved composition, referencing child artifacts and never overwriting them",
+  "description": "WHY: the spec's changes-across-repositories section: \"A parent aggregate references child artifacts or renders a distinctly named system view; it never overwrites child-owned OpenAPI, SQL or interface documents.\" Its implementation prerequisites put aggregate projections after composition resolution.\n\nGROUNDING:\n- TARGETS: packages/core/src/project.ts:57-151.\n- Output routing: packages/workspace/src/outputs.ts:94-95, :127-135.\n- The diagram builders keep cross-model owner identity (task 12). Composition closure and the revision vector come from task 11; declared output claims from task 15.\n\nCHANGE:\n- A composition or mixed workspace renders system views over the resolved closure: component dependency across members, hosting, workflows and interactions, and the agreement map. They use distinct file names and a system scope.\n- Child-owned records are referenced by member and path, never re-rendered as the parent's own artifact.\n- Installation writes only into the parent's claimed output roots. A test proves a child-owned file is never written.\n- Coverage accounts for imported records as references.\n\nAREA TESTS: npm run build; core battery; node --test packages/workspace/dist/test/outputs.test.js; node --test packages/workspace/dist/test/composition.test.js.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Rendering parent aggregate system views",
+  "status": "pending",
+  "blocks": [
+    "28",
+    "36"
+  ],
+  "blockedBy": [
+    "12",
+    "15"
+  ],
+  "metadata": {
+    "milestone": "c"
+  }
+}

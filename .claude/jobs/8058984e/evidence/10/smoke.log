@@ -1,0 +1,4 @@
+loom mcp: concurrent persistent mutations - one committed, one refused as stale; the dry run wrote nothing.
+loom mcp: tools/list takes 40245 bytes for 12 tools (budget 98304); the largest tool, loom.describe, takes 7259 bytes (budget 8192); 47 schema resources named, listed and compiled.
+loom mcp: the instructions take 1907 UTF-8 bytes (budget 2400); the default description takes 7868 bytes of data (budget 8192) and 11860 bytes as the text of its whole envelope; 3 guides listed with their digests.
+loom mcp smoke PASS: 12 tools with compact input and output schemas; 12 results and 7 typed refusals conform to the full contract and to their advertised output schemas.

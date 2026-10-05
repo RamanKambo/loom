@@ -1,17 +1,20 @@
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { schemaErrors, validate } from '@loom/core';
 import type { FindingCode, Refusal, ResultEnvelope, WorkflowState } from '@loom/core';
-import { INIT_STEPS, initWorkspace, type InitSteps } from '../init.js';
+import { INIT_STEPS, initWorkspace, type InitOptions, type InitSteps } from '../init.js';
 import { openWorkspace } from '../config.js';
-import { codes, fileHash, gitInit, scratch, withCode } from '../testing/helpers.js';
+import { codes, fileHash, foldModelId, gitInit, scratch, withCode } from '../testing/helpers.js';
+
+/** Every fixture declares a real modelId, folded from its own directory name, and modelKind 'implementation'; init invents no default. */
+const implOf = (dir: string): InitOptions => ({ modelId: foldModelId(basename(dir)), modelKind: 'implementation' });
 
 test('init at a repository root writes exactly the four files, which validate and stay untracked', () => {
   const root = gitInit(scratch());
-  const env = initWorkspace(root);
+  const env = initWorkspace(root, implOf(root));
   assert.equal(env.outcome, 'ok', JSON.stringify(env.findings));
   assert.deepEqual(readdirSync(join(root, '.loom')).sort(), ['.gitignore', 'loom.json', 'model.json', 'state.json']);
   assert.equal(readFileSync(join(root, '.loom', '.gitignore'), 'utf8'), '/cache\n');
@@ -32,7 +35,7 @@ test('init below the repository root is refused and names the root', () => {
   const root = gitInit(scratch());
   const sub = join(root, 'src');
   mkdirSync(sub);
-  const env = initWorkspace(sub);
+  const env = initWorkspace(sub, implOf(sub));
   assert.equal(env.outcome, 'refused');
   const f = withCode(env.findings, 'INIT_NOT_REPOSITORY_ROOT');
   assert.equal(f.length, 1);
@@ -43,9 +46,9 @@ test('init below the repository root is refused and names the root', () => {
 
 test('init where an ancestor model claims the path is refused with the ancestor named, and writes nothing', () => {
   const parent = gitInit(scratch());
-  assert.equal(initWorkspace(parent).outcome, 'ok');
+  assert.equal(initWorkspace(parent, implOf(parent)).outcome, 'ok');
   const child = gitInit(join(parent, 'child'));
-  const env = initWorkspace(child);
+  const env = initWorkspace(child, implOf(child));
   assert.equal(env.outcome, 'refused');
   const overlap = withCode(env.findings, 'SCOPE_OVERLAP');
   assert.equal(overlap.length, 1);
@@ -56,8 +59,8 @@ test('init where an ancestor model claims the path is refused with the ancestor 
 test('init detects a descendant model instead of ignoring it', () => {
   const parent = gitInit(scratch());
   const lib = gitInit(join(parent, 'lib'));
-  assert.equal(initWorkspace(lib).outcome, 'ok');
-  const env = initWorkspace(parent);
+  assert.equal(initWorkspace(lib, implOf(lib)).outcome, 'ok');
+  const env = initWorkspace(parent, implOf(parent));
   assert.equal(env.outcome, 'refused');
   const overlap = withCode(env.findings, 'SCOPE_OVERLAP');
   assert.equal(overlap.length, 1);
@@ -67,10 +70,10 @@ test('init detects a descendant model instead of ignoring it', () => {
 
 test('an existing .loom is refused and every file keeps its content', () => {
   const root = gitInit(scratch());
-  initWorkspace(root);
+  initWorkspace(root, implOf(root));
   const files = ['loom.json', 'model.json', 'state.json', '.gitignore'].map((f) => join(root, '.loom', f));
   const before = files.map(fileHash);
-  const env = initWorkspace(root);
+  const env = initWorkspace(root, implOf(root));
   assert.equal(env.outcome, 'refused');
   assert.deepEqual(codes(env.findings), ['INIT_ALREADY_INITIALIZED']);
   assert.deepEqual(files.map(fileHash), before);
@@ -78,11 +81,11 @@ test('an existing .loom is refused and every file keeps its content', () => {
 
 test('force restores a missing .gitignore and nothing else', () => {
   const root = gitInit(scratch());
-  initWorkspace(root);
+  initWorkspace(root, implOf(root));
   rmSync(join(root, '.loom', '.gitignore'));
   const authority = ['loom.json', 'model.json', 'state.json'].map((f) => join(root, '.loom', f));
   const before = authority.map(fileHash);
-  const env = initWorkspace(root, { force: true });
+  const env = initWorkspace(root, { ...implOf(root), force: true });
   assert.equal(env.outcome, 'ok', JSON.stringify(env.findings));
   assert.deepEqual((env.data as { written: string[] }).written, ['.loom/.gitignore']);
   assert.equal(readFileSync(join(root, '.loom', '.gitignore'), 'utf8'), '/cache\n');
@@ -91,9 +94,9 @@ test('force restores a missing .gitignore and nothing else', () => {
 
 test('an incomplete .loom needs repair by its owner; force never invents an authority file', () => {
   const root = gitInit(scratch());
-  initWorkspace(root);
+  initWorkspace(root, implOf(root));
   rmSync(join(root, '.loom', 'state.json'));
-  const env = initWorkspace(root, { force: true });
+  const env = initWorkspace(root, { ...implOf(root), force: true });
   assert.equal(env.outcome, 'refused');
   assert.ok(codes(env.findings).every((c) => c === 'INIT_REPAIR_REQUIRED'));
   assert.ok(env.findings.length >= 1);
@@ -108,7 +111,7 @@ const injected = (step: string): never => {
 function initWith(steps: Partial<InitSteps>): { env: ResultEnvelope; left: string[]; staged: number } {
   const root = gitInit(scratch());
   let staged = 0;
-  const env = initWorkspace(root, {}, { ...INIT_STEPS, stage: (parent) => (staged++, INIT_STEPS.stage(parent)), ...steps });
+  const env = initWorkspace(root, implOf(root), { ...INIT_STEPS, stage: (parent) => (staged++, INIT_STEPS.stage(parent)), ...steps });
   return { env, left: readdirSync(root).sort(), staged };
 }
 
@@ -144,7 +147,7 @@ test('an installation failure leaves no .loom and no staging directory, and is r
 
 test('a scaffold that fails validation is refused as typed before anything is staged', () => {
   const sealed = { stateVersion: 1, phase: 'release', sealed: true, accepted: true } as unknown as WorkflowState;
-  const { env, left, staged } = initWith({ scaffold: () => ({ ...INIT_STEPS.scaffold(), state: sealed }) });
+  const { env, left, staged } = initWith({ scaffold: (modelId, modelKind) => ({ ...INIT_STEPS.scaffold(modelId, modelKind), state: sealed }) });
   assertTypedRefusal(env, 'invalid-input', 'CONFIG_INVALID');
   assert.equal(staged, 0, 'nothing was staged');
   assert.deepEqual(left, ['.git'], 'no state claiming a sealed, accepted release reaches the disk');
@@ -152,7 +155,7 @@ test('a scaffold that fails validation is refused as typed before anything is st
 
 test('init outside any repository is refused', () => {
   const dir = scratch();
-  const env = initWorkspace(dir);
+  const env = initWorkspace(dir, implOf(dir));
   assert.equal(env.outcome, 'refused');
   assert.deepEqual(codes(env.findings), ['INIT_NOT_REPOSITORY_ROOT']);
 });

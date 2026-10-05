@@ -9,6 +9,12 @@ import { documentText } from '../fsx.js';
 /** A fresh directory per test, so parallel runs never share or delete each other's state. */
 export const scratch = (): string => mkdtempSync(join(tmpdir(), 'loom-ws-'));
 
+/** A fixture or workspace directory name, lower-cased and folded to the ModelId pattern. The only place a test derives a model id from a path; product code never does. */
+export function foldModelId(name: string): string {
+  const folded = name.toLowerCase().replace(/[^a-z0-9._-]/g, '-').replace(/^[^a-z0-9]+/, '');
+  return (folded || 'workspace').slice(0, 128);
+}
+
 /**
  * A throwaway repository. Its local config pins line endings and disables commit
  * signing so the fixture behaves the same on every machine; it never touches a

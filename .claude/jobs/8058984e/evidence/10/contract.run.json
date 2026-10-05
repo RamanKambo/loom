@@ -1,0 +1,22 @@
+{
+  "suite": "contract",
+  "command": "node --test --test-reporter=tap packages/cli/dist/test/contract.test.js",
+  "cwd": "C:/Users/nnbfdh8/Codebase/Tools/loom",
+  "kind": "tap",
+  "exitCode": 0,
+  "startedAt": "2026-10-04T19:24:25.454Z",
+  "finishedAt": "2026-10-04T19:26:41.093Z",
+  "durationMs": 135639,
+  "rerun": false,
+  "counts": {
+    "tests": 17,
+    "pass": 17,
+    "fail": 0,
+    "skipped": 0
+  },
+  "treeBefore": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "treeAfter": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "head": "846c39b4fe61272a1db95716c303aad4bcb4f75b",
+  "cpuSamples": null,
+  "ok": true
+}

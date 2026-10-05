@@ -1,0 +1,19 @@
+{
+  "id": "35",
+  "subject": "Expose federation through loom.federation and the CLI federation commands, with composition gating on check",
+  "description": "MILESTONE b (composition), last task: it ends the milestone, so it also runs the milestone-end check below.\n\nWHY: the spec's agent-tools rows for loom.federation inspect, plan, apply, check and publish, and its rule that composition gets equivalent CLI commands generated from the same operation catalogue. Split out of task 21 (MCP) and task 22 (CLI) on 2026-10-04, when the owner set the milestone goal, because these surfaces need task 15's adapter and the rest of 21 and 22 belongs to milestone a.\n\nGROUNDING:\n- Contracts: FederationInput and the Federation*Data definitions (tools.schema.json), FederationJournal (workspace.schema.json), and the catalogue's agentTool entry for loom.federation with its presence rules and refusals (operations.json; access-denied on apply and publish).\n- Implementation inputs: task 11 (composition resolution in core) and task 15 (federation IO and journaled writes in packages/workspace).\n- The server already has async dispatch and per-session handles from task 21, and the CLI has catalogue-generated dispatch from tasks 4 and 22.\n\nCHANGE:\n- MCP: expose loom.federation inspect|plan|apply|check|publish per decision 11 (one opaque data output naming each action's data resource). The server and smoke validate each action's data against its full definition, and the tool stays within mcp.toolBudget.\n- CLI: `federation inspect|plan|apply|check|publish`. Each prints the shared envelope with --json. `check` and `check --all` carry the composition gating, with exit status as documented.\n- apply and publish refuse access-denied for a read handle or a missing publish capability; publish of a release needs the configured acceptance and evidence, and a draft is never trusted as a release.\n- Update the README MCP and CLI sections and icd/mcp.json and icd/cli.json in this change.\n\nMILESTONE-END CHECK (b): the scenarios parent with nested components (the aggregate-view part closes in task 31, milestone c, because those views render through task 12's builders), missing child or wrong digest, child contract change, runtime interaction cycle, and interrupted cross-repository write. Each has current evidence at the layer the spec names (real adapter and filesystem, not mocks), with a negative control. Then run the plan gate, commit, push and bump the superproject pointer.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/mcp-server/dist/test/mcp.test.js; npm run smoke:mcp; node --test --test-concurrency=1 packages/cli/dist/test/cli.test.js; node packages/cli/dist/index.js docs --check --self.\nWORKER: the milestone-b implementer, resumed.",
+  "activeForm": "Exposing federation over MCP and the CLI",
+  "status": "pending",
+  "blocks": [
+    "26",
+    "30"
+  ],
+  "blockedBy": [
+    "15",
+    "21",
+    "22"
+  ],
+  "metadata": {
+    "milestone": "b"
+  }
+}

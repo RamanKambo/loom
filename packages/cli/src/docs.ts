@@ -20,7 +20,8 @@ const HISTORY = [
 /** String literals removed, so a comment marker or a history phrase quoted inside a string is not read as a comment. */
 const withoutStrings = (line: string): string => line.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, "''");
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'generated', '.git', '.angular', 'coverage', 'bin', 'obj', '.loom', '.tmp']);
+/** Directories never read: dependencies, build output, tool state and agent configuration, none of which is the repository's own text. */
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'generated', '.git', '.angular', 'coverage', 'bin', 'obj', '.loom', '.tmp', '.claude']);
 
 function walk(dir: string, accept: (file: string) => boolean, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;

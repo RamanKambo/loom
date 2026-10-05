@@ -1,0 +1,1 @@
+coverage scope: capabilities 136 cases 261 verified 255; missing entries: none; other findings: 0; findings on agent.describe, agent.guidance, agent.orientation, agent.resume, contract.proof-limits, mcp.context, contract.operations: 0

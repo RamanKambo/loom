@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: the CLI without a command prints usage and an unknown command is a usage error
+ok 1 - the CLI without a command prints usage and an unknown command is a usage error
+  ---
+  duration_ms: 2203.2123
+  type: 'test'
+  ...
+# Subtest: every command the operation catalogue exposes has a handler, and every handler a catalogue entry
+ok 2 - every command the operation catalogue exposes has a handler, and every handler a catalogue entry
+  ---
+  duration_ms: 1.5504
+  type: 'test'
+  ...
+# Subtest: init scaffolds a repository root and refuses a subdirectory and a second run
+ok 3 - init scaffolds a repository root and refuses a subdirectory and a second run
+  ---
+  duration_ms: 4137.7025
+  type: 'test'
+  ...
+# Subtest: check with an explicit model outside a workspace is validation only
+ok 4 - check with an explicit model outside a workspace is validation only
+  ---
+  duration_ms: 2489.2055
+  type: 'test'
+  ...
+# Subtest: write and check agree on an installed bundle and report a hand edit as drift
+ok 5 - write and check agree on an installed bundle and report a hand edit as drift
+  ---
+  duration_ms: 7454.7289
+  type: 'test'
+  ...
+# Subtest: write --out writes every projection into a directory and refuses an invalid model
+ok 6 - write --out writes every projection into a directory and refuses an invalid model
+  ---
+  duration_ms: 3960.3245
+  type: 'test'
+  ...
+# Subtest: an explicit model inside a governed workspace is still compared with the trusted accepted baseline
+ok 7 - an explicit model inside a governed workspace is still compared with the trusted accepted baseline
+  ---
+  duration_ms: 15028.3282
+  type: 'test'
+  ...
+# Subtest: check reports a breaking change kept at the accepted contract version, whether a file edit, another document or two accepted patches made it
+ok 8 - check reports a breaking change kept at the accepted contract version, whether a file edit, another document or two accepted patches made it
+  ---
+  duration_ms: 26181.4704
+  type: 'test'
+  ...
+# Subtest: check reports no unbumped version once the breaking change raises it, nor for a compatible edit at the accepted version
+ok 9 - check reports no unbumped version once the breaking change raises it, nor for a compatible edit at the accepted version
+  ---
+  duration_ms: 16049.9948
+  type: 'test'
+  ...
+# Subtest: a baseline whose acceptance accepted another revision is not accepted, and one accepted at the revision it pins is
+ok 10 - a baseline whose acceptance accepted another revision is not accepted, and one accepted at the revision it pins is
+  ---
+  duration_ms: 33484.3554
+  type: 'test'
+  ...
+# Subtest: check --all finds every descriptor and reports overlapping claims
+ok 11 - check --all finds every descriptor and reports overlapping claims
+  ---
+  duration_ms: 7131.0251
+  type: 'test'
+  ...
+# Subtest: owner names the owning model or reports an ungoverned path
+ok 12 - owner names the owning model or reports an ungoverned path
+  ---
+  duration_ms: 5008.2081
+  type: 'test'
+  ...
+# Subtest: migrate leaves a current document unchanged, never replaces its source and refuses an unknown format
+ok 13 - migrate leaves a current document unchanged, never replaces its source and refuses an unknown format
+  ---
+  duration_ms: 3186.0849
+  type: 'test'
+  ...
+# Subtest: accept needs a policy, and baseline creation needs an acceptance record
+ok 14 - accept needs a policy, and baseline creation needs an acceptance record
+  ---
+  duration_ms: 7505.7914
+  type: 'test'
+  ...
+# Subtest: readiness evaluates a task and refuses an invalid task class
+ok 15 - readiness evaluates a task and refuses an invalid task class
+  ---
+  duration_ms: 6831.9826
+  type: 'test'
+  ...
+# Subtest: plan previews a change and refuses a stale base
+ok 16 - plan previews a change and refuses a stale base
+  ---
+  duration_ms: 6403.4752
+  type: 'test'
+  ...
+# Subtest: mutate persists only onto the expected revision and a dry run writes nothing
+ok 17 - mutate persists only onto the expected revision and a dry run writes nothing
+  ---
+  duration_ms: 8675.6162
+  type: 'test'
+  ...
+# Subtest: mutate --dry-run lists the stored evidence whose artifact the patch changes
+ok 18 - mutate --dry-run lists the stored evidence whose artifact the patch changes
+  ---
+  duration_ms: 5033.6104
+  type: 'test'
+  ...
+# Subtest: mutate --dry-run lists no evidence for a patch that leaves its artifact alone
+ok 19 - mutate --dry-run lists no evidence for a patch that leaves its artifact alone
+  ---
+  duration_ms: 4520.18
+  type: 'test'
+  ...
+# Subtest: qualify runs a named check and refuses an unknown one
+ok 20 - qualify runs a named check and refuses an unknown one
+  ---
+  duration_ms: 6757.8473
+  type: 'test'
+  ...
+# Subtest: qualify judges the evidence of its own signed run against the artifacts that run rendered
+ok 21 - qualify judges the evidence of its own signed run against the artifacts that run rendered
+  ---
+  duration_ms: 5132.7463
+  type: 'test'
+  ...
+# Subtest: qualify --store in a written workspace stores its evidence after the last check, so the drift check of the run passes
+ok 22 - qualify --store in a written workspace stores its evidence after the last check, so the drift check of the run passes
+  ---
+  duration_ms: 18474.4209
+  type: 'test'
+  ...
+# Subtest: qualify --store reports drift of a hand-edited view and of no other
+ok 23 - qualify --store reports drift of a hand-edited view and of no other
+  ---
+  duration_ms: 8425.1389
+  type: 'test'
+  ...
+# Subtest: qualify --metrics measures the outcome corpora and --compare reports every measurement beside the recorded one
+ok 24 - qualify --metrics measures the outcome corpora and --compare reports every measurement beside the recorded one
+  ---
+  duration_ms: 11282.2531
+  type: 'test'
+  ...
+# Subtest: evidence lists the store and refuses an unknown record
+ok 25 - evidence lists the store and refuses an unknown record
+  ---
+  duration_ms: 4515.363
+  type: 'test'
+  ...
+# Subtest: context is bounded, names its continuation and refuses a continuation of another revision
+ok 26 - context is bounded, names its continuation and refuses a continuation of another revision
+  ---
+  duration_ms: 8834.2549
+  type: 'test'
+  ...
+# Subtest: describe lists every tool and finding code
+ok 27 - describe lists every tool and finding code
+  ---
+  duration_ms: 4722.5832
+  type: 'test'
+  ...
+# Subtest: describe returns the proof limits of one operation and refuses a section without a full detail
+ok 28 - describe returns the proof limits of one operation and refuses a section without a full detail
+  ---
+  duration_ms: 2011.306
+  type: 'test'
+  ...
+# Subtest: docs installs the views with evaluated inputs and docs --check reports broken links, unknown records and history markers
+ok 29 - docs installs the views with evaluated inputs and docs --check reports broken links, unknown records and history markers
+  ---
+  duration_ms: 8104.8565
+  type: 'test'
+  ...
+# Subtest: docs --check flags a hand-authored copy of a generated register and a comment narrating history
+ok 30 - docs --check flags a hand-authored copy of a generated register and a comment narrating history
+  ---
+  duration_ms: 3206.5036
+  type: 'test'
+  ...
+# Subtest: docs --check --self holds Loom's own repository to the release wording, which fires in documents, comments and JSON prose but never in a dependency or an adopter's text
+ok 31 - docs --check --self holds Loom's own repository to the release wording, which fires in documents, comments and JSON prose but never in a dependency or an adopter's text
+  ---
+  duration_ms: 4321.3737
+  type: 'test'
+  ...
+# Subtest: docs --check reports an accepted interface dropped from the regenerated documentation
+ok 32 - docs --check reports an accepted interface dropped from the regenerated documentation
+  ---
+  duration_ms: 12224.9299
+  type: 'test'
+  ...
+# Subtest: coverage --check resolves code, contracts and cases, and fires on each kind of miss
+ok 33 - coverage --check resolves code, contracts and cases, and fires on each kind of miss
+  ---
+  duration_ms: 38759.7629
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 302929.1983

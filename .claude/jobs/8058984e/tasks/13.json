@@ -1,0 +1,16 @@
+{
+  "id": "13",
+  "subject": "Report every unsupported boundary-value representation as an explicit coverage gap in each projection",
+  "description": "WHY: the spec's agreements section: \"Represent boundary values faithfully, including opaque JSON values, ordered parameter entries, nullable versus absent properties, exact integer/decimal values, binary or streamed content, headers and external schema references. A field without a supported projection is an explicit coverage gap, never a string substitution or omitted field.\"\n\nGROUNDING:\n- Only OpenAPI reports one such gap today, ctx.unsupported('type.externalSchema') (projections/openapi.ts:82-113).\n- External schemas are already digest-pinned (model.schema.json:355-364).\n- Each type declares its representation (model.schema.json:345).\n- Each profile lists its `unsupported` constructs (packages/core/schema/profiles/*.json).\n\nCHANGE:\n- Measure first. For each of the seven value classes and each contract projection (json-schema, openapi, sql, csharp, typescript, pester), record whether it is faithful, unsupported-and-reported, or silently degraded. Put that matrix in the task notes, not in a document.\n- Fix every silent degradation into ctx.unsupported(...) plus a profile `unsupported` entry.\n- Add support only where a schema rule, a projection rule and a positive and negative qualification case all land together.\n\nAREA TESTS: npm run build; core battery; node --test --test-concurrency=1 packages/cli/dist/test/fixtures/adoption.test.js; node --test --test-concurrency=1 --test-name-pattern \"csharp|typescript|openapi|json-schema\" packages/qualification/dist/test/native.test.js.\nThen, as the last core task, the designer check Tools/loom/CLAUDE.md:33 requires after a core change, run once for the core changes of tasks 3–13: from apps/designer, npm run build and npx ng test --watch=false.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Making representation gaps explicit",
+  "status": "pending",
+  "blocks": [
+    "36"
+  ],
+  "blockedBy": [
+    "12"
+  ],
+  "metadata": {
+    "milestone": "c"
+  }
+}

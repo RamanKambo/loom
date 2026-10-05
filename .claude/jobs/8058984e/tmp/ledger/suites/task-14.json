@@ -1,0 +1,100 @@
+[
+  {
+    "name": "build",
+    "command": "npm run build",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "generate --check: \\d+ artifacts current, \\d+ fixture cases passed, digest sha256:[0-9a-f]{64}",
+    "timeoutSeconds": 180
+  },
+  {
+    "name": "core-battery",
+    "command": "node -e \"import('./packages/core/dist/index.js').then(m=>m.selfTest())\"",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "loom self-test PASS",
+    "timeoutSeconds": 120
+  },
+  {
+    "name": "workspace",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap \"packages/workspace/dist/test/*.test.js\"",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 450
+  },
+  {
+    "name": "concurrency",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap packages/cli/dist/test/concurrency.test.js",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 300
+  },
+  {
+    "name": "contract",
+    "command": "node --test --test-reporter=tap packages/cli/dist/test/contract.test.js",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 900
+  },
+  {
+    "name": "mcp",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap packages/mcp-server/dist/test/mcp.test.js",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 1000
+  },
+  {
+    "name": "cli",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap packages/cli/dist/test/cli.test.js",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 1800
+  },
+  {
+    "name": "fixtures",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap \"packages/cli/dist/test/fixtures/*.test.js\"",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 1800
+  },
+  {
+    "name": "qualification",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap \"packages/qualification/dist/test/*.test.js\"",
+    "shell": "cmd",
+    "kind": "tap",
+    "timeoutSeconds": 2700
+  },
+  {
+    "name": "coverage",
+    "command": "node C:/Users/nnbfdh8/.claude/jobs/8058984e/tmp/ledger/suites/coverage-scope.mjs --results \"C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\workspace.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\concurrency.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\contract.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\mcp.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\cli.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\fixtures.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\14\\qualification.tap\" --capabilities workspace.handles,workspace.inspect,workspace.initialize,workspace.lifecycle,workspace.lock,workspace.resume-inputs,workspace.import-pins,workspace.write.mutation-expectation,workspace.init.scaffold,workspace.init.staged-install,workspace.revision-set.pins,mcp.persistent-mutate,mcp.revisions",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "missing entries: none; other findings: 0; findings on [^:]+: 0",
+    "timeoutSeconds": 120
+  },
+  {
+    "name": "docs",
+    "command": "node packages/cli/dist/index.js docs --check --self",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "findings: 0 \\(0 error, 0 warning, 0 info\\)",
+    "timeoutSeconds": 60
+  },
+  {
+    "name": "smoke",
+    "command": "node packages/mcp-server/dist/smoke.js",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "loom mcp smoke PASS",
+    "timeoutSeconds": 300
+  },
+  {
+    "name": "designer",
+    "command": "npm run build && npx ng test --watch=false",
+    "shell": "cmd",
+    "kind": "log",
+    "expect": "Tests(?:\\u001b\\[[0-9;]*m|\\s)+\\d+ passed(?:\\u001b\\[[0-9;]*m|\\s)+\\(\\d+\\)",
+    "cwd": "apps/designer",
+    "timeoutSeconds": 400
+  }
+]

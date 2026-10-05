@@ -47,7 +47,7 @@ function driftChecks(loomRoot: string, log: Log): void {
     const repo = join(work, 'repo');
     gitRepo(repo);
     for (const c of ['ordering', 'fulfillment', 'billing']) mkdirSync(join(repo, c), { recursive: true });
-    expect(cmdInit(ctxOf(repo, loomRoot, ['init'])).env.outcome === 'ok', 'init refused a fresh repository root');
+    expect(cmdInit(ctxOf(repo, loomRoot, ['init', '--model-id', 'self-test', '--model-kind', 'implementation'])).env.outcome === 'ok', 'init refused a fresh repository root');
     writeFileSync(join(repo, '.loom', 'model.json'), `${exportModel(sampleModel())}\n`, 'utf8');
     const configPath = join(repo, '.loom', 'loom.json');
     const config = JSON.parse(readFileSync(configPath, 'utf8')) as LoomConfig;

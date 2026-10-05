@@ -1,0 +1,5155 @@
+{
+  "source": "Tools/Context-Engineering/loomrefinements.md",
+  "statements": [
+    {
+      "id": 1,
+      "section": "Loom initial release: engineering guidance, composed workspaces and operational interfaces",
+      "quote": "It specifies required behavior; it does not assert that the behavior has already been implemented or qualified.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 2,
+      "section": "Scope and authority",
+      "quote": "Deliver this specification together with all retained capabilities in [LoomEnhancements.md](LoomEnhancements.md).",
+      "tasks": [
+        26,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 3,
+      "section": "Scope and authority",
+      "quote": "Keep that file unchanged while its implementation and verification are in progress.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 4,
+      "section": "Scope and authority",
+      "quote": "A conflict is resolved against the user's accepted requirements and the owning contract, with the resolution recorded before dependent implementation proceeds.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 2 records only the conflicts known now; task 1's protocol needs a rule that a spec/contract conflict found during implementation is resolved and recorded in task 2 before dependent work continues.",
+      "resolution": "task 1 protocol: conflicts found during implementation are resolved, recorded in task 2, then dependent work continues"
+    },
+    {
+      "id": 5,
+      "section": "Scope and authority",
+      "quote": "The delivery includes agent orientation, bounded discovery, explicit workspace selection, parent and child engineering models, a connected Angular designer, terminal diagrams, disposable SQL qualification, coherent contracts and complete acceptance evidence.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 6,
+      "section": "Scope and authority",
+      "quote": "Dependency ordering is an implementation prerequisite, not permission to omit or defer part of the delivery.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 7,
+      "section": "Scope and authority",
+      "quote": "First-party product and package versions remain `1.0.0`; model, result and configuration format numbers remain `1`.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 8,
+      "section": "Scope and authority",
+      "quote": "Dependency versions follow their actual toolchains and lockfiles.",
+      "tasks": [
+        23,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 9,
+      "section": "Scope and authority",
+      "quote": "Adopting systems retain their own release and contract versions.",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ContractPin carries the publisher's own version, digest and schemaVersion, and LoomConfig names the adopting model's modelId; Loom's own versions are not imposed (fixtures contract-pin, loom-config)."
+    },
+    {
+      "id": 10,
+      "section": "Scope and authority",
+      "quote": "Retain model validation, controlled mutation, field-level comparison, dependency impact, readiness, trusted acceptance, qualification, context retrieval, all enabled projections, contract publication, CLI operations, file-based state and every designer workflow.",
+      "tasks": [
+        26,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 11,
+      "section": "Scope and authority",
+      "quote": "Preserve application contract coexistence and database migration qualification when required by an adopting system.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 12,
+      "section": "Scope and authority",
+      "quote": "Do not add infrastructure that stores Loom's own state in a database.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 13,
+      "section": "Repository language",
+      "quote": "Describe the finished product and the reason for each non-obvious constraint.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 3 gates history and label wording only; no task checks that docs state the reason for each non-obvious constraint. Add that review to task 28's reconcile step.",
+      "resolution": "task 28 step 1 reviews README, Docs and ICD texts for a stated reason per non-obvious constraint"
+    },
+    {
+      "id": 14,
+      "section": "Repository language",
+      "quote": "Do not put historical-generation terminology, release-iteration labels, internal phase codes, or abbreviated requirement/task markers in code comments, docstrings, generated prose, documentation, examples, or release notes.",
+      "tasks": [
+        3
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 61b5b0a: `node packages/cli/dist/index.js docs --check --self` → findings 0 over every markdown file, source comment and JSON prose string; cli.test.js \"docs --check --self holds Loom's own repository to the release wording…\" ok (label, iteration and generation markers fire in README, a .sql comment and a JSON description); core battery section \"generated wording\" PASS (no marker in any rendered artifact of the sample model); CLI self-test fails on any marker (selftest.ts#runSelfTest)."
+    },
+    {
+      "id": 15,
+      "section": "Repository language",
+      "quote": "Use descriptive names such as \"workspace ownership\" and \"SQL cleanup\" rather than specification label prefixes.",
+      "tasks": [
+        1,
+        3,
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 3 part (Loom 61b5b0a): the label pattern (core wording.ts) rejects specification-style label prefixes in Loom's explanatory text; `docs --check --self` findings 0."
+    },
+    {
+      "id": 16,
+      "section": "Repository language",
+      "quote": "Keep traceability in a dedicated machine-readable engineering manifest: descriptive requirement key, owning contract path, implementation symbol, test case and evidence reference.",
+      "tasks": [
+        8,
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): CapabilityRegister entries carry id, contract, code, verification and optional evidenceRefs (assurance.schema.json#/$defs/CapabilityRegister); fixtures/capability-register.json valid and invalid cases pass in generate --check (566 fixture cases)."
+    },
+    {
+      "id": 17,
+      "section": "Repository language",
+      "quote": "Generated coverage views use readable requirement names.",
+      "tasks": [
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 18,
+      "section": "Repository language",
+      "quote": "Stable protocol error identifiers, actual technology names, external standard versions, domain identifiers and existing public interface names are legitimate technical content; they must not be used as internal specification labels.",
+      "tasks": [
+        3
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 61b5b0a: core battery \"generated wording\" asserts SHA-256, UTF-8, MPL-2.0, RFC 9110, account A-1, stateDiagram-v2, protocol 2025-06-18, release 1.0.0 and FROZEN_COMPONENT_CHANGED yield no marker; cli.test.js release-wording test asserts the legitimate README line and the JSON id/pattern values stay silent."
+    },
+    {
+      "id": 19,
+      "section": "Repository language",
+      "quote": "The release gate checks explanatory text for prohibited marker patterns without rejecting legitimate interface names or modifying dependencies.",
+      "tasks": [
+        3,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 3 part (Loom 61b5b0a): releaseWordingFindings walks with SKIP_DIRS (node_modules, dist, generated, …) and only reads files; the cli.test.js release-wording test plants a marker in node_modules/dep/README.md that is never reported; the CLI self-test runs the check."
+    },
+    {
+      "id": 20,
+      "section": "Evidence baseline",
+      "quote": "Paths are identifiers within that repository, not instructions to copy implementation into this repository.",
+      "tasks": [
+        1
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 1 protocol: Loom is the only implementation tree and grounding cites Loom paths as file:line identifiers; `git -C Tools/Context-Engineering status --porcelain` at 2026-10-03 (AMC-D-PF3XTNPM) shows only pre-existing entries (M Brainstorming.md, ?? loomrefinements.md, ?? skills/) and nothing copied in or out; re-measured in task 28."
+    },
+    {
+      "id": 21,
+      "section": "Evidence baseline",
+      "quote": "Pure engineering engine | `packages/core/src` | Model reasoning and projection have no filesystem, process, network or credential access",
+      "tasks": [
+        10,
+        11,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 part (Loom 846c39b, e56e730; ledger check 10 findings 0): contract.test.js 'the core imports only its pure dependencies and reaches no process, clock, timer, network or random source' scans the new core modules discovery.ts, guidance.ts and resume.ts (contract 17/17)."
+    },
+    {
+      "id": 22,
+      "section": "Evidence baseline",
+      "quote": "Local SQL resources | `packages/qualification/src/runners/localdb.ts` and `run.ts` | Private instances exist; lifecycle completion must additionally verify cleanup and interrupted allocation",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 23,
+      "section": "Evidence baseline",
+      "quote": "Trust integration | `Docs/workflow-integration.md` and corresponding schema contracts | Acceptance and evidence are adapter-verified; workflow flags cannot grant trust",
+      "tasks": [
+        14,
+        15,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 24,
+      "section": "Evidence baseline",
+      "quote": "Source inspection establishes the presence of these mechanisms, not a passing release.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 25,
+      "section": "Evidence baseline",
+      "quote": "Native tests, browser tests and end-to-end tests must run against the exact candidate being delivered.",
+      "tasks": [
+        26,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 26,
+      "section": "Component responsibilities and hosting",
+      "quote": "Contract catalogue | Versioned files and build generator | Shapes, reference annotations, vocabulary, guidance facts, interface definitions | Runtime state or credentials",
+      "tasks": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): packages/core/schema/operations.json is versioned contract data validated by OperationCatalogue (tools.schema.json) with fixtures; generate.mjs renders it; `npm run build` → generate --check 8 artifacts current, 70 fixture cases passed. · Task 5 part (Loom 6b5e132): 24 new $defs authored as versioned contract data with 152 fixture cases; `npm run build` generate --check current, digest sha256:acc44be5…. · Task 6 part (Loom 0db929d): 37 agent-interface $defs and the catalogue's agentTool and resources entries, validated with 326 fixture cases (generate --check current). · Task 7 part (Loom f13d98f): diagram.schema.json and the model fields authored as contract data, 427 fixture cases, generate --check current. · Task 8 part (Loom 8fd7e6e): the qualification-run shapes are versioned contract data with 19 new fixture files; `npm run build` → generate --check 8 artifacts current, 566 fixture cases passed, digest sha256:509ed5ed…. · Task 9 part (Loom 930bde4): every component's interface control document (packages/core/schema/icd/*.json, including the new browser-host.json) is versioned contract data checked by generate.mjs#loadData and #checkIcdBoundaries and hashed into CONTRACT_DIGEST; `npm run build` → generate --check 8 artifacts current, 603 fixture cases passed, digest sha256:e49a6e80…b2b2."
+    },
+    {
+      "id": 27,
+      "section": "Component responsibilities and hosting",
+      "quote": "Core | Shared TypeScript library in CLI, server and Angular | Semantic rules, comparison, composed graph reasoning, readiness, deterministic projections | Git, filesystem, native tools, trust verification or running services",
+      "tasks": [
+        10,
+        11,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 part (Loom 846c39b, e56e730): the orientation, discovery and resume logic lives in pure core modules shared by CLI, server and designer; contract.test.js 'the core imports only its pure dependencies …'; core battery 'loom self-test PASS: 28 sections, 2530 assertions'; designer build and 29/29 tests."
+    },
+    {
+      "id": 28,
+      "section": "Component responsibilities and hosting",
+      "quote": "Workspace adapter | Node process | Canonical paths, repository boundaries, model loading, handles, locks, published bundle verification, snapshots | Domain decisions or independent validation rules",
+      "tasks": [
+        14,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 29,
+      "section": "Component responsibilities and hosting",
+      "quote": "Agent interface | Existing stdio server process | Protocol negotiation, concise instructions, tool/resource dispatch, session routing | A process-wide mutable active workspace",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 30,
+      "section": "Component responsibilities and hosting",
+      "quote": "Browser host | Loopback HTTP listener in that same Node process | Compiled Angular assets, authenticated workspace API and activity stream | A second model engine or exposed remote filesystem",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 23 serves fixed routes and express.static but has no negative test that no route reads or lists files outside the compiled asset root (path traversal, absolute or encoded paths).",
+      "resolution": "task 23 serves only the compiled asset root and tests traversal, absolute, encoded and backslash paths"
+    },
+    {
+      "id": 31,
+      "section": "Component responsibilities and hosting",
+      "quote": "Angular designer | Browser tab | Workspace navigation, projections, editing previews, activity and evidence presentation | Trusted acceptance creation by assertion or direct server disk access",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 32,
+      "section": "Component responsibilities and hosting",
+      "quote": "Qualification coordinator | Node adapter; child processes only while needed | Pinned run inputs, resource leases, native tools, evidence and cleanup | Production database deployment or inferred business assertions",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 33,
+      "section": "Component responsibilities and hosting",
+      "quote": "SQL fixture provider | Private LocalDB process or dedicated Developer edition service | Disposable database engine and run-owned files | Loom persistence or access to unrelated databases",
+      "tasks": [
+        16,
+        17,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 34,
+      "section": "Component responsibilities and hosting",
+      "quote": "Terminal renderer | Pinned external executable, launched per render | Layout of a qualified diagram representation | Interpreting engineering meaning or changing graph semantics",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 35,
+      "section": "Component responsibilities and hosting",
+      "quote": "Repository workflow integration | Existing local or build workflow | Task assignment, acceptance under policy, release assembly and enforcement | Declaring a model valid or a result qualified without evidence",
+      "tasks": [
+        15,
+        22
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 36,
+      "section": "Component responsibilities and hosting",
+      "quote": "The Angular listener starts when a workspace is opened for viewing, binds to loopback on an available port and ends with its owning server.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 37,
+      "section": "Component responsibilities and hosting",
+      "quote": "Normal use serves production build assets, without a development server or file compilation watcher.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 38,
+      "section": "Component responsibilities and hosting",
+      "quote": "SQL and rendering processes are absent when no corresponding work is active.",
+      "tasks": [
+        17,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 39,
+      "section": "Component responsibilities and hosting",
+      "quote": "Use the existing SDK and shared adapters.",
+      "tasks": [
+        21,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 40,
+      "section": "Component responsibilities and hosting",
+      "quote": "The installed SDK's Express integration can supply the local application and host validation; use Express static serving for the compiled UI.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 41,
+      "section": "Component responsibilities and hosting",
+      "quote": "Declare directly used packages explicitly and pin the resolved dependency set.",
+      "tasks": [
+        21,
+        23,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 42,
+      "section": "Component responsibilities and hosting",
+      "quote": "Do not depend on an incidental transitive import.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 43,
+      "section": "Component responsibilities and hosting",
+      "quote": "authentication and workspace authorization remain Loom responsibilities.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 44,
+      "section": "Entry guidance",
+      "quote": "Publish a concise orientation through server initialization instructions and the default `loom.describe` response.",
+      "tasks": [
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): mcp.test.js 'initialization returns the orientation as the server instructions, within the instructions budget' and 'the default description is the orientation summary within the default budget, and a full description pages every section with explicit continuations' (mcp 25/25, rerun 25/25); source Docs/guides/orientation.md."
+    },
+    {
+      "id": 45,
+      "section": "Entry guidance",
+      "quote": "Initialization instructions are a protocol feature, not a separate agent framework.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 46,
+      "section": "Entry guidance",
+      "quote": "The orientation must communicate this operational contract:",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md carries the operational contract, embedded with its digest (contract.test.js 'generation embeds each guide with the digest of its text, reports a hand edit of a guide as drift, and refuses an orientation over the instructions budget') and served as the MCP instructions (mcp.test.js 'initialization returns the orientation as the server instructions, within the instructions budget')."
+    },
+    {
+      "id": 47,
+      "section": "Entry guidance",
+      "quote": "Loom maintains an explicit engineering model and checks the consequences of declared decisions.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md opening sentence: 'Loom keeps an explicit engineering model of a system and checks the consequences of every declared decision'; embedded and served as in #46."
+    },
+    {
+      "id": 48,
+      "section": "Entry guidance",
+      "quote": "Begin by identifying the workspace and the requested outcome.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 1, 'Identify the workspace and the outcome the user asked for'; embedded and served as in #46."
+    },
+    {
+      "id": 49,
+      "section": "Entry guidance",
+      "quote": "Read its current context, constraints, evidence and unresolved decisions.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 2, read the context of the task, its constraints, evidence and open decisions (loom.context); embedded and served as in #46."
+    },
+    {
+      "id": 50,
+      "section": "Entry guidance",
+      "quote": "Establish responsibilities and workflows before detailed interfaces; establish types, mutations and failure behavior before implementation.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 3, responsibilities and workflows before detailed interfaces, types, mutations and failure behavior before implementation; embedded and served as in #46."
+    },
+    {
+      "id": 51,
+      "section": "Entry guidance",
+      "quote": "Use the owning model to change a contract, preview the impact, and check readiness for the actual task.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 4, change a contract only through its owning model, preview with loom.planChange, apply with loom.mutate, check readiness with loom.checkReadiness; embedded and served as in #46."
+    },
+    {
+      "id": 52,
+      "section": "Entry guidance",
+      "quote": "Keep generated artifacts derived from their owners.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 5, keep generated artifacts derived from their owners; embedded and served as in #46."
+    },
+    {
+      "id": 53,
+      "section": "Entry guidance",
+      "quote": "Implement only the permitted scope, qualify the real implementation, and bind evidence to its exact inputs.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md step 6, implement only the permitted scope, qualify the real implementation and bind evidence to its exact inputs; embedded and served as in #46."
+    },
+    {
+      "id": 54,
+      "section": "Entry guidance",
+      "quote": "A valid model, a rendered diagram and a passing example each prove different things.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md: 'A valid model, a rendered diagram and a passing example each prove something different, and none stands in for another'; embedded and served as in #46."
+    },
+    {
+      "id": 55,
+      "section": "Entry guidance",
+      "quote": "Report missing evidence explicitly.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md: 'Report missing evidence as missing, and never invent a value to make a result pass'; embedded and served as in #46."
+    },
+    {
+      "id": 56,
+      "section": "Entry guidance",
+      "quote": "Existing user authorization and trusted repository policy determine which changes need acceptance.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/orientation.md: the user's existing authorization and the repository's trusted policy decide which changes need acceptance; an agent's acknowledgement is never acceptance; embedded and served as in #46."
+    },
+    {
+      "id": 57,
+      "section": "Entry guidance",
+      "quote": "Limit initialization orientation to 2,400 UTF-8 bytes.",
+      "tasks": [
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): smoke 'the instructions take 1907 UTF-8 bytes (budget 2400)'; contract.test.js 'generation embeds each guide … and refuses an orientation over the instructions budget' (the negative control); budget home mcp.instructionsBudget."
+    },
+    {
+      "id": 58,
+      "section": "Entry guidance",
+      "quote": "Generated per-tool descriptions state purpose, prerequisites, effects, important refusal conditions and the next useful action.",
+      "tasks": [
+        4,
+        6,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom cef1617: MCP tool descriptions are generated by generate.mjs#toolDescription from each operation's purpose, prerequisites, effects, refusals, presence and nextAction; smoke PASS on 12 tools; Docs/operations.md lists them. · Task 6 part (Loom 0db929d): the agent-tool descriptions are generated from purpose, prerequisites, effects, refusals and next action (AGENT_TOOLS in src/generated/operations.ts); core battery 'generated wording' reads them. · Task 10 part (Loom 846c39b, e56e730): core battery section 'orientation and guidance' holds every generated tool description clean under descriptionProblems and fires on constructed descriptions carrying a proof limit or the profile list."
+    },
+    {
+      "id": 59,
+      "section": "Entry guidance",
+      "quote": "They must not contain every profile or repeat a full proof-limits catalogue.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): core battery section 'orientation and guidance': descriptionProblems is empty for the real descriptions and fires on a description that lists every profile and on one that repeats a proof limit; proof limits live only in the catalogue's proofLimits."
+    },
+    {
+      "id": 60,
+      "section": "Bounded discovery and resume",
+      "quote": "`loom.describe` without sections | Purpose, workflow entry points, tool summaries and links to detailed resources",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): core battery section 'describe pages'; mcp.test.js 'the default description is the orientation summary within the default budget, …'; smoke 'the default description takes 7868 bytes of data (budget 8192)'."
+    },
+    {
+      "id": 61,
+      "section": "Bounded discovery and resume",
+      "quote": "`detail: \"summary\"` | Descriptions and selected capability facts only; this is the default",
+      "tasks": [
+        6,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): DescribePage.detail summary|full with summary the default (tools.schema.json, fixture describe-page.json). · Task 10 (Loom 846c39b, e56e730): `detail` is a flat member of DescribeInput with 'summary' the default (DescribePage removed so the advertised schema shows it); mcp.test.js 'the default description is the orientation summary within the default budget, …'; core battery 'describe pages'."
+    },
+    {
+      "id": 62,
+      "section": "Bounded discovery and resume",
+      "quote": "`detail: \"full\"` | Requested sections with explicit pagination; never an unbounded dump",
+      "tasks": [
+        6,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): DescribePage carries a cursor and budget for paged full detail. · Task 10 (Loom 846c39b, e56e730): core battery 'describe pages' walks a full description page by page to its end; mcp.test.js '… a full description pages every section with explicit continuations'; cli.test.js 'describe lists every tool and finding code'."
+    },
+    {
+      "id": 63,
+      "section": "Bounded discovery and resume",
+      "quote": "Guidance resources | `loom://guide/engineering`, `loom://guide/workflow`, `loom://guide/capabilities`, with content digest and contract digest",
+      "tasks": [
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): mcp.test.js 'the server lists the guides with the digests of their text and contract, and refuses a guide the catalogue does not define'; smoke '3 guides listed with their digests'."
+    },
+    {
+      "id": 64,
+      "section": "Bounded discovery and resume",
+      "quote": "Workspace status resource | `loom://workspaces/{workspaceId}/status`, scoped to the requesting session",
+      "tasks": [
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 65,
+      "section": "Bounded discovery and resume",
+      "quote": "Resume context | Existing `loom.context` extended with `target.kind: \"resume\"`; outcome, phase, owning scopes, revision vector, frozen contracts, blocking unknowns, relevant evidence, pending work and concrete next actions",
+      "tasks": [
+        14,
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 14's ResumeInputs (phase, pending work, frozen components, unknowns, evidence, pending runs) omits the revision vector and owning scopes, and task 10 does not say where outcome comes from; add them and assert each resume field in a test.",
+      "resolution": "task 14 ResumeInputs adds outcome (WorkflowState.outcome, task 5), owning scopes and the revision vector, each asserted",
+      "evidence": "Task 10 part (Loom 846c39b, e56e730): resumeContext in packages/core/src/resume.ts returns outcome, phase, owning scopes, revision vector, frozen contracts, blocking unknowns, evidence, pending work and next actions from supplied ResumeInputs; core battery section 'resume'; fixtures context-input, context-data and resume-data. The adapter builds ResumeInputs in task 14."
+    },
+    {
+      "id": 66,
+      "section": "Bounded discovery and resume",
+      "quote": "Resource change notification | Only when negotiated by the client; clients without it can request status",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 67,
+      "section": "Bounded discovery and resume",
+      "quote": "Default discovery pages have at most 8 KiB of data and 32 records; configurable maxima are 64 KiB and 200 records.",
+      "tasks": [
+        6,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): DiscoveryBudget defaults 8192 bytes / 32 records and maxima 65536 / 200 as its default and maximum keywords (fixture discovery-budget.json rejects 65537 and 201). · Task 10 part (Loom 846c39b, e56e730): DISCOVERY_LIMITS read from DiscoveryBudget's default and maximum keywords; core battery 'describe pages' and 'context pages' at the default and minimum budgets; smoke reports the default description within 8192 bytes."
+    },
+    {
+      "id": 68,
+      "section": "Bounded discovery and resume",
+      "quote": "Byte budgets apply to each data representation, excluding a bounded envelope and the protocol's structured/text duplication.",
+      "tasks": [
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): smoke 'the default description takes 7868 bytes of data (budget 8192) and 11860 bytes as the text of its whole envelope', reporting both sizes; core battery 'context pages' measures data bytes only."
+    },
+    {
+      "id": 69,
+      "section": "Bounded discovery and resume",
+      "quote": "Report both sizes in qualification.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 70,
+      "section": "Bounded discovery and resume",
+      "quote": "A record too large for a page becomes a summary with an explicit resource reference; never silently omit its existence.",
+      "tasks": [
+        6,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "No task defines or serves the resource an oversized record's reference points at (task 21 serves only loom://guide/* and workspace status); task 6 must define a record resource and task 21 serve it.",
+      "resolution": "task 6 defines the revision-bound record resource; task 21 serves it",
+      "evidence": "Task 6 part (Loom 0db929d): OversizedRecord (summary plus loom://workspaces/{workspaceId}/records/{kind}/{id} resource reference) and the record resource in operations.json resources."
+    },
+    {
+      "id": 71,
+      "section": "Bounded discovery and resume",
+      "quote": "Continuations bind the original filters and revision vector.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): core battery 'context pages' (a continuation used with another budget, target, revision vector or model revision is refused) and 'describe pages' (stale, foreign and past-end cursors refused); cli.test.js 'context is bounded, names its continuation and refuses a continuation of another revision'."
+    },
+    {
+      "id": 72,
+      "section": "Bounded discovery and resume",
+      "quote": "A changed input invalidates the continuation.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): mcp.test.js 'a workspace context continuation from before the model changed is refused with the request that starts again, addressed to the workspace'; core battery 'context pages'."
+    },
+    {
+      "id": 73,
+      "section": "Bounded discovery and resume",
+      "quote": "Every omitted section or record is accounted for in completeness metadata.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): core battery 'describe pages' and 'context pages' assert items plus omitted equal the total on every page and list oversized records (pageCompleteness, packages/core/src/discovery.ts)."
+    },
+    {
+      "id": 74,
+      "section": "Bounded discovery and resume",
+      "quote": "A truncated context cannot establish full coverage or readiness.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): core battery 'context pages' (a truncated page sets readiness and qualification to notEvaluated) and 'resume'."
+    },
+    {
+      "id": 75,
+      "section": "Bounded discovery and resume",
+      "quote": "Deduplicate proof limits and return those relevant to the requested operation.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): cli.test.js 'describe returns the proof limits of one operation and refuses a section without a full detail'; core battery 'describe pages' (limits of validate and of project differ, each unique)."
+    },
+    {
+      "id": 76,
+      "section": "Bounded discovery and resume",
+      "quote": "Resources use protocol capability negotiation; client roots provide context but are not an authorization boundary.",
+      "tasks": [
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 77,
+      "section": "Engineering order and readiness",
+      "quote": "Establish outcome | User request, current system evidence, scope | Measurable outcomes, exclusions, hard constraints and owned unknowns",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Establish the outcome' with its required input and exit evidence; embedded with its digest (contract.test.js 'generation embeds each guide …'); core battery 'orientation and guidance' checks the ten rows."
+    },
+    {
+      "id": 78,
+      "section": "Engineering order and readiness",
+      "quote": "Inventory | Repository/environment boundary and authorized sources | Stack, existing services/libraries, workloads, consumers, hosts, limitations and provenance",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Take inventory'; embedded and checked as in #77."
+    },
+    {
+      "id": 79,
+      "section": "Engineering order and readiness",
+      "quote": "Assign responsibilities | Workloads and constraints | Owners of decisions, data and effects; deployment units; alternatives with reasons",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Assign responsibilities'; embedded and checked as in #77."
+    },
+    {
+      "id": 80,
+      "section": "Engineering order and readiness",
+      "quote": "Model workflows | Responsibilities and success/failure scenarios | Ordered interactions, retry/cancellation/recovery paths, trust crossings and transaction boundaries",
+      "tasks": [
+        10,
+        30
+      ],
+      "status": "covered",
+      "provisional": true,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Model workflows'; embedded and checked as in #77."
+    },
+    {
+      "id": 81,
+      "section": "Engineering order and readiness",
+      "quote": "Define types and mutations | Workflow inputs, outputs and state | Properties, identity, units, presence, bounds, source, mutator, invariant, lifetime and representations",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Define types and mutations'; embedded and checked as in #77."
+    },
+    {
+      "id": 82,
+      "section": "Engineering order and readiness",
+      "quote": "Establish contracts | Types, effects, consumers and host constraints | Operations, errors, security, persistence, transport and behavioral agreements",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Establish contracts'; embedded and checked as in #77."
+    },
+    {
+      "id": 83,
+      "section": "Engineering order and readiness",
+      "quote": "Review the whole design | Complete dependency closure | Correct layer ownership, feasible hosts, no contradictory cycles, identified missing evidence",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Review the whole design'; embedded and checked as in #77."
+    },
+    {
+      "id": 84,
+      "section": "Engineering order and readiness",
+      "quote": "Establish implementation rules | Accepted responsibilities and contract decisions | Justified conventions, component plans, tests and frozen boundaries",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Establish implementation rules'; embedded and checked as in #77."
+    },
+    {
+      "id": 85,
+      "section": "Engineering order and readiness",
+      "quote": "Implement and qualify | Ready task and pinned accepted inputs | Component implementation, real tests, integration evidence and controlled defect fixes",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Implement and qualify'; embedded and checked as in #77."
+    },
+    {
+      "id": 86,
+      "section": "Engineering order and readiness",
+      "quote": "Release and operate | Complete composition evidence | Release manifest, operational checks and reconciled documentation",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Engineering order row 'Release and operate'; embedded and checked as in #77."
+    },
+    {
+      "id": 87,
+      "section": "Engineering order and readiness",
+      "quote": "An unknown has an owner, evidence needed, affected scope, recommended reversible action and whether it blocks the next task.",
+      "tasks": [
+        5,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "The Unknown record (model.schema.json:904-940) has owner, affects, blocks and resolution but no evidence-needed or recommended-reversible-action field; task 10 only documents them, so task 5 must add the fields with FIELD_POLICY, sample.ts and diff cases.",
+      "resolution": "task 5 adds Unknown.evidenceNeeded and recommendedAction with FIELD_POLICY, sample and diff cases",
+      "evidence": "Loom 6b5e132: Unknown requires owner, affects, blocks, evidenceNeeded and recommendedAction {action, reversible} (model.schema.json; fixture model.json invalid cases); FIELD_POLICY and diffs.ts cases; registers.md renders the evidence and action columns (core battery 'projections' asserts the cells). · Task 10 part (Loom 846c39b, e56e730): Docs/guides/engineering.md §Unknowns lists owner, evidenceNeeded, affects, recommendedAction with reversibility and blocks; embedded with its digest."
+    },
+    {
+      "id": 88,
+      "section": "Engineering order and readiness",
+      "quote": "Do not fabricate missing values to obtain a green readiness result.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Unknowns: 'Never fabricate a missing value to obtain a green readiness result'; embedded with its digest (contract.test.js 'generation embeds each guide …'); guidance only, no behavioral check."
+    },
+    {
+      "id": 89,
+      "section": "Engineering order and readiness",
+      "quote": "Do not impose a favorite design pattern without linking it to a workload, constraint or measured benefit.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Design patterns: adopt a pattern only when a workload, constraint or measured benefit justifies it, linked through the decision's basedOn; embedded with its digest; guidance only."
+    },
+    {
+      "id": 90,
+      "section": "Engineering order and readiness",
+      "quote": "Use component-complete work when contracts can be established independently.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Delivery modes: component-complete work when contracts can be established independently; embedded with its digest; guidance only."
+    },
+    {
+      "id": 91,
+      "section": "Engineering order and readiness",
+      "quote": "Use vertical delivery in an adopting application when cross-layer uncertainty requires it.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Delivery modes: vertical delivery in an adopting application when cross-layer uncertainty requires it; embedded with its digest; guidance only."
+    },
+    {
+      "id": 92,
+      "section": "Engineering order and readiness",
+      "quote": "In either mode, freeze accepted boundaries and record impact before a change crosses them.",
+      "tasks": [
+        10,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Delivery modes: freeze accepted boundaries in a baseline and record impact with loom.planChange before a change crosses them; embedded with its digest; guidance only."
+    },
+    {
+      "id": 93,
+      "section": "Engineering order and readiness",
+      "quote": "Conforming bug fixes remain possible; changes to a frozen contract require the configured change process.",
+      "tasks": [
+        10,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Delivery modes: a conforming defect fix stays possible, a frozen-contract change goes through the configured change process; embedded with its digest; guidance only."
+    },
+    {
+      "id": 94,
+      "section": "Engineering order and readiness",
+      "quote": "Loom's own delivery under this document remains complete as one release.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 95,
+      "section": "Engineering order and readiness",
+      "quote": "During planned work, accepted models and frozen component contracts govern intended behavior.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Planned work and incidents: accepted models and frozen component contracts govern intended behavior during planned work; embedded with its digest; guidance only."
+    },
+    {
+      "id": 96,
+      "section": "Engineering order and readiness",
+      "quote": "During an incident, observed code, deployed artifacts, configuration and environment establish what happened; accepted contracts still establish what should happen.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Planned work and incidents: during an incident observed code, deployed artifacts, configuration and environment establish what happened while accepted contracts establish what should happen; embedded with its digest; guidance only."
+    },
+    {
+      "id": 97,
+      "section": "Engineering order and readiness",
+      "quote": "Record discrepancies, fix the correct owner, and reconcile documentation.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Planned work and incidents: record each discrepancy, fix the owner that is wrong, reconcile the documentation; embedded with its digest; guidance only."
+    },
+    {
+      "id": 98,
+      "section": "Engineering order and readiness",
+      "quote": "Do not promote a deployed defect into a requirement merely because it exists.",
+      "tasks": [
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): Docs/guides/engineering.md §Planned work and incidents: 'A deployed defect does not become a requirement merely because it exists'; embedded with its digest; guidance only."
+    },
+    {
+      "id": 99,
+      "section": "Engineering order and readiness",
+      "quote": "Repository policy makes engineering checks mandatory for governed changes through a build or local release gate.",
+      "tasks": [
+        15,
+        22,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 100,
+      "section": "Engineering order and readiness",
+      "quote": "Missing required context, invalid models, stale pins or unqualified implementation must therefore be enforceable by the workflow gate independently of agent prose.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 15's gate fails on stale or empty pins, an incomplete journal and unqualified implementation but not on missing required context (missing member checkout or unresolved input); add it with a failing check test.",
+      "resolution": "task 15 check fails on missing required context with a failing-check test"
+    },
+    {
+      "id": 101,
+      "section": "Workspace identity and authorization",
+      "quote": "A persistent model has a declared stable `modelId`.",
+      "tasks": [
+        5,
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ModelId $def and LoomConfig.modelId (optional until task 14 requires it, decision 10)."
+    },
+    {
+      "id": 102,
+      "section": "Workspace identity and authorization",
+      "quote": "A session opening it receives an opaque `workspaceId`; the handle is not a filesystem path, a credential, or acceptance evidence.",
+      "tasks": [
+        14,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 103,
+      "section": "Workspace identity and authorization",
+      "quote": "Two sessions may open the same model and share its revision protocol while retaining separate activity and browser sessions.",
+      "tasks": [
+        21,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 104,
+      "section": "Workspace identity and authorization",
+      "quote": "Every operation using stored state identifies a workspace handle.",
+      "tasks": [
+        14,
+        21,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 105,
+      "section": "Workspace identity and authorization",
+      "quote": "A server startup directory or `--workspace` value supplies only the default discovery hint.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 106,
+      "section": "Workspace identity and authorization",
+      "quote": "There is no global selection that another call can change.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 107,
+      "section": "Workspace identity and authorization",
+      "quote": "Existing inline-model operations remain available as an explicit alternate input mode; a request cannot mix an inline model with a workspace handle.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 108,
+      "section": "Workspace identity and authorization",
+      "quote": "Resolve paths using the server's configured allowed roots, real paths, path segments and repository metadata.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 109,
+      "section": "Workspace identity and authorization",
+      "quote": "Client roots may narrow discovery, never silently broaden server permissions.",
+      "tasks": [
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 110,
+      "section": "Workspace identity and authorization",
+      "quote": "Handle `.git` files, worktrees, submodules, Windows path casing and reparse points.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 111,
+      "section": "Workspace identity and authorization",
+      "quote": "Recheck containment immediately before a write.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 112,
+      "section": "Workspace identity and authorization",
+      "quote": "Return a specific unresolved result for missing checkout, unreadable descriptor, inaccessible root or ownership conflict.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 113,
+      "section": "Initialization",
+      "quote": "`loom.workspace` supplies inspection, initialization, opening, status and closing.",
+      "tasks": [
+        6,
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): WorkspaceInput actions inspect|initialize|open|status|close with per-action presence rules, catalogued as workspaceInspect…workspaceClose."
+    },
+    {
+      "id": 114,
+      "section": "Initialization",
+      "quote": "Inspection is read-only.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 115,
+      "section": "Initialization",
+      "quote": "It reports the target repository, enclosing composition, existing models, code ownership, direct submodules, missing checkouts, affected tracked and untracked paths, and any conflicting claims.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 116,
+      "section": "Initialization",
+      "quote": "It does not recursively traverse unrelated source, dependency or artifact trees.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 14's inspect states what it reports but not a traversal bound; add the rule and a test that node_modules, dist and unrelated source trees are not walked.",
+      "resolution": "task 14 inspect walks only descriptors, .gitmodules and git metadata, with an unrelated-tree test"
+    },
+    {
+      "id": 117,
+      "section": "Initialization",
+      "quote": "Initialization receives an explicit model kind and ownership declaration.",
+      "tasks": [
+        5,
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ModelKind (composition|implementation|mixed) and the LoomConfig declaration fields that initialization will validate."
+    },
+    {
+      "id": 118,
+      "section": "Initialization",
+      "quote": "With `dryRun: true`, return a proposal describing every file to create and the inspection digest.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 119,
+      "section": "Initialization",
+      "quote": "Apply requires that digest and the same requested declaration.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 14's apply checks expectedInspection only; it must also refuse a declaration that differs from the dry run's, with a test.",
+      "resolution": "task 14 apply refuses a declaration different from the dry run, with a test"
+    },
+    {
+      "id": 120,
+      "section": "Initialization",
+      "quote": "Reinspect under the relevant locks, reject stale proposals, create the ordinary workspace scaffold atomically within its owning repository and retain a recovery journal for interrupted writes.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 121,
+      "section": "Initialization",
+      "quote": "Never replace an existing `.loom`, stage files, commit, update gitlinks or create an acceptance record as part of initialization.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 122,
+      "section": "Initialization",
+      "quote": "Use an existing accepted scope when it determines placement.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 123,
+      "section": "Initialization",
+      "quote": "Ask about only a material unresolved scope choice.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 124,
+      "section": "Initialization",
+      "quote": "Dirty files outside the planned write set are context, not a blanket refusal.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 125,
+      "section": "Initialization",
+      "quote": "Another writer's conflicting path or an existing ownership ambiguity is a concrete blocker.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 126,
+      "section": "Initialization",
+      "quote": "User authorization to initialize permits the described reversible scaffold; it does not confer approval of an engineered design.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 127,
+      "section": "Composition and implementation ownership",
+      "quote": "Nested `.loom` directories are supported through explicit composition.",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): LoomConfig.composition {members, delegatedRoots, outputClaims} (fixture loom-config.json)."
+    },
+    {
+      "id": 128,
+      "section": "Composition and implementation ownership",
+      "quote": "Filesystem nesting alone confers neither membership nor inherited authority.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 129,
+      "section": "Composition and implementation ownership",
+      "quote": "Composition | System outcomes, cross-component constraints, interaction workflows, boundary agreements, integration scenarios and release assembly | Pinned exports from members and external systems",
+      "tasks": [
+        5,
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ModelKind composition; Agreement records owned by a composition model; CompositionMember.exports pins."
+    },
+    {
+      "id": 130,
+      "section": "Composition and implementation ownership",
+      "quote": "Implementation | Its claimed source roots, implementation types, operations, storage/routines, adapter behavior and component evidence | Boundary agreements and published contracts it consumes",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ModelKind implementation; ExportBundle closure of the implementation's types, operations, routines, mutations."
+    },
+    {
+      "id": 131,
+      "section": "Composition and implementation ownership",
+      "quote": "Mixed | Explicitly listed local implementation roots plus composition records | Delegated members outside those local claims",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ModelKind mixed with composition.delegatedRoots for members outside local claims."
+    },
+    {
+      "id": 132,
+      "section": "Composition and implementation ownership",
+      "quote": "A path has exactly one implementation owner.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 133,
+      "section": "Composition and implementation ownership",
+      "quote": "A parent may reference a child's code and summarize its contract but must not claim or independently redefine them.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 134,
+      "section": "Composition and implementation ownership",
+      "quote": "Parent `scope` claims are narrowed to its own roots; delegated child roots are registered separately.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 135,
+      "section": "Composition and implementation ownership",
+      "quote": "An unrestricted parent `.` claim cannot coexist with a child's implementation claim.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 136,
+      "section": "Composition and implementation ownership",
+      "quote": "Composition-only workspaces may have an empty source scope; their own model/configuration files remain owned by that workspace.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 137,
+      "section": "Composition and implementation ownership",
+      "quote": "Extend the canonical workspace schema with `modelId`, `modelKind` and optional `composition`.",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: workspace.schema.json LoomConfig gains modelId, modelKind and optional composition (fixture loom-config.json valid and invalid cases)."
+    },
+    {
+      "id": 138,
+      "section": "Composition and implementation ownership",
+      "quote": "The composition contains explicit direct members and their contract pins.",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): composition.members[] are CompositionMember with exports[] ContractPin."
+    },
+    {
+      "id": 139,
+      "section": "Composition and implementation ownership",
+      "quote": "Reuse and extend the existing published-contract bundle mechanism, namespace resolution, trust adapter and coverage reporting.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 140,
+      "section": "Composition and implementation ownership",
+      "quote": "An independent system remains usable through a published bundle without becoming a child.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 141,
+      "section": "Agreements, exports and references",
+      "quote": "Every owned record is addressed by `{ modelId, kind, id }`.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 142,
+      "section": "Agreements, exports and references",
+      "quote": "Every resolved reference additionally identifies the bundle digest.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 143,
+      "section": "Agreements, exports and references",
+      "quote": "The parent owns a boundary agreement such as required caller identity, result publication semantics or cross-API timeout allocation.",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 5 defines AgreementBundle and AgreementBinding but no parent-owned agreement record (caller identity, result publication, timeout allocation) for agreementRef to point at; the schema has no agreement concept today.",
+      "resolution": "task 5 adds the parent-owned Agreement record; task 11 checks exports against it",
+      "evidence": "Task 5 part (Loom 6b5e132): Agreement record (kind caller-identity|result-publication|timeout-allocation|other, constraint, providers, consumers, owner) in model.schema.json; sample agr.payment-identity; registers and architecture views render it under the coverage guard."
+    },
+    {
+      "id": 144,
+      "section": "Agreements, exports and references",
+      "quote": "Its provider child owns the concrete exported operation/type contract and declares how that export satisfies the agreement.",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): AgreementBinding {agreementRef, agreementDigest, providerRef, consumerRefs, mappingRefs} for the provider's declaration."
+    },
+    {
+      "id": 145,
+      "section": "Agreements, exports and references",
+      "quote": "The consumer binds to that exact export and records representation mappings.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 146,
+      "section": "Agreements, exports and references",
+      "quote": "These are different records with different responsibilities, not copied definitions.",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): Agreement (parent model record) and ExportBundle (child publication) are distinct definitions; AgreementBinding links them."
+    },
+    {
+      "id": 147,
+      "section": "Agreements, exports and references",
+      "quote": "Exports contain the full required record closure: types, operations, routines, mutation semantics, relevant errors, authority, hosting requirements and evidence obligations.",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ExportBundle requires the closure members (types, operations, routines, mutations, errors, authority, deployment units, hosts, evidence obligations) plus the pinned agreement bundle (fixture export-bundle invalid cases)."
+    },
+    {
+      "id": 148,
+      "section": "Agreements, exports and references",
+      "quote": "An export that omits a required behavior cannot qualify its consumer just because its type schema resolves.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 149,
+      "section": "Agreements, exports and references",
+      "quote": "Imported records are read-only in the consumer.",
+      "tasks": [
+        11,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 150,
+      "section": "Agreements, exports and references",
+      "quote": "Context and impact traversal retain the source owner through arbitrary supported composition depth, with cycle detection and explicit resource limits.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 151,
+      "section": "Agreements, exports and references",
+      "quote": "New members may be declared with empty export pins during discovery.",
+      "tasks": [
+        14,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 152,
+      "section": "Agreements, exports and references",
+      "quote": "They remain unresolved for dependent implementation and release until their required contracts are published.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 153,
+      "section": "Agreements, exports and references",
+      "quote": "Creation of the parent scaffold must not require a qualified child that cannot yet exist.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 154,
+      "section": "Agreements, exports and references",
+      "quote": "Readiness gates apply to the task's actual dependencies, so unrelated ready work can continue.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 155,
+      "section": "Agreements, exports and references",
+      "quote": "Represent boundary values faithfully, including opaque JSON values, ordered parameter entries, nullable versus absent properties, exact integer/decimal values, binary or streamed content, headers and external schema references.",
+      "tasks": [
+        13
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 156,
+      "section": "Agreements, exports and references",
+      "quote": "A field without a supported projection is an explicit coverage gap, never a string substitution or omitted field.",
+      "tasks": [
+        13
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 157,
+      "section": "Agreements, exports and references",
+      "quote": "Preserve authored external contracts as pinned inputs where automatic import/projection cannot express their full semantics.",
+      "tasks": [
+        13
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 158,
+      "section": "Agreements, exports and references",
+      "quote": "Extending support requires a schema rule, projection rule and positive/negative qualification, not untyped descriptive escape fields that falsely claim conformance.",
+      "tasks": [
+        13
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 159,
+      "section": "Agreements, exports and references",
+      "quote": "Separate downward agreement publication from upward implementation publication.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 160,
+      "section": "Agreements, exports and references",
+      "quote": "An agreement bundle contains parent-owned constraints, not the aggregate child snapshot.",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): AgreementBundle holds parent-owned agreements only."
+    },
+    {
+      "id": 161,
+      "section": "Agreements, exports and references",
+      "quote": "Child exports pin that agreement bundle.",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): ExportBundle requires agreementBundle (ContractPin)."
+    },
+    {
+      "id": 162,
+      "section": "Agreements, exports and references",
+      "quote": "Parent composition snapshots pin the resulting child exports.",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): CompositionMember.exports pins child exports; CompositionRelease binds members."
+    },
+    {
+      "id": 163,
+      "section": "Agreements, exports and references",
+      "quote": "This creates finite content-addressed inputs without recursively hashing a parent snapshot inside its children.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 164,
+      "section": "Agreements, exports and references",
+      "quote": "Runtime call cycles may exist; ownership and artifact-reference cycles must resolve to explicit finite bundles, or resolution fails with the cycle path.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 165,
+      "section": "Contract and release binding",
+      "quote": "Composition member | `memberId`, `modelId`, `repositoryPath`, `relationship`, `exports` | Direct membership; path relative to parent; relationship is `implementation` or `composition`; exports are exact pins",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: CompositionMember {memberId, modelId, repositoryPath (repository-relative), relationship implementation|composition, exports} (fixture composition-member.json)."
+    },
+    {
+      "id": 166,
+      "section": "Contract and release binding",
+      "quote": "Contract pin | `publisher`, `contract`, `version`, `digest`, `schemaVersion`, `sourceCommit` | Immutable published content; a version alone does not identify content",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: ContractPin {publisher, contract, version, digest, schemaVersion, sourceCommit} (fixture contract-pin.json)."
+    },
+    {
+      "id": 167,
+      "section": "Contract and release binding",
+      "quote": "Agreement binding | `agreementRef`, `agreementDigest`, `providerRef`, `consumerRefs`, `mappingRefs` | Provider/consumer obligations and explicit conversions",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: AgreementBinding {agreementRef, agreementDigest, providerRef, consumerRefs, mappingRefs} (fixture agreement-binding.json)."
+    },
+    {
+      "id": 168,
+      "section": "Contract and release binding",
+      "quote": "Source snapshot | `modelId`, `repositoryIdentity`, `commit`, `contentDigest`, `dirty`, `inputFiles` | Exact source used; exploratory dirty content is distinct from committed release evidence",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: SourceSnapshot {modelId, repositoryIdentity, commit, contentDigest, dirty, inputFiles} (fixture source-snapshot.json)."
+    },
+    {
+      "id": 169,
+      "section": "Contract and release binding",
+      "quote": "Revision vector | Ordered model/config/policy/contract/generator hashes and import pins for each participating model | A deterministic composition identity; no wall clock or local absolute path in its digest",
+      "tasks": [
+        5,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): RevisionVector with ordered per-model model/config/policy/contract/generator hashes and import pins, no clock or absolute path (fixture revision-vector.json)."
+    },
+    {
+      "id": 170,
+      "section": "Contract and release binding",
+      "quote": "Composition release | `releaseId`, `revisionVectorDigest`, `members`, `agreements`, `evidenceRefs`, `acceptanceRefs` | A complete qualified selection, not an automatic deployment",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: CompositionRelease {releaseId, revisionVectorDigest, members, agreements, evidenceRefs, acceptanceRefs} (fixture composition-release.json)."
+    },
+    {
+      "id": 171,
+      "section": "Contract and release binding",
+      "quote": "Child checks establish local validity and exported promises.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 172,
+      "section": "Contract and release binding",
+      "quote": "Parent checks establish cross-owner agreement satisfaction, consumer closure, deployment fit, authorization crossings, workflows and integration evidence.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 173,
+      "section": "Contract and release binding",
+      "quote": "A passing parent cannot replace a failing child.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 174,
+      "section": "Contract and release binding",
+      "quote": "A passing child cannot establish that the system works end to end.",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 175,
+      "section": "Changes across repositories",
+      "quote": "Plan a cross-model change against a revision vector.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 176,
+      "section": "Changes across repositories",
+      "quote": "Compute affected owners, downstream consumers, frozen contracts, generated artifacts and evidence invalidated.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 177,
+      "section": "Changes across repositories",
+      "quote": "Apply owner-local writes through the existing revision and lock protocol.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 178,
+      "section": "Changes across repositories",
+      "quote": "Acquire multiple locks in canonical repository order and use a journal with prepared, applying, complete and recovery-required states.",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): FederationJournal with states prepared|applying|complete|recovery-required and per-repository OwnedWrite owner and expected old/new hashes (fixture federation-journal.json)."
+    },
+    {
+      "id": 179,
+      "section": "Changes across repositories",
+      "quote": "A partially applied composition is visible as incomplete and cannot become ready or releasable.",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 180,
+      "section": "Changes across repositories",
+      "quote": "Recovery resumes the exact staged proposal after revision checks or restores only unchanged, journal-owned writes.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 181,
+      "section": "Changes across repositories",
+      "quote": "It must not overwrite another writer's changes.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 182,
+      "section": "Changes across repositories",
+      "quote": "Publishing complete child bundles precedes updating parent pins.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 183,
+      "section": "Changes across repositories",
+      "quote": "Update submodule pointers only through the repository's ordinary explicitly authorized workflow; Loom must not move them as a side effect of model operations.",
+      "tasks": [
+        14,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 184,
+      "section": "Changes across repositories",
+      "quote": "Projection outputs have an explicit owning workspace and destination.",
+      "tasks": [
+        15,
+        31
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 185,
+      "section": "Changes across repositories",
+      "quote": "Only that workspace installs files into its claimed output roots.",
+      "tasks": [
+        15,
+        31
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 186,
+      "section": "Changes across repositories",
+      "quote": "A parent aggregate references child artifacts or renders a distinctly named system view; it never overwrites child-owned OpenAPI, SQL or interface documents.",
+      "tasks": [
+        31
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 187,
+      "section": "Changes across repositories",
+      "quote": "Output ownership is checked separately from source ownership and deployment ownership.",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 188,
+      "section": "Tool and adapter contracts",
+      "quote": "Author the following shapes in the canonical schema set; generate types, advertised inputs, result schemas, reference documentation and interface documents from them.",
+      "tasks": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): the operation catalogue is authored in the canonical schema set and generates src/generated/operations.ts, MCP tool declarations, CLI usage and Docs/operations.md; contract.test.js 9/9. · Task 5 part (Loom 6b5e132): the workspace, composition and common-result shapes are authored in the canonical schema set and generate TypeScript types (src/generated/types.ts). · Task 6 part (Loom 0db929d): the agent-interface shapes are authored in the canonical schema set and generate types and Docs/operations.md agent-tool sections. · Task 7 part (Loom f13d98f): the diagram and render shapes are authored in the canonical schema set and generate types and the Docs/operations.md rendering-budget table. · Task 8 part (Loom 8fd7e6e): RunRecord, RunBudgets, ProviderConfiguration, AllocationJournal, RunLease, RunCleanup and ReleaseEvidence are authored in assurance.schema.json and generate TypeScript types (src/generated/types.ts); contract.test.js 14/14. · Task 9 part (Loom 930bde4): the ICDs and the browser-host shapes are authored in the canonical schema set and generate ICDS (src/generated/contracts.ts), the types, MCP_INSTRUCTIONS_BUDGET and Docs/operations.md; contract.test.js 14/14 including 'an ICD consuming an unprovided interface fails generation'."
+    },
+    {
+      "id": 189,
+      "section": "Tool and adapter contracts",
+      "quote": "Retain the established result envelope and its separate validation, readiness, qualification, acceptance, findings and completeness fields.",
+      "tasks": [
+        6,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): every new tool's result is the existing ResultEnvelope with typed data definitions (WorkspaceInspectData … QualifyCancelData); no second status system."
+    },
+    {
+      "id": 190,
+      "section": "Tool and adapter contracts",
+      "quote": "Additional data belongs under typed `data`, not a second competing status system.",
+      "tasks": [
+        2,
+        6,
+        8
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): new results live under typed data definitions only. · Task 8 part (Loom 8fd7e6e): run outcomes use CheckResult with the typed UnavailableCause; cleanup uses CleanupState, with no second check-status vocabulary (common.schema.json)."
+    },
+    {
+      "id": 191,
+      "section": "Tool and adapter contracts",
+      "quote": "All table fields are required unless marked optional.",
+      "tasks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): every table field is required in its $def except those the requirement marks optional (WorkspaceHandle parent, viewUrl); invalid fixtures omit each required member. · Task 6 part (Loom 0db929d): table fields are required in each input and ActivityEvent; optional only where marked (boundary, view, snapshotDigest, cursor); invalid fixtures omit each. · Task 7 part (Loom f13d98f): Diagram, node, edge and group members are required; renderer and terminal are optional as the render table allows; fixtures omit each required member. · Task 8 part (Loom 8fd7e6e): every new $def lists its table members as required, optional only where marked or deferred under decision 10; each fixture has an invalid case that omits a required member."
+    },
+    {
+      "id": 192,
+      "section": "Tool and adapter contracts",
+      "quote": "Hashes use the existing canonical SHA-256 format.",
+      "tasks": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): every new hash member uses the canonical Hash definition (sha256:<64 hex>). · Task 6 part (Loom 0db929d): digests and revisions in the new shapes use Hash. · Task 7 part (Loom f13d98f): sourceVectorDigest, graphDigest, mermaidDigest, binaryDigest and optionDigest use Hash. · Task 8 part (Loom 8fd7e6e): inputDigest, workingTreeHash, contractDigest, owner.user and revisionSet hashes use common Hash; fixtures/run-record.json invalid case 'inputDigest pattern'."
+    },
+    {
+      "id": 193,
+      "section": "Tool and adapter contracts",
+      "quote": "Identifiers are opaque or descriptive as specified; paths are repository-relative except an explicitly supplied local discovery path.",
+      "tasks": [
+        1,
+        5,
+        6
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): repositoryPath, inputFiles and output claims are repository-relative paths; ids are opaque WorkspaceId or descriptive ModelId. · Task 6 part (Loom 0db929d): DiscoveryPath is the only local path (an explicitly supplied discovery path); other paths are repository-relative; WorkspaceId and SessionId are opaque."
+    },
+    {
+      "id": 194,
+      "section": "Tool and adapter contracts",
+      "quote": "Unknown properties fail validation.",
+      "tasks": [
+        1,
+        5,
+        6,
+        7,
+        8
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): every new $def has additionalProperties false, and fixtures include an unknown-member invalid case. · Task 6 part (Loom 0db929d): additionalProperties false on every new $def; negative fixtures include unknown members (command, renderer). · Task 7 part (Loom f13d98f): every new diagram $def has additionalProperties false with an unknown-member invalid fixture. · Task 8 part (Loom 8fd7e6e): every new object $def has additionalProperties false, and each new fixture file has an unknown-member invalid case."
+    },
+    {
+      "id": 195,
+      "section": "Tool and adapter contracts",
+      "quote": "Client-advertised schemas must retain the existing SDK/client-supported shape; enforce discriminated action constraints at runtime without reintroducing unsupported schema constructs into client tool definitions.",
+      "tasks": [
+        6,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 0db929d: the new tool inputs are flat with no root oneOf/anyOf/allOf; per-action constraints are catalogue presence rules with `when`, enforced by unmetPresenceRules; mcp.test.js 'every catalogued agent tool stays unadvertised, and compacted … fits the tool budget with no root combinator in its input' ok."
+    },
+    {
+      "id": 196,
+      "section": "Common results",
+      "quote": "Workspace handle | `workspaceId`, `modelId`, `modelKind`, `displayName`, `capabilities`, `revisions`; optional `parent`, `viewUrl` | Handle exists only for its session; capability is authorized effect, not domain acceptance",
+      "tasks": [
+        5,
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: WorkspaceHandle {workspaceId, modelId, modelKind, displayName, capabilities, revisions; optional parent, viewUrl} (fixture workspace-handle.json)."
+    },
+    {
+      "id": 197,
+      "section": "Common results",
+      "quote": "Next action | `purpose`, `tool`, `arguments`, `prerequisites`, `effects`, `blockedBy` | Arguments validate against that tool; authorization is never invented",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "No task asserts that a returned NextAction's arguments validate against the named tool's input schema; add that assertion to task 21's smoke.ts over every result carrying nextActions.",
+      "resolution": "task 21 smoke validates every returned NextAction against the named tool input"
+    },
+    {
+      "id": 198,
+      "section": "Common results",
+      "quote": "Workspace summary | `workspace`, `phase`, `scope`, `imports`, `unknowns`, `pendingWork`, `nextActions`, `completeness` | Facts refer to the supplied revision vector; no credentials or full unbounded model",
+      "tasks": [
+        5,
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: WorkspaceSummary {workspace, phase, scope, imports, unknowns, pendingWork, nextActions, completeness, revisionVector} (fixture workspace-summary.json)."
+    },
+    {
+      "id": 199,
+      "section": "Common results",
+      "quote": "Mutation expectation | `model`, `config`, `policy`, `imports` hashes for the write's scope | Recheck all inputs affecting interpretation, not only the model file",
+      "tasks": [
+        5,
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: MutationExpectation {model, config, policy, imports} hashes (fixture mutation-expectation.json)."
+    },
+    {
+      "id": 200,
+      "section": "Common results",
+      "quote": "Change proposal | `proposalId`, `inputDigest`, `revisionVector`, `writes`, `impact`, `invalidatedEvidence`, `requiredAcceptance` | Proposal content is immutable; writes include owning workspace and expected old/new hashes",
+      "tasks": [
+        5,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 6b5e132: ChangeProposal {proposalId, inputDigest, revisionVector, writes (OwnedWrite with owning workspace and expected old/new hashes), impact, invalidatedEvidence, requiredAcceptance} (fixture change-proposal.json)."
+    },
+    {
+      "id": 201,
+      "section": "Common results",
+      "quote": "Activity event | `sessionId`, `workspaceId`, `sequence`, `kind`, `subject`, `revision`, `operationId`, `summary`, `time` | Operational event time stays outside deterministic projections; bounded, sanitized content",
+      "tasks": [
+        6,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): ActivityEvent {sessionId, workspaceId, sequence, kind, subject, revision, operationId, summary (bounded, sanitized), time} (fixture activity-event.json)."
+    },
+    {
+      "id": 202,
+      "section": "Common results",
+      "quote": "`viewUrl` is a local runtime convenience, excluded from model exports, signatures, source notices and deterministic projections.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 203,
+      "section": "Common results",
+      "quote": "A handle and a URL cannot grant trusted acceptance or qualification.",
+      "tasks": [
+        14,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 204,
+      "section": "Agent tools",
+      "quote": "`loom.workspace`, `inspect` | `path`; optional `boundary` | Ownership and repository inspection, suggested placement with reasons, inspection digest; no writes",
+      "tasks": [
+        6,
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): workspace inspect input (path, optional boundary) and WorkspaceInspectData (ownership report, suggested placement with reasons, inspection digest), effects reads."
+    },
+    {
+      "id": 205,
+      "section": "Agent tools",
+      "quote": "`loom.workspace`, `initialize` | `path`, `declaration`, `dryRun`; `expectedInspection` on apply | Scaffold proposal or created workspace; only requested scaffold and journal writes",
+      "tasks": [
+        6,
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 6 part (Loom 0db929d): workspace initialize input (path, declaration, dryRun; expectedInspection required on apply by a presence rule) and WorkspaceInitializeData."
+    },
+    {
+      "id": 206,
+      "section": "Agent tools",
+      "quote": "`loom.workspace`, `open` | `path`, `access` (`read` or `edit`); optional `view` default true | Handle, bounded summary and Angular URL; no model changes",
+      "tasks": [
+        14,
+        21,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 207,
+      "section": "Agent tools",
+      "quote": "`loom.workspace`, `status` | `workspaceId` | Current revisions, resources, pending runs and next actions",
+      "tasks": [
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 208,
+      "section": "Agent tools",
+      "quote": "`loom.workspace`, `close` | `workspaceId` | Cancel/await owned jobs, detach watchers, revoke browser access and release handle; cleanup failures reported",
+      "tasks": [
+        14,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 209,
+      "section": "Agent tools",
+      "quote": "`loom.federation`, `inspect` | `workspaceId` | Members, pins, ownership, missing inputs and dependency graph",
+      "tasks": [
+        15,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 210,
+      "section": "Agent tools",
+      "quote": "`loom.federation`, `plan` | `workspaceId`, `changes`, `expectedVector` | Typed proposal for membership, agreement, export pin or output-ownership changes; no writes",
+      "tasks": [
+        15,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 211,
+      "section": "Agent tools",
+      "quote": "`loom.federation`, `apply` | `workspaceId`, `proposalId`, `expectedVector` | Journaled owner-local writes after authorization and revision checks",
+      "tasks": [
+        15,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 212,
+      "section": "Agent tools",
+      "quote": "`loom.federation`, `check` | `workspaceId`; optional `snapshotDigest` | Resolved closure and composed validation/readiness; no acceptance manufacture",
+      "tasks": [
+        15,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 213,
+      "section": "Agent tools",
+      "quote": "`loom.federation`, `publish` | `workspaceId`, `export`, `expectedVector`, `purpose` (`draft` or `release`) | Immutable contract bundle; release publication requires configured acceptance/evidence; draft is never trusted as release",
+      "tasks": [
+        15,
+        35
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 214,
+      "section": "Agent tools",
+      "quote": "`loom.diagram` | `workspaceId`, `target`, `scope`, `formats`, `budget`; optional `snapshotDigest` | Structured graph, Mermaid and selected terminal rendering with fidelity/completeness metadata",
+      "tasks": [
+        7,
+        12,
+        20,
+        36
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 7 part (Loom f13d98f): DiagramInput scope.kind is DiagramKind and budget is RenderingBudget (maxima enforced by schema keywords; fixture diagram-input.json rejects nodes above the maximum); DiagramData is {result: RenderResult}."
+    },
+    {
+      "id": 215,
+      "section": "Agent tools",
+      "quote": "`loom.qualify`, `start` | `workspaceId`, `checks`, `target`, `expectedVector`, `executionPolicy` | Run handle after preflight; starts only policy-authorized native checks",
+      "tasks": [
+        16,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 216,
+      "section": "Agent tools",
+      "quote": "`loom.qualify`, `status` | `workspaceId`, `runId`; optional `cursor` | Phase, bounded progress, evidence references and cleanup status",
+      "tasks": [
+        8,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 8fd7e6e: QualifyRunStatus has runId, phase, bounded progress (events maxItems 200, optional cause), evidence and cleanup (CleanupState), and cursor; fixtures/qualify-run-status.json."
+    },
+    {
+      "id": 217,
+      "section": "Agent tools",
+      "quote": "`loom.qualify`, `cancel` | `workspaceId`, `runId` | Idempotent cancellation request; completed only after processes and resources settle",
+      "tasks": [
+        16,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 218,
+      "section": "Agent tools",
+      "quote": "Workspace declarations contain `modelId`, `modelKind`, source claims, output claims and direct membership references.",
+      "tasks": [
+        5
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 5 part (Loom 6b5e132): LoomConfig carries modelId, modelKind, scope (source claims), composition.outputClaims and composition.members, the declaration initialize will validate."
+    },
+    {
+      "id": 219,
+      "section": "Agent tools",
+      "quote": "Validate them with the same schema used by persistent configuration.",
+      "tasks": [
+        14
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 220,
+      "section": "Agent tools",
+      "quote": "No free-text shell command, SQL connection string, arbitrary URL or executable path is accepted by qualification or diagram tools.",
+      "tasks": [
+        6,
+        18,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 0db929d: QualifyInput and DiagramInput take Id, TargetReference and DiagramFormat only; negative fixtures reject a shell command as a check, an executable path as executionPolicy, a connection string and a URL as a record id, a URL as a cursor and format, and unknown command/renderer members."
+    },
+    {
+      "id": 221,
+      "section": "Agent tools",
+      "quote": "Execution policy refers to provisioned runner/provider identities in trusted local configuration.",
+      "tasks": [
+        8,
+        16,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): Policy.execution.providers names ids of the trusted local ProviderConfiguration; fixtures/policy.json valid[0] and invalid[3]; qualification/policy.json providers ['localdb']."
+    },
+    {
+      "id": 222,
+      "section": "Agent tools",
+      "quote": "Extend existing model tools to take `workspaceId` in workspace mode.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 223,
+      "section": "Agent tools",
+      "quote": "Extend `loom.context`, `loom.checkReadiness`, `loom.planChange`, projections and comparisons to resolve imported closure through the adapter.",
+      "tasks": [
+        21,
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "resolution": "task 21 routes these tools through the adapter for a workspace handle over the closure the adapter resolves today (vendored published contracts); task 11 extends that closure across composition members"
+    },
+    {
+      "id": 224,
+      "section": "Agent tools",
+      "quote": "Keep inline mode explicitly untrusted where trusted inputs are absent.",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 225,
+      "section": "Agent tools",
+      "quote": "`loom.mutate` never edits an imported record; it returns the owner and a valid next action.",
+      "tasks": [
+        11,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 226,
+      "section": "Agent tools",
+      "quote": "Long work is asynchronous in the server dispatcher; native checks must not block status, cancellation, other workspaces or browser events.",
+      "tasks": [
+        21,
+        23,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 227,
+      "section": "Agent tools",
+      "quote": "Workspace lifecycle, composition, diagrams and run control receive equivalent CLI commands generated from the same operation catalogue.",
+      "tasks": [
+        6,
+        22,
+        35,
+        36,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 22 adds workspace inspect and init but no CLI equivalent of loom.workspace status (revisions, pending runs, next actions); add it, or record in the catalogue why open, status and close have no CLI form.",
+      "resolution": "task 22 adds workspace status; task 6 records why open and close are MCP-only",
+      "evidence": "Task 6 part (Loom 0db929d): workspace, federation, diagram and qualify operations are catalogued with exposure none and the intended CLI forms in their reasons (workspace inspect, workspace status); open and close are session-scoped."
+    },
+    {
+      "id": 228,
+      "section": "Agent tools",
+      "quote": "Preserve existing CLI functionality.",
+      "tasks": [
+        4,
+        22
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom cef1617: every pre-existing CLI command is a catalogue entry dispatched through the same handler; cli.test.js 32/32 (usage-equality and handler-gap tests), concurrency.test.js 5/5; before/after probe of check --all, owner, describe, mutate, coverage, evidence identical apart from the digest."
+    },
+    {
+      "id": 229,
+      "section": "Agent tools",
+      "quote": "Publish exact command help and examples from that catalogue; do not make agents infer a command by reading implementation files.",
+      "tasks": [
+        4,
+        22
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom cef1617: `--help` usage text and every command's usage and examples are generated from operations.json into cli.ts#CLI_USAGE and Docs/operations.md; cli.test.js asserts the printed usage equals the generated text."
+    },
+    {
+      "id": 230,
+      "section": "Failure behavior",
+      "quote": "Missing model or unknown handle | Explain how to inspect/open; no restart instruction as the ordinary remedy",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 231,
+      "section": "Failure behavior",
+      "quote": "Source or import changed | Refuse stale write or continuation; return current revisions and re-plan action",
+      "tasks": [
+        10,
+        14,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 part (Loom 846c39b, e56e730): a stale continuation is refused with cause stale-base, the current revisions in the envelope and a Refusal.nextActions entry that starts again (mcp.test.js 'a workspace context continuation from before the model changed is refused with the request that starts again, addressed to the workspace'; core battery 'context pages'). Stale writes are task 14."
+    },
+    {
+      "id": 232,
+      "section": "Failure behavior",
+      "quote": "Ownership overlap or unresolved checkout | Name exact conflicting claims or missing input; no guessed owner",
+      "tasks": [
+        14,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 233,
+      "section": "Failure behavior",
+      "quote": "Invalid action/input | Reject before effects with field paths and valid shape reference",
+      "tasks": [
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 234,
+      "section": "Failure behavior",
+      "quote": "Required profile/renderer/engine unavailable | Qualification not established; state the provisioned dependency required",
+      "tasks": [
+        8,
+        16,
+        20,
+        21,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunRecord.checks[].cause (UnavailableCause) and dependency state the provisioned dependency an UNKNOWN lacks; fixtures/run-record.json valid[1]."
+    },
+    {
+      "id": 235,
+      "section": "Failure behavior",
+      "quote": "Untrusted acceptance/evidence | Preserve result as untrusted; no automatic trust promotion",
+      "tasks": [
+        21,
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 236,
+      "section": "Failure behavior",
+      "quote": "Frozen contract affected | Show affected scope and the exact policy obligation; do not request broad reapproval",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 237,
+      "section": "Failure behavior",
+      "quote": "Incomplete multi-repository write | Block composed readiness and expose recovery status",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 238,
+      "section": "Failure behavior",
+      "quote": "Timeout or cancellation | Stop and await owned work, then clean up; distinguish requested from completed cancellation",
+      "tasks": [
+        2,
+        16,
+        17,
+        21,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 239,
+      "section": "Failure behavior",
+      "quote": "Cleanup failure | Preserve evidence and journal; report residual owned resources and recovery action; no successful lifecycle result",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 240,
+      "section": "Connected Angular designer",
+      "quote": "Extend the existing Angular application.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 241,
+      "section": "Connected Angular designer",
+      "quote": "Preserve Browse, Records, Mutate, Validate, States, Unknowns, Diff, Baseline, Views, Generate and Publish capabilities and their offline file workflows.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 242,
+      "section": "Connected Angular designer",
+      "quote": "Do not introduce another frontend framework, duplicate the model engine or replace existing screens with a monitoring-only page.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 243,
+      "section": "URL and browser behavior",
+      "quote": "Opening a workspace returns `http://127.0.0.1:{port}/workspaces/{workspaceId}` plus a session bootstrap fragment where necessary.",
+      "tasks": [
+        23,
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 244,
+      "section": "URL and browser behavior",
+      "quote": "The fragment contains a short-lived one-use capability, never a filesystem path.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 245,
+      "section": "URL and browser behavior",
+      "quote": "The UI exchanges it for a scoped browser session, removes it from browser history immediately and subsequently uses an HttpOnly SameSite cookie.",
+      "tasks": [
+        23,
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 246,
+      "section": "URL and browser behavior",
+      "quote": "The host sets a restrictive referrer policy and never logs bootstrap material.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 247,
+      "section": "URL and browser behavior",
+      "quote": "The first successful open includes the link; subsequent responses include it when useful without repeating large setup text.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 248,
+      "section": "URL and browser behavior",
+      "quote": "The link loads the actual server-side workspace snapshot.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 249,
+      "section": "URL and browser behavior",
+      "quote": "It does not open the sample model or require manual selection of `.loom/model.json`.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 250,
+      "section": "URL and browser behavior",
+      "quote": "Automatic browser launch is a local preference, disabled by default; when enabled it opens at most once per workspace session.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 251,
+      "section": "URL and browser behavior",
+      "quote": "Failure to launch a browser leaves a usable link and does not fail engineering operations.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 252,
+      "section": "URL and browser behavior",
+      "quote": "The header identifies model, repository, component scope, revision and connected/offline state.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 253,
+      "section": "URL and browser behavior",
+      "quote": "The page shows model changes, validation/readiness, current diagram scope, active qualification, SQL resource state and sanitized recent activity.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 254,
+      "section": "URL and browser behavior",
+      "quote": "A composition view navigates parent and children by their handles.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 255,
+      "section": "URL and browser behavior",
+      "quote": "Changing the selected tab does not retarget an agent's calls.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 256,
+      "section": "Local HTTP interface",
+      "quote": "`POST /api/session` | One-use bootstrap capability | Scoped cookie and permitted workspace handles",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 257,
+      "section": "Local HTTP interface",
+      "quote": "`GET /api/workspaces/{workspaceId}` | Authenticated browser | Adapter-verified snapshot, revisions, trust states and capabilities",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 258,
+      "section": "Local HTTP interface",
+      "quote": "`GET /api/workspaces/{workspaceId}/activity` | Event-stream connection; optional last sequence | Ordered activity events; gap signal requires a fresh snapshot",
+      "tasks": [
+        23,
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 259,
+      "section": "Local HTTP interface",
+      "quote": "`POST /api/workspaces/{workspaceId}/actions` | Typed catalogue action and revision expectations | Same envelope as the corresponding agent/CLI action",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 260,
+      "section": "Local HTTP interface",
+      "quote": "`DELETE /api/session` | Authenticated browser | Revocation of that browser session, without closing unrelated agent handles",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 261,
+      "section": "Local HTTP interface",
+      "quote": "Browser actions dispatch through the shared operation catalogue.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 262,
+      "section": "Local HTTP interface",
+      "quote": "Read access cannot mutate, publish, execute tests or modify policy.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 263,
+      "section": "Local HTTP interface",
+      "quote": "Edit access allows only the same user-authorized and policy-permitted actions as the workspace handle; it does not grant acceptance authority.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 264,
+      "section": "Local HTTP interface",
+      "quote": "Bootstrap requests validate Host and Origin, enforce expiry and one-time use, and rate-limit failures.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 265,
+      "section": "Local HTTP interface",
+      "quote": "All other routes require the scoped session and origin checks.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 266,
+      "section": "Local HTTP interface",
+      "quote": "Reject cross-origin requests; do not enable wildcard cross-origin access.",
+      "tasks": [
+        23,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 267,
+      "section": "Local HTTP interface",
+      "quote": "Loopback binding alone is insufficient protection.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 268,
+      "section": "Local HTTP interface",
+      "quote": "Watch only opened model/configuration/evidence paths, with debouncing and bounded event retention.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 269,
+      "section": "Local HTTP interface",
+      "quote": "Sequence events as `workspace.opened`, `model.changed`, `projection.ready`, `qualification.progress`, `qualification.completed`, `cleanup.changed` and `workspace.closed`.",
+      "tasks": [
+        6,
+        21,
+        23,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 6's ActivityEvent has no kind vocabulary and task 23 names only model.changed; task 6 must enumerate the seven kinds and task 23 emit and test each (qualification and cleanup events from task 21's run table).",
+      "resolution": "task 6 enumerates the seven kinds; task 23 emits and tests each",
+      "evidence": "Task 6 part (Loom 0db929d): ActivityEvent.kind is exactly workspace.opened, model.changed, projection.ready, qualification.progress, qualification.completed, cleanup.changed, workspace.closed (fixture rejects another kind)."
+    },
+    {
+      "id": 270,
+      "section": "Local HTTP interface",
+      "quote": "Reload from the authoritative adapter after an external file change.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 271,
+      "section": "Local HTTP interface",
+      "quote": "Preserve dirty browser drafts as drafts; stale saves fail revision checks and require explicit reconciliation.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 272,
+      "section": "Local HTTP interface",
+      "quote": "Never silently merge or discard edits.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 273,
+      "section": "Local HTTP interface",
+      "quote": "On disconnect, show that displayed content is a snapshot and disable connected actions.",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 274,
+      "section": "Local HTTP interface",
+      "quote": "Offline imported evidence retains its untrusted status.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 275,
+      "section": "Local HTTP interface",
+      "quote": "Reconnection loads a new authorized handle and snapshot; a remembered URL cannot silently attach to a different workspace.",
+      "tasks": [
+        24
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 276,
+      "section": "Local HTTP interface",
+      "quote": "Host shutdown cancels/awaits owned jobs before closing listeners, subject to the explicit cleanup deadline and recovery journal.",
+      "tasks": [
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 277,
+      "section": "Single semantic source",
+      "quote": "Add a pure structured diagram representation to the core.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 278,
+      "section": "Single semantic source",
+      "quote": "It contains `diagramId`, `kind`, `scope`, `sourceVectorDigest`, `nodes`, `edges`, `groups`, `coverage`, and `limits`.",
+      "tasks": [
+        7
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: Diagram {diagramId, kind, scope, sourceVectorDigest, nodes, edges, groups, coverage, limits} (diagram.schema.json; fixture diagram.json)."
+    },
+    {
+      "id": 279,
+      "section": "Single semantic source",
+      "quote": "A node has a stable semantic key, label, kind and owning record reference.",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramNode {key (stable semantic DiagramKey), label, kind, owner RecordAddress} (fixture diagram-node.json)."
+    },
+    {
+      "id": 280,
+      "section": "Single semantic source",
+      "quote": "An edge has its own key, source, target, direction, relationship, label and owning record references.",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramEdge {key, source, target, direction, relationship, label, owners} (fixture diagram-edge.json)."
+    },
+    {
+      "id": 281,
+      "section": "Single semantic source",
+      "quote": "Groups retain hosting, trust-boundary or ownership meaning independently of layout.",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramGroup {key, meaning hosting|trust-boundary|ownership, members, optional parent} independent of layout (fixture diagram-group.json)."
+    },
+    {
+      "id": 282,
+      "section": "Single semantic source",
+      "quote": "Generate existing Mermaid views and terminal-renderer input from this representation.",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 283,
+      "section": "Single semantic source",
+      "quote": "Stable node/edge ordering makes repeated output deterministic.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 284,
+      "section": "Single semantic source",
+      "quote": "Include isolated nodes, self-loops, parallel edges, start/end states and every in-scope relationship.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 285,
+      "section": "Single semantic source",
+      "quote": "Cross-model references retain owner identity.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 286,
+      "section": "Single semantic source",
+      "quote": "A label is escaped as data, never interpreted as executable markup or renderer configuration.",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 287,
+      "section": "Single semantic source",
+      "quote": "Use a pinned `mermaid-ascii` executable as the selected terminal layout dependency.",
+      "tasks": [
+        7,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 7 part (Loom f13d98f): ToolName gains mermaid-ascii; profiles/diagrams.json pins it by exact version v0.0.0-20260908213847-5f00e3d9ac9f and binary digest."
+    },
+    {
+      "id": 288,
+      "section": "Single semantic source",
+      "quote": "Its documentation alone does not establish support for every Loom diagram.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 289,
+      "section": "Single semantic source",
+      "quote": "Provision a verified platform binary or reproducible build, record its digest/license and qualify the actual inputs.",
+      "tasks": [
+        7,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 7 part (Loom f13d98f): VersionPolicy.digest pins the binary (SHA-256 FD7511…02E, 14,029,312 bytes, measured 2026-10-04) and the profile records MIT; qualification tool resolution verifies the digest (framework.test.js 23/23 covers the pin firing)."
+    },
+    {
+      "id": 290,
+      "section": "Single semantic source",
+      "quote": "Do not download or install a moving release during a tool call.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 291,
+      "section": "Single semantic source",
+      "quote": "For state diagrams, generate a terminal flowchart representation directly from the same states and transitions, label it as that view, and retain the original state-diagram Mermaid.",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 292,
+      "section": "Single semantic source",
+      "quote": "If visual groups must be flattened, retain group membership and its meaning in the legend and semantic table.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 293,
+      "section": "Single semantic source",
+      "quote": "Do not parse arbitrary Markdown with regular expressions or ask a model to redraw the graph.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 294,
+      "section": "Render result",
+      "quote": "`diagram` | Complete structured semantic representation or revision-bound resource reference",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: RenderResult.diagram is a Diagram or a revision-bound ResourceReference (fixture render-result.json)."
+    },
+    {
+      "id": 295,
+      "section": "Render result",
+      "quote": "`sourceVectorDigest`, `graphDigest`, `mermaidDigest` | Exact inputs and deterministic source identity",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: RenderResult requires sourceVectorDigest, graphDigest and mermaidDigest."
+    },
+    {
+      "id": 296,
+      "section": "Render result",
+      "quote": "`mermaid` | Original Mermaid text or resource reference",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: RenderResult.mermaid is text or a ResourceReference."
+    },
+    {
+      "id": 297,
+      "section": "Render result",
+      "quote": "`terminal` | Requested ASCII or Unicode output; absent with explicit unsupported finding if rendering cannot be faithful",
+      "tasks": [
+        7,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 7 part (Loom f13d98f): RenderResult.terminal (TerminalRendering, ascii|unicode) is optional and absent when unfaithful; DIAGRAM_TERMINAL_UNFAITHFUL (warning) names that case, raised by the terminal renderer adapter (RAISED_ELSEWHERE)."
+    },
+    {
+      "id": 298,
+      "section": "Render result",
+      "quote": "`renderer` | Tool, actual version, binary digest and option digest",
+      "tasks": [
+        7,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: RendererIdentity {tool, version, binaryDigest, optionDigest} (fixture renderer-identity.json)."
+    },
+    {
+      "id": 299,
+      "section": "Render result",
+      "quote": "`fidelity` | `exact-semantics`, `annotated-layout` or `unsupported`, with declared visual transformations",
+      "tasks": [
+        7,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramFidelity exact-semantics|annotated-layout|unsupported with declared transformations (fixture diagram-fidelity.json)."
+    },
+    {
+      "id": 300,
+      "section": "Render result",
+      "quote": "`coverage` | In-scope record and relationship accounting",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramCoverage accounts for in-scope records and relationships (fixture diagram-coverage.json)."
+    },
+    {
+      "id": 301,
+      "section": "Render result",
+      "quote": "`completeness` | Truncation, omitted elements, continuations and full-artifact location",
+      "tasks": [
+        7,
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom f13d98f: DiagramCompleteness {truncation, omitted elements, continuation, full-artifact location} (fixture diagram-completeness.json)."
+    },
+    {
+      "id": 302,
+      "section": "Render result",
+      "quote": "Rendering budgets constrain node count, bytes, width, duration and memory.",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 303,
+      "section": "Render result",
+      "quote": "Pagination splits by declared scope and shows boundary edges explicitly.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 304,
+      "section": "Render result",
+      "quote": "It cannot remove an inconvenient relationship silently.",
+      "tasks": [
+        12
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 305,
+      "section": "Render result",
+      "quote": "Qualify cycles, repeated labels, multiedges, escaping, Unicode, long labels, start/end states and nested boundaries.",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 306,
+      "section": "Render result",
+      "quote": "A renderer failure returns the Mermaid and semantic table where permitted, but cannot count as passing terminal-rendering qualification.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 307,
+      "section": "Render result",
+      "quote": "All required built-in diagram kinds must pass before release.",
+      "tasks": [
+        20,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 308,
+      "section": "Render result",
+      "quote": "Syntax, layout and semantic coverage checks do not establish that a user's requirements or runtime behavior are correct.",
+      "tasks": [
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 309,
+      "section": "Provider choice and dormant state",
+      "quote": "LocalDB is the default for compatible SQL Server fixtures: installed binaries consume disk while a private engine process is started for a run.",
+      "tasks": [
+        16,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 310,
+      "section": "Provider choice and dormant state",
+      "quote": "It has Express-edition constraints, so a declared target capability check is mandatory.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 311,
+      "section": "Provider choice and dormant state",
+      "quote": "A LocalDB result cannot establish every Azure SQL or full SQL Server property.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 312,
+      "section": "Provider choice and dormant state",
+      "quote": "Support a dedicated Developer edition service provider for declared test features unavailable in LocalDB.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 313,
+      "section": "Provider choice and dormant state",
+      "quote": "It is separately provisioned, explicitly named, used only for development/testing and otherwise stopped.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 314,
+      "section": "Provider choice and dormant state",
+      "quote": "Select Manual startup for normal start-on-demand use.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 315,
+      "section": "Provider choice and dormant state",
+      "quote": "A Disabled service requires an explicit preauthorized policy to change its startup mode temporarily and restore it after the run; without that authority or service permissions, report a blocked provider.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 316,
+      "section": "Provider choice and dormant state",
+      "quote": "Never silently alter startup configuration, install SQL or request elevation on each tool call.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 317,
+      "section": "Provider choice and dormant state",
+      "quote": "Provider selection is `localdb` or `developer-service`, mapped to trusted local installation details.",
+      "tasks": [
+        8,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): ProviderKind localdb|developer-service and ProviderConfiguration map each provider to installation details with no endpoint member; fixtures provider-kind.json, provider-ref.json, provider-configuration.json."
+    },
+    {
+      "id": 318,
+      "section": "Provider choice and dormant state",
+      "quote": "No arbitrary database endpoint is accepted.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 319,
+      "section": "Provider choice and dormant state",
+      "quote": "An already running dedicated service is not taken over: refuse acquisition and report the unexpected state.",
+      "tasks": [
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 320,
+      "section": "Provider choice and dormant state",
+      "quote": "Other services, automatic shared LocalDB instances, production databases and unrelated files are never targets.",
+      "tasks": [
+        16,
+        17,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 321,
+      "section": "Run inputs and budgets",
+      "quote": "A run names the exact model/import snapshot, implementation files and hashes, target SQL platform, engine version/capabilities, check list, authored fixture set, expected assertions and trusted execution policy.",
+      "tasks": [
+        8,
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunRecord.revisionSet names model, bundle, sources, profiles, policy, implementation, fixtures and assertions with hashes; target names platform and capabilities; inputDigest covers them. Tests: fixtures/run-record.json valid[1]; framework.test.js 'a run record satisfies its contract, names every evidence record it produced and digests exactly the inputs it states'."
+    },
+    {
+      "id": 322,
+      "section": "Run inputs and budgets",
+      "quote": "Generated DDL fixtures qualify generated DDL; qualification of an adopting implementation must additionally execute that implementation's actual schema and routine files.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 323,
+      "section": "Run inputs and budgets",
+      "quote": "Never substitute a generated conforming example for the application under test.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 324,
+      "section": "Run inputs and budgets",
+      "quote": "Acquire an OS-enforced cross-process user lease before starting an engine.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 325,
+      "section": "Run inputs and budgets",
+      "quote": "The default is one SQL run per user across all Loom server and CLI instances.",
+      "tasks": [
+        9,
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 930bde4: icd/qualification.json provides[runChecks].concurrency 'by default one SQL run per user runs at a time across every Loom server and command-line process, and a queued request stays cancellable', with RunLease in its owns; the lease implementation is task 16's."
+    },
+    {
+      "id": 326,
+      "section": "Run inputs and budgets",
+      "quote": "Waiting requests remain queued with a visible cancellation path.",
+      "tasks": [
+        16,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 327,
+      "section": "Run inputs and budgets",
+      "quote": "A dedicated service also has a machine-scoped resource lock so another user cannot concurrently control that service.",
+      "tasks": [
+        16,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 328,
+      "section": "Run inputs and budgets",
+      "quote": "Do not hold model write locks while native checks run.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 329,
+      "section": "Run inputs and budgets",
+      "quote": "The initial local policy uses a 15-minute total test deadline, 60-second command deadline unless the check declares a stricter one, 60-second engine-start deadline, 60-second cleanup deadline",
+      "tasks": [
+        8,
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): qualification/policy.json execution.budgets totalDeadlineSeconds 900, commandDeadlineSeconds 60, engineStartDeadlineSeconds 60, cleanupDeadlineSeconds 60 (RunBudgets; fixtures/run-budgets.json)."
+    },
+    {
+      "id": 330,
+      "section": "Run inputs and budgets",
+      "quote": "2 GiB fixture-file budget, 512 MiB configured SQL maximum server memory and maximum degree of parallelism 1.",
+      "tasks": [
+        8,
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): qualification/policy.json execution.budgets fixtureFileBytes 2147483648, maxServerMemoryMiB 512, maxDegreeOfParallelism 1 (RunBudgets; fixtures/run-budgets.json)."
+    },
+    {
+      "id": 331,
+      "section": "Run inputs and budgets",
+      "quote": "Enforce file growth limits before data loading and monitor process/disk use during execution.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 332,
+      "section": "Run inputs and budgets",
+      "quote": "A fixture that cannot run inside policy reports insufficient resources; it never silently increases limits.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 16 maps only a hard-memory-guarantee request to UNKNOWN insufficient-resources; add a test that a fixture exceeding the file, memory or deadline budget reports insufficient resources and leaves the limits unchanged.",
+      "resolution": "task 16 tests each budget overrun as insufficient-resources with limits unchanged"
+    },
+    {
+      "id": 333,
+      "section": "Run inputs and budgets",
+      "quote": "Record actual peak working set and test this limitation explicitly; use supported OS process limits only when they preserve correct engine operation, and record whether they are enforced.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 334,
+      "section": "Run inputs and budgets",
+      "quote": "A requested hard memory guarantee without an enforceable host mechanism is unavailable.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 335,
+      "section": "Resource lifecycle",
+      "quote": "Preflight | Validate tool versions, capabilities, free disk, permissions, safe roots and trusted scripts | No engine starts if a prerequisite is absent",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 336,
+      "section": "Resource lifecycle",
+      "quote": "Reserve | Acquire lease; durably record allocation intent, owner/session/run and selected provider | Journal exists before an operation can partially create a resource",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 337,
+      "section": "Resource lifecycle",
+      "quote": "Start | Create a uniquely owned LocalDB instance with explicit installed version, or start the dedicated service | Capture exit result, process identity and actual version; detect partial creation",
+      "tasks": [
+        16,
+        17,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 338,
+      "section": "Resource lifecycle",
+      "quote": "Prepare | Create disposable databases with explicit data/log locations below the run root and bounded growth | Record every created file and database identity before tests",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 339,
+      "section": "Resource lifecycle",
+      "quote": "Execute | Apply actual schema, fixtures, tests and assertions under the fixed deadline | Propagate cancellation to commands and SQL sessions; collect safe diagnostics",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 340,
+      "section": "Resource lifecycle",
+      "quote": "Capture | Persist check outcomes and input hashes outside the disposable directory | Preserve evidence even if teardown fails",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 341,
+      "section": "Resource lifecycle",
+      "quote": "Quiesce | Cancel remaining work, close connections and await every child process | A timeout result alone does not prove execution stopped",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 342,
+      "section": "Resource lifecycle",
+      "quote": "Remove databases | Drop only run-owned databases; verify catalog absence and expected files | Record individual failures; never delete live database files to hide a drop failure",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 343,
+      "section": "Resource lifecycle",
+      "quote": "Stop | Graceful owned-engine stop, then bounded owned-instance escalation if needed | Check command exit and process identity; no unrelated process termination",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 344,
+      "section": "Resource lifecycle",
+      "quote": "Release | Remove owned instance metadata/residual files, restore service startup state and release locks | Verify containment, ownership and engine shutdown; preserve recovery journal on failure",
+      "tasks": [
+        17,
+        18
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 345,
+      "section": "Resource lifecycle",
+      "quote": "The LocalDB utility supports explicit instance creation and lifecycle operations; each invocation's status must be checked.",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 346,
+      "section": "Resource lifecycle",
+      "quote": "Database drop normally removes its physical files, but documented exceptions require verification.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 347,
+      "section": "Resource lifecycle",
+      "quote": "Never use a bare timeout race that leaves the losing runner active.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 348,
+      "section": "Resource lifecycle",
+      "quote": "Cancellation propagates through the coordinator, command process, SQL connections and engine resource owner.",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 349,
+      "section": "Resource lifecycle",
+      "quote": "Cleanup begins only once work is quiescent.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 350,
+      "section": "Resource lifecycle",
+      "quote": "A release error is not suppressed.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 351,
+      "section": "Resource lifecycle",
+      "quote": "A partially acquired instance stays in the cleanup ledger even if its start operation failed.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 352,
+      "section": "Resource lifecycle",
+      "quote": "Filesystem removal uses canonical paths below the reserved run directory and journaled instance paths.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 353,
+      "section": "Resource lifecycle",
+      "quote": "Verify the engine is stopped before removing residual owned files.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 354,
+      "section": "Resource lifecycle",
+      "quote": "Prefix matching alone is not ownership proof.",
+      "tasks": [
+        17,
+        27
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 355,
+      "section": "Resource lifecycle",
+      "quote": "Retain process creation identity alongside process id to prevent killing a reused process id.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 356,
+      "section": "Resource lifecycle",
+      "quote": "The evidence directory and unrelated SQL installations are outside deletion scope.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 357,
+      "section": "Crash recovery and outcome",
+      "quote": "A temporary guardian accompanies an active SQL run and observes its owner process.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 358,
+      "section": "Crash recovery and outcome",
+      "quote": "It performs bounded cleanup on unexpected owner exit, then exits itself.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 359,
+      "section": "Crash recovery and outcome",
+      "quote": "No permanent service or scheduled task is introduced.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 360,
+      "section": "Crash recovery and outcome",
+      "quote": "A journal is also checked before the next qualification or explicit recovery action.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 361,
+      "section": "Crash recovery and outcome",
+      "quote": "Power loss cannot guarantee immediate cleanup; recovery reports and settles the owned residual resources after the host returns.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 362,
+      "section": "Crash recovery and outcome",
+      "quote": "The run result contains `runId`, `inputDigest`, `target`, `provider`, `engineVersion`, `checks`, `evidenceRefs`, `testOutcome`, `cleanup`, `resourceUsage` and `limits`.",
+      "tasks": [
+        8,
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunRecord defines runId, inputDigest, target, provider, engineVersion, checks, evidenceRefs, testOutcome, cleanup, resourceUsage and limits; runId, inputDigest, checks, evidenceRefs and testOutcome are required and produced by runChecks (framework.test.js 'a run record satisfies its contract…'); fixtures/run-record.json."
+    },
+    {
+      "id": 363,
+      "section": "Crash recovery and outcome",
+      "quote": "Check outcomes are passed, failed, unavailable or cancelled; an unavailable required check cannot pass qualification.",
+      "tasks": [
+        2,
+        8
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunRecord.checks maps passed/failed/unavailable/cancelled to PASS/FAIL/UNKNOWN+cause/UNKNOWN+cancelled; framework.test.js 'a required check whose tool is missing is UNKNOWN and keeps the aggregate from PASS' (24/24)."
+    },
+    {
+      "id": 364,
+      "section": "Crash recovery and outcome",
+      "quote": "The coordinator, guardian and recovery command use one journaled cleanup claim so they cannot concurrently stop or remove the same resource.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 365,
+      "section": "Crash recovery and outcome",
+      "quote": "Recovery is idempotent and verifies the recorded owner before every action.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 366,
+      "section": "Crash recovery and outcome",
+      "quote": "An unresolved owned engine or incomplete cleanup blocks allocation of another SQL run under that resource lease until recovery establishes the available state",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 367,
+      "section": "Crash recovery and outcome",
+      "quote": "a failed run cannot evade the laptop concurrency limit by releasing its handle.",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 368,
+      "section": "Crash recovery and outcome",
+      "quote": "`cleanup` contains state (`pending`, `running`, `clean`, `failed`), database/file/process/service outcomes, attempted actions, residual resource identities and a recovery reference.",
+      "tasks": [
+        8,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunCleanup has state (pending|running|clean|failed), per-resource outcomes for databases, files, processes and services, ordered actions, residual identities and recovery; fixtures/run-cleanup.json."
+    },
+    {
+      "id": 369,
+      "section": "Crash recovery and outcome",
+      "quote": "Overall success requires the required checks to pass and cleanup to be `clean`.",
+      "tasks": [
+        8,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): RunRecord.outcome 'succeeded' only with testOutcome PASS and cleanup clean (description); fixtures/run-record.json invalid '/outcome'."
+    },
+    {
+      "id": 370,
+      "section": "Crash recovery and outcome",
+      "quote": "Test evidence is retained if cleanup fails, but the lifecycle is unsuccessful.",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 371,
+      "section": "Crash recovery and outcome",
+      "quote": "Debug retention defaults off; any explicitly permitted retained fixture has an expiry and reported disk cost, and the engine still stops.",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 372,
+      "section": "Qualification coverage",
+      "quote": "Schema | Target-platform build, actual deployment and catalog comparison",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 373,
+      "section": "Qualification coverage",
+      "quote": "Relations and constraints | Positive and negative fixtures for keys, references, nullability, checks and defaults",
+      "tasks": [
+        32
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 374,
+      "section": "Qualification coverage",
+      "quote": "Procedures | Actual signatures, result shapes, permitted mutations and authored business assertions",
+      "tasks": [
+        32
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "sql.behavior runs generated read-only signature and result-shape checks (projections/sql.ts:421-429; sql.json:192 excludes unasserted business behavior); no task executes permitted-mutation or authored business-assertion checks, so extend task 32.",
+      "resolution": "task 32 executes permitted-mutation checks and authored business assertions"
+    },
+    {
+      "id": 375,
+      "section": "Qualification coverage",
+      "quote": "Transactions | Rollback and declared atomicity, plus separate multi-session concurrency cases where required",
+      "tasks": [
+        32
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 376,
+      "section": "Qualification coverage",
+      "quote": "Authorization | Runtime-role permissions and forbidden access, using representative engine identities",
+      "tasks": [
+        32
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 377,
+      "section": "Qualification coverage",
+      "quote": "Schema changes | Previous-shape fixtures and declared transformation/data-retention expectations when the adopting system requires them",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 378,
+      "section": "Qualification coverage",
+      "quote": "Resource lifecycle | Partial create, deadline, cancellation, parent death, engine stop failure, residual files, repeated recovery and competing processes",
+      "tasks": [
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 379,
+      "section": "Qualification coverage",
+      "quote": "Platform limits | Exact distinctions between local proof and target-only Azure identity/network/operational evidence",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 380,
+      "section": "Qualification coverage",
+      "quote": "A PowerShell check declares its real executable edition and version.",
+      "tasks": [
+        8,
+        19
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): ToolName 'powershell' (Desktop) beside 'pwsh'; PowerShellEdition; VersionPolicy.edition and EvidenceRecord.tool.edition; fixtures version-policy.json valid[3,4], evidence-record.json valid[1]."
+    },
+    {
+      "id": 381,
+      "section": "Qualification coverage",
+      "quote": "Support Windows PowerShell 5.1 where the adopting repository requires it, alongside declared PowerShell 7 profiles; do not substitute one for the other.",
+      "tasks": [
+        19
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 382,
+      "section": "Qualification coverage",
+      "quote": "Discover the compatible Pester/runtime pair and run it.",
+      "tasks": [
+        19
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 383,
+      "section": "Qualification coverage",
+      "quote": "A profile's syntax check or mocked native command is not native execution evidence.",
+      "tasks": [
+        18,
+        19
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 384,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Author each schema, interface and semantic fact once.",
+      "tasks": [
+        4
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): each operation fact has one home, operations.json; TOOL_CONTRACTS, TOOL_EFFECTS, describe examples, CLI usage and dispatch read it; handler-gap tests in cli.test.js and mcp.test.js fail on a catalogue/handler mismatch."
+    },
+    {
+      "id": 385,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Generate TypeScript types, tool declarations, schema forms, CLI help, interface references, diagram metadata and coverage views from their owners.",
+      "tasks": [
+        4,
+        12,
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): tool declarations and CLI help are generated from the catalogue (generate.mjs operationViews, toolDescription, cliUsage, operationReference)."
+    },
+    {
+      "id": 386,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Build checks fail when generated artifacts differ from fresh output.",
+      "tasks": [
+        4
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): `npm run build` runs generate --check, which fails when src/generated/operations.ts or Docs/operations.md differs from a fresh rendering (8 artifacts current)."
+    },
+    {
+      "id": 387,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Hand-authored guidance owns reasons, decision procedure and examples; generated records own exact fields and callable signatures.",
+      "tasks": [
+        4,
+        10
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 4 part (Loom cef1617): generated records (Docs/operations.md, src/generated/operations.ts) own fields and callable signatures; the authored catalogue owns purpose, refusals, next action and examples. · Task 10 part (Loom 846c39b, e56e730): Docs/guides engineering, workflow and orientation are hand-authored and own reasons and procedure; loom://guide/capabilities is generated from the catalogue and profiles (contract.test.js 'generation embeds each guide …' and 'generation refuses a guide resource without a source, an authored copy of a generated guide, a guide without a title and an orientation that is missing')."
+    },
+    {
+      "id": 388,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Register a descriptive capability for every retained and added behavior.",
+      "tasks": [
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 389,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Each entry names the contract path, owner, implementation, positive and negative tests, proof limits and required execution environments.",
+      "tasks": [
+        8,
+        26
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): CapabilityRegister entries can name owner, negativeVerification, proofLimits, environments and evidenceRefs beside contract, code and verification; fixtures/capability-register.json valid[1]."
+    },
+    {
+      "id": 390,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "The release evidence binds repository commits and working-tree hashes so another agent's simultaneous edits cannot accidentally qualify a different candidate.",
+      "tasks": [
+        8,
+        26,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 8 part (Loom 8fd7e6e): ReleaseEvidence binds each candidate repository's 40-hex commit and workingTreeHash with the contract digest and run ids; fixtures/release-evidence.json."
+    },
+    {
+      "id": 391,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Do not remove the protected enhancement file merely because every feature has a source file.",
+      "tasks": [
+        1
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "No file under Tools/Context-Engineering is removed: `git -C Tools/Context-Engineering status --porcelain` shows no deletion (2026-10-03, AMC-D-PF3XTNPM); re-measured in task 28."
+    },
+    {
+      "id": 392,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "Retirement requires full requirement mapping, successful required checks, a durable canonical replacement for every still-useful rule, updated incoming references and explicit completion of the implementation that is using it.",
+      "tasks": [
+        1
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "No retirement is performed: the specification and the protected enhancement file stay in place (`git -C Tools/Context-Engineering status --porcelain`, no deletion, 2026-10-03); re-measured in task 28."
+    },
+    {
+      "id": 393,
+      "section": "Source-of-truth and documentation maintenance",
+      "quote": "This specification does not authorize its immediate deletion.",
+      "tasks": [
+        1
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "loomrefinements.md SHA-256 8139F60D0B132405EBE02124E5553CB3085A5113EDB6B1D87EF096E4F199F50E unchanged (Get-FileHash, 2026-10-03, AMC-D-PF3XTNPM) and the file is not deleted; re-measured in task 28."
+    },
+    {
+      "id": 394,
+      "section": "Implementation prerequisites",
+      "quote": "Contract schemas and operation catalogue | Accepted scope and ownership rules | Adapter and client implementations",
+      "tasks": [
+        29,
+        4
+      ],
+      "status": "covered",
+      "provisional": true,
+      "gap": "Task 29 changes the MCP server's advertised schemas, validation and smoke (a client implementation) before tasks 5-9 complete the contracts; make task 29 blockedBy 9, still before task 21.",
+      "resolution": "task 29 is generic over definitions and consumes only the task 4 catalogue; it implements no behaviour against an unfinished contract",
+      "evidence": "Task 4 part (Loom cef1617): the operation catalogue exists before adapter and client implementations; later operations are catalogued with exposure none first. · Task 29 part (Loom 33c37c8): advertised schemas are derived generically from the catalogue and contract bundle (tools.ts inputSchemaOf/outputSchemaOf), so contracts authored later are advertised compactly by construction; smoke: tools/list 38,071 bytes for 12 tools (budget 98,304), largest loom.planChange 4,354 bytes (budget 8,192), 45 schema resources compiled; mcp.test.js 20/20."
+    },
+    {
+      "id": 395,
+      "section": "Implementation prerequisites",
+      "quote": "Composition resolution and revision protocol | Canonical membership, pin, agreement and journal contracts | Parent/child authoring, aggregate projections and composed readiness",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 11 implements composed readiness, including the incomplete-journal block, before task 15 completes the revision protocol; move that rule's integration into task 15, or have task 15 re-verify it against real journals.",
+      "resolution": "task 11 holds the pure rule; task 15 integrates and re-verifies it against real journals"
+    },
+    {
+      "id": 396,
+      "section": "Implementation prerequisites",
+      "quote": "Workspace lifecycle | Discovery/ownership and capability contracts | Browser attachment and workspace tool integration",
+      "tasks": [
+        14,
+        21,
+        23
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 397,
+      "section": "Implementation prerequisites",
+      "quote": "Guidance and bounded resources | Operation catalogue and context contracts | Agent acceptance tests",
+      "tasks": [
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 10 (Loom 846c39b, e56e730): agent acceptance tests over the catalogue and context contracts in mcp.test.js: 'initialization returns the orientation …', 'the default description is the orientation summary …', 'the server lists the guides …', 'a workspace context continuation from before the model changed is refused …' (mcp 25/25, rerun 25/25)."
+    },
+    {
+      "id": 398,
+      "section": "Implementation prerequisites",
+      "quote": "Diagram representation and renderer | Coverage contract and provisioned renderer selection | Terminal/browser fidelity checks",
+      "tasks": [
+        7,
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 7 part (Loom f13d98f): the coverage contract (DiagramCoverage, DiagramCompleteness) and the provisioned renderer selection (pinned mermaid-ascii) exist before the terminal and browser fidelity checks."
+    },
+    {
+      "id": 399,
+      "section": "Implementation prerequisites",
+      "quote": "Qualification lifecycle | Run/cleanup schema, cancellation and provider policy | Real SQL resource tests and status integration",
+      "tasks": [
+        16,
+        17,
+        18,
+        32,
+        37
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 400,
+      "section": "Implementation prerequisites",
+      "quote": "Angular connection | Shared actions, workspace handles, event and trust contracts | Browser end-to-end tests",
+      "tasks": [
+        23,
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 401,
+      "section": "Implementation prerequisites",
+      "quote": "Complete release | Every component qualified against its actual dependencies | Initial release declaration",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 402,
+      "section": "Implementation prerequisites",
+      "quote": "A component is complete only when it fulfills its contract, documentation is generated/current, and its required checks pass.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 403,
+      "section": "Implementation prerequisites",
+      "quote": "Do not repeatedly redesign completed boundaries while implementing another component.",
+      "tasks": [
+        1,
+        9
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Loom 930bde4: contract baseline recorded as CONTRACT_DIGEST sha256:e49a6e802cb973be5fbf4c9f117c55bfe739f5eac2d82406c2744bf0c4aab2b2 (packages/core/src/generated/digest.ts); later contract changes follow the task 1 contract-change rule (CHANGED report, regenerate, contract.test.js; a completed boundary changes only for a demonstrated defect with an impact statement)."
+    },
+    {
+      "id": 404,
+      "section": "Implementation prerequisites",
+      "quote": "A demonstrated contract defect follows the narrow impact-and-acceptance process.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "Task 1's contract-change rule lists changed definitions and reruns contract tests but requires no impact statement or owner acceptance for a demonstrated contract defect; add both.",
+      "resolution": "task 1 protocol: a demonstrated contract defect carries a planChange impact statement and configured acceptance, recorded in task 2"
+    },
+    {
+      "id": 405,
+      "section": "Acceptance scenarios",
+      "quote": "Fresh agent connection | Concise orientation, bounded discovery, correct schema examples and clear inspection action",
+      "tasks": [
+        4,
+        21
+      ],
+      "status": "covered",
+      "provisional": true,
+      "gap": "No task asserts that catalogue examples validate against their tool's input schema ('correct schema examples'); add it to task 4's contract test and task 21's smoke.",
+      "resolution": "task 4 contract test and task 21 smoke validate every catalogue example against its input definition",
+      "evidence": "Task 4 part (Loom cef1617): contract.test.js validates every catalogue MCP example against its input definition, and a planted invalid example fails (9/9)."
+    },
+    {
+      "id": 406,
+      "section": "Acceptance scenarios",
+      "quote": "Resume after context loss | Current owner, revision vector, constraints and pending work without inferred progress",
+      "tasks": [
+        14,
+        10,
+        21
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": "As for the resume context row: task 14's ResumeInputs omits the revision vector and owning scopes, and no test shows resume reports only recorded progress.",
+      "resolution": "as 65, plus a test that resume reports only recorded progress",
+      "evidence": "Task 10 part (Loom 846c39b, e56e730): resumeContext reports only supplied recorded progress (core battery 'resume': a workspace that records nothing resumes with nothing invented; work recorded without a task gets no action). Building ResumeInputs from disk and the no-inference test are task 14."
+    },
+    {
+      "id": 407,
+      "section": "Acceptance scenarios",
+      "quote": "Different clients | Tool schemas accepted by supported clients; structured and negotiated text behavior remain valid",
+      "tasks": [
+        21,
+        28
+      ],
+      "status": "covered",
+      "provisional": true,
+      "gap": "No task names the supported clients; task 21 must declare them, and task 28's live check (only this Claude Code session today) must show that each one accepts the tool list.",
+      "resolution": "task 21 declares supported clients by protocol class, both driven by smoke; task 28 live-checks Claude Code"
+    },
+    {
+      "id": 408,
+      "section": "Acceptance scenarios",
+      "quote": "Several workspaces | Independent calls and browser tabs never retarget one another",
+      "tasks": [
+        14,
+        21,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 409,
+      "section": "Acceptance scenarios",
+      "quote": "Parent with nested components | Local ownership remains exclusive; system workflows resolve through exact child exports",
+      "tasks": [
+        11,
+        15,
+        31
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 410,
+      "section": "Acceptance scenarios",
+      "quote": "Missing child or wrong digest | Explicit unresolved dependency; no ready or released aggregate",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 411,
+      "section": "Acceptance scenarios",
+      "quote": "Child contract change | Impact reaches parent and consumers; stale evidence and pins are identified",
+      "tasks": [
+        11,
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 412,
+      "section": "Acceptance scenarios",
+      "quote": "Runtime interaction cycle | Represented without recursive content hashes or duplicate ownership",
+      "tasks": [
+        11
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 413,
+      "section": "Acceptance scenarios",
+      "quote": "Interrupted cross-repository write | Incomplete composition is visible; recovery does not overwrite external edits",
+      "tasks": [
+        15
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 414,
+      "section": "Acceptance scenarios",
+      "quote": "Angular URL | Opens actual model; all existing designer features remain available",
+      "tasks": [
+        23,
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 415,
+      "section": "Acceptance scenarios",
+      "quote": "Concurrent browser and agent edits | One revision-checked write succeeds; stale draft survives with actionable conflict",
+      "tasks": [
+        24,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 416,
+      "section": "Acceptance scenarios",
+      "quote": "Browser security | Invalid origin, expired token, wrong handle and unauthorized action rejected",
+      "tasks": [
+        23,
+        25
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 417,
+      "section": "Acceptance scenarios",
+      "quote": "Terminal diagrams | Required kinds render; full semantic edge coverage agrees with Mermaid and tables",
+      "tasks": [
+        12,
+        20
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 418,
+      "section": "Acceptance scenarios",
+      "quote": "Native SQL success | Actual schema/tests executed; database, instance/process and residual files verified absent",
+      "tasks": [
+        16,
+        17,
+        32
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 419,
+      "section": "Acceptance scenarios",
+      "quote": "Native SQL failure and cancellation | Evidence survives; engine/resources settle or explicit cleanup failure remains",
+      "tasks": [
+        16,
+        17
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 420,
+      "section": "Acceptance scenarios",
+      "quote": "Service provider | Startup state restored; wrong service and missing permissions cause no mutation",
+      "tasks": [
+        18,
+        28
+      ],
+      "status": "environment-limited",
+      "provisional": false,
+      "gap": "This host has no Developer edition service (decision 6c), so task 18 proves the decision logic only against a fake controller. Real evidence needs a provisioned host, and until then task 28 cannot declare the release complete.",
+      "decision": "6c",
+      "resolution": "task 18 delivers the provider with fake-controller logic tests; task 28 declares the scenario unqualified on this host"
+    },
+    {
+      "id": 421,
+      "section": "Acceptance scenarios",
+      "quote": "Laptop resource pressure | Runs serialize; budgets enforced; insufficient resources never reported as a pass",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 422,
+      "section": "Acceptance scenarios",
+      "quote": "Actual implementation tests | Generated examples cannot qualify a different implementation",
+      "tasks": [
+        16
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 423,
+      "section": "Acceptance scenarios",
+      "quote": "Repository wording and drift | Descriptive text, generated contracts current, capability/evidence mapping complete",
+      "tasks": [
+        3,
+        4,
+        26,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null,
+      "evidence": "Task 3 part (Loom 61b5b0a): descriptive text — `docs --check --self` findings 0 and the CLI self-test release-wording stage. · Task 4 part (Loom cef1617): generated contracts current — generate --check 8 artifacts current; docs --check --self findings 0."
+    },
+    {
+      "id": 424,
+      "section": "Acceptance scenarios",
+      "quote": "Run unit and component tests, real adapter integration, real native checks and browser end-to-end tests at their appropriate layers.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 425,
+      "section": "Acceptance scenarios",
+      "quote": "Include negative controls showing that the checks detect violations.",
+      "tasks": [
+        1,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 426,
+      "section": "Acceptance scenarios",
+      "quote": "Do not call mocked SQL lifecycle tests proof of cleanup, schema parsing proof of deployment, or a browser build proof of workspace attachment.",
+      "tasks": [
+        17,
+        25,
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 427,
+      "section": "Acceptance scenarios",
+      "quote": "Release is complete only when all required scenarios have current evidence and no unresolved required capability remains.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    },
+    {
+      "id": 428,
+      "section": "Acceptance scenarios",
+      "quote": "A capability unavailable in the qualification environment is reported as unqualified until tested in an appropriate environment; it is never silently waived to finish the release.",
+      "tasks": [
+        28
+      ],
+      "status": "covered",
+      "provisional": false,
+      "gap": null
+    }
+  ]
+}

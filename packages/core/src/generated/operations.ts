@@ -115,7 +115,7 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
       "accept": [
         {
           "present": [
-            "expectedRevision"
+            "expectation"
           ],
           "absent": []
         },
@@ -127,9 +127,9 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
         }
       ],
       "code": "STRUCTURAL_INVALID",
-      "path": "expectedRevision",
-      "message": "a persistent workspace mutation names the base revision it was prepared against",
-      "fix": "send 'expectedRevision': the revision of the model the patch was prepared against"
+      "path": "expectation",
+      "message": "a persistent workspace mutation names the MutationExpectation it was prepared against",
+      "fix": "send 'expectation': the model, config, policy and imports hashes the patch was prepared against"
     },
     {
       "id": "one-comparison",
@@ -686,12 +686,12 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
         "cli": {
           "command": "init",
           "usage": [
-            "init [--force]"
+            "init --model-id <id> --model-kind <composition|implementation|mixed> [--force]"
           ],
           "examples": [
             {
               "description": "Scaffold .loom at the root of the current repository.",
-              "command": "init"
+              "command": "init --model-id payments --model-kind implementation"
             }
           ]
         },
@@ -1059,7 +1059,7 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
       "purpose": "Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing.",
       "prerequisites": [
         "one patch or a batch of patches",
-        "for a persistent change, a governed workspace and the revision the change was prepared against, as 'expectedRevision' or --expected",
+        "for a persistent change, a governed workspace and the MutationExpectation the change was prepared against, as 'expectation' or the --expected-* flags",
         "a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance"
       ],
       "effects": "writes",
@@ -1074,7 +1074,7 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
         },
         {
           "cause": "stale-base",
-          "when": "the workspace model changed since the expected revision, and nothing is written"
+          "when": "the model, configuration, policy or import pins changed since the expectation, and nothing is written"
         },
         {
           "cause": "unresolved-context",
@@ -1100,7 +1100,12 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
               "description": "Preview changing a mutation guard in the workspace model; nothing persists on a dry run.",
               "input": {
                 "workspace": true,
-                "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                "expectation": {
+                  "model": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "config": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "policy": null,
+                  "imports": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                },
                 "patch": {
                   "op": "update",
                   "collection": "mutations",
@@ -1120,12 +1125,12 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
         "cli": {
           "command": "mutate",
           "usage": [
-            "mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]"
+            "mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]"
           ],
           "examples": [
             {
-              "description": "Preview patch.json against the revision it was prepared against, as revisions.model of a check result reports it, without writing.",
-              "command": "mutate --patch patch.json --expected sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run"
+              "description": "Preview patch.json against the model, config, policy and imports hashes it was prepared against, as revisions reports them, without writing.",
+              "command": "mutate --patch patch.json --expected-model sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-config sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-policy none --expected-imports sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run"
             }
           ]
         }
@@ -1714,7 +1719,7 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
     },
     {
       "id": "workspaceInspect",
-      "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest.",
+      "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest.",
       "prerequisites": [
         "a local path"
       ],
@@ -1848,6 +1853,10 @@ export const OPERATION_CATALOGUE: OperationCatalogue = {
       ],
       "effects": "reads",
       "refusals": [
+        {
+          "cause": "access-denied",
+          "when": "the path is outside the server's configured allowed roots"
+        },
         {
           "cause": "unresolved-context",
           "when": "no workspace governs the path; inspect and initialize one"
@@ -2667,7 +2676,7 @@ export const MCP_TOOLS: readonly CatalogueTool[] = [
     "input": "MutateInput",
     "data": "MutateData",
     "effects": "writes",
-    "description": "Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing. Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the revision the change was prepared against, as 'expectedRevision' or --expected; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance. Effects: can persist changes. Refused as invalid-input when a patch or the resulting model is invalid, and the model is unchanged; as policy-failure when a breaking or unclassified change lacks its version bump or acknowledgement; as stale-base when the workspace model changed since the expected revision, and nothing is written; as unresolved-context when no governed workspace serves a persistent change. Send 'model' without 'workspace', or send 'workspace' without 'model'. Send 'patch' without 'patches', or send 'patches' without 'patch'. Send 'expectedRevision', or omit 'workspace'. Next: check readiness for the task the change serves with loom.checkReadiness.",
+    "description": "Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing. Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the MutationExpectation the change was prepared against, as 'expectation' or the --expected-* flags; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance. Effects: can persist changes. Refused as invalid-input when a patch or the resulting model is invalid, and the model is unchanged; as policy-failure when a breaking or unclassified change lacks its version bump or acknowledgement; as stale-base when the model, configuration, policy or import pins changed since the expectation, and nothing is written; as unresolved-context when no governed workspace serves a persistent change. Send 'model' without 'workspace', or send 'workspace' without 'model'. Send 'patch' without 'patches', or send 'patches' without 'patch'. Send 'expectation', or omit 'workspace'. Next: check readiness for the task the change serves with loom.checkReadiness.",
     "presence": [
       {
         "id": "model-or-workspace",
@@ -2724,7 +2733,7 @@ export const MCP_TOOLS: readonly CatalogueTool[] = [
         "accept": [
           {
             "present": [
-              "expectedRevision"
+              "expectation"
             ],
             "absent": []
           },
@@ -2736,9 +2745,9 @@ export const MCP_TOOLS: readonly CatalogueTool[] = [
           }
         ],
         "code": "STRUCTURAL_INVALID",
-        "path": "expectedRevision",
-        "message": "a persistent workspace mutation names the base revision it was prepared against",
-        "fix": "send 'expectedRevision': the revision of the model the patch was prepared against"
+        "path": "expectation",
+        "message": "a persistent workspace mutation names the MutationExpectation it was prepared against",
+        "fix": "send 'expectation': the model, config, policy and imports hashes the patch was prepared against"
       }
     ]
   },
@@ -3105,14 +3114,14 @@ export const AGENT_TOOLS: readonly AgentTool[] = [
   {
     "name": "loom.workspace",
     "input": "WorkspaceInput",
-    "description": "Action 'inspect': Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'. Action 'initialize': Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal. Prerequisites: the path's inspection digest; a declaration of the model id, kind, claims and members. Effects: can persist changes. Refused as invalid-input when the declaration breaks the configuration contract or the path is no repository root; as policy-failure when the declaration claims a path another descriptor owns; as stale-base when the inspection changed since 'expectedInspection', and nothing is written. When 'action' is 'initialize', send 'path' and 'declaration' and 'dryRun' without 'boundary' or 'access' or 'view' or 'workspaceId'. When 'action' is 'initialize' and 'dryRun' is false, send 'expectedInspection'. Next: open the created workspace with loom.workspace action 'open'. Action 'open': Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'. Action 'status': Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions. Prerequisites: a handle this session opened. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; open the workspace again. When 'action' is 'status' or 'close', send 'workspaceId' without 'path' or 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view'. Next: follow a next action, or close the handle with loom.workspace action 'close'. Action 'close': Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure. Prerequisites: a handle this session opened. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as cleanup-incomplete when an owned resource remains, which the result names with its recovery. Next: open the workspace again to continue with loom.workspace action 'open'.",
+    "description": "Action 'inspect': Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'. Action 'initialize': Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal. Prerequisites: the path's inspection digest; a declaration of the model id, kind, claims and members. Effects: can persist changes. Refused as invalid-input when the declaration breaks the configuration contract or the path is no repository root; as policy-failure when the declaration claims a path another descriptor owns; as stale-base when the inspection changed since 'expectedInspection', and nothing is written. When 'action' is 'initialize', send 'path' and 'declaration' and 'dryRun' without 'boundary' or 'access' or 'view' or 'workspaceId'. When 'action' is 'initialize' and 'dryRun' is false, send 'expectedInspection'. Next: open the created workspace with loom.workspace action 'open'. Action 'open': Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as access-denied when the path is outside the server's configured allowed roots; as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'. Action 'status': Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions. Prerequisites: a handle this session opened. Effects: reads persisted state and persists nothing. Refused as unknown-handle when the workspaceId names no handle of this session; open the workspace again. When 'action' is 'status' or 'close', send 'workspaceId' without 'path' or 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view'. Next: follow a next action, or close the handle with loom.workspace action 'close'. Action 'close': Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure. Prerequisites: a handle this session opened. Effects: can persist changes. Refused as unknown-handle when the workspaceId names no handle of this session; as cleanup-incomplete when an owned resource remains, which the result names with its recovery. Next: open the workspace again to continue with loom.workspace action 'open'.",
     "actions": [
       {
         "action": "inspect",
         "operation": "workspaceInspect",
         "data": "WorkspaceInspectData",
         "effects": "reads",
-        "description": "Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'.",
+        "description": "Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'.",
         "presence": [
           {
             "id": "workspace-inspect",
@@ -3219,7 +3228,7 @@ export const AGENT_TOOLS: readonly AgentTool[] = [
         "operation": "workspaceOpen",
         "data": "WorkspaceSummary",
         "effects": "reads",
-        "description": "Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'.",
+        "description": "Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as access-denied when the path is outside the server's configured allowed roots; as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'.",
         "presence": [
           {
             "id": "workspace-open",
@@ -3674,7 +3683,12 @@ export const TOOL_EXAMPLES: NonNullable<DescribeData['examples']> = [
     "description": "Preview changing a mutation guard in the workspace model; nothing persists on a dry run.",
     "input": {
       "workspace": true,
-      "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "expectation": {
+        "model": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "config": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "policy": null,
+        "imports": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
       "patch": {
         "op": "update",
         "collection": "mutations",
@@ -3837,4 +3851,4 @@ export const MCP_TOOL_BUDGET = 8192;
 export const MCP_INSTRUCTIONS_BUDGET = 2400;
 
 /** The CLI usage text. */
-export const CLI_USAGE = "loom - schema-driven systems-engineering model\n\nUsage: loom <command> [options]   (every command takes --json to print the result envelope)\n\n  init [--force]                         Scaffold .loom with model.json, loom.json, state.json and .gitignore at a\n                                         repository root, never staging or committing them.\n  check [--model <path>] [--out <dir>]   Check one model in order, its ownership and configuration, its validity, its\n                                         comparison with the trusted accepted baseline and its installed outputs and\n                                         manifest, or with --out a directory of projections, without writing.\n  check --all [--boundary <dir>]         Check every descriptor under the boundary, the global disjointness of their\n                                         claims and whether the walk covered the whole boundary.\n  write [--out <dir>] [--draft]          Install every artifact the workspace's projection profile enables, with the\n                                         readiness, coverage and evidence views evaluated under the verified inputs, or\n                                         with --out write every projection into a directory.\n  docs [--out <dir>] [--draft]           Install the documentation bundle, every enabled artifact with the readiness,\n                                         coverage and evidence views evaluated, exactly as write installs it.\n  docs --check                           Check the README, the Docs documents and the package source comments for broken\n                                         links, anchors and record references, narrated history and hand-authored copies\n                                         of generated registers, and inside a workspace the installed views and the\n                                         interfaces the accepted baseline holds.\n  docs --check --self                    Run the documentation checks over this Loom installation's own repository and\n                                         add its release wording: no requirement, task or phase label, release-iteration\n                                         label or product-generation term in a document, comment or JSON description.\n  owner [<path>]                         Name the model and component that claim a path by whole segments, or report the\n                                         path as unclaimed, claimed twice or unresolved.\n  migrate [--model <path>] [--to <file>] Migrate a model document to the current model format, writing the result only\n                                         to a new file named with --to and never replacing its source.\n  baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]\n                                         Record a baseline of the workspace model at its current revision, accepted by a\n                                         named acceptance record and optionally frozen.\n  accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]\n                                         Record an acceptance of the current model revision, as a baseline or a change,\n                                         by a named authority under the workspace policy, optionally signed.\n  mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]\n                                         Apply one patch or an atomic batch to a model, inline as a pure calculation or\n                                         to the workspace model, which persists only onto the expected revision so two\n                                         writers on one base cannot both succeed, while a dry run previews without\n                                         writing.\n  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]\n                                         Run the native-tool checks of the profiles the workspace enables, or of named\n                                         profiles or checks, against artifacts rendered from the model, judge their\n                                         evidence under the trusted policy and optionally store and sign it, while\n                                         --self runs every check against Loom's own fixtures.\n  evidence list | evidence show <id>     List the stored evidence with each record's trust under the trusted policy, or\n                                         show one record.\n  coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>] | coverage --list-cases\n                                         Check the capability register qualification/capabilities.json, every code\n                                         symbol, contract pointer and verification case resolving and a case counting\n                                         only on a supplied passing result, or list the declared verification cases.\n  --self-test                            Run Loom's self-test, which qualifies Loom's own engine and never an adopting\n                                         system: the MCP tool runs the engine battery, and the command adds the drift\n                                         gate, the release wording and every profile check against Loom's fixtures.\n  describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]\n                                         Describe what this build supports: by default an orientation summary with the\n                                         workflow entry points, the tools, selected capability facts and the guide and\n                                         resource links, with 'detail': 'full' the requested sections a page at a time\n                                         within the discovery budget, and with 'operation' the proof limits of one\n                                         operation.\n  context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]\n                                         Retrieve the required context of a component, record, claim or task a page at a\n                                         time within a discovery budget, nearest first, with sources, owners, baseline\n                                         status, constraints, decisions and evidence, or for a resume target the\n                                         recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns,\n                                         evidence, pending work and next actions, record text coming back as data and\n                                         never as an instruction.\n  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...] | readiness --task <file>\n                                         Evaluate whether a task is ready, blocked or unresolved, with the exact missing\n                                         prerequisites, permitted substitutes, allowed next work and its work package.\n  plan --patch <file> [--base <revision>] [--ack id,...]\n                                         Preview a change against a base revision without persisting it: the delta,\n                                         compatibility by dimension, affected consumers with dependency paths,\n                                         invalidated evidence, repair alternatives, obligations and whether policy\n                                         requires acceptance.\n\nCommon options: --model <path> selects a document (the governing workspace still applies), --boundary <dir>, --trusted-ref <ref>, --as-of <date>.\nExit status: 0 ok, 1 refusal or error finding, 2 usage error.";
+export const CLI_USAGE = "loom - schema-driven systems-engineering model\n\nUsage: loom <command> [options]   (every command takes --json to print the result envelope)\n\n  init --model-id <id> --model-kind <composition|implementation|mixed> [--force]\n                                         Scaffold .loom with model.json, loom.json, state.json and .gitignore at a\n                                         repository root, never staging or committing them.\n  check [--model <path>] [--out <dir>]   Check one model in order, its ownership and configuration, its validity, its\n                                         comparison with the trusted accepted baseline and its installed outputs and\n                                         manifest, or with --out a directory of projections, without writing.\n  check --all [--boundary <dir>]         Check every descriptor under the boundary, the global disjointness of their\n                                         claims and whether the walk covered the whole boundary.\n  write [--out <dir>] [--draft]          Install every artifact the workspace's projection profile enables, with the\n                                         readiness, coverage and evidence views evaluated under the verified inputs, or\n                                         with --out write every projection into a directory.\n  docs [--out <dir>] [--draft]           Install the documentation bundle, every enabled artifact with the readiness,\n                                         coverage and evidence views evaluated, exactly as write installs it.\n  docs --check                           Check the README, the Docs documents and the package source comments for broken\n                                         links, anchors and record references, narrated history and hand-authored copies\n                                         of generated registers, and inside a workspace the installed views and the\n                                         interfaces the accepted baseline holds.\n  docs --check --self                    Run the documentation checks over this Loom installation's own repository and\n                                         add its release wording: no requirement, task or phase label, release-iteration\n                                         label or product-generation term in a document, comment or JSON description.\n  owner [<path>]                         Name the model and component that claim a path by whole segments, or report the\n                                         path as unclaimed, claimed twice or unresolved.\n  migrate [--model <path>] [--to <file>] Migrate a model document to the current model format, writing the result only\n                                         to a new file named with --to and never replacing its source.\n  baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]\n                                         Record a baseline of the workspace model at its current revision, accepted by a\n                                         named acceptance record and optionally frozen.\n  accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]\n                                         Record an acceptance of the current model revision, as a baseline or a change,\n                                         by a named authority under the workspace policy, optionally signed.\n  mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]\n                                         Apply one patch or an atomic batch to a model, inline as a pure calculation or\n                                         to the workspace model, which persists only onto the expected revision so two\n                                         writers on one base cannot both succeed, while a dry run previews without\n                                         writing.\n  qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]\n                                         Run the native-tool checks of the profiles the workspace enables, or of named\n                                         profiles or checks, against artifacts rendered from the model, judge their\n                                         evidence under the trusted policy and optionally store and sign it, while\n                                         --self runs every check against Loom's own fixtures.\n  evidence list | evidence show <id>     List the stored evidence with each record's trust under the trusted policy, or\n                                         show one record.\n  coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>] | coverage --list-cases\n                                         Check the capability register qualification/capabilities.json, every code\n                                         symbol, contract pointer and verification case resolving and a case counting\n                                         only on a supplied passing result, or list the declared verification cases.\n  --self-test                            Run Loom's self-test, which qualifies Loom's own engine and never an adopting\n                                         system: the MCP tool runs the engine battery, and the command adds the drift\n                                         gate, the release wording and every profile check against Loom's fixtures.\n  describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]\n                                         Describe what this build supports: by default an orientation summary with the\n                                         workflow entry points, the tools, selected capability facts and the guide and\n                                         resource links, with 'detail': 'full' the requested sections a page at a time\n                                         within the discovery budget, and with 'operation' the proof limits of one\n                                         operation.\n  context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]\n                                         Retrieve the required context of a component, record, claim or task a page at a\n                                         time within a discovery budget, nearest first, with sources, owners, baseline\n                                         status, constraints, decisions and evidence, or for a resume target the\n                                         recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns,\n                                         evidence, pending work and next actions, record text coming back as data and\n                                         never as an instruction.\n  readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...] | readiness --task <file>\n                                         Evaluate whether a task is ready, blocked or unresolved, with the exact missing\n                                         prerequisites, permitted substitutes, allowed next work and its work package.\n  plan --patch <file> [--base <revision>] [--ack id,...]\n                                         Preview a change against a base revision without persisting it: the delta,\n                                         compatibility by dimension, affected consumers with dependency paths,\n                                         invalidated evidence, repair alternatives, obligations and whether policy\n                                         requires acceptance.\n\nCommon options: --model <path> selects a document (the governing workspace still applies), --boundary <dir>, --trusted-ref <ref>, --as-of <date>.\nExit status: 0 ok, 1 refusal or error finding, 2 usage error.";

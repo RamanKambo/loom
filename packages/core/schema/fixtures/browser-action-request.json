@@ -3,7 +3,7 @@
   "valid": [
     {
       "operation": "mutate",
-      "arguments": { "workspace": true, "expectedRevision": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "patch": { "op": "update", "collection": "operations", "id": "order.get", "set": { "description": "Read one order by its id." } } }
+      "arguments": { "workspace": true, "expectation": { "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "config": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "policy": null, "imports": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }, "patch": { "op": "update", "collection": "operations", "id": "order.get", "set": { "description": "Read one order by its id." } } }
     },
     {
       "operation": "federationApply",

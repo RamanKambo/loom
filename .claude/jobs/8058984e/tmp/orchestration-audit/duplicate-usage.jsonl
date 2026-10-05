@@ -1,0 +1,2 @@
+{"type":"assistant","sessionId":"fixture","requestId":"same-request","timestamp":"2026-10-04T00:00:00Z","message":{"id":"same-message","model":"fixture-model","usage":{"input_tokens":2,"cache_read_input_tokens":100,"cache_creation_input_tokens":0,"output_tokens":3},"content":[]}}
+{"type":"assistant","sessionId":"fixture","requestId":"same-request","timestamp":"2026-10-04T00:00:00Z","message":{"id":"same-message","model":"fixture-model","usage":{"input_tokens":2,"cache_read_input_tokens":100,"cache_creation_input_tokens":0,"output_tokens":3},"content":[]}}

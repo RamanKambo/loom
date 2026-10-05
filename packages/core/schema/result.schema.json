@@ -48,7 +48,7 @@
         "QUALIFICATION_NOT_ESTABLISHED", "VALIDATION_FINDINGS",
         "PROFILE_UNSUPPORTED_CONSTRUCT", "PROJECTION_DRAFT", "PROJECTION_COVERAGE_LOSS", "PROJECTION_INVALID", "DIAGRAM_TERMINAL_UNFAITHFUL",
         "SCOPE_OVERLAP", "SCOPE_COMPONENT_UNKNOWN", "SCOPE_ROOT_INVALID", "SCOPE_ROOT_MISSING", "SCOPE_COMPONENT_ROOT_OVERLAP",
-        "SCOPE_UNRESOLVED", "SCOPE_NO_OWNER",
+        "SCOPE_UNRESOLVED", "SCOPE_NO_OWNER", "CHECKOUT_MISSING", "DESCRIPTOR_UNREADABLE", "ROOT_INACCESSIBLE", "WRITE_OUTSIDE_WORKSPACE",
         "INIT_NOT_REPOSITORY_ROOT", "INIT_ALREADY_INITIALIZED", "INIT_REPAIR_REQUIRED",
         "CONFIG_INVALID", "CONFIG_MODEL_MISSING", "CONFIG_PROFILE_UNKNOWN", "CONFIG_PROFILE_NOT_PERMITTED",
         "OUTPUT_COLLISION", "OUTPUT_OUTSIDE_WORKSPACE", "OUTPUT_PROTECTED_TARGET", "OUTPUT_DRIFT", "OUTPUT_MISSING",
@@ -235,6 +235,7 @@
             "version": { "type": "integer", "minimum": 1 }
           }
         },
+        "imports": { "description": "Hash of the canonical JSON of the workspace's import pins, set on every result evaluated against a workspace.", "$ref": "common.schema.json#/$defs/Hash" },
         "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceRevision" } }
       }
     },
@@ -328,7 +329,7 @@
       }
     },
     "RefusalCause": {
-      "description": "Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs.",
+      "description": "Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, a path outside the server's configured allowed roots, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs, or a path inside an allowed root.",
       "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "access-denied", "cleanup-incomplete", "recovery-required"]
     },
     "Refusal": {

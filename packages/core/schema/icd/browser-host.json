@@ -29,6 +29,7 @@
     { "component": "workspace", "interface": "openWorkspace" },
     { "component": "workspace", "interface": "workspaceStatus" },
     { "component": "workspace", "interface": "writeModel" },
+    { "component": "workspace", "interface": "writeState" },
     { "component": "schema", "interface": "operationCatalogue" }
   ]
 }

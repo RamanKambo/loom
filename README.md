@@ -104,7 +104,7 @@ At initialization the server returns the orientation of [Docs/guides/orientation
 
 Discovery is bounded by the page budget whose defaults and maxima are those of `DiscoveryBudget` in `packages/core/schema/tools.schema.json`, counted over the data of a result alone. `loom.describe` returns the orientation summary by default, the requested sections a page at a time with `detail: "full"`, and the deduplicated proof limits of one operation with `operation`. `loom.context` returns one page of a target's required context, or for a resume target the recorded progress of the workspace. Every omitted part, section or record is listed in the result's completeness, with the continuation that retrieves what later pages hold; a continuation binds the request and the revision it was issued for, and one that no longer applies is refused with the request that starts again.
 
-The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectedRevision` and is refused as `stale-base` when the model changed since that revision; `loom.planChange` and a `dryRun` mutation never write.
+The workspace the server serves is its working directory or the `--workspace <dir>` argument. A persistent `loom.mutate` requires `expectation`, the model, configuration, policy and import revisions it was prepared against, and is refused as `stale-base`, naming each changed input, when any of them no longer holds; `loom.planChange` and a `dryRun` mutation never write.
 
 After `npm run build`, the server is registered for every project of the current user with:
 
@@ -118,7 +118,7 @@ Alternatively, the entry in [mcp-config-entry.json](mcp-config-entry.json) can b
 
 Source: `packages/workspace/src` and `packages/core/schema/workspace.schema.json`.
 
-1. It would be necessary first to decide whether the repository is a component of a larger modeled system or a system in its own right. A component gets no `.loom`; its code roots are claimed by the system model in the lowest repository that contains all of them.
+1. It would be necessary first to decide whether the repository is a component of a larger modeled system or a system in its own right. A component usually gets no `.loom`: its code roots are claimed by the system model in the lowest repository that contains all of them. A child repository may instead hold its own `.loom` as a listed, delegated member of the parent's composition, with its roots excluded from the parent's own scope; an unlisted child `.loom` under a parent claim is `SCOPE_OVERLAP`.
 2. `init`, run at that repository root, scaffolds `model.json`, `loom.json`, `state.json` and `.gitignore` in a new `.loom` directory. It refuses a subdirectory, an existing `.loom` and any overlap with an ancestor's or a descendant's claims, and it never stages or commits.
 3. The placeholder component and its `"."` root are replaced in one edit by the named components and their repository-relative roots in `loom.json` `scope`. Overlapping roots, within one model or across descriptors, fail with `SCOPE_OVERLAP` or `SCOPE_COMPONENT_ROOT_OVERLAP`.
 4. `projectionProfile` selects the enabled artifacts, and `outputs` routes each artifact instance to a directory; an unmapped artifact goes to `Docs/Loom`, and an unmapped per-component instance to a subdirectory of it named by its component. An output never overwrites an authority file, source code or another model's artifact.

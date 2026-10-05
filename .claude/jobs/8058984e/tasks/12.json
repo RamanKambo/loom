@@ -1,0 +1,21 @@
+{
+  "id": "12",
+  "subject": "Implement the structured diagram representation in core and render every Mermaid view from it with full relationship coverage",
+  "description": "WHY: loomrefinements.md §Single semantic source (\"Include isolated nodes, self-loops, parallel edges, start/end states and every in-scope relationship\"; labels escaped as data).\n\nGROUNDING:\n- State diagrams: mermaid.ts:25-41. Workflow flowchart: :43-73. Both are emitted through workflowSections :20-74, which reference.ts:199 reuses.\n- label() replaces only `\"` and newline (mermaid.ts:7-9). State names are arbitrary text (model.schema.json:118-123). Node ids are positional.\n- architecture.ts:\n  - drops component self-loops (:30);\n  - skips records whose owner is not a component (:55);\n  - never emits a deployment unit whose trust boundary is unknown (:73-74);\n  - sorts only the lifted component edges (:36).\n- A start state is `$absent` in Mutation.from (model.schema.json:711). There is no end marker.\n- No self-test checks that every relationship appears as an edge (selftest/projections.ts:171-349).\n\nCHANGE:\n- New pure packages/core/src/diagram.ts with builders for: state (end states per decision 4), state-flowchart (for the terminal view), workflow-dependency, component-dependency (self-loops kept), ownership (unmatched owners reported, not skipped) and hosting (groups with meaning; unbounded units reported).\n- Semantic keys kind:id, stable ordering, cross-model owner identity kept.\n- Coverage accounts for every in-scope relationship. Pagination by declared scope shows boundary edges. Budgets for node count and bytes.\n- toMermaid(graph) with hardened escaping: backticks, `#…;` entities, and `|`, `[` `]` in labels.\n- Rebase workflowSections and projectArchitecture on it, keeping the tables beneath, because coverage locations point at table rows.\n- New self-test section: edge coverage agreement between the graph and the Mermaid; determinism; escaping, Unicode, long-label, multi-edge and isolated-node cases.\n\nAREA TESTS: npm run build; core battery; node --test --test-concurrency=1 --test-name-pattern \"diagram\" packages/qualification/dist/test/native.test.js (the diagrams.parse case at :364); node --test --test-concurrency=1 packages/cli/dist/test/fixtures/adoption.test.js. From apps/designer: npm run build; npx ng test --watch=false --include src/app/views.spec.ts.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Implementing diagram representation",
+  "status": "pending",
+  "blocks": [
+    "13",
+    "20",
+    "24",
+    "31",
+    "36"
+  ],
+  "blockedBy": [
+    "11",
+    "30"
+  ],
+  "metadata": {
+    "milestone": "c"
+  }
+}

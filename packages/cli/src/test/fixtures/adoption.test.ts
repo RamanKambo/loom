@@ -69,7 +69,7 @@ const holdsBaseline = (p: PreparedCase): boolean => p.baseline !== undefined && 
  */
 function workspaceFor(p: PreparedCase): { dir: string; planned?: Planned } {
   const dir = gitInit(scratch());
-  const init = loom(dir, 'init');
+  const init = loom(dir, 'init', '--model-id', 'adoption', '--model-kind', 'implementation');
   assert.equal(init.status, 0, init.output);
   const loomDir = join(dir, '.loom');
   const planned = p.policy ? { policy: p.policy.id } : null;

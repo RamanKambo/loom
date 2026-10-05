@@ -1,0 +1,60 @@
+
+> designer@1.0.0 build
+> ng build
+
+[33m>[39m Building...
+[32m√[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m        [2m | [22m[1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mmain-4TZGPU2J.js[39m   [2m | [22m[2mmain[22m         [2m | [22m [36m1.19 MB[39m[2m | [22m              [36m246.56 kB[39m
+[32mstyles-EIZ6LHAH.css[39m[2m | [22m[2mstyles[22m       [2m | [22m [36m3.88 kB[39m[2m | [22m                [36m1.12 kB[39m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m[2m | [22m [1m1.19 MB[22m[2m | [22m              [1m247.68 kB[22m
+
+Application bundle generation complete. [10.763 seconds] - 2026-10-04T19:36:24.136Z
+
+Output location: C:\Users\nnbfdh8\Codebase\Tools\loom\apps\designer\dist\designer
+
+[33m>[39m Building...
+[32m√[39m Building...
+Application bundle generation complete. [4.002 seconds] - 2026-10-04T19:36:31.424Z
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90mC:/Users/nnbfdh8/Codebase/Tools/loom/apps/designer[39m
+
+ [32m✓[39m [30m[46m designer [49m[39m src/app/persistence.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 2262[2mms[22m[39m
+   [32m✓[39m persistent save [2m(4)[22m
+     [33m[2m✓[22m[39m refuses the second of two saves made from the same base and leaves the file as the first save wrote it[33m 1827[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/guided-edit.spec.ts [2m([22m[2m1 test[22m[2m)[22m[33m 2295[2mms[22m[39m
+   [32m✓[39m GuidedEdit [2m(1)[22m
+     [33m[2m✓[22m[39m sends a breaking edit through mutate(), shows it REFUSED and leaves the displayed model unchanged[33m 2268[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/record-editor.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 3527[2mms[22m[39m
+   [32m✓[39m RecordEditor [2m(6)[22m
+     [33m[2m✓[22m[39m offers every collection the contract defines, with fields read from its definition[33m 767[2mms[22m[39m
+     [33m[2m✓[22m[39m edits an enum field of a component through an update patch the engine accepts[33m 1267[2mms[22m[39m
+     [33m[2m✓[22m[39m edits a requirement priority through the same form[33m 422[2mms[22m[39m
+     [33m[2m✓[22m[39m adds a new record of another kind from the contract fields[33m 462[2mms[22m[39m
+     [33m[2m✓[22m[39m leaves the decision to the engine: an unacknowledged breaking criterion edit is refused and the model is unchanged[33m 403[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/views.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 3741[2mms[22m[39m
+   [32m✓[39m generated views and publishing [2m(3)[22m
+     [33m[2m✓[22m[39m renders each documentation view with its source revision and coverage, plus the mapping and hosting records[33m 3592[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/loom-store.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 3911[2mms[22m[39m
+   [32m✓[39m LoomStore [2m(6)[22m
+     [33m[2m✓[22m[39m (a) loads the sample with zero error findings[33m 1751[2mms[22m[39m
+     [33m[2m✓[22m[39m (e) produces non-empty output for every PROJECTION_TARGETS entry on the sample[33m 1116[2mms[22m[39m
+     [33m[2m✓[22m[39m loads YAML text through the engine and keeps the current model when a file fails import[33m 481[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/states.spec.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 3952[2mms[22m[39m
+   [32m✓[39m states [2m(7)[22m
+     [33m[2m✓[22m[39m importing a model never accepts it: acceptance is not evaluated without a selected baseline[33m 1678[2mms[22m[39m
+     [33m[2m✓[22m[39m a selected baseline with its acceptance record is still not accepted, because the designer cannot establish trust[33m 654[2mms[22m[39m
+     [33m[2m✓[22m[39m shows a valid model as blocked for release and unresolved for implementation without an accepted baseline[33m 674[2mms[22m[39m
+     [33m[2m✓[22m[39m explains a change with exactly the planner and diff results the MCP tools return[33m 444[2mms[22m[39m
+ [32m✓[39m [30m[46m designer [49m[39m src/app/workflow.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 4610[2mms[22m[39m
+   [32m✓[39m designer workflow [2m(2)[22m
+     [33m[2m✓[22m[39m imports, edits a record, previews and applies a batch, explains its impact and saves with a revision check[33m 4125[2mms[22m[39m
+     [33m[2m✓[22m[39m shows a save conflict and writes nothing when the file changed underneath the editor[33m 480[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m   Start at [22m 01:06:33
+[2m   Duration [22m 12.59s[2m (tests 33%, environment 31%, transform 22%, setup 8%, import 6%)[22m
+

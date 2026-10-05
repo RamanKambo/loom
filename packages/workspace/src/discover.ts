@@ -121,11 +121,12 @@ export function resolveOwner(path: string, options: { boundary?: string } = {}):
     findings.push(finding('SCOPE_OVERLAP', rel, `'${rel}' is claimed by ${claimers.map((d) => d.location).join(' and ')}`, 'narrow one scope so the path has a single owning model'));
   } else if (unreadable.length || missing) {
     status = 'unresolved';
-    const why = [
-      ...unreadable.map((d) => `descriptor ${d.location} cannot be read`),
-      ...(missing ? [`required checkout ${missing} is absent`] : []),
-    ].join('; ');
-    findings.push(finding('SCOPE_UNRESOLVED', rel, `ownership of '${rel}' is unresolved: ${why}`, 'repair the descriptor or check out the submodule, then resolve again'));
+    if (unreadable.length) {
+      findings.push(finding('DESCRIPTOR_UNREADABLE', rel, `ownership of '${rel}' is unresolved: descriptor ${unreadable.map((d) => d.location).join(', ')} cannot be read`, 'repair the descriptor, then resolve again'));
+    }
+    if (missing) {
+      findings.push(finding('CHECKOUT_MISSING', rel, `ownership of '${rel}' is unresolved: required checkout ${missing} is absent`, 'check out the submodule, then resolve again'));
+    }
   } else if (claimers.length === 1) {
     status = 'owned';
   } else {
@@ -324,7 +325,7 @@ export function discoverAll(boundary: string, options: { traversal?: Traversal; 
     missing: record.missing,
     unreadable,
   };
-  for (const m of record.missing) findings.push(finding('SCOPE_UNRESOLVED', m, `declared submodule ${m} has no checkout; coverage is incomplete`, 'check out the submodule before relying on global disjointness'));
+  for (const m of record.missing) findings.push(finding('CHECKOUT_MISSING', m, `declared submodule ${m} has no checkout; coverage is incomplete`, 'check out the submodule before relying on global disjointness'));
   return { coverage, descriptors, findings, cached };
 }
 

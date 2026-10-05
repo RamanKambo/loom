@@ -1,0 +1,17 @@
+{
+  "id": "24",
+  "subject": "Add the designer's connected mode over the browser host while keeping every tab and the offline file workflows",
+  "description": "WHY: the spec's connected Angular designer section; acceptance scenarios \"Angular URL\" and \"concurrent browser and agent edits\".\n\nGROUNDING:\n- No router is used (app.config.ts:1-5; @angular/router is declared but unused). There is no HttpClient, fetch or EventSource in apps/designer/src.\n- The header is app.html:1-36.\n- LoomStore (apps/designer/src/app/loom-store.ts) is the only caller of @loom/core:\n  - loadText :273, openFile :284, loadSample :301;\n  - save :353-396, with checkRevision at :384;\n  - install :528-539;\n  - TRUST_LIMIT :98.\n- The budget is a 2 MB initial-bundle error (angular.json:36-40). Keep `prebundle.exclude [\"@loom/core\"]` (angular.json:59-61).\n- The Unknowns panel (apps/designer/src/app/unknowns-panel.ts:14-23) shows owner, affects and blocks, but not the evidence needed or the recommended action that the Unknown record requires since task 5. The Views panel shows hosting records but no agreements (found in task 5).\n\nCHANGE:\n- Route /workspaces/{workspaceId}. Exchange the bootstrap fragment, then scrub it with history.replaceState.\n- A connected source behind LoomStore: the snapshot is installed, actions and saves go through the server with revision expectations, and a stale draft is kept with an actionable conflict. No second engine.\n- An EventSource activity service.\n- The header shows model, repository, scope, revision and connected/offline. Add panels for activity, validation and readiness, diagram scope, qualification progress and SQL resource state.\n- Composition navigation by handle.\n- The Unknowns panel shows evidence needed and the recommended action with its reversibility. The Views panel shows the model's agreements (kind, constraint, providers, consumers, owner).\n- Offline: a snapshot banner, connected actions disabled, imported evidence untrusted. Reconnecting requires a new authorized handle.\n- Changing tab never retargets an agent.\n- Server-verified trust states are shown while the page itself never marks a record trusted.\n- All 11 tabs and the offline file workflows keep working.\n- Update apps/designer/README.md and apps/designer/CLAUDE.md in the same change.\n- A new connected.spec.ts uses a fake server for logic isolation only; the real server is exercised in task 25.\n\nAREA TESTS, from apps/designer: npm run build; then `npx ng test --watch=false --include` for each of src/app/connected.spec.ts, src/app/persistence.spec.ts, src/app/workflow.spec.ts, src/app/states.spec.ts and the specs of the Unknowns and Views panels.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Adding designer connected mode",
+  "status": "pending",
+  "blocks": [
+    "25"
+  ],
+  "blockedBy": [
+    "12",
+    "23"
+  ],
+  "metadata": {
+    "milestone": "e"
+  }
+}

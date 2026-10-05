@@ -1,0 +1,3 @@
+[90mstderr[2m | src/app/record-editor.spec.ts[2m > [22m[2mRecordEditor[2m > [22m[2madds a new record of another kind from the contract fields
+[22m[39mNG0956: The configured tracking expression (track by identity) caused re-creation of the entire collection of size 3. This is an expensive operation requiring destruction and subsequent creation of DOM nodes, directives, components etc. Please review the "track expression" and make sure that it uniquely identifies items in a collection. Find more at https://v22.angular.dev/errors/NG0956
+

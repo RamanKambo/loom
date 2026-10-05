@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { modelRevision, sampleModel } from '@loom/core';
+import { canonicalHash, importPinsOf, modelRevision, sampleModel } from '@loom/core';
 import type { LoomConfig, Model, Policy, ResultEnvelope } from '@loom/core';
-import { commitAll, gitInit, readJsonFile, scratch, writeJson } from '@loom/workspace/testing';
+import { currentPolicy, policyHash } from '@loom/workspace';
+import { commitAll, foldModelId, gitInit, readJsonFile, scratch, writeJson } from '@loom/workspace/testing';
 
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
 
@@ -34,10 +35,17 @@ function loomAsync(cwd: string, args: string[]): Promise<{ status: number; env: 
 
 const codes = (env: ResultEnvelope): string[] => (env.findings ?? []).map((f) => f.code);
 
+/** The four --expected-* flags a persistent mutate is prepared against, read fresh from the workspace it addresses. */
+function expectedFlags(dir: string, modelHash: string): string[] {
+  const config = readJsonFile<LoomConfig>(join(dir, '.loom', 'loom.json'));
+  const policy = currentPolicy(dir, config).policy;
+  return ['--expected-model', modelHash, '--expected-config', canonicalHash(config), '--expected-policy', policy ? policyHash(policy) : 'none', '--expected-imports', canonicalHash(importPinsOf(config))];
+}
+
 /** A repository governing the sample with one root per component; planned workspaces bind a committed policy. */
 function workspace(options: { profile?: string; policy?: Policy; scope?: LoomConfig['scope'] } = {}): string {
   const dir = gitInit(scratch());
-  assert.equal(loom(dir, ['init']).status, 0);
+  assert.equal(loom(dir, ['init', '--model-id', foldModelId(basename(dir)), '--model-kind', 'implementation']).status, 0);
   const model = sampleModel();
   writeFileSync(join(dir, '.loom', 'model.json'), `${JSON.stringify(model, null, 2)}\n`);
   for (const c of model.components) mkdirSync(join(dir, c.id), { recursive: true });
@@ -97,7 +105,7 @@ test('of two CLI mutations against one expected revision exactly one commits and
     writeJson(file, { op: 'update', collection: 'operations', id: 'order.get', set: { description } });
     return file;
   });
-  const results = await Promise.all(patches.map((p) => loomAsync(dir, ['mutate', '--patch', p, '--expected', base])));
+  const results = await Promise.all(patches.map((p) => loomAsync(dir, ['mutate', '--patch', p, ...expectedFlags(dir, base)])));
   const committed = results.filter((r) => r.status === 0 && (r.env.data as { committed?: boolean }).committed === true);
   const refused = results.filter((r) => r.env.refusal?.cause === 'stale-base');
   assert.equal(committed.length, 1, JSON.stringify(results.map((r) => [r.status, r.env.refusal])));
@@ -139,7 +147,7 @@ test('a declared submodule without a checkout leaves check --all incomplete and 
   const coverage = (all.env.data as { coverage: { complete: boolean; missing: string[] } }).coverage;
   assert.equal(coverage.complete, false);
   assert.deepEqual(coverage.missing, ['libs/missing']);
-  assert.ok(codes(all.env).includes('SCOPE_UNRESOLVED'), all.output.slice(0, 400));
+  assert.ok(codes(all.env).includes('CHECKOUT_MISSING'), all.output.slice(0, 400));
   const owner = loom(dir, ['owner', join('libs', 'missing', 'x.sql')]);
   assert.equal((owner.env.data as { status: string }).status, 'unresolved');
 });

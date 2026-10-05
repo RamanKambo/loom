@@ -1,15 +1,16 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
-import { CONTRACT_DIGEST, DISCOVERY_LIMITS, MCP_INSTRUCTIONS_BUDGET, MCP_TOOL_BUDGET, ORIENTATION_TEXT, canonicalStringify, dataBytes, exportModel, guides, modelRevision, sampleModel, schemaErrors, textHash, utf8Bytes } from '@loom/core';
-import type { GuideResource, LoomConfig, Model, ResultEnvelope } from '@loom/core';
-import { initWorkspace } from '@loom/workspace';
+import { CONTRACT_DIGEST, DISCOVERY_LIMITS, MCP_INSTRUCTIONS_BUDGET, MCP_TOOL_BUDGET, ORIENTATION_TEXT, canonicalHash, canonicalStringify, dataBytes, exportModel, guides, importPinsOf, modelRevision, sampleModel, schemaErrors, textHash, utf8Bytes } from '@loom/core';
+import type { GuideResource, LoomConfig, Model, MutationExpectation, ResultEnvelope } from '@loom/core';
+import { currentPolicy, initWorkspace, policyHash } from '@loom/workspace';
+import { foldModelId } from '@loom/workspace/testing';
 import { createLoomServer } from './server.js';
 import { TOOL_CONTRACTS, advertisedBytes, budgetProblems, contractOutputSchemaOf, schemaUri, type ToolDefinition } from './tools.js';
 
@@ -35,7 +36,7 @@ export function fixtureWorkspace(model: Model = sampleModel()): string {
   const dir = mkdtempSync(join(tmpdir(), 'loom-mcp-'));
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
   for (const [k, v] of [['core.autocrlf', 'false'], ['commit.gpgsign', 'false'], ['user.name', 'loom-fixture'], ['user.email', 'loom-fixture@example.invalid']]) execFileSync('git', ['config', k as string, v as string], { cwd: dir });
-  const init = initWorkspace(dir);
+  const init = initWorkspace(dir, { modelId: foldModelId(basename(dir)), modelKind: 'implementation' });
   if (init.outcome !== 'ok') throw new Error(`init refused: ${JSON.stringify(init.findings)}`);
   writeFileSync(join(dir, '.loom', 'model.json'), `${exportModel(model)}\n`);
   const configPath = join(dir, '.loom', 'loom.json');
@@ -44,6 +45,13 @@ export function fixtureWorkspace(model: Model = sampleModel()): string {
   for (const c of model.components) mkdirSync(join(dir, c.id), { recursive: true });
   writeFileSync(configPath, `${JSON.stringify({ ...config, scope }, null, 2)}\n`);
   return dir;
+}
+
+/** The MutationExpectation a workspace mutate is prepared against, read fresh from the workspace it addresses. */
+function expectationFor(dir: string, modelHash: string): MutationExpectation {
+  const config = JSON.parse(readFileSync(join(dir, '.loom', 'loom.json'), 'utf8')) as LoomConfig;
+  const policy = currentPolicy(dir, config).policy;
+  return { model: modelHash, config: canonicalHash(config), policy: policy ? policyHash(policy) : null, imports: canonicalHash(importPinsOf(config)) };
 }
 
 async function call(client: Client, name: string, args: Record<string, unknown>): Promise<{ env: ResultEnvelope; structured: unknown; text: string }> {
@@ -178,10 +186,10 @@ async function main(): Promise<void> {
     expect(v.env.outcome === 'ok' && Boolean(v.env.revisions.config), 'workspace validation carries the configuration revision');
     const base = v.env.revisions.model as string;
     const before = textHash(readFileSync(modelPath, 'utf8'));
-    const dry = await call(a, 'loom.mutate', { workspace: true, expectedRevision: base, dryRun: true, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Dry run only.' } } });
+    const dry = await call(a, 'loom.mutate', { workspace: true, expectation: expectationFor(ws, base), dryRun: true, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Dry run only.' } } });
     conform('loom.mutate', dry.structured);
     expect(dry.env.outcome === 'ok' && textHash(readFileSync(modelPath, 'utf8')) === before, 'a dry run leaves the model file unchanged');
-    const edit = (text: string): Record<string, unknown> => ({ workspace: true, expectedRevision: base, patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: text } } });
+    const edit = (text: string): Record<string, unknown> => ({ workspace: true, expectation: expectationFor(ws, base), patch: { op: 'update', collection: 'operations', id: 'order.get', set: { description: text } } });
     const [first, second] = await Promise.all([call(a, 'loom.mutate', edit('The first agent wrote this.')), call(b, 'loom.mutate', edit('The second agent wrote this.'))]);
     const outcomes = [first.env, second.env];
     expect(outcomes.filter((e) => e.outcome === 'ok').length === 1, 'exactly one of two writers on one base revision succeeds');

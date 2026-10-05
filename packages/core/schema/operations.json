@@ -39,13 +39,13 @@
     {
       "id": "workspace-revision",
       "accept": [
-        { "present": ["expectedRevision"], "absent": [] },
+        { "present": ["expectation"], "absent": [] },
         { "present": [], "absent": ["workspace"] }
       ],
       "code": "STRUCTURAL_INVALID",
-      "path": "expectedRevision",
-      "message": "a persistent workspace mutation names the base revision it was prepared against",
-      "fix": "send 'expectedRevision': the revision of the model the patch was prepared against"
+      "path": "expectation",
+      "message": "a persistent workspace mutation names the MutationExpectation it was prepared against",
+      "fix": "send 'expectation': the model, config, policy and imports hashes the patch was prepared against"
     },
     {
       "id": "one-comparison",
@@ -238,7 +238,7 @@
       "nextAction": { "action": "declare the components and their roots in the scope of loom.json, then check the workspace", "operation": "check" },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "init", "usage": ["init [--force]"], "examples": [{ "description": "Scaffold .loom at the root of the current repository.", "command": "init" }] },
+        "cli": { "command": "init", "usage": ["init --model-id <id> --model-kind <composition|implementation|mixed> [--force]"], "examples": [{ "description": "Scaffold .loom at the root of the current repository.", "command": "init --model-id payments --model-kind implementation" }] },
         "reason": "The MCP server serves a workspace that already exists; initializing one is a command-line step."
       }
     },
@@ -422,14 +422,14 @@
       "purpose": "Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing.",
       "prerequisites": [
         "one patch or a batch of patches",
-        "for a persistent change, a governed workspace and the revision the change was prepared against, as 'expectedRevision' or --expected",
+        "for a persistent change, a governed workspace and the MutationExpectation the change was prepared against, as 'expectation' or the --expected-* flags",
         "a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance"
       ],
       "effects": "writes",
       "refusals": [
         { "cause": "invalid-input", "when": "a patch or the resulting model is invalid, and the model is unchanged" },
         { "cause": "policy-failure", "when": "a breaking or unclassified change lacks its version bump or acknowledgement" },
-        { "cause": "stale-base", "when": "the workspace model changed since the expected revision, and nothing is written" },
+        { "cause": "stale-base", "when": "the model, configuration, policy or import pins changed since the expectation, and nothing is written" },
         { "cause": "unresolved-context", "when": "no governed workspace serves a persistent change" }
       ],
       "nextAction": { "action": "check readiness for the task the change serves", "operation": "checkReadiness" },
@@ -444,7 +444,12 @@
               "description": "Preview changing a mutation guard in the workspace model; nothing persists on a dry run.",
               "input": {
                 "workspace": true,
-                "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                "expectation": {
+                  "model": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "config": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                  "policy": null,
+                  "imports": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                },
                 "patch": { "op": "update", "collection": "mutations", "id": "order.pay", "set": { "guard": { "form": "prose", "text": "Payment for the order total has been captured." } } },
                 "dryRun": true
               }
@@ -453,11 +458,11 @@
         },
         "cli": {
           "command": "mutate",
-          "usage": ["mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]"],
+          "usage": ["mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]"],
           "examples": [
             {
-              "description": "Preview patch.json against the revision it was prepared against, as revisions.model of a check result reports it, without writing.",
-              "command": "mutate --patch patch.json --expected sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run"
+              "description": "Preview patch.json against the model, config, policy and imports hashes it was prepared against, as revisions reports them, without writing.",
+              "command": "mutate --patch patch.json --expected-model sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-config sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-policy none --expected-imports sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run"
             }
           ]
         }
@@ -741,7 +746,7 @@
     },
     {
       "id": "workspaceInspect",
-      "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest.",
+      "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest.",
       "prerequisites": ["a local path"],
       "effects": "reads",
       "refusals": [
@@ -794,6 +799,7 @@
       "prerequisites": ["a governed workspace at the path"],
       "effects": "reads",
       "refusals": [
+        { "cause": "access-denied", "when": "the path is outside the server's configured allowed roots" },
         { "cause": "unresolved-context", "when": "no workspace governs the path; inspect and initialize one" }
       ],
       "nextAction": { "action": "read the workspace status", "operation": "workspaceStatus" },

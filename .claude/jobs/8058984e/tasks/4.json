@@ -1,0 +1,19 @@
+{
+  "id": "4",
+  "subject": "Generate MCP tool contracts, describe effects and CLI usage from one authored operation catalogue",
+  "description": "RESULT (2026-10-03, AMC-D-PF3XTNPM), Loom commit cef1617 (push failed: GHES redirects, ignored per decision 8). Worker: contract author (Opus, general-purpose; handle in metadata), verified by the orchestrator.\n\nDELIVERED:\n- packages/core/schema/operations.json: 26 operations (12 MCP tools, 20 CLI entries, 6 shared), 4 presence rules and a cli block (header, common options, exit status). Each operation carries id, purpose, prerequisites, effects (none|reads|writes), refusals [{cause, when}], nextAction {action, operation} and exposure {mcp: {tool, input, data, presence[], examples[]} | cli: {command, usage[], examples[]} | none + reason}.\n- New $defs OperationCatalogue, CatalogueOperation and CataloguePresenceRule in tools.schema.json (additionalProperties:false, 14 fixture cases). The catalogue is a CONTRACT_DIGEST input.\n- generate.mjs emits src/generated/operations.ts and Docs/operations.md (CONTRACT_NOTICE from notice.ts, added by the orchestrator, because the file is generated from the contract, not from a model). It also renders tool descriptions, CLI usage and describe's tools and examples.\n- tools.ts: TOOL_CONTRACTS = MCP_TOOLS; data-driven presenceFindings; HANDLERS table. cli.ts: CLI_USAGE and CLI_COMMANDS-gated dispatch. Handler-gap tests fire on a mismatch.\n- mutateWorkspace in packages/workspace/src/write.ts is the single persistent mutate (MCP and CLI).\n- README table and tool list replaced by pointers to Docs/operations.md; CLAUDE.md single-homes row; ICD updates (workspace, cli, schema); capability contract.operations.\n\nVERIFIED (orchestrator, once):\n- npm run generate and build: generate --check 8 artifacts current, 70 fixture cases passed, digest sha256:ba1c893c….\n- contract.test.js 9/9, cli.test.js 32/32, mcp.test.js 16/16.\n- smoke PASS on 12 tools, 12 results and 6 typed refusals.\n- Core battery PASS: 24 sections, 2331 assertions.\n- docs --check --self: findings 0.\n- The worker's before/after probe (2816 executeTool calls) found every envelope byte-identical except describe's example order and its example hashes.\n\nACCEPTED DEVIATIONS:\n- The mutate and planChange examples use a well-formed zero revision so they validate.\n- The usage text lists each command with its catalogue purpose.\n- Unknown words such as `toString` are refused as unknown commands.\n- Tool descriptions run 296–1195 characters (task 29 budgets the schemas, not the descriptions).\n\nRECORDED, NOT FIXED: the writeModel ICD refusals omit unresolved-context, which writeModel returns. This belongs to task 9's ICD pass.\nCrosswalk evidence recorded on all 12 statements.",
+  "activeForm": "Building the operation catalogue",
+  "owner": "contract-author (Opus worker)",
+  "status": "completed",
+  "blocks": [
+    "5",
+    "29"
+  ],
+  "blockedBy": [
+    "3"
+  ],
+  "metadata": {
+    "worker": "a71a01b37baeeefe2",
+    "worker_role": "contract author; resume for tasks 29, 5, 6, 7, 8, 9"
+  }
+}

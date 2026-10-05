@@ -1,0 +1,21 @@
+{
+  "suite": "designer",
+  "command": "npm run build && npx ng test --watch=false",
+  "cwd": "C:\\Users\\nnbfdh8\\Codebase\\Tools\\loom\\apps\\designer",
+  "kind": "log",
+  "exitCode": 0,
+  "startedAt": "2026-10-04T19:36:10.364Z",
+  "finishedAt": "2026-10-04T19:36:46.155Z",
+  "durationMs": 35791,
+  "rerun": false,
+  "expectMet": true,
+  "treeBefore": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "treeAfter": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "head": "846c39b4fe61272a1db95716c303aad4bcb4f75b",
+  "cpuSamples": [
+    4.88899975056124,
+    4.453740157480313,
+    6.026506626656669
+  ],
+  "ok": true
+}

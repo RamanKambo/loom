@@ -121,6 +121,8 @@ export { describeTool, contextTool, checkReadinessTool, planChangeTool, compareB
 export type { PlanChangeToolInput, ContextOptions } from './tools.js';
 export { prohibitedMarkers } from './wording.js';
 export type { MarkerKind, ProhibitedMarker } from './wording.js';
+export { importPinsOf, revisionVectorOf } from './imports.js';
+export type { RevisionVectorEntry } from './imports.js';
 export { sampleModel } from './sample.js';
 export { selfTest } from './selftest/index.js';
 export { seededRegressions, declaredContradictions } from './selftest/corpus.js';

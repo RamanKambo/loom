@@ -174,7 +174,7 @@ Scaffold .loom with model.json, loom.json, state.json and .gitignore at a reposi
 - Next action: declare the components and their roots in the scope of loom.json, then check the workspace, through [check](#check).
 - Proof limits: none.
 - MCP tool: none.
-- Command: `init [--force]`.
+- Command: `init --model-id <id> --model-kind <composition|implementation|mixed> [--force]`.
 - Not exposed: The MCP server serves a workspace that already exists; initializing one is a command-line step.
 
 Examples:
@@ -182,7 +182,7 @@ Examples:
 - Scaffold .loom at the root of the current repository.
 
   ```sh
-  node packages/cli/dist/index.js init
+  node packages/cli/dist/index.js init --model-id payments --model-kind implementation
   ```
 
 ### check
@@ -411,23 +411,23 @@ Examples:
 
 Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing.
 
-- Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the revision the change was prepared against, as 'expectedRevision' or --expected; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance.
+- Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the MutationExpectation the change was prepared against, as 'expectation' or the --expected-* flags; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance.
 - Effects: `writes`, can persist changes.
-- Refusals: `invalid-input` when a patch or the resulting model is invalid, and the model is unchanged; `policy-failure` when a breaking or unclassified change lacks its version bump or acknowledgement; `stale-base` when the workspace model changed since the expected revision, and nothing is written; `unresolved-context` when no governed workspace serves a persistent change.
+- Refusals: `invalid-input` when a patch or the resulting model is invalid, and the model is unchanged; `policy-failure` when a breaking or unclassified change lacks its version bump or acknowledgement; `stale-base` when the model, configuration, policy or import pins changed since the expectation, and nothing is written; `unresolved-context` when no governed workspace serves a persistent change.
 - Next action: check readiness for the task the change serves, through [checkReadiness](#checkreadiness).
 - Proof limits: `validation-scope`, `predicates`.
 - MCP tool: `loom.mutate`, input `MutateInput`, result data `MutateData`.
-- Command: `mutate --patch <file> --expected <revision> [--ack id,...] [--dry-run]`.
+- Command: `mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]`.
 
 Presence rules of `loom.mutate`, checked before anything runs:
 
 - Send 'model' without 'workspace', or send 'workspace' without 'model'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `(root)`.
 - Send 'patch' without 'patches', or send 'patches' without 'patch'. A request matching no combination is refused with `PATCH_AMBIGUOUS` at `(root)`.
-- Send 'expectedRevision', or omit 'workspace'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `expectedRevision`.
+- Send 'expectation', or omit 'workspace'. A request matching no combination is refused with `STRUCTURAL_INVALID` at `expectation`.
 
 Description of `loom.mutate`:
 
-> Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing. Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the revision the change was prepared against, as 'expectedRevision' or --expected; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance. Effects: can persist changes. Refused as invalid-input when a patch or the resulting model is invalid, and the model is unchanged; as policy-failure when a breaking or unclassified change lacks its version bump or acknowledgement; as stale-base when the workspace model changed since the expected revision, and nothing is written; as unresolved-context when no governed workspace serves a persistent change. Send 'model' without 'workspace', or send 'workspace' without 'model'. Send 'patch' without 'patches', or send 'patches' without 'patch'. Send 'expectedRevision', or omit 'workspace'. Next: check readiness for the task the change serves with loom.checkReadiness.
+> Apply one patch or an atomic batch to a model, inline as a pure calculation or to the workspace model, which persists only onto the expected revision so two writers on one base cannot both succeed, while a dry run previews without writing. Prerequisites: one patch or a batch of patches; for a persistent change, a governed workspace and the MutationExpectation the change was prepared against, as 'expectation' or the --expected-* flags; a version bump and an acknowledgement for a breaking change, an acknowledgement never being acceptance. Effects: can persist changes. Refused as invalid-input when a patch or the resulting model is invalid, and the model is unchanged; as policy-failure when a breaking or unclassified change lacks its version bump or acknowledgement; as stale-base when the model, configuration, policy or import pins changed since the expectation, and nothing is written; as unresolved-context when no governed workspace serves a persistent change. Send 'model' without 'workspace', or send 'workspace' without 'model'. Send 'patch' without 'patches', or send 'patches' without 'patch'. Send 'expectation', or omit 'workspace'. Next: check readiness for the task the change serves with loom.checkReadiness.
 
 Examples:
 
@@ -436,7 +436,12 @@ Examples:
   ```json
   {
     "workspace": true,
-    "expectedRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "expectation": {
+      "model": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "config": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "policy": null,
+      "imports": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
     "patch": {
       "op": "update",
       "collection": "mutations",
@@ -452,10 +457,10 @@ Examples:
   }
   ```
 
-- Preview patch.json against the revision it was prepared against, as revisions.model of a check result reports it, without writing.
+- Preview patch.json against the model, config, policy and imports hashes it was prepared against, as revisions reports them, without writing.
 
   ```sh
-  node packages/cli/dist/index.js mutate --patch patch.json --expected sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run
+  node packages/cli/dist/index.js mutate --patch patch.json --expected-model sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-config sha256:0000000000000000000000000000000000000000000000000000000000000000 --expected-policy none --expected-imports sha256:0000000000000000000000000000000000000000000000000000000000000000 --dry-run
   ```
 
 ### diff
@@ -858,7 +863,7 @@ Examples:
 
 ### workspaceInspect
 
-Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest.
+Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest.
 
 - Prerequisites: a local path.
 - Effects: `reads`, reads persisted state and persists nothing.
@@ -876,7 +881,7 @@ Presence rules of action `inspect` of `loom.workspace`, checked before anything 
 
 Description of action `inspect` of `loom.workspace`:
 
-> Inspect a local path: its repository, the descriptors that own or overlap it, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'.
+> Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest. Prerequisites: a local path. Effects: reads persisted state and persists nothing. Refused as invalid-input when the path does not exist. When 'action' is 'inspect', send 'path' without 'declaration' or 'dryRun' or 'expectedInspection' or 'access' or 'view' or 'workspaceId'. Next: initialize a workspace at a suggested placement with loom.workspace action 'initialize'.
 
 Examples:
 
@@ -967,7 +972,7 @@ Open a workspace for this session with read or edit access, returning its handle
 
 - Prerequisites: a governed workspace at the path.
 - Effects: `reads`, reads persisted state and persists nothing.
-- Refusals: `unresolved-context` when no workspace governs the path; inspect and initialize one.
+- Refusals: `access-denied` when the path is outside the server's configured allowed roots; `unresolved-context` when no workspace governs the path; inspect and initialize one.
 - Next action: read the workspace status, through [workspaceStatus](#workspacestatus).
 - Proof limits: none.
 - MCP tool: none.
@@ -981,7 +986,7 @@ Presence rules of action `open` of `loom.workspace`, checked before anything run
 
 Description of action `open` of `loom.workspace`:
 
-> Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'.
+> Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model. Prerequisites: a governed workspace at the path. Effects: reads persisted state and persists nothing. Refused as access-denied when the path is outside the server's configured allowed roots; as unresolved-context when no workspace governs the path; inspect and initialize one. When 'action' is 'open', send 'path' and 'access' without 'boundary' or 'declaration' or 'dryRun' or 'expectedInspection' or 'workspaceId'. Next: read the workspace status with loom.workspace action 'status'.
 
 Examples:
 

@@ -193,7 +193,7 @@ test('generation refuses an operation catalogue whose examples, references, voca
   assert.equal(r.status, 1, r.output);
   for (const problem of [
     /operation 'mutate': MCP example 1 does not satisfy MutateInput/,
-    /operation 'planChange': presence rule 'workspace-revision' names 'expectedRevision', which PlanChangeInput does not declare/,
+    /operation 'planChange': presence rule 'workspace-revision' names 'expectation', which PlanChangeInput does not declare/,
     /operation 'projectAll': the contract defines no 'NoSuchInput'/,
     /MCP tool 'loom\.validate' is declared twice/,
     /operation 'import': names no presence rule 'no-such-rule'/,

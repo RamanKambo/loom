@@ -15,6 +15,17 @@ export const JOURNAL_FILE = 'install-journal.json';
 const STAGED_SUFFIX = '.loom-staged';
 const DEFAULT_OUTPUT_DIR = 'Docs/Loom';
 
+/** The two filesystem operations installation performs on a planned artifact's path. A test replaces one to plant a link or reparse point between planning and the operation it guards, forcing the recheck that must catch it. */
+export interface OutputSteps {
+  write(path: string, content: string): void;
+  rename(from: string, to: string): void;
+}
+
+export const OUTPUT_STEPS: OutputSteps = {
+  write: (path, content) => writeFileSync(path, content),
+  rename: (from, to) => renameSync(from, to),
+};
+
 export interface PlannedArtifact {
   instance: string;
   target: ProjectionTarget;
@@ -228,13 +239,19 @@ const writeJournal = (ws: Workspace, journal: InstallJournal): void => writeFile
  * each destination atomically while the journal records progress, and write
  * the manifest last. Atomicity is per file; a multi-repository bundle that
  * fails part-way stays visibly incomplete in the journal and the manifest, and
- * no commit or gitlink update is ever made.
+ * no commit or gitlink update is ever made. Every write and rename target's
+ * real-path containment is rechecked immediately before the operation: a link
+ * or reparse point swapped in since planning must not redirect a write outside
+ * the workspace it was planned against.
  */
-export function installOutputs(ws: Workspace, options: OutputOptions & { allowPaths?: readonly string[] } = {}): ResultEnvelope {
+export function installOutputs(ws: Workspace, options: OutputOptions & { allowPaths?: readonly string[] } = {}, steps: OutputSteps = OUTPUT_STEPS): ResultEnvelope {
   const plan = planOutputs(ws, { ...options, install: true });
   if (hasErrors(plan.findings)) {
     return envelope('workspace.installOutputs', { model: ws.model, findings: plan.findings, data: { installed: [] }, refusal: refusal('policy-failure', 'the bundle failed its checks; nothing was written') });
   }
+  const rootReal = realPathOf(ws.root);
+  const sensitive = isCaseSensitive(ws.root);
+  const stillContained = (abs: string): boolean => containsPath(rootReal, realPathOf(abs), sensitive);
   const journal: InstallJournal = {
     journalVersion: 1,
     bundle: canonicalHash(plan.manifest),
@@ -245,25 +262,40 @@ export function installOutputs(ws: Workspace, options: OutputOptions & { allowPa
   writeJournal(ws, journal);
   const staged: string[] = [];
   const cleanup = (): void => staged.forEach((s) => rmSync(s, { force: true }));
+  const redirected = (a: PlannedArtifact): ResultEnvelope => {
+    journal.state = 'failed';
+    writeJournal(ws, journal);
+    cleanup();
+    const f = finding('WRITE_OUTSIDE_WORKSPACE', a.path, `${a.instance} no longer resolves inside the workspace at '${a.path}'; a link or reparse point redirected it after it was planned`, 'repair or remove the link, then install the outputs again');
+    return envelope('workspace.installOutputs', {
+      model: ws.model,
+      findings: [...plan.findings, f, ...journalFindings(ws)],
+      data: { installed: journal.entries.filter((e) => e.status === 'installed').map((e) => e.path) },
+      refusal: refusal('policy-failure', `the write target for '${a.path}' no longer resolves inside the workspace; nothing further was written`),
+    });
+  };
   try {
     for (const a of plan.artifacts) {
+      if (!stillContained(a.abs)) return redirected(a);
       mkdirSync(dirname(a.abs), { recursive: true });
-      writeFileSync(`${a.abs}${STAGED_SUFFIX}`, a.content);
+      steps.write(`${a.abs}${STAGED_SUFFIX}`, a.content);
       staged.push(`${a.abs}${STAGED_SUFFIX}`);
     }
     journal.state = 'installing';
     writeJournal(ws, journal);
-    plan.artifacts.forEach((a, i) => {
+    for (let i = 0; i < plan.artifacts.length; i++) {
+      const a = plan.artifacts[i] as PlannedArtifact;
       const entry = journal.entries[i] as InstallJournal['entries'][number];
+      if (!stillContained(a.abs)) return redirected(a);
       try {
-        renameSync(`${a.abs}${STAGED_SUFFIX}`, a.abs);
+        steps.rename(`${a.abs}${STAGED_SUFFIX}`, a.abs);
       } catch (err) {
         entry.status = 'failed';
         throw err;
       }
       entry.status = 'installed';
       writeJournal(ws, journal);
-    });
+    }
   } catch (err) {
     journal.state = 'failed';
     writeJournal(ws, journal);

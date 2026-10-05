@@ -1,0 +1,22 @@
+{
+  "suite": "mcp",
+  "command": "node --test --test-concurrency=1 --test-reporter=tap packages/mcp-server/dist/test/mcp.test.js",
+  "cwd": "C:/Users/nnbfdh8/Codebase/Tools/loom",
+  "kind": "tap",
+  "exitCode": 0,
+  "startedAt": "2026-10-04T19:36:50.574Z",
+  "finishedAt": "2026-10-04T19:39:47.400Z",
+  "durationMs": 176826,
+  "rerun": true,
+  "counts": {
+    "tests": 25,
+    "pass": 25,
+    "fail": 0,
+    "skipped": 0
+  },
+  "treeBefore": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "treeAfter": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "head": "846c39b4fe61272a1db95716c303aad4bcb4f75b",
+  "cpuSamples": null,
+  "ok": true
+}

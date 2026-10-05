@@ -1,0 +1,64 @@
+[
+  {
+    "name": "build",
+    "command": "npm run build",
+    "kind": "log",
+    "expect": "generate --check: \\d+ artifacts current, \\d+ fixture cases passed, digest sha256:[0-9a-f]{64}",
+    "timeoutSeconds": 180
+  },
+  {
+    "name": "core-battery",
+    "command": "node -e \"import('./packages/core/dist/index.js').then(m=>m.selfTest())\"",
+    "kind": "log",
+    "expect": "loom self-test PASS",
+    "timeoutSeconds": 60
+  },
+  {
+    "name": "cli",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap packages/cli/dist/test/cli.test.js",
+    "kind": "tap",
+    "timeoutSeconds": 823
+  },
+  {
+    "name": "contract",
+    "command": "node --test --test-reporter=tap packages/cli/dist/test/contract.test.js",
+    "kind": "tap",
+    "timeoutSeconds": 215
+  },
+  {
+    "name": "mcp",
+    "command": "node --test --test-concurrency=1 --test-reporter=tap packages/mcp-server/dist/test/mcp.test.js",
+    "kind": "tap",
+    "timeoutSeconds": 397
+  },
+  {
+    "name": "coverage",
+    "command": "node C:/Users/nnbfdh8/.claude/jobs/8058984e/tmp/ledger/suites/coverage-scope.mjs --results \"C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\10\\cli.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\10\\contract.tap,C:\\Users\\nnbfdh8\\.claude\\jobs\\8058984e\\evidence\\10\\mcp.tap\" --capabilities agent.describe,agent.guidance,agent.orientation,agent.resume,contract.proof-limits,mcp.context,contract.operations",
+    "kind": "log",
+    "expect": "missing entries: none; other findings: 0; findings on [^:]+: 0",
+    "timeoutSeconds": 30
+  },
+  {
+    "name": "docs",
+    "command": "node packages/cli/dist/index.js docs --check --self",
+    "kind": "log",
+    "expect": "findings: 0 \\(0 error, 0 warning, 0 info\\)",
+    "timeoutSeconds": 30
+  },
+  {
+    "name": "smoke",
+    "command": "node packages/mcp-server/dist/smoke.js",
+    "kind": "log",
+    "expect": "loom mcp smoke PASS",
+    "timeoutSeconds": 240
+  },
+  {
+    "name": "designer",
+    "command": "npm run build && npx ng test --watch=false",
+    "kind": "log",
+    "expect": "Tests(?:\\u001b\\[[0-9;]*m|\\s)+\\d+ passed(?:\\u001b\\[[0-9;]*m|\\s)+\\(\\d+\\)",
+    "heavy": true,
+    "cwd": "apps/designer",
+    "timeoutSeconds": 120
+  }
+]

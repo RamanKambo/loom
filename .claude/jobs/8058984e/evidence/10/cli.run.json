@@ -1,0 +1,22 @@
+{
+  "suite": "cli",
+  "command": "node --test --test-concurrency=1 --test-reporter=tap packages/cli/dist/test/cli.test.js",
+  "cwd": "C:/Users/nnbfdh8/Codebase/Tools/loom",
+  "kind": "tap",
+  "exitCode": 0,
+  "startedAt": "2026-10-04T19:29:47.329Z",
+  "finishedAt": "2026-10-04T19:34:50.612Z",
+  "durationMs": 303283,
+  "rerun": false,
+  "counts": {
+    "tests": 33,
+    "pass": 33,
+    "fail": 0,
+    "skipped": 0
+  },
+  "treeBefore": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "treeAfter": "a5c0607d69c89fb3c0c5aa7879d637c98515fd84",
+  "head": "846c39b4fe61272a1db95716c303aad4bcb4f75b",
+  "cpuSamples": null,
+  "ok": true
+}

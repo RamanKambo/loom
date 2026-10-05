@@ -1,0 +1,22 @@
+{
+  "purpose": "Reviewable proposal only; live instructions and settings unchanged",
+  "files": [
+    {
+      "path": "claude-home/CLAUDE.md",
+      "baseSha256": "f2e47aa4b0e00e52e2610f73accc1d3872407cfcd606add4b1321fa17db2af27"
+    },
+    {
+      "path": "claude-home/skills/claude-doctrine/references/07-agents.md",
+      "baseSha256": "bc1e8d8f42a1f4261b632e1cd6d05bef9defd9376e05c70a93728558302ed501"
+    },
+    {
+      "path": "claude-home/skills/claude-doctrine/references/09-cost.md",
+      "baseSha256": "e1b6701b1c1e0e805304633e5108597ccd1c7d129f56a951915eb73c33316c73"
+    }
+  ],
+  "applyCheck": {
+    "exit": 0,
+    "stderr": ""
+  },
+  "sourcesUnchangedDuringPreparation": true
+}

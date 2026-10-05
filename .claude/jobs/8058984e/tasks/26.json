@@ -1,0 +1,20 @@
+{
+  "id": "26",
+  "subject": "Complete the traceability manifest: capability entries for every refinement and release evidence bound to commits and working-tree hashes",
+  "description": "WHY: loomrefinements.md §Repository language (a machine-readable engineering manifest) and §Source-of-truth (\"Register a descriptive capability for every retained and added behavior … The release evidence binds repository commits and working-tree hashes\").\n\nFROM TASK 8 (the contract; names are final):\n- CapabilityRegister entries have optional owner (Alias), negativeVerification (case ids, minItems 1), proofLimits (Text), environments (EnvironmentKind[], minItems 1, unique) and evidenceRefs (Id[], minItems 1). `verification` stays the positive cases. This task makes coverage --check require them for every entry (decision 10) in the same change that fills every entry.\n- ReleaseEvidence (assurance.schema.json): releaseEvidenceVersion 1; candidate [{repositoryPath: RelativePath ('.' for the root), commit: 40-hex, workingTreeHash: Hash over tracked and untracked candidate content, clean}] keyed by repositoryPath; contractDigest; runRefs (runIds, unique, at least one). This task produces it.\n- Task 8 added the entry `contract.qualification-run` (qualification/capabilities.json now holds 131 entries).\n\nGROUNDING:\n- qualification/capabilities.json held 123 entries on 2026-10-03, each with id, description, code, contract and verification.\n- coverage --check resolves code, contract and passed cases (packages/cli/src/coverage.ts:56-83, :98-128, :149-192). Cases are named `<pkg>.<file-stem>.<slug>`, `core.selftest.<section>` or `qualification.check.<id>`.\n\nCHANGE:\n- Fill owner, positive and negative tests, proof limits, required environments and the evidence reference for every entry, retained and new. Each task added its new entries; this task checks they are complete.\n- coverage --check enforces the new fields. Update fixtures/capability-register.json.\n- Generate a coverage view with readable requirement names.\n- Release evidence records bind repository commit plus working-tree hash, so another session's simultaneous edits cannot qualify a different candidate.\n- Positive and negative cases for the new coverage checks.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 --test-name-pattern \"coverage\" packages/cli/dist/test/cli.test.js; node packages/cli/dist/index.js coverage --check (the full --results run comes in task 28).\nWORKER: Sonnet, fresh.",
+  "activeForm": "Completing the traceability manifest",
+  "status": "pending",
+  "blocks": [
+    "28"
+  ],
+  "blockedBy": [
+    "22",
+    "25",
+    "35",
+    "36",
+    "37"
+  ],
+  "metadata": {
+    "milestone": "f"
+  }
+}

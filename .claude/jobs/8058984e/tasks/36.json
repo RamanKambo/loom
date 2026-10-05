@@ -1,0 +1,22 @@
+{
+  "id": "36",
+  "subject": "Expose diagrams through loom.diagram and the CLI diagram command",
+  "description": "MILESTONE c (diagrams), last task: it ends the milestone, so it also runs the milestone-end check below.\n\nWHY: the spec's agent-tools row for loom.diagram (workspaceId, target, scope, formats, budget, optional snapshotDigest → structured graph, Mermaid and the selected terminal rendering, with fidelity and completeness metadata) and its rule that diagrams get an equivalent CLI command generated from the catalogue. Split out of tasks 21 and 22 on 2026-10-04 (milestone goal), because the surface needs task 12's representation, task 20's renderer and task 31's system scope.\n\nGROUNDING:\n- Contracts: DiagramInput, DiagramData {result: RenderResult} and the diagram.schema.json definitions (RenderingBudget defaults, DiagramKind, TerminalRendering, DiagramFidelity, DiagramCompleteness); the catalogue entry for loom.diagram and the resource loom://workspaces/{workspaceId}/diagrams/{diagramId} (operations.json).\n- Implementation inputs: task 12 (Diagram from core), task 20 (the pinned mermaid-ascii adapter) and task 31 (system views over a composition).\n\nCHANGE:\n- MCP: expose loom.diagram. Rendering runs in the run table, so a slow render never blocks other calls. A renderer failure still returns the Mermaid and the semantic table where permitted, and never counts as a passing terminal rendering.\n- CLI: `diagram`, with the shared envelope under --json.\n- The rendering budget is enforced from RenderingBudget's keywords, with no second copy of the numbers.\n- Update the README MCP and CLI sections and icd/mcp.json and icd/cli.json in this change.\n\nMILESTONE-END CHECK (c): the terminal-diagrams scenario, with every required built-in diagram kind passing terminal-rendering qualification through the real renderer binary and a negative control. Also the aggregate-view part of the nested-components scenario (task 31). Then run the plan gate, commit, push and bump the superproject pointer.\n\nAREA TESTS: npm run build; node --test --test-concurrency=1 packages/mcp-server/dist/test/mcp.test.js; npm run smoke:mcp; node --test --test-concurrency=1 packages/cli/dist/test/cli.test.js; node packages/cli/dist/index.js docs --check --self.\nWORKER: the milestone-c implementer, resumed.",
+  "activeForm": "Exposing diagrams over MCP and the CLI",
+  "status": "pending",
+  "blocks": [
+    "16",
+    "26"
+  ],
+  "blockedBy": [
+    "12",
+    "13",
+    "20",
+    "21",
+    "22",
+    "31"
+  ],
+  "metadata": {
+    "milestone": "c"
+  }
+}

@@ -2,18 +2,29 @@ import { strict as assert } from 'node:assert';
 import { spawn } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { evaluateEvidence, modelRevision, renderTarget } from '@loom/core';
-import type { Acceptance, EvidenceObligation, EvidenceRecord, Model, Policy, ResultEnvelope } from '@loom/core';
+import { canonicalHash, evaluateEvidence, importPinsOf, modelRevision, renderTarget } from '@loom/core';
+import type { Acceptance, EvidenceObligation, EvidenceRecord, LoomConfig, Model, MutationExpectation, Policy, ResultEnvelope } from '@loom/core';
+import { loomDirOf, readConfig } from '../config.js';
 import { putEvidence, listEvidence } from '../evidence.js';
 import { initWorkspace, scaffoldConfig, scaffoldModel } from '../init.js';
 import { resolvePublishedContracts } from '../published.js';
 import { createBaseline } from '../records.js';
-import { gatherEvaluationInputs, pinRevisionSet, readAcceptances, readBaselines, readPolicy, readTrustedEvidence, signRecord, verifyRevisionSet } from '../trust.js';
+import { currentPolicy, gatherEvaluationInputs, pinRevisionSet, policyHash, readAcceptances, readBaselines, readPolicy, readTrustedEvidence, signRecord, verifyRevisionSet } from '../trust.js';
 import { writeModel } from '../write.js';
-import { codes, commitAll, gitInit, readJsonFile, scratch, writeJson } from '../testing/helpers.js';
+import { codes, commitAll, foldModelId, gitInit, readJsonFile, scratch, writeJson } from '../testing/helpers.js';
+
+/** Every fixture declares a real modelId, folded from its own directory name, and modelKind 'implementation'; init invents no default. */
+const cfg = (dir: string): [string, 'implementation'] => [foldModelId(basename(dir)), 'implementation'];
+
+/** The expectation a write against the workspace's current configuration and trusted policy is prepared against. */
+function expectationFor(root: string, modelHash: string, overrides: Partial<MutationExpectation> = {}): MutationExpectation {
+  const config = readConfig(loomDirOf(root)).value as LoomConfig;
+  const policy = currentPolicy(root, config).policy;
+  return { model: modelHash, config: canonicalHash(config), policy: policy ? policyHash(policy) : null, imports: canonicalHash(importPinsOf(config)), ...overrides };
+}
 
 const ZERO = `sha256:${'0'.repeat(64)}`;
 
@@ -67,23 +78,27 @@ function evidence(id: string): EvidenceRecord {
 
 function governedRepo(): string {
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, { modelId: foldModelId(basename(root)), modelKind: 'implementation' }).outcome, 'ok');
   return root;
 }
 
-const WORKER = (url: string): string => `
-import { writeModel, scaffoldModel } from ${JSON.stringify(url)};
-const [root, expected, purpose] = process.argv.slice(1);
+const WORKER = (url: string, coreUrl: string): string => `
+import { writeModel, scaffoldModel, loomDirOf, readConfig } from ${JSON.stringify(url)};
+import { canonicalHash, importPinsOf } from ${JSON.stringify(coreUrl)};
+const [root, expectedModel, purpose] = process.argv.slice(1);
 const m = scaffoldModel();
 m.components[0].purpose = purpose;
-const env = writeModel(root, m, expected);
+const config = readConfig(loomDirOf(root)).value;
+const expectation = { model: expectedModel, config: canonicalHash(config), policy: null, imports: canonicalHash(importPinsOf(config)) };
+const env = await writeModel(root, m, expectation);
 process.stdout.write(JSON.stringify({ outcome: env.outcome, codes: env.findings.map((f) => f.code) }));
 `;
 
 function runWriter(root: string, expected: string, purpose: string): Promise<{ outcome: string; codes: string[] }> {
   const url = pathToFileURL(join(import.meta.dirname, '..', 'index.js')).href;
+  const coreUrl = pathToFileURL(join(import.meta.dirname, '..', '..', '..', 'core', 'dist', 'index.js')).href;
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--input-type=module', '-e', WORKER(url), root, expected, purpose], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, ['--input-type=module', '-e', WORKER(url, coreUrl), root, expected, purpose], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     child.stdout.on('data', (d: Buffer) => (out += d.toString()));
@@ -102,18 +117,18 @@ test('of two writers on the same expected revision exactly one succeeds and the 
   assert.equal(stale.length, 1, JSON.stringify(results));
 });
 
-test('a write against a stale base revision writes nothing', () => {
+test('a write against a stale base revision writes nothing', async () => {
   const root = governedRepo();
   const modelPath = join(root, '.loom', 'model.json');
   const before = readJsonFile<Model>(modelPath);
   const next = scaffoldModel();
   (next.components[0] as { purpose: string }).purpose = 'Changed.';
-  const env: ResultEnvelope = writeModel(root, next, ZERO);
+  const env: ResultEnvelope = await writeModel(root, next, expectationFor(root, ZERO));
   assert.equal(env.outcome, 'refused');
   assert.equal(env.refusal?.cause, 'stale-base');
   assert.deepEqual(codes(env.findings), ['STALE_BASE_REVISION']);
   assert.deepEqual(readJsonFile<Model>(modelPath), before);
-  const ok = writeModel(root, next, modelRevision(before));
+  const ok = await writeModel(root, next, expectationFor(root, modelRevision(before)));
   assert.equal(ok.outcome, 'ok');
   assert.equal(readJsonFile<Model>(modelPath).components[0]?.purpose, 'Changed.');
 });
@@ -226,7 +241,7 @@ test('the pinned revision set detects a changed repository HEAD', () => {
 
 test('a committed baseline is the trusted head and a tampered snapshot is reported', () => {
   const root = governedRepo();
-  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(), gates: { policyRef: 'engineering' } });
+  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(...cfg(root)), gates: { policyRef: 'engineering' } });
   writeJson(join(root, '.loom', 'policies', 'engineering.json'), policy());
   commitAll(root, 'policy');
   const made = createBaseline(root, { id: 'bl-1', acceptance: 'acc-1' });
@@ -251,10 +266,10 @@ test('a committed baseline is the trusted head and a tampered snapshot is report
   assert.equal(readPolicy(root, 'engineering', 'refs/heads/main').policy?.id, 'engineering', 'removing the working-tree policy changes nothing at the trusted ref');
 });
 
-test('gathered inputs carry the current hash of each artifact stored evidence names, so that evidence is current or stale and never of unknown currency', () => {
+test('gathered inputs carry the current hash of each artifact stored evidence names, so that evidence is current or stale and never of unknown currency', async () => {
   const root = governedRepo();
   const runner = keyPair();
-  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(), gates: { policyRef: 'engineering' } });
+  writeJson(join(root, '.loom', 'loom.json'), { ...scaffoldConfig(...cfg(root)), gates: { policyRef: 'engineering' } });
   writeJson(join(root, '.loom', 'policies', 'engineering.json'), policy({ trust: { ref: 'refs/heads/main', acceptanceVia: 'trusted-ref', acceptanceKeys: [], evidenceKeys: [{ id: 'ci-runner', spki: runner.spki, runner: 'ci' }] } }));
   commitAll(root, 'policy');
   const model = scaffoldModel();
@@ -279,6 +294,6 @@ test('gathered inputs carry the current hash of each artifact stored evidence na
 
   const changed = scaffoldModel();
   (changed.components[0] as { purpose: string }).purpose = 'Changed after the run.';
-  assert.equal(writeModel(root, changed, modelRevision(model)).outcome, 'ok');
+  assert.equal((await writeModel(root, changed, expectationFor(root, modelRevision(model)))).outcome, 'ok');
   assert.equal(evaluateEvidence(changed, obligations, gatherEvaluationInputs(root).inputs).obligations[0]?.status, 'stale');
 });

@@ -602,7 +602,7 @@
     },
     {
       "id": "mcp.persistent-mutate",
-      "description": "A persistent loom.mutate requires expectedRevision, is refused as stale-base when the model changed since that revision, writes through the workspace lock that rechecks it, and a dry run writes nothing; the CLI's mutate runs the same workspace adapter function.",
+      "description": "A persistent loom.mutate requires expectation, the model, configuration, policy and import revisions it was prepared against, is refused as stale-base naming each changed input when any no longer holds, writes through the workspace lock that rechecks all four, and a dry run writes nothing; the CLI's mutate runs the same workspace adapter function.",
       "code": ["packages/workspace/src/write.ts#mutateWorkspace","packages/workspace/src/write.ts#writeModel","packages/workspace/src/lock.ts#withLock","packages/mcp-server/src/tools.ts#mutateCall","packages/cli/src/commands.ts#cmdMutate"],
       "contract": ["tools.schema.json#/$defs/MutateInput","icd/mcp.json","icd/workspace.json"],
       "verification": ["mcp-server.mcp.two-server-processes-on-one-workspace-of-two-writers-on-one-base-revision-exactly-one-succeeds","mcp-server.mcp.a-workspace-mutation-without-its-expected-revision-is-refused-before-anything-runs","cli.cli.mutate-persists-only-onto-the-expected-revision-and-a-dry-run-writes-nothing","cli.concurrency.of-two-cli-mutations-against-one-expected-revision-exactly-one-commits-and-the-other-is-refused-as-stale"]
@@ -616,7 +616,7 @@
     },
     {
       "id": "mcp.revisions",
-      "description": "Every result names the contract digest and the model revision it evaluated, and a workspace result adds the configuration, projection profile, policy and baseline revisions.",
+      "description": "Every result names the contract digest and the model revision it evaluated, and a workspace result adds the configuration, projection profile, policy, import and baseline revisions.",
       "code": ["packages/core/src/envelope.ts#revisionsOf","packages/workspace/src/session.ts#stampSession","packages/workspace/src/session.ts#sessionRevisions"],
       "contract": ["result.schema.json#/$defs/RevisionSet"],
       "verification": ["mcp-server.mcp.a-workspace-result-names-the-model-configuration-profile-policy-and-baseline-revisions-it-was-evaluated-against-and-an-inline-result-only-its-own","core.selftest.result-envelopes"]
@@ -846,6 +846,38 @@
       "verification": ["workspace.trust.the-evidence-store-is-append-only-and-an-unreadable-store-is-reported","qualification.framework.a-storing-run-puts-every-signed-record-into-the-workspace-evidence-store-where-the-trusted-policy-verifies-it","cli.cli.evidence-lists-the-store-and-refuses-an-unknown-record","qualification.framework.a-storing-run-writes-its-records-only-after-its-last-check-has-finished","cli.cli.qualify-store-in-a-written-workspace-stores-its-evidence-after-the-last-check-so-the-drift-check-of-the-run-passes","cli.cli.qualify-store-reports-drift-of-a-hand-edited-view-and-of-no-other"]
     },
     {
+      "id": "workspace.handles",
+      "description": "A session-scoped HandleRegistry resolves a path against the server's configured allowed roots, opens a governed workspace into an opaque workspaceId never derived from a path, and sets WorkspaceHandle.parent from the enclosing composition when it lists the workspace. A handle exists only for the session that opened it: another session's workspaceId is refused unknown-handle exactly like a missing one, and narrowing the allowed roots can only shrink what a session may reach.",
+      "code": ["packages/workspace/src/handles.ts#HandleRegistry","packages/workspace/src/handles.ts#enclosingMembership"],
+      "contract": ["tools.schema.json#/$defs/WorkspaceHandle","tools.schema.json#/$defs/WorkspaceId","fixtures/workspace-handle.json"],
+      "verification": ["workspace.handles.a-handle-opened-by-one-session-is-refused-unknown-handle-in-another-and-two-handles-on-the-same-model-share-the-revision-protocol","workspace.handles.a-path-outside-the-allowed-roots-is-refused-access-denied-on-open-and-a-client-root-can-only-narrow","workspace.handles.open-sets-workspacehandle-parent-from-the-enclosing-composition-that-lists-the-workspace"],
+      "negativeVerification": ["workspace.handles.a-handle-opened-by-one-session-is-refused-unknown-handle-in-another-and-two-handles-on-the-same-model-share-the-revision-protocol","workspace.handles.a-path-outside-the-allowed-roots-is-refused-access-denied-on-open-and-a-client-root-can-only-narrow"]
+    },
+    {
+      "id": "workspace.import-pins",
+      "description": "importPinsOf returns a workspace's import pins in canonical order, the export pins of its direct composition members ordered by memberId, empty for a workspace without a composition; MutationExpectation.imports is the canonical hash of that list, and revisionVectorOf orders a vector's entries by modelId so the same declaration always yields the same digest.",
+      "code": ["packages/core/src/imports.ts#importPinsOf","packages/core/src/imports.ts#revisionVectorOf"],
+      "contract": ["result.schema.json#/$defs/RevisionVector","tools.schema.json#/$defs/MutationExpectation"],
+      "verification": ["workspace.write.writemodel-refuses-stale-base-naming-exactly-the-one-input-whose-expectation-does-not-hold-for-each-of-model-config-policy-and-imports","workspace.handles.a-handle-opened-by-one-session-is-refused-unknown-handle-in-another-and-two-handles-on-the-same-model-share-the-revision-protocol"],
+      "negativeVerification": ["workspace.write.writemodel-refuses-stale-base-naming-exactly-the-one-input-whose-expectation-does-not-hold-for-each-of-model-config-policy-and-imports"]
+    },
+    {
+      "id": "workspace.lifecycle",
+      "description": "close cancels or awaits every step a handle registered, detaches watchers and revokes browser access, then releases the handle; a registered step that leaves a resource refuses close as cleanup-incomplete, naming the resource with its recovery, and the handle stays open for a retry, while a close with nothing residual reports every step and releases it.",
+      "code": ["packages/workspace/src/handles.ts#HandleRegistry","packages/workspace/src/handles.ts#registerCloseStep"],
+      "contract": ["tools.schema.json#/$defs/WorkspaceCloseData","tools.schema.json#/$defs/CleanupReport","fixtures/cleanup-report.json","fixtures/cleanup-outcome.json"],
+      "verification": ["workspace.handles.close-reports-a-registered-step-that-leaves-a-resource-as-cleanup-incomplete-naming-it-with-its-recovery-and-keeps-the-handle-open","workspace.handles.close-reports-every-step-and-releases-the-handle-once-nothing-is-residual"],
+      "negativeVerification": ["workspace.handles.close-reports-a-registered-step-that-leaves-a-resource-as-cleanup-incomplete-naming-it-with-its-recovery-and-keeps-the-handle-open"]
+    },
+    {
+      "id": "workspace.lock",
+      "description": "withLock is asynchronous and waits with timers, never Atomics.wait, so a waiter never blocks the event loop; a holder is a ProcessIdentity, taken over once its pid is gone or now belongs to a differently timed process, and an unreadable creation time keeps the lock held. The initialization lock resolves a worktree or submodule's gitdir: file to the real Git directory it names.",
+      "code": ["packages/workspace/src/lock.ts#withLock","packages/workspace/src/lock.ts#abandoned","packages/workspace/src/lock.ts#processIdentity","packages/workspace/src/repo.ts#gitDirOf"],
+      "contract": ["fixtures/process-identity.json"],
+      "verification": ["workspace.lock.a-holder-with-a-live-pid-and-another-creation-time-is-taken-over","workspace.lock.an-unreadable-creation-time-holds","workspace.lock.a-pid-that-no-longer-exists-is-taken-over","workspace.lock.withlock-takes-over-a-stale-lock-recorded-under-this-process-by-its-real-identity","workspace.lock.a-waiter-does-not-block-the-event-loop-a-timer-fires-while-it-waits-and-it-proceeds-once-the-lock-is-released","workspace.handles.the-initialization-lock-resolves-a-gitdir-file-as-a-worktree-or-submodule-checkout-has-to-its-real-git-directory"],
+      "negativeVerification": ["workspace.lock.an-unreadable-creation-time-holds"]
+    },
+    {
       "id": "workspace.init.existing-refusal",
       "description": "init refuses an existing .loom and leaves every file unchanged; with --force it restores only a missing .gitignore and never invents an authority file.",
       "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#reinit"],
@@ -875,17 +907,34 @@
     },
     {
       "id": "workspace.init.scaffold",
-      "description": "init writes exactly model.json, loom.json, state.json and .gitignore, which validate as an unplanned workspace whose one placeholder component claims '.', and never stages or commits them.",
-      "code": ["packages/workspace/src/init.ts#scaffoldModel","packages/workspace/src/init.ts#scaffoldConfig","packages/workspace/src/init.ts#scaffoldState","packages/workspace/src/init.ts#initWorkspace"],
+      "description": "init writes exactly model.json, loom.json, state.json and .gitignore, which validate as an unplanned workspace whose one placeholder component claims '.', and never stages or commits them; initialize scaffolds the same four files from a declared, validated LoomConfig.",
+      "code": ["packages/workspace/src/init.ts#scaffoldModel","packages/workspace/src/init.ts#scaffoldConfig","packages/workspace/src/init.ts#scaffoldState","packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/handles.ts#scaffoldWrites"],
       "contract": ["workspace.schema.json#/$defs/LoomConfig","workspace.schema.json#/$defs/WorkflowState"],
-      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","cli.cli.init-scaffolds-a-repository-root-and-refuses-a-subdirectory-and-a-second-run"]
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","cli.cli.init-scaffolds-a-repository-root-and-refuses-a-subdirectory-and-a-second-run","workspace.handles.initialize-a-dry-run-proposes-every-write-including-the-journal-and-writes-nothing"]
     },
     {
       "id": "workspace.init.staged-install",
-      "description": "init validates the scaffold, stages it in a sibling directory and renames it into place, so no staging directory and no apparently initialized workspace is left behind, and an incomplete .loom needs repair by its owner.",
-      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#INIT_STEPS"],
-      "contract": ["icd/workspace.json"],
-      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file","workspace.init.a-staging-failure-leaves-no-loom-and-nothing-staged-and-is-refused-as-typed","workspace.init.a-write-failure-part-way-through-staging-leaves-no-loom-and-no-partial-scaffold-and-is-refused-as-typed","workspace.init.an-installation-failure-leaves-no-loom-and-no-staging-directory-and-is-refused-as-typed","workspace.init.a-scaffold-that-fails-validation-is-refused-as-typed-before-anything-is-staged"]
+      "description": "init validates the scaffold, stages it in a sibling directory and renames it into place, so no staging directory and no apparently initialized workspace is left behind, and an incomplete .loom needs repair by its owner. initialize stages the same way under the recovery journal: an interrupted staging directory is removed only while every file still hashes to its journal entry, and otherwise left in place and reported.",
+      "code": ["packages/workspace/src/init.ts#initWorkspace","packages/workspace/src/init.ts#INIT_STEPS","packages/workspace/src/handles.ts#repairStaging","packages/workspace/src/handles.ts#scaffoldJournal"],
+      "contract": ["icd/workspace.json","workspace.schema.json#/$defs/InstallJournal"],
+      "verification": ["workspace.init.init-at-a-repository-root-writes-exactly-the-four-files-which-validate-and-stay-untracked","workspace.init.an-incomplete-loom-needs-repair-by-its-owner-force-never-invents-an-authority-file","workspace.init.a-staging-failure-leaves-no-loom-and-nothing-staged-and-is-refused-as-typed","workspace.init.a-write-failure-part-way-through-staging-leaves-no-loom-and-no-partial-scaffold-and-is-refused-as-typed","workspace.init.an-installation-failure-leaves-no-loom-and-no-staging-directory-and-is-refused-as-typed","workspace.init.a-scaffold-that-fails-validation-is-refused-as-typed-before-anything-is-staged","workspace.handles.initialize-a-stale-staging-directory-whose-content-still-matches-its-journal-is-removed-then-apply-proceeds","workspace.handles.initialize-a-stale-staging-directory-whose-content-no-longer-matches-its-journal-is-left-in-place-and-refused"],
+      "negativeVerification": ["workspace.handles.initialize-a-stale-staging-directory-whose-content-no-longer-matches-its-journal-is-left-in-place-and-refused"]
+    },
+    {
+      "id": "workspace.initialize",
+      "description": "initialize validates the declaration as LoomConfig; a dry run proposes every write, including the journal, and writes nothing; apply needs expectedInspection and the same declaration the dry run used, re-inspects and repairs any interrupted staging directory under the initialization lock, then stages and installs the scaffold. Apply with a different declaration is refused invalid-input; a changed inspection is refused stale-base, writing nothing; a conflicting ancestor's or descendant's claim is refused policy-failure; dirty files outside the write set and a composition with empty member export pins do not block it.",
+      "code": ["packages/workspace/src/handles.ts#HandleRegistry"],
+      "contract": ["tools.schema.json#/$defs/WorkspaceInitializeData","tools.schema.json#/$defs/WorkspaceInput"],
+      "verification": ["workspace.handles.initialize-a-dry-run-proposes-every-write-including-the-journal-and-writes-nothing","workspace.handles.initialize-apply-with-a-different-declaration-than-the-dry-run-is-refused-invalid-input-writing-nothing","workspace.handles.initialize-apply-is-refused-stale-base-when-the-inspection-changed-since-the-dry-run-writing-nothing","workspace.handles.initialize-dirty-files-outside-the-write-set-do-not-block-it","workspace.handles.initialize-a-conflicting-path-another-descriptor-claims-is-refused-policy-failure-writing-nothing","workspace.handles.initialize-a-composition-declaration-with-empty-member-export-pins-initializes"],
+      "negativeVerification": ["workspace.handles.initialize-apply-with-a-different-declaration-than-the-dry-run-is-refused-invalid-input-writing-nothing","workspace.handles.initialize-apply-is-refused-stale-base-when-the-inspection-changed-since-the-dry-run-writing-nothing","workspace.handles.initialize-a-conflicting-path-another-descriptor-claims-is-refused-policy-failure-writing-nothing"]
+    },
+    {
+      "id": "workspace.inspect",
+      "description": "inspect reports the target repository, the enclosing composition and whether it lists the repository, the existing models of the repository and its direct submodules, ownership among ancestor descriptors, missing checkouts, affected tracked and untracked paths bounded by the discovery item limit, and suggested placements; it reads only ancestor descriptors, direct submodule declarations and git metadata, never an unrelated tree, and refuses invalid-input only for a nonexistent, ungoverned path.",
+      "code": ["packages/workspace/src/handles.ts#HandleRegistry","packages/workspace/src/handles.ts#enclosingComposition","packages/workspace/src/handles.ts#modelsOf","packages/workspace/src/handles.ts#submodulesOf","packages/workspace/src/handles.ts#affectedPathsOf"],
+      "contract": ["tools.schema.json#/$defs/WorkspaceInspectData","fixtures/workspace-inspect-data.json"],
+      "verification": ["workspace.handles.inspect-over-a-planted-unrelated-tree-reads-none-of-it-through-an-injectable-reader-that-counts-directory-reads","workspace.handles.inspect-reports-a-missing-checkout-as-a-typed-unresolved-result","workspace.handles.inspect-refuses-invalid-input-for-a-path-that-does-not-exist-and-claims-no-owner","workspace.handles.inspect-reports-an-unreadable-descriptor-as-a-typed-unresolved-result","workspace.handles.inspect-reports-an-inaccessible-root-as-a-typed-unresolved-result-without-refusing","workspace.handles.inspect-reports-an-ownership-conflict-as-a-typed-unresolved-result","workspace.handles.inspect-reports-the-enclosing-composition-that-lists-the-repository-its-existing-models-and-a-declared-submodule-without-a-checkout","workspace.handles.inspect-reports-one-tracked-and-one-untracked-path-under-the-inspected-path","workspace.handles.affectedpaths-truncates-a-list-longer-than-the-discovery-item-limit-with-the-omission-in-the-envelope-completeness"],
+      "negativeVerification": ["workspace.handles.inspect-refuses-invalid-input-for-a-path-that-does-not-exist-and-claims-no-owner","workspace.handles.inspect-reports-an-ownership-conflict-as-a-typed-unresolved-result"]
     },
     {
       "id": "workspace.outputs.collisions",
@@ -937,11 +986,19 @@
       "verification": ["workspace.trust.a-pinned-published-contract-without-a-vendored-bundle-stays-unresolved","cli.adoption.a-workspace-that-vendors-the-pinned-bundle-installs-a-complete-openapi-document-and-one-without-it-refuses-to-install"]
     },
     {
+      "id": "workspace.resume-inputs",
+      "description": "resumeInputs builds the core's ResumeInputs fresh from disk for an open handle: address, outcome and phase from state.json, owning scopes from the configuration's scope, the revision vector, the trusted accepted baseline, the model's open unknowns, the evidence obligations the existing evaluation computes, and the work packages not done. Touching a file's timestamp or adding an unrelated commit leaves it unchanged, and an unknown handle returns null.",
+      "code": ["packages/workspace/src/handles.ts#HandleRegistry"],
+      "contract": ["tools.schema.json#/$defs/ResumeData"],
+      "verification": ["workspace.handles.resumeinputs-reports-every-field-of-the-recorded-progress-unaffected-by-a-touched-timestamp-or-an-unrelated-commit","core.selftest.resume"],
+      "negativeVerification": ["workspace.handles.resumeinputs-reports-every-field-of-the-recorded-progress-unaffected-by-a-touched-timestamp-or-an-unrelated-commit"]
+    },
+    {
       "id": "workspace.revision-set.pins",
-      "description": "pinRevisionSet records the exact HEAD and dirty flag of the workspace repository and of every repository holding a scope root, and verifyRevisionSet reports a changed, missing or dirty one.",
-      "code": ["packages/workspace/src/trust.ts#pinRevisionSet","packages/workspace/src/trust.ts#verifyRevisionSet"],
-      "contract": ["result.schema.json#/$defs/SourceRevision"],
-      "verification": ["workspace.trust.the-pinned-revision-set-detects-a-changed-repository-head"]
+      "description": "pinRevisionSet records the exact HEAD and dirty flag of the workspace repository and of every repository holding a scope root, and verifyRevisionSet reports a changed, missing or dirty one; revisionVectorOf builds and validates the RevisionVector a workspace's handle, summary and status share, ordered by modelId so the digest is independent of entry order.",
+      "code": ["packages/workspace/src/trust.ts#pinRevisionSet","packages/workspace/src/trust.ts#verifyRevisionSet","packages/core/src/imports.ts#revisionVectorOf"],
+      "contract": ["result.schema.json#/$defs/SourceRevision","result.schema.json#/$defs/RevisionVector"],
+      "verification": ["workspace.trust.the-pinned-revision-set-detects-a-changed-repository-head","workspace.handles.a-handle-opened-by-one-session-is-refused-unknown-handle-in-another-and-two-handles-on-the-same-model-share-the-revision-protocol"]
     },
     {
       "id": "workspace.scope.component-roots",
@@ -965,11 +1022,12 @@
       "verification": ["workspace.trust.policy-is-read-from-the-trusted-ref-and-a-weakened-working-tree-copy-is-ignored","workspace.trust.a-committed-baseline-is-the-trusted-head-and-a-tampered-snapshot-is-reported","cli.cli.an-explicit-model-inside-a-governed-workspace-is-still-compared-with-the-trusted-accepted-baseline"]
     },
     {
-      "id": "workspace.write.expected-revision",
-      "description": "writeModel writes only while the model on disk is still at the expected revision, rechecked under the workspace lock, so of two writers on one base exactly one succeeds and a stale write writes nothing.",
-      "code": ["packages/workspace/src/write.ts#writeModel","packages/workspace/src/write.ts#writeState","packages/workspace/src/lock.ts#withLock"],
-      "contract": ["icd/workspace.json","tools.schema.json#/$defs/MutateInput"],
-      "verification": ["workspace.trust.of-two-writers-on-the-same-expected-revision-exactly-one-succeeds-and-the-other-is-refused-as-stale","workspace.trust.a-write-against-a-stale-base-revision-writes-nothing","cli.cli.mutate-persists-only-onto-the-expected-revision-and-a-dry-run-writes-nothing","designer.persistence.refuses-the-second-of-two-saves-made-from-the-same-base-and-leaves-the-file-as-the-first-save-wrote-it"]
+      "id": "workspace.write.mutation-expectation",
+      "description": "writeModel and writeState write only while the model, configuration, trusted policy and import pins all still equal the MutationExpectation they were prepared against, rechecked under the workspace lock; a mismatch in any one is refused stale-base naming it, so of two writers on one expectation exactly one succeeds.",
+      "code": ["packages/workspace/src/write.ts#writeModel","packages/workspace/src/write.ts#writeState","packages/workspace/src/write.ts#currentInputs","packages/workspace/src/lock.ts#withLock"],
+      "contract": ["icd/workspace.json","tools.schema.json#/$defs/MutationExpectation","fixtures/mutation-expectation.json"],
+      "verification": ["workspace.trust.of-two-writers-on-the-same-expected-revision-exactly-one-succeeds-and-the-other-is-refused-as-stale","workspace.trust.a-write-against-a-stale-base-revision-writes-nothing","workspace.write.writemodel-refuses-stale-base-naming-exactly-the-one-input-whose-expectation-does-not-hold-for-each-of-model-config-policy-and-imports","workspace.write.a-stale-persistent-mutate-offers-a-re-plan-next-action-whose-arguments-validate-against-planchangeinput-whether-the-staleness-is-caught-before-or-inside-the-write","cli.cli.mutate-persists-only-onto-the-expected-revision-and-a-dry-run-writes-nothing","designer.persistence.refuses-the-second-of-two-saves-made-from-the-same-base-and-leaves-the-file-as-the-first-save-wrote-it"],
+      "negativeVerification": ["workspace.write.writemodel-refuses-stale-base-naming-exactly-the-one-input-whose-expectation-does-not-hold-for-each-of-model-config-policy-and-imports"]
     }
   ]
 }

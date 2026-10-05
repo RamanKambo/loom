@@ -1,9 +1,11 @@
 {
   "definition": "LoomConfig",
   "valid": [
-    { "configVersion": 1, "model": "model.json", "projectionProfile": "none", "scope": { "workspace": ["."] }, "outputs": {}, "gates": {} },
+    { "configVersion": 1, "modelId": "sample", "modelKind": "implementation", "model": "model.json", "projectionProfile": "none", "scope": { "workspace": ["."] }, "outputs": {}, "gates": {} },
     {
       "configVersion": 1,
+      "modelId": "jobcontrol",
+      "modelKind": "implementation",
       "model": "model.json",
       "projectionProfile": "contracts",
       "scope": { "sql": ["GMJobsOperator/GMJobsSQL/Schema", "GMJobsOperator/GMJobsSQL/Scripts"], "api": ["GlobalMail-Azure-Infrastructure/Modules/APIManagement"] },

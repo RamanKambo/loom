@@ -1,0 +1,18 @@
+{
+  "id": "30",
+  "subject": "Validate state-machine soundness, nested trust boundaries and ordered workflow steps in core",
+  "description": "DECIDED: task 2, decision 4, (a) to (c).\n\nWHY: the spec's diagram qualification needs start/end states and nested boundaries (render result section). Its engineering order makes ordered interactions, retry/cancellation/recovery paths and trust crossings the exit evidence of the workflow stage. Declared records turn these into checks, so an unfinished model is reported as unknown and not shown as finished.\n\nGROUNDING (after task 7):\n- TypeDef.terminalStates (StateName[], optional: the schema cannot require it only when stateProperty is set; this task's rules enforce it). The sample's three state machines declare it.\n- A start state is `$absent` in Mutation.from.\n- TrustBoundary.within (optional). The sample nests tb.ordering-process within tb.internal, which hosts du.ordering-api.\n- Workflow.steps (WorkflowStep[], keyed by id, ordered, required): actor component, action (StepAction operation|mutation|routine), target, failure handling retry|compensate with its reference|abort.\n- Comparison rules TERMINAL_STATES_CHANGED, WORKFLOW_STEPS_CHANGED and TRUST_BOUNDARY_NESTING_CHANGED exist (field-policy.ts).\n- Failure paths otherwise exist only as Scenario.kind.\n- The qualification fixtures' state machines (qualification/fixtures/**) declare no terminalStates.\n\nCHANGE (core rules and graph):\n(a) Terminal states: rules for a non-terminal state with no exit, a terminal state with an exit, and a state unreachable from creation. A state machine without terminalStates gets a finding that asks for the declaration. If that changes fixture expectations, the fixture models gain terminalStates in the same change, with re-pinned acceptances, and test:fixtures runs.\n(b) TrustBoundary.within: a cycle rule; a unit's boundary is the innermost one.\n(c) Workflow.steps references resolve. Actor and target are components. Trust crossings are derived from the actor's and target's deployment units. Compensation references resolve. Impact follows steps.\n- Each new code: FindingCode, FINDING_RULES, CONTRADICTIONS, and an imperative `fix`.\n- Readiness for the type and contract stages uses (c).\n\nAREA TESTS: npm run build; core battery; npm run test:fixtures. From apps/designer: npm run build; npx ng test --watch=false --include src/app/record-editor.spec.ts.\nWORKER: loom-worker (Sonnet 5, effort high, as its definition sets), resumed across its milestone while its context allows (task 1, warm reuse); Opus at xhigh only through `ledger escalate <task>` when the task proves complex, meaning an unresolved design question or a defect the worker cannot land (owner rule: prefer Sonnet; Opus xhigh only for complex work).",
+  "activeForm": "Validating state machines, boundaries and workflow steps",
+  "status": "pending",
+  "blocks": [
+    "12",
+    "28"
+  ],
+  "blockedBy": [
+    "11",
+    "35"
+  ],
+  "metadata": {
+    "milestone": "c"
+  }
+}

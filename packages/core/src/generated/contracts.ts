@@ -1578,6 +1578,10 @@ export const ICDS: readonly Icd[] = [
         "interface": "writeModel"
       },
       {
+        "component": "workspace",
+        "interface": "writeState"
+      },
+      {
         "component": "schema",
         "interface": "operationCatalogue"
       }
@@ -2818,7 +2822,21 @@ export const ICDS: readonly Icd[] = [
           "policy-failure"
         ],
         "effects": "writes",
-        "concurrency": "The persistent mutation the CLI, the MCP server and the browser host share: the expected base revision is checked before the core computes the change and again, as a compare-and-swap, under an exclusive lock file while writing; a stale base, a refused change and a dry run write nothing, and an unreadable configuration or a lock not obtained in time is refused as unresolved-context."
+        "concurrency": "The persistent mutation the CLI, the MCP server and the browser host share: the mutation expectation naming the model, configuration, policy and import revisions is rechecked under an exclusive lock file while writing; a stale write, a refused change and a dry run write nothing, and an unreadable configuration or a lock not obtained in time is refused as unresolved-context."
+      },
+      {
+        "name": "writeState",
+        "kind": "function",
+        "input": "workspace.schema.json#/$defs/WorkflowState",
+        "output": "result.schema.json#/$defs/ResultEnvelope",
+        "refusals": [
+          "invalid-input",
+          "unresolved-context",
+          "stale-base",
+          "policy-failure"
+        ],
+        "effects": "writes",
+        "concurrency": "Persists workflow state under the same expected-revision compare-and-swap as writeModel, rechecked under an exclusive lock file while writing; a stale write writes nothing, and an unreadable state or a lock not obtained in time is refused as unresolved-context. State carries no acceptance authority."
       },
       {
         "name": "evidenceStore",

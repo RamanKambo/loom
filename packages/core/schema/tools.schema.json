@@ -20,7 +20,7 @@
       "oneOf": [{ "required": ["model"] }, { "required": ["workspace"] }]
     },
     "MutateInput": {
-      "description": "Exactly one of 'patch' or 'patches'. A workspace mutation is persistent and requires 'expectedRevision'; an inline-model mutation is a pure calculation.",
+      "description": "Exactly one of 'patch' or 'patches'. A workspace mutation is persistent and requires 'expectation', the MutationExpectation it was prepared against; an inline-model mutation is a pure calculation.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -29,11 +29,11 @@
         "patch": { "$ref": "patch.schema.json#/$defs/Patch" },
         "patches": { "type": "array", "minItems": 1, "items": { "$ref": "patch.schema.json#/$defs/Patch" } },
         "acknowledgeBreaking": { "type": "array", "items": { "type": "string" } },
-        "expectedRevision": { "$ref": "common.schema.json#/$defs/Hash" },
+        "expectation": { "$ref": "#/$defs/MutationExpectation" },
         "dryRun": { "type": "boolean" }
       },
       "allOf": [
-        { "oneOf": [{ "required": ["model"] }, { "required": ["workspace", "expectedRevision"] }] },
+        { "oneOf": [{ "required": ["model"] }, { "required": ["workspace", "expectation"] }] },
         { "oneOf": [{ "required": ["patch"] }, { "required": ["patches"] }] }
       ]
     },
@@ -1089,10 +1089,10 @@
       }
     },
     "WorkspaceInspectData": {
-      "description": "What inspection found at a path, without writing: the repository, who owns the path, where a workspace could be placed with the reasons, and the inspection digest an initialization names as its expectation.",
+      "description": "What inspection found at a path, without writing: the repository, who owns the path, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, where a workspace could be placed with the reasons, and the inspection digest an initialization names as its expectation.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "repository", "ownership", "placements", "inspectionDigest"],
+      "required": ["path", "repository", "ownership", "placements", "composition", "models", "submodules", "affectedPaths", "inspectionDigest"],
       "properties": {
         "path": { "description": "The inspected path, as supplied.", "$ref": "#/$defs/DiscoveryPath" },
         "repository": {
@@ -1106,9 +1106,64 @@
             "dirty": { "type": "boolean" }
           }
         },
-        "ownership": { "description": "Who owns the path, relative to its repository root.", "$ref": "workspace.schema.json#/$defs/OwnershipResult" },
+        "ownership": { "description": "Who owns the path, among ancestor descriptors.", "$ref": "workspace.schema.json#/$defs/OwnershipResult" },
+        "composition": {
+          "description": "Enclosing composition, or null.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["descriptor", "modelId", "listed"],
+              "properties": {
+                "descriptor": { "description": "The enclosing composition's .loom directory, relative to the inspection boundary.", "$ref": "common.schema.json#/$defs/RelativePath" },
+                "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+                "listed": { "description": "Whether the target repository is one of its members.", "type": "boolean" }
+              }
+            }
+          ]
+        },
+        "models": {
+          "description": "Models here and in direct submodules.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["descriptor", "readable"],
+            "properties": {
+              "descriptor": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "readable": { "type": "boolean" },
+              "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
+              "modelKind": { "$ref": "common.schema.json#/$defs/ModelKind" }
+            }
+          }
+        },
+        "submodules": {
+          "description": "Declared submodules and checkout state.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "checkedOut", "hasDescriptor"],
+            "properties": {
+              "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
+              "checkedOut": { "type": "boolean" },
+              "hasDescriptor": { "type": "boolean" }
+            }
+          }
+        },
+        "affectedPaths": {
+          "description": "Tracked and untracked paths, bounded.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tracked", "untracked"],
+          "properties": {
+            "tracked": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RelativePath" } },
+            "untracked": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RelativePath" } }
+          }
+        },
         "placements": {
-          "description": "Where a workspace could be placed, most suitable first, each with its reasons; empty when a workspace already governs the path.",
+          "description": "Suggested placements, most suitable first; empty once a workspace governs the path.",
           "type": "array",
           "items": {
             "type": "object",

@@ -5,9 +5,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CLI_COMMANDS, CLI_USAGE, exportModel, handlerGaps, modelRevision, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
+import { CLI_COMMANDS, CLI_USAGE, canonicalHash, exportModel, handlerGaps, importPinsOf, modelRevision, renderTarget, sampleModel, schemaErrors, textHash } from '@loom/core';
 import type { EvidenceObligation, EvidenceRecord, LoomConfig, MetricsReport, Model, Policy, ResultEnvelope } from '@loom/core';
-import { putEvidence } from '@loom/workspace';
+import { currentPolicy, policyHash, putEvidence } from '@loom/workspace';
 import { commitAll, fileHash, gitInit, scratch, writeJson } from '@loom/workspace/testing';
 import { HANDLED_COMMANDS } from '../cli.js';
 import { releaseWordingFindings } from '../docs.js';
@@ -38,6 +38,13 @@ const USED = ['used', 'to'].join(' ');
 
 const codes = (r: Run): string[] => (r.env.findings ?? []).map((f) => f.code);
 
+/** The four --expected-* flags a persistent mutate is prepared against, read fresh from the workspace it addresses. */
+function expectedFlags(dir: string, modelHash: string): string[] {
+  const config = JSON.parse(readFileSync(join(dir, '.loom', 'loom.json'), 'utf8')) as LoomConfig;
+  const policy = currentPolicy(dir, config).policy;
+  return ['--expected-model', modelHash, '--expected-config', canonicalHash(config), '--expected-policy', policy ? policyHash(policy) : 'none', '--expected-imports', canonicalHash(importPinsOf(config))];
+}
+
 function writeModelFile(dir: string, name: string, model: Model = sampleModel()): string {
   const path = join(dir, name);
   // Plain JSON: export fails closed, and some tests write deliberately invalid models.
@@ -48,7 +55,7 @@ function writeModelFile(dir: string, name: string, model: Model = sampleModel())
 /** An initialized repository governing the fixture model with one scope root per component. */
 function workspace(extra: Partial<LoomConfig> = {}): string {
   const dir = gitInit(scratch());
-  assert.equal(loom(dir, 'init').status, 0);
+  assert.equal(loom(dir, 'init', '--model-id', 'sample', '--model-kind', 'implementation').status, 0);
   const model = sampleModel();
   writeModelFile(join(dir, '.loom'), 'model.json', model);
   for (const c of model.components) mkdirSync(join(dir, c.id), { recursive: true });
@@ -103,14 +110,14 @@ test('every command the operation catalogue exposes has a handler, and every han
 
 test('init scaffolds a repository root and refuses a subdirectory and a second run', () => {
   const dir = gitInit(scratch());
-  const first = loom(dir, 'init');
+  const first = loom(dir, 'init', '--model-id', 'root', '--model-kind', 'implementation');
   assert.equal(first.status, 0, first.stdout);
   assert.ok(existsSync(join(dir, '.loom', 'model.json')));
   mkdirSync(join(dir, 'sub'));
-  const sub = loom(join(dir, 'sub'), 'init');
+  const sub = loom(join(dir, 'sub'), 'init', '--model-id', 'sub', '--model-kind', 'implementation');
   assert.equal(sub.status, 1);
   assert.ok(codes(sub).includes('INIT_NOT_REPOSITORY_ROOT'));
-  const again = loom(dir, 'init');
+  const again = loom(dir, 'init', '--model-id', 'root', '--model-kind', 'implementation');
   assert.equal(again.status, 1);
   assert.ok(codes(again).includes('INIT_ALREADY_INITIALIZED'));
 });
@@ -190,9 +197,9 @@ test('check reports a breaking change kept at the accepted contract version, whe
   const lower = join(dir, 'lower.json');
   writeJson(raise, { op: 'update', collection: 'operations', id: 'order.get', set: { version: 2, authority: { permission: 'order.admin', scheme: 'bearer' } } });
   writeJson(lower, { op: 'update', collection: 'operations', id: 'order.get', set: { version: 1 } });
-  const first = loom(dir, 'mutate', '--patch', raise, '--ack', 'order.get', '--expected', modelRevision(sampleModel()));
+  const first = loom(dir, 'mutate', '--patch', raise, '--ack', 'order.get', ...expectedFlags(dir, modelRevision(sampleModel())));
   assert.equal(first.status, 0, first.stdout);
-  const second = loom(dir, 'mutate', '--patch', lower, '--expected', (first.env.data as { revision: string }).revision);
+  const second = loom(dir, 'mutate', '--patch', lower, ...expectedFlags(dir, (first.env.data as { revision: string }).revision));
   assert.equal(second.status, 0, 'lowering a version is no breaking change against the model it patches');
   const patched = loom(dir, 'check');
   assert.deepEqual(unbumped(patched), ['operations/order.get/version'], patched.stdout);
@@ -237,9 +244,9 @@ test('a baseline whose acceptance accepted another revision is not accepted, and
 
 test('check --all finds every descriptor and reports overlapping claims', () => {
   const parent = gitInit(scratch());
-  assert.equal(loom(parent, 'init').status, 0);
+  assert.equal(loom(parent, 'init', '--model-id', 'parent', '--model-kind', 'implementation').status, 0);
   const child = gitInit(join(parent, 'child'));
-  assert.equal(loom(child, 'init').status, 1, 'init refuses a scope an ancestor already claims');
+  assert.equal(loom(child, 'init', '--model-id', 'child', '--model-kind', 'implementation').status, 1, 'init refuses a scope an ancestor already claims');
   mkdirSync(join(child, '.loom'), { recursive: true });
   for (const f of ['model.json', 'loom.json', 'state.json']) writeFileSync(join(child, '.loom', f), readFileSync(join(parent, '.loom', f)));
   const all = loom(parent, 'check', '--all');
@@ -308,17 +315,17 @@ test('mutate persists only onto the expected revision and a dry run writes nothi
   writeJson(patch, { op: 'update', collection: 'operations', id: 'order.get', set: { description: 'Read one order by its id.' } });
   const base = modelRevision(JSON.parse(readFileSync(modelPath, 'utf8')) as Model);
   const before = fileHash(modelPath);
-  assert.equal(loom(dir, 'mutate', '--patch', patch, '--expected', base, '--dry-run').status, 0);
+  assert.equal(loom(dir, 'mutate', '--patch', patch, ...expectedFlags(dir, base), '--dry-run').status, 0);
   assert.equal(fileHash(modelPath), before);
-  const stale = loom(dir, 'mutate', '--patch', patch, '--expected', textHash('another revision'));
+  const stale = loom(dir, 'mutate', '--patch', patch, ...expectedFlags(dir, textHash('another revision')));
   assert.equal(stale.status, 1);
   assert.ok(codes(stale).includes('STALE_BASE_REVISION'));
-  const committed = loom(dir, 'mutate', '--patch', patch, '--expected', base);
+  const committed = loom(dir, 'mutate', '--patch', patch, ...expectedFlags(dir, base));
   assert.equal(committed.status, 0, committed.stdout);
   assert.equal((committed.env.data as { committed: boolean }).committed, true);
   assert.notEqual(fileHash(modelPath), before);
-  assert.equal(loom(dir, 'mutate', '--patch', patch, '--expected', base).status, 1, 'the old base is now stale');
-  const outside = loom(scratch(), 'mutate', '--patch', patch, '--expected', base);
+  assert.equal(loom(dir, 'mutate', '--patch', patch, ...expectedFlags(dir, base)).status, 1, 'the old base is now stale');
+  const outside = loom(scratch(), 'mutate', '--patch', patch, ...expectedFlags(dir, base));
   assert.equal(outside.env.refusal?.cause, 'unresolved-context');
 });
 
@@ -355,14 +362,14 @@ const invalidatedBy = (r: Run): string[] => ((r.env.data as { invalidatedEvidenc
 
 test('mutate --dry-run lists the stored evidence whose artifact the patch changes', () => {
   const { dir, evidence, widen } = withDdlEvidence();
-  const r = loom(dir, 'mutate', '--patch', widen, '--ack', 'ordering.orders', '--expected', modelRevision(sampleModel()), '--dry-run');
+  const r = loom(dir, 'mutate', '--patch', widen, '--ack', 'ordering.orders', ...expectedFlags(dir, modelRevision(sampleModel())), '--dry-run');
   assert.equal(r.status, 0, r.stdout);
   assert.deepEqual(invalidatedBy(r), [evidence]);
 });
 
 test('mutate --dry-run lists no evidence for a patch that leaves its artifact alone', () => {
   const { dir, reword } = withDdlEvidence();
-  const r = loom(dir, 'mutate', '--patch', reword, '--expected', modelRevision(sampleModel()), '--dry-run');
+  const r = loom(dir, 'mutate', '--patch', reword, ...expectedFlags(dir, modelRevision(sampleModel())), '--dry-run');
   assert.equal(r.status, 0, r.stdout);
   assert.deepEqual(invalidatedBy(r), []);
 });
@@ -550,6 +557,9 @@ test("docs --check --self holds Loom's own repository to the release wording, wh
   writeFileSync(join(dir, 'examples', 'model.json'), `${JSON.stringify({ description: `Kept for ${COMPAT}.`, pattern: '^[A-Z0-9]-x$', id: 'req.v2' })}\n`);
   mkdirSync(join(dir, 'node_modules', 'dep'), { recursive: true });
   writeFileSync(join(dir, 'node_modules', 'dep', 'README.md'), `The ${LEGACY} interface.\n`);
+  mkdirSync(join(dir, '.claude', 'jobs', 'j'), { recursive: true });
+  writeFileSync(join(dir, '.claude', 'jobs', 'j', 'brief.md'), `Deliver ${LABEL} in ${PHASE}.\n`);
+  writeFileSync(join(dir, '.claude', 'jobs', 'j', 'state.json'), `${JSON.stringify({ note: `Kept for ${COMPAT}.` })}\n`);
   const found = releaseWordingFindings(dir);
   assert.ok(found.every((f) => f.code === 'DOCUMENT_PROHIBITED_MARKER' && f.severity === 'error' && (f.fix ?? '').length > 0), JSON.stringify(found));
   assert.deepEqual(found.map((f) => f.path).sort(), ['README.md:3', 'README.md:3', 'examples/model.json:1', 'examples/store.sql:1'], JSON.stringify(found));

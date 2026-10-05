@@ -1,0 +1,17 @@
+{
+  "id": "27",
+  "subject": "Remove the pre-existing orphaned LocalDB instance directories and test scratch directories once the owner approves",
+  "description": "WHY: these resources predate journal ownership, so Loom's recovery must not claim them (\"Prefix matching alone is not ownership proof\", loomrefinements.md §Resource lifecycle). Deleting them is a destructive action and needs approval (decision 7).\n\nMEASURED 2026-10-03, AMC-D-PF3XTNPM:\n- 146 `loom-*` directories, 213.1 MB, under %LOCALAPPDATA%\\Microsoft\\Microsoft SQL Server Local DB\\Instances (11:52:35Z), containing error.log, *.xel and *.trc only;\n- 1,969 `%TEMP%\\loom-ws-*` directories (11:53:17Z).\n\nDO (orchestrator, inline, only with approval quoted here):\n1. Confirm no Loom run is active.\n2. `SqlLocalDB info`: each loom-* directory is either not registered or is Stopped. Delete or stop-delete the registered ones, then remove the directories.\n3. Remove the %TEMP%\\loom-ws-* directories.\n4. Re-measure the counts and record them here.\n5. Add one line to Tools/loom/Docs/ToDo.md for the workspace test-scratch leak (packages/workspace/src/testing/helpers.ts scratch()), naming its closer.\n\nDONE WHEN: the counts re-measure as 0, or the approval is declined and that is recorded here.",
+  "activeForm": "Removing orphaned LocalDB and scratch directories",
+  "status": "pending",
+  "blocks": [
+    "28",
+    "37"
+  ],
+  "blockedBy": [
+    "17"
+  ],
+  "metadata": {
+    "milestone": "d"
+  }
+}

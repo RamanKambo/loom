@@ -38,9 +38,9 @@ A change that a policy change class does not pre-authorize needs a trusted accep
 
 ## Expected-revision protocol
 
-Source: `packages/workspace/src/write.ts` and `packages/core/schema/icd/workspace.json`, interface `writeModel`.
+Source: `packages/workspace/src/write.ts` and `packages/core/schema/icd/workspace.json`, interfaces `writeModel` and `writeState`.
 
-Every result envelope carries the model revision in `revisions.model`: the SHA-256 of the model's canonical JSON. A persistent change names the revision it was planned against, as `mutate --expected <revision>` on the command line or `expectedRevision` on the `loom.mutate` tool. The adapter takes an exclusive lock, recomputes the current revision and writes only when the two are equal. A `loom.json` that cannot be read, or a lock another writer still holds when the wait ends, is refused with cause `unresolved-context` and writes nothing. State writes follow the same rule against the state revision.
+Every result envelope carries the model revision in `revisions.model`: the SHA-256 of the model's canonical JSON. A persistent single-workspace change names every input that affects how the model is interpreted, not only the model file, as a `MutationExpectation`: the model revision, the configuration hash, the trusted policy hash or `null`, and the hash of the workspace's canonical import pins. The command line supplies the four as `mutate --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash>`, and the `loom.mutate` tool as `expectation`. The adapter takes an exclusive lock, recomputes all four inputs and writes only while every one still equals its expectation. A mismatch is refused `stale-base`, naming each changed input, with the current revisions in the envelope and a `Refusal.nextActions` entry that re-plans the same change against the current model revision. A `loom.json` that cannot be read, or a lock another writer still holds when the wait ends, is refused with cause `unresolved-context` and writes nothing. State writes follow the same compare-and-swap against the state revision.
 
 ## Error vocabulary
 

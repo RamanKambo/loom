@@ -25,7 +25,7 @@ import {
   validateTool,
   withArtifactHashes,
 } from '@loom/core';
-import type { CatalogueTool, EvaluationInputs, Finding, Model, ProjectionTarget, ResultEnvelope } from '@loom/core';
+import type { CatalogueTool, EvaluationInputs, Finding, Model, MutationExpectation, ProjectionTarget, ResultEnvelope } from '@loom/core';
 import { mutateWorkspace, openSession, stampSession, type Session, type WorkspaceChange } from '@loom/workspace';
 
 /** One tool: its operation, input definition, the definition of its result's `data`, its generated description and its presence rules. */
@@ -327,14 +327,14 @@ function diffCall(c: Call): ResultEnvelope {
 }
 
 /** A workspace mutation goes through the workspace adapter's persistent mutation, the one the CLI performs too. */
-function mutateCall(c: Call): ResultEnvelope {
+function mutateCall(c: Call): ResultEnvelope | Promise<ResultEnvelope> {
   if (!c.inWorkspace) return mutateTool(c.args);
-  const { workspace: _w, expectedRevision, ...change } = c.args;
-  return mutateWorkspace(c.session as Session, String(expectedRevision), () => change as WorkspaceChange);
+  const { workspace: _w, expectation, ...change } = c.args;
+  return mutateWorkspace(c.session as Session, expectation as MutationExpectation, () => change as WorkspaceChange);
 }
 
 /** The handler of every tool the operation catalogue exposes on the MCP server. */
-const HANDLERS: Record<string, (c: Call) => ResultEnvelope> = {
+const HANDLERS: Record<string, (c: Call) => ResultEnvelope | Promise<ResultEnvelope>> = {
   'loom.validate': (c) => (c.model ? c.stamp(envelope('loom.validate', { model: c.model, findings: validate(c.model, c.inputs), data: {} })) : validateTool(c.args)),
   'loom.mutate': mutateCall,
   'loom.diff': diffCall,
@@ -354,7 +354,7 @@ const HANDLERS: Record<string, (c: Call) => ResultEnvelope> = {
 export const HANDLED_TOOLS: readonly string[] = Object.keys(HANDLERS);
 
 /** Execute one tool. Never throws for a bad request: every outcome is a result envelope. */
-export function executeTool(name: string, rawArgs: unknown, ctx: ToolContext): ResultEnvelope {
+export async function executeTool(name: string, rawArgs: unknown, ctx: ToolContext): Promise<ResultEnvelope> {
   const contract = TOOL_CONTRACTS.find((t) => t.name === name);
   if (!contract) return invalid(name.replace(/[^A-Za-z.]/g, '') || 'loom.unknown', [asFinding('STRUCTURAL_INVALID', '(tool)', `no tool is named '${name}'`, 'call one of the tools the server lists')], 'Unknown tool.');
   const args = (rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? rawArgs : {}) as Json;
@@ -366,7 +366,7 @@ export function executeTool(name: string, rawArgs: unknown, ctx: ToolContext): R
   const model = inWorkspace ? (s as Session).model : null;
   const handler = Object.hasOwn(HANDLERS, name) ? HANDLERS[name] : undefined;
   if (!handler) return invalid(name, [], 'Unknown tool.');
-  return handler({
+  return await handler({
     args,
     session: s,
     inWorkspace,

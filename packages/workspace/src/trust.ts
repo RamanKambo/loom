@@ -312,3 +312,13 @@ export function verifyRevisionSet(pinned: readonly SourceRevision[], current: re
 }
 
 export const policyHash = (policy: Policy): string => canonicalHash(policy);
+
+/** The trusted policy a configuration names, read fresh from the trusted ref; null and no findings when it names none. */
+export function currentPolicy(root: string, config: { gates: { policyRef?: string } }): { policy: Policy | null; findings: Finding[] } {
+  const policyRef = config.gates.policyRef;
+  if (!policyRef) return { policy: null, findings: [] };
+  const resolved = resolveTrustedRef(root);
+  if (!resolved.ref) return { policy: null, findings: resolved.findings };
+  const read = readPolicy(root, policyRef, resolved.ref);
+  return { policy: read.policy, findings: read.findings };
+}

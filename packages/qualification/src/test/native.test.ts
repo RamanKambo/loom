@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { sampleModel, validate, type LoomConfig, type Model, type PublishedContract } from '@loom/core';
 import { initWorkspace, installOutputs, openSession } from '@loom/workspace';
-import { commitAll, gitInit, readJsonFile, scratch, writeJson } from '@loom/workspace/testing';
+import { commitAll, foldModelId, gitInit, readJsonFile, scratch, writeJson } from '@loom/workspace/testing';
 import { exec, type ExecResult } from '../exec.js';
 import { resolveChecks, runChecks, type RunOutput } from '../run.js';
 import { connectionFailure, type LocalDbInstance } from '../runners/localdb.js';
@@ -375,7 +375,7 @@ test('documentation.drift detects a hand edit of a generated view', NATIVE, asyn
 /** A committed workspace governing the sample whose documentation views `loom write` installed with the session inputs. */
 function writtenWorkspace(): string {
   const root = gitInit(scratch());
-  assert.equal(initWorkspace(root).outcome, 'ok');
+  assert.equal(initWorkspace(root, { modelId: foldModelId(basename(root)), modelKind: 'implementation' }).outcome, 'ok');
   const model = sampleModel();
   writeJson(join(root, '.loom', 'model.json'), model);
   for (const c of model.components) mkdirSync(join(root, c.id), { recursive: true });
