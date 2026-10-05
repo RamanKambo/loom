@@ -52,3 +52,7 @@ export { openSession, sessionRevisions, stampSession } from './session.js';
 export type { Session, SessionOptions } from './session.js';
 export { HandleRegistry } from './handles.js';
 export type { CloseStep, CloseStepResult, DirReader, Grants, HandleRegistryOptions } from './handles.js';
+export { inspectFederation, checkFederation, planFederation, applyFederation, recoverFederation, publishFederation, FEDERATION_DIR } from './composition.js';
+export { exportFederationProposal, importFederationProposal, compositionModels } from './composition.js';
+export { sourceSnapshot } from './composition.js';
+export type { FederationPublishOptions } from './composition.js';

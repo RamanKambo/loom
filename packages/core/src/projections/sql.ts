@@ -159,6 +159,7 @@ export function sqlDeploymentOrder(model: Model): string[] {
 export function projectSql(model: Model, ctx: RenderContext): Record<string, string> {
   const index = indexModel(model);
   const storage = storageOf(model, ctx.component);
+  for (const s of storage) if (index.types.get(s.type)?.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'storage', id: s.id }, `storage '${s.id}' maps an externally authored schema that generated DDL cannot qualify`);
   const lines: string[] = [
     SQL_NOTICE,
     `-- T-SQL DDL for the storage records of ${ctx.component ? `component ${ctx.component}` : 'every component'}, then foreign keys and indexes.`,
@@ -438,11 +439,13 @@ export function projectSqlContractTests(model: Model, ctx: RenderContext): Recor
   ];
   for (const r of model.routines) {
     if (r.host !== 'sql-procedure' || (ctx.component !== undefined && r.owner !== ctx.component)) continue;
+    for (const p of [...r.params, ...r.resultSet]) if (p.binds && resolveProperty(index, p.binds)?.type.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'routine', id: r.id }, `routine '${r.id}' member '${p.name}' binds an externally authored shape that generated SQL contract checks cannot qualify`);
     const head = `-- routine ${r.id} (`;
     ctx.covered({ kind: 'routine', id: r.id }, SQL_TESTS_FILE, head);
     lines.push(...procedureBlock(index, r), '');
   }
   for (const s of storageOf(model, ctx.component)) {
+    if (index.types.get(s.type)?.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'storage', id: s.id }, `storage '${s.id}' maps an externally authored schema that generated SQL contract checks cannot qualify`);
     ctx.covered({ kind: 'storage', id: s.id }, SQL_TESTS_FILE, `-- storage ${s.id} (`);
     lines.push(...storageBlock(index, model, s), '');
   }

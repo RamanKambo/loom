@@ -1,16 +1,24 @@
 <header class="top">
   <h1>Loom designer</h1>
+  @if (store.connection(); as connection) {
+    <p data-testid="connected-workspace">Workspace <code>{{ connection.workspaceId }}</code> · {{ connection.edit ? 'edit access' : 'read access' }}</p>
+    <button type="button" (click)="store.refreshConnected()" [disabled]="store.history().length > 0">Refresh workspace</button>
+    <button type="button" (click)="store.disconnect()">Disconnect</button>
+    @if (store.remoteChanged()) { <p class="banner warn">The workspace changed elsewhere. Your draft is retained; reconcile it before saving.</p> }
+    @if (store.adapterStates(); as verified) { <p>Server acceptance: {{ verified.acceptance.state }} · server qualification: {{ verified.qualification.state }}</p> }
+  }
+  @if (store.connectionError(); as error) { <p class="banner error" data-testid="connection-error">{{ error }}</p> }
   <div class="actions">
     @if (canReopen) {
-      <button type="button" (click)="openPersistent()">Open model file…</button>
+      <button type="button" [disabled]="!!store.connection()" (click)="openPersistent()">Open model file…</button>
     }
     <label class="file">
       Import model file
-      <input #file type="file" accept=".json,.yaml,.yml,application/json" (change)="openFile(file)" />
+      <input #file type="file" [disabled]="!!store.connection()" accept=".json,.yaml,.yml,application/json" (change)="openFile(file)" />
     </label>
-    <button type="button" (click)="store.loadSample()">Load sample</button>
-    <button type="button" data-testid="save" [disabled]="!store.model()" (click)="save()">
-      {{ store.persistentFile() ? 'Save' : 'Save as download' }}
+    <button type="button" [disabled]="!!store.connection()" (click)="store.loadSample()">Load sample</button>
+    <button type="button" data-testid="save" [disabled]="!store.model() || store.saving()" (click)="save()">
+      {{ store.connection() || store.persistentFile() ? 'Save' : 'Save as download' }}
     </button>
     <button type="button" [disabled]="!store.model()" (click)="exportModel()">Export model</button>
     <button type="button" [disabled]="store.history().length === 0" (click)="store.undo()">

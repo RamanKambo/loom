@@ -111,8 +111,8 @@ export function workspaceRefusal(tool: string): ResultEnvelope {
   });
 }
 
-export function validateTool(input: { model?: unknown; workspace?: boolean }): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.validate');
+export function validateTool(input: { model?: unknown; workspaceId?: string }): ResultEnvelope {
+  if (input.workspaceId) return workspaceRefusal('loom.validate');
   const loaded = loadOrRefuse('loom.validate', input.model);
   if ('refused' in loaded) return loaded.refused;
   return envelope('loom.validate', { model: loaded.model, findings: validate(loaded.model), data: {} });
@@ -120,7 +120,7 @@ export function validateTool(input: { model?: unknown; workspace?: boolean }): R
 
 export interface MutateToolInput {
   model?: unknown;
-  workspace?: boolean;
+  workspaceId?: string;
   patch?: unknown;
   patches?: unknown;
   acknowledgeBreaking?: string[];
@@ -134,7 +134,7 @@ export interface MutateToolInput {
  * plan lists it.
  */
 export function mutateTool(input: MutateToolInput, inputs: EvaluationInputs = {}): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.mutate');
+  if (input.workspaceId) return workspaceRefusal('loom.mutate');
   const hasPatch = input.patch !== undefined;
   const hasPatches = input.patches !== undefined;
   if (hasPatch === hasPatches) {
@@ -199,8 +199,8 @@ function projectionRefusal(tool: string, model: Model, e: unknown): ResultEnvelo
   throw e;
 }
 
-export function projectTool(input: { model?: unknown; workspace?: boolean; target: ProjectionTarget; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.project');
+export function projectTool(input: { model?: unknown; workspaceId?: string; target: ProjectionTarget; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
+  if (input.workspaceId) return workspaceRefusal('loom.project');
   const loaded = loadOrRefuse('loom.project', input.model);
   if ('refused' in loaded) return loaded.refused;
   try {
@@ -212,8 +212,8 @@ export function projectTool(input: { model?: unknown; workspace?: boolean; targe
   }
 }
 
-export function projectAllTool(input: { model?: unknown; workspace?: boolean; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.projectAll');
+export function projectAllTool(input: { model?: unknown; workspaceId?: string; draft?: boolean }, inputs?: EvaluationInputs): ResultEnvelope {
+  if (input.workspaceId) return workspaceRefusal('loom.projectAll');
   const loaded = loadOrRefuse('loom.projectAll', input.model);
   if ('refused' in loaded) return loaded.refused;
   try {

@@ -43,6 +43,16 @@
       "construct": "routine.any",
       "reason": "Routines are qualified by the SQL and PowerShell profiles.",
       "onUse": "fail"
+    },
+    {
+      "construct": "type.externalSchema",
+      "reason": "External JSON Schema has no faithful emitted TypeScript contract.",
+      "onUse": "fail"
+    },
+    {
+      "construct": "type.exactInteger",
+      "reason": "JavaScript number cannot preserve integers outside its safe range.",
+      "onUse": "fail"
     }
   ],
   "tooling": [

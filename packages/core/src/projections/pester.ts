@@ -46,7 +46,11 @@ const HELPERS = [
   '        $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref] $tokens, [ref] $errors)',
   '        $parameters = @()',
   '        if ($null -ne $ast.ParamBlock) { $parameters = @($ast.ParamBlock.Parameters) }',
-  '        [pscustomobject]@{ Exists = $true; Errors = @($errors); Parameters = $parameters }',
+  '        $outputs = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.ConvertExpressionAst] -and $node.Type.TypeName.FullName -eq "pscustomobject" }, $true) | ForEach-Object {',
+  '            $table = $_.Find({ param($node) $node -is [System.Management.Automation.Language.HashtableAst] }, $true)',
+  '            if ($null -ne $table) { @($table.KeyValuePairs | ForEach-Object { [string] $_.Item1.SafeGetValue() }) -join "|" }',
+  '        })',
+  '        [pscustomobject]@{ Exists = $true; Errors = @($errors); Parameters = $parameters; Outputs = $outputs }',
   '    }',
   '',
   '    function Get-LoomAttribute {',
@@ -143,6 +147,10 @@ function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
       `        Get-LoomParameterType -Parameter $byName[${q(p.name)}] | Should -BeIn ${list(POWERSHELL_TYPES[p.kind])}`,
       '    }',
     );
+    lines.push('', `    It ${q(`parameter ${p.name} ${p.nullable ? 'permits' : 'rejects'} a present null`)} {`, present,
+      `        $allowNull = @(Get-LoomAttribute -Parameter $byName[${q(p.name)}] -AttributeType ([System.Management.Automation.AllowNullAttribute])).Count -gt 0`,
+      `        $rejectNull = @(Get-LoomAttribute -Parameter $byName[${q(p.name)}] -AttributeType ([System.Management.Automation.ValidateNotNullAttribute])).Count -gt 0 -or @(Get-LoomAttribute -Parameter $byName[${q(p.name)}] -AttributeType ([System.Management.Automation.ValidateNotNullOrEmptyAttribute])).Count -gt 0`,
+      p.nullable ? '        ($allowNull -and -not $rejectNull) | Should -BeTrue' : `        ($rejectNull -or ((Test-LoomMandatory -Parameter $byName[${q(p.name)}]) -and -not $allowNull)) | Should -BeTrue`, '    }');
     if (p.kind === 'enum' && p.binds !== undefined) {
       const bound = resolveProperty(index, p.binds)?.property;
       if (bound && bound.kind === 'enum' && bound.enumValues) {
@@ -158,6 +166,9 @@ function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
       }
     }
   }
+  if (r.resultSet.length) {
+    lines.push('', `    It ${q(`declares output object properties ${r.resultSet.map((p) => p.name).join(', ')}`)} {`, `        $routine.Outputs | Should -Not -BeNullOrEmpty -Because 'the result contract must have an explicit output object declaration'`, `        foreach ($output in $routine.Outputs) {`, `            Compare-Object -ReferenceObject ${list(r.resultSet.map((p) => p.name))} -DifferenceObject @($output.Split([char]124)) | Should -BeNullOrEmpty`, '        }', '    }');
+  }
   lines.push('}');
   return lines;
 }
@@ -167,16 +178,16 @@ function routineBlock(index: ModelIndex, r: Routine, source: string): string[] {
  * that declare a source. Each script is parsed, never executed: the checks
  * read the param block (names, and their order under positional passing;
  * Mandatory; type constraint; ValidateSet for enum params bound to an enum
- * property). A runbook's output shape cannot be checked statically, so no
- * test covers it.
+ * property), null validation declarations and explicit output object keys.
+ * No test establishes business behavior or dynamic output paths.
  */
 export function projectPesterContractTests(model: Model, ctx: RenderContext): Record<string, string> {
   const index = indexModel(model);
   const lines: string[] = [
     HASH_NOTICE,
     `# Loom conformance checks for the runbook and function routines of ${ctx.component ? `component ${ctx.component}` : 'every component'} (Pester 5; also runs under Pester 6).`,
-    "# Each routine's script is parsed, never executed: the checks read its param block only.",
-    "# A runbook's output shape cannot be checked statically, so no test covers it.",
+    "# Each routine's script is parsed, never executed: checks read parameters and explicit output declarations.",
+    "# Explicit pscustomobject output declarations are checked by property name; dynamic output and business behavior are not qualified.",
     "# Run: Invoke-Pester -Container (New-PesterContainer -Path ./Routines.Contract.Tests.ps1 -Data @{ RoutineRoot = '<repository root>' })",
     'param(',
     '    [string] $RoutineRoot = (Get-Location).Path',
@@ -187,6 +198,9 @@ export function projectPesterContractTests(model: Model, ctx: RenderContext): Re
   for (const r of model.routines) {
     if (r.host !== 'runbook' && r.host !== 'function') continue;
     if (ctx.component !== undefined && r.owner !== ctx.component) continue;
+    for (const p of [...r.params, ...r.resultSet]) {
+      if (p.binds && resolveProperty(index, p.binds)?.type.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'routine', id: r.id }, `routine '${r.id}' member '${p.name}' binds an externally authored shape that AST parameter checks cannot qualify`);
+    }
     lines.push('');
     if (r.source === undefined) {
       lines.push(`# Routine ${r.id} (${r.host}) declares no source, so its contract is not checked.`);

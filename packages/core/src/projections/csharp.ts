@@ -165,6 +165,19 @@ const HELPERS = [
   '        Assert.ThrowsAny<Exception>(() => JsonSerializer.Deserialize(payload.ToJsonString(), type, Json));',
   '    }',
   '',
+  '    internal static void OptionalPresence(Type type, string json, string member)',
+  '    {',
+  '        var payload = JsonNode.Parse(json)!.AsObject(); payload.Remove(member);',
+  '        RoundTrips(type, payload.ToJsonString());',
+  '    }',
+  '',
+  '    internal static void PresentNull(Type type, string json, string member, bool nullable)',
+  '    {',
+  '        var payload = JsonNode.Parse(json)!.AsObject(); payload[member] = null;',
+  '        if (nullable) RoundTrips(type, payload.ToJsonString());',
+  '        else Assert.ThrowsAny<Exception>(() => JsonSerializer.Deserialize(payload.ToJsonString(), type, Json));',
+  '    }',
+  '',
   '    internal static void RejectsValue(Type type, string json, string member, string value)',
   '    {',
   '        var payload = JsonNode.Parse(json)!.AsObject();',
@@ -175,6 +188,7 @@ const HELPERS = [
 ];
 
 function typeClass(index: ModelIndex, t: TypeDef, ctx: RenderContext): string[] {
+  if (t.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'type', id: t.id }, `type '${t.id}' uses an authored external schema that this generated CLR contract test cannot qualify`);
   const cls = pascal(t.id);
   const sample = JSON.stringify(sampleObject(index, t));
   const L: string[] = [
@@ -191,6 +205,7 @@ function typeClass(index: ModelIndex, t: TypeDef, ctx: RenderContext): string[] 
   let roundTrips = true;
   for (const p of t.properties) {
     const ref = { kind: 'property' as const, id: `${t.id}.${p.name}` };
+    if (p.kind === 'decimal' && (p.decimal?.precision ?? 18) > 28) ctx.unsupported('type.decimalPrecision', ref, `decimal '${t.id}.${p.name}' exceeds the guaranteed 28-digit System.Decimal precision`);
     if (hasUnion(p)) {
       ctx.unsupported('type.union', { kind: 'type', id: t.id }, `property '${t.id}.${p.name}' is a union, which this profile does not serialize`);
       roundTrips = false;
@@ -206,6 +221,8 @@ function typeClass(index: ModelIndex, t: TypeDef, ctx: RenderContext): string[] 
     if (p.immutable) L.push(`    [Fact] public void ${clr}_is_immutable() => Loom.Immutable(${member});`);
     L.push(`    [Fact] public void ${clr}_serializes_as_${p.name}() => Loom.JsonMember(T, ${str(clr)}, ${str(p.name)});`);
     if (p.required) L.push(`    [Fact] public void A_payload_without_${p.name}_is_rejected() => Loom.RejectsMissing(T, Sample, ${str(p.name)});`);
+    else L.push(`    [Fact] public void Absence_of_${p.name}_is_preserved() => Loom.OptionalPresence(T, Sample, ${str(p.name)});`);
+    L.push(`    [Fact] public void Present_${p.name}_${p.nullable ? 'preserves' : 'rejects'}_null() => Loom.PresentNull(T, Sample, ${str(p.name)}, ${p.nullable});`);
     if (p.kind === 'decimal') L.push(`    [Fact] public void ${clr}_keeps_its_exact_decimal_text() => Loom.KeepsText(T, Sample, ${str(p.name)});`);
     if (p.kind === 'enum' && p.unknownEnumPolicy === 'reject') {
       L.push(`    [Fact] public void ${clr}_outside_its_value_set_is_rejected() => Loom.RejectsValue(T, Sample, ${str(p.name)}, "loom-value-outside-the-set");`);

@@ -31,6 +31,7 @@ import {
 import { pascal } from '../projections/context.js';
 import { ARCHITECTURE_FILE, projectArchitecture } from '../projections/architecture.js';
 import { sampleModel } from '../sample.js';
+import { buildDiagram, toMermaid } from '../diagram.js';
 import { prohibitedMarkers, type MarkerKind } from '../wording.js';
 import { assert, assertThrows, codesOf, fresh, observe, pick, type Tally } from './harness.js';
 
@@ -216,13 +217,17 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       for (const x of stateful) {
         const states = x.properties.find((p) => p.name === x.stateProperty)?.enumValues ?? [];
         const section = view('workflows.md').split(`### Type ${tick(x.id)} (`)[1]?.split('```\n')[0] ?? '';
-        for (const s of x.terminalStates ?? []) assert(t, section.includes(`    s${states.indexOf(s)} --> [*]`), `workflows.md ends the state machine of ${x.id} at its terminal state ${s}`);
+        for (const s of x.terminalStates ?? []) {
+          const graph = buildDiagram(sampleModel(), 'state', { target: { kind: 'record', ref: { kind: 'type', id: x.id } }, depth: 0 });
+          const position = graph.nodes.findIndex((n) => n.kind === 'state' && n.label === s);
+          assert(t, section.includes(`    n${position} --> [*]`), `workflows.md ends the state machine of ${x.id} at its terminal state ${s}`);
+        }
         assert(t, view('reference.md').includes(`- Terminal states: ${(x.terminalStates ?? []).map(tick).join(', ')}`), `reference.md lists the terminal states of ${x.id}`);
       }
       for (const w of sampleModel().workflows) {
         const steps = view('workflows.md').split(`### Steps of workflow ${tick(w.id)}`)[1]?.split('### ')[0] ?? '';
         w.steps.forEach((s, i) => {
-          assert(t, new RegExp(`\\n    p\\d+->>p\\d+: ${i + 1} ${s.id}: ${s.action.kind} ${s.action.id.replace(/\./g, '\\.')}, on failure ${s.failure.handling}`).test(steps), `workflows.md shows step ${i + 1} ${s.id} of ${w.id} in order with its action and failure handling`);
+          assert(t, new RegExp(`\\n    n\\d+->>n\\d+: ${i + 1} ${s.id}: ${s.action.kind} ${s.action.id.replace(/\./g, '\\.')}, on failure ${s.failure.handling}`).test(steps), `workflows.md shows step ${i + 1} ${s.id} of ${w.id} in order with its action and failure handling`);
           assert(t, view('reference.md').includes(`  ${i + 1}. ${tick(s.id)}: component ${tick(s.actor)} performs ${s.action.kind} ${tick(s.action.id)} on component ${tick(s.target)}; on failure ${s.failure.handling}`), `reference.md lists step ${i + 1} ${s.id} of ${w.id}`);
         });
         if (!w.steps.length) assert(t, steps.includes('No steps are declared.'), `workflows.md states that ${w.id} declares no steps`);
@@ -238,7 +243,7 @@ export const PROJECTION_SECTIONS: readonly Section[] = [
       }
       const cyclic = fresh();
       pick(cyclic.trustBoundaries, 'tb.internal').within = 'tb.ordering-process';
-      const cycle = hosting(cyclic);
+      const cycle = toMermaid(buildDiagram(cyclic, 'hosting'));
       assert(t, cyclic.trustBoundaries.every((b) => cycle.split(`["${b.id} (${b.kind})"]`).length === 2), `a nesting cycle draws each trust boundary exactly once: ${cycle}`);
 
       const broken = fresh();

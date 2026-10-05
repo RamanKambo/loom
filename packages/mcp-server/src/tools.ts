@@ -1,3 +1,7 @@
+import { federationCall } from './federation.js';
+import { diagramCall } from './diagram-tools.js';
+import { qualificationCall, closeQualificationRuns } from './qualification-tools.js';
+import type { Grants } from '@loom/workspace';
 import {
   CONTRACT_DIGEST,
   MCP_TOOLS,
@@ -24,9 +28,13 @@ import {
   validate,
   validateTool,
   withArtifactHashes,
+  canonicalHash,
+  findRecord,
+  indexModel,
 } from '@loom/core';
-import type { CatalogueTool, EvaluationInputs, Finding, Model, MutationExpectation, ProjectionTarget, ResultEnvelope } from '@loom/core';
-import { mutateWorkspace, openSession, stampSession, type Session, type WorkspaceChange } from '@loom/workspace';
+import type { CatalogueTool, EvaluationInputs, Finding, Model, MutationExpectation, ProjectionTarget, ResultEnvelope, RecordRef } from '@loom/core';
+import { HandleRegistry, findRepositoryRoot, mutateWorkspace, openSession, stampSession, type Session, type WorkspaceChange } from '@loom/workspace';
+import { resolve as resolvePath } from 'node:path';
 
 /** One tool: its operation, input definition, the definition of its result's `data`, its generated description and its presence rules. */
 export type ToolContract = CatalogueTool;
@@ -208,7 +216,8 @@ export function inputSchemaOf(definition: string, refs = new Set<string>()): Jso
 export function outputSchemaOf(data: string, refs = new Set<string>()): Json {
   refs.add('ResultEnvelope');
   refs.add(data);
-  const payload = { description: `Full contract: ${schemaUri(data)}.`, ...shapeOf(DEFS[data] as Json, data, refs) };
+  const def = DEFS[data] as Json;
+  const payload = ROOT_COMBINATORS.some((k) => k in def) ? opaque(def, data, refs) : { description: `Full contract: ${schemaUri(data)}.`, ...shapeOf(def, data, refs) };
   const envelopeDef = DEFS['ResultEnvelope'] as Json;
   return described(shapeOf(envelopeDef, 'ResultEnvelope', refs, { data: payload }), `${String(envelopeDef['description'])} Full contract: ${schemaUri('ResultEnvelope')}.`);
 }
@@ -254,6 +263,13 @@ export interface ToolContext {
   /** Directory the workspace resolves from: the server's working directory or its --workspace argument. */
   workspace: string;
   trustedRef?: string;
+  handles?: HandleRegistry;
+  allowedRoots?: readonly string[];
+  grants?: Grants;
+}
+
+export function handlesOf(ctx: ToolContext): HandleRegistry {
+  return ctx.handles ??= new HandleRegistry({ grants: ctx.grants, allowedRoots: ctx.allowedRoots ?? [findRepositoryRoot(ctx.workspace) ?? ctx.workspace] });
 }
 
 const invalid = (tool: string, findings: Finding[], message: string): ResultEnvelope => envelope(tool, { model: null, findings, refusal: refusal('invalid-input', message) });
@@ -282,12 +298,14 @@ function inputRefusal(contract: ToolContract, args: Json): ResultEnvelope | null
   return invalid(contract.name, errors.map((e) => asFinding('STRUCTURAL_INVALID', e.pointer || '(root)', e.message, 'send arguments that satisfy the tool input schema; loom.describe lists every contract')), 'The request does not satisfy the tool input contract.');
 }
 
-function session(ctx: ToolContext): Session {
-  return openSession(ctx.workspace, ctx.trustedRef ? { trustedRef: ctx.trustedRef } : {});
+function session(ctx: ToolContext, workspaceId: string): Session | null {
+  const ws = handlesOf(ctx).resolve(workspaceId);
+  return ws ? openSession(ws.root, ctx.trustedRef ? { trustedRef: ctx.trustedRef } : {}) : null;
 }
 
-function noWorkspaceModel(tool: string, s: Session): ResultEnvelope {
-  return stampSession(envelope(tool, { model: null, findings: [], refusal: refusal('unresolved-context', 'no workspace model governs the server directory; start the server with --workspace <dir> inside a governed workspace, or send an inline model') }), s);
+function noWorkspaceModel(tool: string, s: Session | null): ResultEnvelope {
+  const env = envelope(tool, { model: null, findings: [], refusal: refusal('unresolved-context', 'the opened workspace has no readable model; inspect its descriptor or send an inline model') });
+  return s ? stampSession(env, s) : env;
 }
 
 /** selfTest writes its summary with console.log; stdout is the JSON-RPC channel, so the line is held back. */
@@ -302,13 +320,15 @@ function quietSelfTest(): ReturnType<typeof selfTest> {
 }
 
 /** One validated tool call: its arguments and, in workspace mode or for a baseline comparison, the session that resolved its model. */
-interface Call {
+export interface Call {
   args: Json;
   session: Session | null;
   inWorkspace: boolean;
   /** The workspace model of a workspace call, otherwise null. */
   model: Model | null;
   inputs: EvaluationInputs;
+  context: ToolContext;
+  signal?: AbortSignal;
   /** The arguments with the workspace flag replaced by the workspace model. */
   local(): Json;
   stamp(env: ResultEnvelope): ResultEnvelope;
@@ -329,7 +349,7 @@ function diffCall(c: Call): ResultEnvelope {
 /** A workspace mutation goes through the workspace adapter's persistent mutation, the one the CLI performs too. */
 function mutateCall(c: Call): ResultEnvelope | Promise<ResultEnvelope> {
   if (!c.inWorkspace) return mutateTool(c.args);
-  const { workspace: _w, expectation, ...change } = c.args;
+  const { workspaceId: _w, expectation, ...change } = c.args;
   return mutateWorkspace(c.session as Session, expectation as MutationExpectation, () => change as WorkspaceChange);
 }
 
@@ -345,37 +365,79 @@ const HANDLERS: Record<string, (c: Call) => ResultEnvelope | Promise<ResultEnvel
   'loom.selftest': () => envelope('loom.selftest', { model: null, findings: [], states: defaultStates({ state: 'notEvaluated', reasons: [] }), data: quietSelfTest() }),
   'loom.describe': (c) => describeTool(c.args),
   // A follow-up action addresses the workspace the way this call did, never by repeating its model.
-  'loom.context': (c) => c.stamp(contextTool(c.local(), c.inputs, c.inWorkspace ? { address: { workspace: true } } : {})),
+  'loom.context': (c) => {
+    const id = c.args['workspaceId'] as string;
+    const resume = c.inWorkspace ? handlesOf(c.context).resumeInputs(id) : null;
+    return c.stamp(contextTool(c.local(), c.inputs, c.inWorkspace ? {
+      address: { workspaceId: id },
+      ...(resume ? { resume, revision: canonicalHash(resume.revisionVector) } : {}),
+      recordResource: (ref) => `loom://workspaces/${id}/records/${ref.kind}/${encodeURIComponent(ref.id)}`,
+    } : {}));
+  },
   'loom.checkReadiness': (c) => c.stamp(checkReadinessTool(c.local(), c.inputs)),
   'loom.planChange': (c) => c.stamp(planChangeTool(c.local(), c.inputs)),
+  'loom.federation': federationCall,
+  'loom.diagram': diagramCall,
+  'loom.qualify': qualificationCall,
+  'loom.workspace': async (c) => {
+    const r = handlesOf(c.context);
+    const path = resolvePath(c.context.workspace, (c.args['path'] as string | undefined) ?? '.');
+    switch (c.args['action']) {
+      case 'inspect': return r.inspect(path, c.args['boundary'] ? { boundary: resolvePath(c.context.workspace, c.args['boundary'] as string) } : {});
+      case 'initialize': return r.initialize(path, c.args['declaration'], { dryRun: c.args['dryRun'] === true, ...(c.args['expectedInspection'] ? { expectedInspection: c.args['expectedInspection'] as string } : {}) });
+      case 'open': return r.open(path, c.args['access'] as 'read' | 'edit', { view: c.args['view'] !== false });
+      case 'status': return r.status(c.args['workspaceId'] as string);
+      case 'close': await closeQualificationRuns(c.context, c.args['workspaceId'] as string); return r.close(c.args['workspaceId'] as string);
+      default: return invalid('loom.workspace', [], 'Unknown workspace action.');
+    }
+  },
 };
 
 /** Every tool this server handles, for the check that the catalogue and the handlers agree. */
 export const HANDLED_TOOLS: readonly string[] = Object.keys(HANDLERS);
 
 /** Execute one tool. Never throws for a bad request: every outcome is a result envelope. */
-export async function executeTool(name: string, rawArgs: unknown, ctx: ToolContext): Promise<ResultEnvelope> {
+export async function executeTool(name: string, rawArgs: unknown, ctx: ToolContext, signal?: AbortSignal): Promise<ResultEnvelope> {
   const contract = TOOL_CONTRACTS.find((t) => t.name === name);
   if (!contract) return invalid(name.replace(/[^A-Za-z.]/g, '') || 'loom.unknown', [asFinding('STRUCTURAL_INVALID', '(tool)', `no tool is named '${name}'`, 'call one of the tools the server lists')], 'Unknown tool.');
   const args = (rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? rawArgs : {}) as Json;
   const refused = inputRefusal(contract, args);
   if (refused) return refused;
-  const inWorkspace = args['workspace'] === true;
-  const s = inWorkspace || (name === 'loom.diff' && args['againstBaseline'] === true) ? session(ctx) : null;
+  if (signal?.aborted) return envelope(name, { model: null, findings: [], refusal: refusal('unmet-prerequisite', 'the request was cancelled before dispatch') });
+  const inWorkspace = typeof args['workspaceId'] === 'string' && name !== 'loom.workspace';
+  const id = args['workspaceId'] as string;
+  if (inWorkspace) {
+    const status = handlesOf(ctx).status(id);
+    if (status.refusal) return { ...status, tool: name };
+    if (name === 'loom.mutate' && !handlesOf(ctx).can(id, 'edit')) return envelope(name, { model: null, findings: [], refusal: refusal('access-denied', 'this workspace handle grants read access only') });
+  }
+  const s = inWorkspace ? session(ctx, id) : null;
   if (inWorkspace && (!s || !s.model || !s.workspace)) return noWorkspaceModel(name, s as Session);
   const model = inWorkspace ? (s as Session).model : null;
   const handler = Object.hasOwn(HANDLERS, name) ? HANDLERS[name] : undefined;
   if (!handler) return invalid(name, [], 'Unknown tool.');
-  return await handler({
+  const result = await handler({
     args,
     session: s,
     inWorkspace,
     model,
     inputs: s?.inputs ?? {},
+    context: ctx,
+    ...(signal ? { signal } : {}),
     local: () => {
-      const { workspace: _w, ...rest } = args;
+      const { workspaceId: _w, ...rest } = args;
       return model ? { ...rest, model } : rest;
     },
     stamp: (env) => (s ? stampSession(env, s) : env),
   });
+  return { ...result, tool: name };
+}
+
+/** Resolve a record only through a handle owned by this connection. */
+export function workspaceRecord(ctx: ToolContext, workspaceId: string, ref: RecordRef): Json | null {
+  const s = session(ctx, workspaceId);
+  if (!s?.model) return null;
+  const record = findRecord(indexModel(s.model), ref);
+  if (!record) return null;
+  return { workspaceId, kind: ref.kind, id: ref.id, revision: s.workspace ? canonicalHash(s.model) : '', hash: canonicalHash(record), record };
 }

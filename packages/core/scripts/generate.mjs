@@ -430,7 +430,7 @@ function catalogueProblems(catalogue, bundled, ajv) {
     const { mcp, cli, reason } = op.exposure;
     if ((mcp === 'none' || cli === 'none') !== (reason !== undefined)) problems.push(`${at}: a reason is given exactly when an interface does not expose the operation`);
     if (mcp !== 'none') {
-      tool(mcp.tool);
+      if (!catalogue.operations.some((previous) => previous !== op && previous.exposure.mcp !== 'none' && previous.exposure.mcp.tool === mcp.tool)) tool(mcp.tool);
       contractProblems(at, 'MCP', mcp);
     }
     if (op.agentTool !== undefined) {
@@ -866,7 +866,7 @@ function operationViews(catalogue, defs, profiles) {
   const rules = new Map(catalogue.presenceRules.map((r) => [r.id, r]));
   const operations = new Map(catalogue.operations.map((o) => [o.id, o]));
   const exposed = catalogue.operations.filter((o) => o.exposure.mcp !== 'none');
-  const tools = exposed.map((o) => ({
+  const individualTools = exposed.map((o) => ({
     name: o.exposure.mcp.tool,
     operation: o.id,
     input: o.exposure.mcp.input,
@@ -875,6 +875,16 @@ function operationViews(catalogue, defs, profiles) {
     description: toolDescription(o, rules, operations),
     presence: o.exposure.mcp.presence.map((id) => rules.get(id)),
   }));
+  const tools = [...new Set(individualTools.map((t) => t.name))].map((name) => {
+    const ops = exposed.filter((o) => o.exposure.mcp.tool === name);
+    const base = individualTools.find((t) => t.name === name);
+    if (ops.length === 1) return base;
+    if (new Set(ops.map((o) => o.exposure.mcp.input)).size !== 1 || new Set(ops.map((o) => o.exposure.mcp.data)).size !== 1) throw new Error(`shared tool ${name} must name one input and one result contract`);
+    if (new Set(ops.map((o) => o.exposure.mcp.action)).size !== ops.length || ops.some((o) => !o.exposure.mcp.action)) throw new Error(`shared tool ${name} needs distinct actions`);
+    const actionValues = defs[base.input]?.properties?.action?.enum ?? [];
+    if (actionValues.some((a) => !ops.some((o) => o.exposure.mcp.action === a))) throw new Error(`shared tool ${name} does not expose every declared action`);
+    return { ...base, effects: ops.some((o) => o.effects === 'writes') ? 'writes' : base.effects, description: agentToolDescription(ops.map((o) => ({ ...o, agentTool: o.exposure.mcp })), rules, operations), presence: [...new Set(ops.flatMap((o) => o.exposure.mcp.presence))].map((id) => rules.get(id)) };
+  });
   const examples = exposed.flatMap((o) => o.exposure.mcp.examples.map((e) => ({ tool: o.exposure.mcp.tool, description: e.description, input: e.input })));
   const agentOps = catalogue.operations.filter((o) => o.agentTool !== undefined);
   const agentTools = [...new Set(agentOps.map((o) => o.agentTool.tool))].map((name) => {

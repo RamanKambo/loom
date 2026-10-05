@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import {
   CONTRACT_DIGEST,
   PROFILES,
@@ -19,13 +18,19 @@ import {
   type Policy,
   type RunRecord,
   type SourceRevision,
+  type RunBudgets,
+  type RunCleanup,
+  type AllocationJournal,
+  type ProviderRef,
 } from '@loom/core';
 import { pinRevisionSet, putEvidence, signRecord } from '@loom/workspace';
 import { materialize } from './artifacts.js';
 import { aggregate, environmentFor, isRequired } from './policy.js';
 import { RUNNERS } from './runners/index.js';
-import { defaultToolLocator, type ToolLocator } from './tools.js';
-import type { ArtifactSet, Fixtures, Runner, RunnerOutcome, RunResources } from './types.js';
+import { defaultToolLocator, fileDigest, type ToolLocator } from './tools.js';
+import { unavailableCause, type ArtifactSet, type Fixtures, type Runner, type RunnerOutcome, type RunResources } from './types.js';
+import { Lifecycle, acquireLease, defaultLifecycleRoot, diskBytes, assertLifecycleResult, claimCleanup, recoverRun, sameProcess } from './lifecycle.js';
+import { readProviderConfiguration, type ProviderEntry } from './provider.js';
 
 export interface Signer {
   /** Environment variable holding the Ed25519 private key PEM; the key itself never enters a record. */
@@ -57,6 +62,17 @@ export interface RunOptions {
   /** Keep the run directory for inspection instead of deleting it. */
   keepRunDir?: boolean;
   log?: (line: string) => void;
+  signal?: AbortSignal;
+  lifecycleRoot?: string;
+  /** LocalDB cannot promise an OS-enforced hard memory bound. */
+  requireHardMemoryLimit?: boolean;
+  /** Registry-assigned opaque id; only trusted adapters supply it. */
+  runId?: string;
+  provider?: ProviderRef;
+  targetCapabilities?: readonly string[];
+  implementationFiles?: readonly string[];
+  fixtureFiles?: readonly string[];
+  assertionFiles?: readonly string[];
 }
 
 export interface RunOutput {
@@ -95,37 +111,39 @@ export function runInputDigest(revisionSet: RunRecord['revisionSet'], checks: re
 const newRunId = (): string => `run.${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}.${randomBytes(4).toString('hex')}`;
 
 class Resources implements RunResources {
-  private readonly held = new Map<string, { value: Promise<unknown>; release: (v: unknown) => Promise<void> }>();
+  private readonly held = new Map<string, { value: Promise<unknown>; release: (v: unknown) => Promise<void>; partial?: () => unknown }>();
 
-  acquire<T>(key: string, create: () => Promise<T>, release: (value: T) => Promise<void>): Promise<T> {
+  acquire<T>(key: string, create: () => Promise<T>, release: (value: T) => Promise<void>, partial?: () => T | undefined): Promise<T> {
     const existing = this.held.get(key);
     if (existing) return existing.value as Promise<T>;
     const value = create();
-    this.held.set(key, { value, release: release as (v: unknown) => Promise<void> });
+    this.held.set(key, { value, release: release as (v: unknown) => Promise<void>, partial });
     // A resource whose creation failed is forgotten, so a later check can retry and the release never runs on nothing.
-    value.catch(() => this.held.delete(key));
+    // Failed acquisition remains visible; resource-specific intent journaling settles partial creation.
     return value;
   }
 
-  async releaseAll(): Promise<void> {
-    for (const [, h] of [...this.held].reverse()) {
+  async releaseAll(runId: string): Promise<RunCleanup> {
+    const cleanup: RunCleanup = { state: 'running', outcomes: [], actions: [], residual: [] };
+    for (const [key, h] of [...this.held].reverse()) {
       try {
-        await h.release(await h.value);
-      } catch {
-        // creation failed or release failed; nothing of this run is left to undo
+        let value: unknown;
+        try { value = await h.value; } catch { value = h.partial?.(); }
+        if (value !== undefined) await h.release(value);
+        cleanup.outcomes.push({ kind: 'instance', identity: key, outcome: 'done' });
+      } catch (e) {
+        cleanup.outcomes.push({ kind: 'instance', identity: key, outcome: 'failed', detail: String(e) });
+        cleanup.residual.push({ kind: 'instance', identity: key });
       }
     }
     this.held.clear();
+    cleanup.state = cleanup.residual.length ? 'failed' : 'clean';
+    if (cleanup.residual.length) cleanup.recovery = { journal: runId, action: 'recover the run allocation journal before the next native allocation' };
+    return cleanup;
   }
 }
 
-function withTimeout(p: Promise<RunnerOutcome>, ms: number, id: string): Promise<RunnerOutcome> {
-  let timer: NodeJS.Timeout | undefined;
-  const t = new Promise<RunnerOutcome>((resolve) => {
-    timer = setTimeout(() => resolve({ result: 'UNKNOWN', reason: `${id} did not finish within ${ms} ms` }), ms + 5_000);
-  });
-  return Promise.race([p, t]).finally(() => clearTimeout(timer));
-}
+const DEFAULT_BUDGETS: RunBudgets = { totalDeadlineSeconds: 900, commandDeadlineSeconds: 60, engineStartDeadlineSeconds: 60, cleanupDeadlineSeconds: 60, fixtureFileBytes: 2147483648, maxServerMemoryMiB: 512, maxDegreeOfParallelism: 1 };
 
 /**
  * Run checks and return signed, revision-bound evidence. Checks run one at a
@@ -135,13 +153,56 @@ function withTimeout(p: Promise<RunnerOutcome>, ms: number, id: string): Promise
  */
 export async function runChecks(options: RunOptions): Promise<RunOutput> {
   const log = options.log ?? (() => undefined);
-  const runId = newRunId();
-  const runDir = mkdtempSync(join(tmpdir(), 'loom-qualify-'));
+  const runId = options.runId ?? newRunId();
+  if (!/^run\.[A-Za-z0-9.-]+$/.test(runId)) throw new Error('invalid run identity');
+  const lifecycleRoot = options.lifecycleRoot ?? defaultLifecycleRoot();
+  mkdirSync(join(lifecycleRoot, 'runs'), { recursive: true });
+  const runDir = mkdtempSync(join(lifecycleRoot, 'runs', 'loom-qualify-'));
   const tools = options.toolLocator ?? defaultToolLocator();
   const runners = { ...RUNNERS, ...(options.runners ?? {}) };
-  const timeoutMs = options.timeoutMs ?? 900_000;
+  const budgets = options.policy?.execution?.budgets ?? DEFAULT_BUDGETS;
+  const timeoutMs = Math.min(options.timeoutMs ?? budgets.commandDeadlineSeconds * 1000, budgets.commandDeadlineSeconds * 1000);
+  const controller = new AbortController();
+  let timedOut = false;
+  let budgetExceeded = false;
+  const cancel = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener('abort', cancel, { once: true });
+  if (options.signal?.aborted) cancel();
+  const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, budgets.totalDeadlineSeconds * 1000);
   const resources = new Resources();
   const checks = resolveChecks(options.checks);
+  const pinFiles = (paths: readonly string[]) => paths.map((path) => { const full = resolve(options.root, path); const rel = relative(options.root, full).replace(/\\/g, '/'); if (rel.startsWith('../') || !rel) throw new Error('qualification source pin escapes its root'); const hash = fileDigest(full); if (!hash) throw new Error(`qualification input is unreadable: ${rel}`); return { path: rel, hash }; });
+  const implementationPins = pinFiles(options.implementationFiles ?? options.fixtures?.conforming?.sql ?? []);
+  const fixturePins = pinFiles(options.fixtureFiles ?? []);
+  const assertionPins = pinFiles(options.assertionFiles ?? []);
+  const nativeSql = checks.some((c) => ['sql-catalog', 'sql-behavior', 'sql-transaction', 'sql-migration', 'sql-operations'].includes(c.runner));
+  let lifecycle: Lifecycle | undefined;
+  let releaseLease: (() => void) | undefined;
+  let reserveFailure: string | undefined;
+  let selectedProvider: ProviderEntry | undefined;
+  if (nativeSql) {
+    try {
+      const provisioned = readProviderConfiguration();
+      const providerId = options.provider?.id ?? options.policy?.execution?.providers[0] ?? 'localdb';
+      if (options.policy && !options.policy.execution.providers.includes(providerId)) throw new Error('provider is outside the trusted execution policy');
+      selectedProvider = provisioned?.providers.find((p) => p.id === providerId);
+      if ((options.provider || provisioned) && !selectedProvider) throw new Error('selected provider has no trusted machine-local provisioning');
+      if ((!selectedProvider || selectedProvider.kind === 'localdb') && (options.targetCapabilities ?? []).some((c) => !['relational', 'transactions', 'stored-procedures', 'backup', 'json', 'foreign-keys'].includes(c))) throw new Error('insufficient-resources: declared target capabilities exceed LocalDB Express capability policy');
+      const journals = join(lifecycleRoot, 'journals');
+      const localdb = await tools('sqllocaldb', { minimum: '15.0' });
+      if (existsSync(journals)) for (const file of readdirSync(journals).filter((f) => f.endsWith('.json') && !f.endsWith('.cleanup.json'))) {
+        const previous = JSON.parse(readFileSync(join(journals, file), 'utf8')) as AllocationJournal;
+        if (previous.resources.some((r) => r.state !== 'removed') && !sameProcess(previous.owner.process)) {
+          if (previous.provider.kind === 'localdb' && localdb.status !== 'found') throw new Error('unresolved journal requires a provisioned recovery provider');
+          const recovered = await recoverRun(join(journals, file), localdb.status === 'found' ? localdb.tool.path : 'service', budgets.cleanupDeadlineSeconds * 1000);
+          if (recovered.state !== 'clean') throw new Error('unresolved engine or files block native allocation');
+        }
+      }
+      releaseLease = await acquireLease(lifecycleRoot, runId, controller.signal, budgets.totalDeadlineSeconds * 1000);
+      lifecycle = new Lifecycle(lifecycleRoot, runId, { kind: selectedProvider?.kind ?? 'localdb', id: providerId });
+      lifecycle.phase('preflight'); lifecycle.intend('directory', runDir, runDir); lifecycle.state(runDir, 'created'); lifecycle.phase('reserve');
+    } catch (e) { reserveFailure = String(e); }
+  }
   const findings: Finding[] = [];
   const startedAt = new Date().toISOString();
   const runner = options.runner ?? 'local';
@@ -159,6 +220,11 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
 
   const evidence: EvidenceRecord[] = [];
   const outcomes: RunRecord['checks'] = [];
+  let cleanup: RunCleanup = { state: 'clean', outcomes: [], actions: [], residual: [] };
+  let peakDiskBytes = 0;
+  let monitoring: Promise<void> = Promise.resolve();
+  let sampling = false;
+  const monitor = setInterval(() => { if (sampling) return; sampling = true; monitoring = (async () => { peakDiskBytes = Math.max(peakDiskBytes, diskBytes(runDir)); await lifecycle?.sampleEngine(); if (peakDiskBytes > budgets.fixtureFileBytes || (lifecycle?.peakWorkingSetBytes ?? 0) > budgets.maxServerMemoryMiB * 1048576) { budgetExceeded = true; controller.abort(); } })().catch((e) => log(`resource monitoring unavailable: ${String(e)}`)).finally(() => { sampling = false; }); }, 1000);
   try {
     const inputs = options.inputs ?? {};
     // Absent inputs and empty inputs render different views: 'not evaluated' against 'evaluated with nothing supplied'.
@@ -174,7 +240,10 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
       const env = environmentFor(check, options.policy, options.environmentId);
       const resolved = await tools(check.tool.name, check.tool.versionPolicy);
       const run = runners[check.runner];
-      if (!env.ok) result = { result: 'UNKNOWN', reason: env.reason };
+      if (controller.signal.aborted) result = { result: 'UNKNOWN', reason: budgetExceeded ? 'run exceeded its measured file or memory budget' : timedOut ? 'run total deadline exceeded' : 'run cancelled', cause: budgetExceeded ? 'insufficient-resources' : timedOut ? 'timeout' : 'cancelled' };
+      else if (reserveFailure && check.runner.startsWith('sql-')) result = { result: 'UNKNOWN', reason: reserveFailure, cause: 'provider-blocked' };
+      else if (options.requireHardMemoryLimit && check.runner.startsWith('sql-')) result = { result: 'UNKNOWN', reason: 'the provider cannot enforce a hard OS process memory guarantee; SQL max server memory does not bound every allocation', cause: 'insufficient-resources' };
+      else if (!env.ok) result = { result: 'UNKNOWN', reason: env.reason, cause: 'provider-blocked' };
       else if (resolved.status === 'missing') result = { result: 'UNKNOWN', reason: resolved.reason };
       else if (resolved.status === 'out-of-policy') {
         toolRecord = { name: resolved.tool.name, version: resolved.tool.version };
@@ -184,11 +253,14 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
         toolRecord = { name: resolved.tool.name, version: resolved.tool.version };
         log(`check ${check.id}: running ${check.runner} with ${resolved.tool.name} ${resolved.tool.version}`);
         try {
-          result = await withTimeout(
-            run({ check, runId, dir, root: options.root, model: options.model, artifacts, fixtures: options.fixtures ?? {}, inputs, tool: resolved.tool, tools, timeoutMs, resources }),
-            timeoutMs,
-            check.id,
-          );
+          const checkController = new AbortController();
+          const abort = () => checkController.abort();
+          controller.signal.addEventListener('abort', abort, { once: true });
+          const checkDeadline = setTimeout(() => checkController.abort(), timeoutMs);
+          lifecycle?.phase('execute');
+          try { result = await run({ check, runId, dir, root: options.root, model: options.model, artifacts, fixtures: options.fixtures ?? {}, inputs, tool: resolved.tool, tools, timeoutMs, resources, signal: checkController.signal, budgets, ...(lifecycle ? { lifecycle } : {}), ...(selectedProvider ? { provider: selectedProvider } : {}) }); }
+          finally { clearTimeout(checkDeadline); controller.signal.removeEventListener('abort', abort); }
+          if (checkController.signal.aborted) result = { result: 'UNKNOWN', reason: budgetExceeded ? 'measured resource budget exceeded and child processes awaited' : controller.signal.aborted && !timedOut ? 'run cancelled and child processes awaited' : 'check deadline exceeded and child processes awaited', cause: budgetExceeded ? 'insufficient-resources' : controller.signal.aborted && !timedOut ? 'cancelled' : 'timeout' };
         } catch (e) {
           result = { result: 'UNKNOWN', reason: `${check.runner} stopped with an error: ${e instanceof Error ? e.message : String(e)}` };
         }
@@ -200,15 +272,42 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
       evidence.push(signed);
       const entry: RunRecord['checks'][number] = { check: check.id, required, result: result.result };
       if (result.reason) entry.reason = result.reason;
+      if (result.result === 'UNKNOWN') { entry.cause = result.cause ?? unavailableCause(result.reason); entry.dependency = result.dependency ?? check.tool.name; }
       outcomes.push(entry);
       log(`check ${check.id}: ${result.result} - ${result.reason}`);
+      peakDiskBytes = Math.max(peakDiskBytes, diskBytes(runDir));
     }
   } finally {
-    await resources.releaseAll();
-    if (!options.keepRunDir) rmSync(runDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    clearTimeout(deadline); options.signal?.removeEventListener('abort', cancel);
+    clearInterval(monitor); await monitoring;
+    lifecycle?.phase('capture');
+    // Durable evidence capture precedes every destructive lifecycle action.
+    mkdirSync(join(lifecycleRoot, 'evidence'), { recursive: true });
+    writeFileSync(join(lifecycleRoot, 'evidence', `${runId}.json`), JSON.stringify({ evidence, checks: outcomes }));
+    if (options.store) for (const record of evidence) findings.push(...putEvidence(options.root, record).findings);
+    lifecycle?.phase('quiesce');
+    const releaseClaim = lifecycle ? claimCleanup(lifecycle.file, 'coordinator') : undefined;
+    if (lifecycle && !releaseClaim) throw new Error('cleanup is already claimed by another actor');
+    try { cleanup = await resources.releaseAll(runId); }
+    finally { releaseClaim?.(); }
+    if (!options.keepRunDir && cleanup.state === 'clean') {
+      try { rmSync(runDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }); lifecycle?.state(runDir, 'removed'); }
+      catch (e) { cleanup.state = 'failed'; cleanup.residual.push({ kind: 'directory', identity: runDir }); cleanup.recovery = { journal: runId, action: String(e) }; }
+    }
+    lifecycle?.phase('release');
+    if (lifecycle) {
+      const unresolved = lifecycle.journal.resources.filter((r) => r.state !== 'removed');
+      cleanup.outcomes = lifecycle.journal.resources.map((r) => ({ kind: r.kind, identity: r.identity, outcome: r.state === 'removed' ? 'done' : 'failed' }));
+      cleanup.residual = unresolved.map((r) => ({ kind: r.kind, identity: r.identity }));
+      cleanup.state = unresolved.length ? 'failed' : 'clean';
+      if (unresolved.length) cleanup.recovery = { journal: runId, action: 'recover the durable allocation journal with its trusted provider' }; else delete cleanup.recovery;
+      cleanup.actions = lifecycle.journal.phases.filter((p) => ['quiesce', 'remove-databases', 'stop', 'release'].includes(p.phase)).map((p) => ({ phase: p.phase, action: `${p.phase}: verify recorded run-owned resources`, outcome: cleanup.state === 'clean' ? 'done' : 'failed' }));
+    }
+    if (cleanup.state === 'clean') releaseLease?.();
+    lifecycle?.stopGuardian();
+    writeFileSync(join(lifecycleRoot, 'evidence', `${runId}.cleanup.json`), JSON.stringify(cleanup));
   }
   // The generated views summarize the store, so a record stored while checks still run would change what a later check of the same run reads.
-  if (options.store) for (const record of evidence) findings.push(...putEvidence(options.root, record).findings);
 
   const profiles = [...new Map(checks.map((c) => profileOf(c)).filter((p) => p !== undefined).map((p) => [p!.id, p!])).values()];
   const revisionSet: RunRecord['revisionSet'] = {
@@ -217,6 +316,9 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
     model: modelRevision(options.model),
     profiles: profiles.map((p) => ({ id: p.id, version: p.version, hash: canonicalHash(p) })),
     ...(options.policy ? { policy: { ref: options.policy.id, revision: options.policy.revision, hash: canonicalHash(options.policy) } } : {}),
+    ...(implementationPins.length ? { implementation: implementationPins } : {}),
+    ...(fixturePins.length ? { fixtures: fixturePins } : {}),
+    ...(assertionPins.length ? { assertions: assertionPins } : {}),
   };
   const run: RunRecord = {
     runVersion: 1,
@@ -229,7 +331,13 @@ export async function runChecks(options: RunOptions): Promise<RunOutput> {
     checks: outcomes,
     evidenceRefs: evidence.map((e) => e.id),
     testOutcome: aggregate(outcomes),
+    ...(nativeSql ? { target: { platform: options.model.storage[0]?.platform ?? 'sqlserver-2022', capabilities: [...(options.targetCapabilities ?? [])] }, provider: lifecycle?.journal.provider ?? options.provider ?? { kind: 'localdb' as const, id: 'localdb' }, ...(lifecycle?.engineVersion ? { engineVersion: lifecycle.engineVersion } : {}) } : {}),
+    cleanup,
+    outcome: controller.signal.aborted && !timedOut && !budgetExceeded ? 'cancelled' : aggregate(outcomes) === 'PASS' && cleanup.state === 'clean' ? 'succeeded' : 'unsuccessful',
+    resourceUsage: { peakWorkingSetBytes: lifecycle?.peakWorkingSetBytes ?? 0, diskBytes: peakDiskBytes, phaseDurations: lifecycle?.journal.phases.map((p) => ({ phase: p.phase, milliseconds: Date.parse(p.finishedAt ?? new Date().toISOString()) - Date.parse(p.startedAt) })) ?? [] },
+    limits: { budgets, enforcement: (Object.keys(budgets) as (keyof RunBudgets)[]).map((limit) => ({ limit, enforced: ['totalDeadlineSeconds', 'commandDeadlineSeconds', 'engineStartDeadlineSeconds', 'cleanupDeadlineSeconds'].includes(limit), mechanism: 'bounded child process execution; SQL configuration recorded by native provider' })).concat([{ limit: 'processMemory' as keyof RunBudgets, enforced: false, mechanism: 'SQL max server memory does not constrain all engine allocations; no OS hard memory limit is available' }]) },
   };
+  assertLifecycleResult(run.testOutcome, cleanup, run.outcome!);
   return { run: sign(run), evidence, findings, runDir };
 }
 

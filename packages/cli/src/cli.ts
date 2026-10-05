@@ -1,3 +1,6 @@
+import { cmdQualification } from './qualification-commands.js';
+import { cmdDiagram } from './diagram-commands.js';
+import { cmdFederation } from './federation-commands.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CLI_COMMANDS, CLI_USAGE, canonicalStringify, defaultStates, envelope } from '@loom/core';
@@ -20,6 +23,7 @@ import {
   cmdQualify,
   cmdReadiness,
   cmdWrite,
+  cmdWorkspace,
   type CommandResult,
   type Context,
 } from './commands.js';
@@ -77,11 +81,14 @@ const COMMANDS: Record<string, (c: Context) => CommandResult | Promise<CommandRe
   readiness: cmdReadiness,
   plan: cmdPlan,
   mutate: cmdMutate,
-  qualify: cmdQualify,
+  qualify: cmdQualification,
   evidence: cmdEvidence,
   context: cmdContext,
   describe: cmdDescribe,
   coverage: cmdCoverage,
+  workspace: cmdWorkspace,
+  federation: cmdFederation,
+  diagram: cmdDiagram,
 };
 
 /** Every command word this CLI handles, for the check that the catalogue and the handlers agree. */

@@ -39,6 +39,7 @@ export class App {
   protected readonly tab = signal<Tab>('browse');
   protected readonly canReopen = persistentFilesAvailable();
   protected readonly lastSave = signal<SaveOutcome | null>(null);
+  constructor() { void this.store.connectFromLocation(); }
 
   private readonly exportAttempt = signal<{ model: Model; outcome: ExportOutcome } | null>(null);
 

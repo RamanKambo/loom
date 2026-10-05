@@ -3,6 +3,7 @@ import type { EvaluationInputs, Finding, Model, ResultEnvelope, RevisionSet } fr
 import { profileOf, type Workspace } from './config.js';
 import { resolveModel, type ModelResolution } from './discover.js';
 import { gatherEvaluationInputs, policyHash } from './trust.js';
+import { checkFederation, compositionModels } from './composition.js';
 
 /**
  * Everything a command or a tool call evaluates: the selected model, the
@@ -47,6 +48,7 @@ export function openSession(cwd: string, options: SessionOptions = {}): Session 
     inputs = resolution.model && resolution.model !== resolution.workspace.model ? withArtifactHashes(resolution.model, gathered.inputs) : gathered.inputs;
     trustedRef = gathered.ref;
     findings.push(...gathered.findings);
+    if(resolution.workspace.config.composition?.members.length){const checked=checkFederation(resolution.workspace.root),composed=compositionModels(resolution.workspace.root);findings.push(...checked.findings);if(checked.data){inputs={...inputs,composition:{models:composed.models.map(m=>({modelId:m.modelId,model:m.model})),snapshotDigest:checked.data.snapshotDigest}};if(resolution.model)inputs=withArtifactHashes(resolution.model,inputs);}}
   }
   return {
     mode: resolution.mode,

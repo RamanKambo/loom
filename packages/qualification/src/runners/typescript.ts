@@ -84,7 +84,7 @@ function stage(ctx: RunnerContext, inst: Instance, entry: string, label: string)
 async function compile(ctx: RunnerContext, staged: Staged): Promise<{ ok: true } | { ok: false; unknown?: string; reason: string }> {
   const tsc = await ctx.tools('tsc', { minimum: '5.4' });
   if (tsc.status !== 'found') return { ok: false, unknown: tsc.reason, reason: tsc.reason };
-  const r = await exec(process.execPath, [tsc.tool.path, '-p', join(staged.dir, 'tsconfig.json')], { cwd: staged.dir, timeoutMs: ctx.timeoutMs });
+  const r = await exec(process.execPath, [tsc.tool.path, '-p', join(staged.dir, 'tsconfig.json')], { cwd: staged.dir, timeoutMs: ctx.timeoutMs, signal: ctx.signal });
   if (!r.ok) return { ok: false, unknown: r.reason, reason: r.reason };
   if (r.status !== 0) return { ok: false, reason: firstErrorLine(`${r.stdout}\n${r.stderr}`, /error TS\d+/) };
   return { ok: true };
@@ -132,7 +132,7 @@ async function runTests(ctx: RunnerContext, inst: Instance, entry: string, label
   const env = { ...process.env };
   delete env['NODE_OPTIONS'];
   delete env['NODE_TEST_CONTEXT'];
-  const r = await exec(node.tool.path, ['--test', '--test-reporter=tap', join(staged.out, 'contract.test.js')], { cwd: staged.out, timeoutMs: ctx.timeoutMs, env });
+  const r = await exec(node.tool.path, ['--test', '--test-reporter=tap', join(staged.out, 'contract.test.js')], { cwd: staged.out, timeoutMs: ctx.timeoutMs, signal: ctx.signal, env });
   if (!r.ok) return { unknown: r.reason };
   return readTap(r.stdout) ?? { unknown: `node --test exited ${r.status} without a readable TAP summary` };
 }

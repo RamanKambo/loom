@@ -25,6 +25,7 @@ import { REGRESSIONS } from './regressions.js';
 import { EVALUATION_SECTIONS } from './evaluation.js';
 import { DISCOVERY_SECTIONS } from './discovery.js';
 import { PROJECTION_SECTIONS } from './projections.js';
+import { DIAGRAM_SECTIONS } from './diagram.js';
 import { assert, assertThrows, codesOf, errorsOf, fresh, observe, pick, SelfTestFailure, type Tally } from './harness.js';
 
 /**
@@ -295,6 +296,7 @@ const SECTIONS: readonly Section[] = [
     },
   },
   ...PROJECTION_SECTIONS,
+  ...DIAGRAM_SECTIONS,
   {
     name: 'round trip and formats',
     run: (t) => {

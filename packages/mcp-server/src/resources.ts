@@ -1,6 +1,7 @@
+import { readDiagramResource } from './diagram-tools.js';
 import { OPERATION_CATALOGUE, guide, guides } from '@loom/core';
-import type { CatalogueResource } from '@loom/core';
-import { advertisedDefinitions, schemaResource, schemaUri } from './tools.js';
+import type { CatalogueResource, RecordRef } from '@loom/core';
+import { advertisedDefinitions, handlesOf, schemaResource, schemaUri, workspaceRecord, type ToolContext } from './tools.js';
 
 /** The protocol's error code for a resource the server does not hold. */
 export const RESOURCE_NOT_FOUND = -32002;
@@ -75,12 +76,25 @@ export function guideFamily(resources: readonly CatalogueResource[]): ResourceFa
 const FAMILIES: readonly ResourceFamily[] = [guideFamily(OPERATION_CATALOGUE.resources), SCHEMAS];
 
 /** Every listed resource of every family. */
-export function listResources(): ListedResource[] {
-  return FAMILIES.flatMap((f) => f.list());
+export function listResources(ctx?: ToolContext): ListedResource[] {
+  return [...FAMILIES.flatMap((f) => f.list()), ...(ctx ? handlesOf(ctx).ids().map((id) => ({ uri: `loom://workspaces/${id}/status`, name: `${id} status`, description: 'Current revisions and pending activity for this session workspace.', mimeType: GUIDE_MIME })) : [])];
 }
 
 /** The contents of one resource, or null when no family holds the URI. */
-export function readResource(uri: string): ResourceContents | null {
+export function readResource(uri: string, ctx?: ToolContext): ResourceContents | null {
+  const diagram = /^loom:\/\/workspaces\/([^/]+)\/diagrams\/([^/]+)$/.exec(uri);
+  if (diagram && ctx) { const data = readDiagramResource(ctx, diagram[1]!, diagram[2]!); return data ? { uri, mimeType: GUIDE_MIME, text: JSON.stringify(data) } : null; }
+  const match = /^loom:\/\/workspaces\/([^/]+)\/(status|records\/([^/]+)\/(.+))$/.exec(uri);
+  if (match && ctx) {
+    const id = match[1] as string;
+    const status = handlesOf(ctx).status(id);
+    if (status.refusal) return null;
+    if (match[2] === 'status') return { uri, mimeType: GUIDE_MIME, text: JSON.stringify(status.data) };
+    let recordId: string;
+    try { recordId = decodeURIComponent(match[4] as string); } catch { return null; }
+    const record = workspaceRecord(ctx, id, { kind: match[3], id: recordId } as RecordRef);
+    return record ? { uri, mimeType: GUIDE_MIME, text: JSON.stringify(record) } : null;
+  }
   const family = FAMILIES.find((f) => uri.startsWith(f.prefix));
   return family ? family.read(uri) : null;
 }

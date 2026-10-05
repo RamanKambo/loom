@@ -127,3 +127,7 @@ export { sampleModel } from './sample.js';
 export { selfTest } from './selftest/index.js';
 export { seededRegressions, declaredContradictions } from './selftest/corpus.js';
 export type { CorpusOutcome } from './selftest/corpus.js';
+export { buildExportBundle, buildAgreementBundle, resolveComposition, exactExport, importedMutationRefusal } from './composition.js';
+export type { BundleIdentity, ExportOptions, CompositionModel, CompositionInput, CompositionResult } from './composition.js';
+export { buildDiagram, buildDiagrams, toMermaid, diagramSemanticTable, renderDiagram, resolveRenderingBudget, workflowTrustCrossings } from './diagram.js';
+export type { DiagramOptions } from './diagram.js';

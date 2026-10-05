@@ -18,6 +18,12 @@ const prop = (m: Model, typeId: string, name: string) => pick(type(m, typeId).pr
 const column = (m: Model, storageId: string, name: string) => pick(storage(m, storageId).columns, name);
 
 export const CONTRADICTIONS: readonly Contradiction[] = [
+  { label: 'state machines declare terminal sets', code: 'STATE_TERMINALS_UNDECLARED', break: (m) => { delete type(m, 'order').terminalStates; } },
+  { label: 'nonterminal states have an exit', code: 'STATE_NONTERMINAL_NO_EXIT', break: (m) => { type(m, 'order').terminalStates = []; } },
+  { label: 'terminal states cannot have an exit', code: 'STATE_TERMINAL_HAS_EXIT', break: (m) => { type(m, 'order').terminalStates = ['placed']; } },
+  { label: 'every state is reachable from creation', code: 'STATE_UNREACHABLE', break: (m) => { mutation(m, 'order.create').to = 'cancelled'; } },
+  { label: 'trust containment cannot cycle', code: 'TRUST_BOUNDARY_CYCLE', break: (m) => { pick(m.trustBoundaries, 'tb.internal').within = 'tb.ordering-process'; } },
+  { label: 'a step targets its action owner', code: 'WORKFLOW_STEP_ACTION_OWNER_MISMATCH', break: (m) => { pick(m.workflows, 'wf.checkout').steps[0]!.target = 'billing'; } },
   { label: 'an unknown member is structurally invalid', code: 'STRUCTURAL_INVALID', break: (m) => Object.assign(type(m, 'order'), { table: 'orders' }) },
   { label: 'a fractional negative length is structurally invalid', code: 'STRUCTURAL_INVALID', pathIncludes: 'maxLength', break: (m) => (prop(m, 'order', 'note').bounds = { maxLength: -1.5 }) },
   { label: 'another model format is refused, not reinterpreted', code: 'MODEL_FORMAT_UNSUPPORTED', break: (m) => Object.assign(m, { version: 2 }) },

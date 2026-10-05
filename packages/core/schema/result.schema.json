@@ -5,124 +5,396 @@
     "FindingCode": {
       "description": "Stable finding vocabulary. Severity and the one-line rule of each code live in the core's rule table.",
       "enum": [
-        "STRUCTURAL_INVALID", "MODEL_FORMAT_UNSUPPORTED", "PATCH_INVALID", "PATCH_AMBIGUOUS", "PATCH_TARGET_NOT_FOUND",
-        "DUPLICATE_ID", "DUPLICATE_KEY", "DANGLING_REF", "REFERENCE_KIND_MISMATCH",
-        "BOUNDS_KIND_MISMATCH", "BOUNDS_INVERTED", "ENUM_WITHOUT_VALUES", "ENUM_DUPLICATE_VALUE", "DECIMAL_SHAPE_INVALID",
-        "VALUE_SHAPE_INCOMPLETE", "DEFAULT_KIND_MISMATCH",
-        "TYPE_STATE_PROPERTY_INVALID", "TYPE_KEY_INVALID", "REPRESENTATION_EXPOSES_PRIVATE", "REPRESENTATION_TRUST_VIOLATION",
+        "STRUCTURAL_INVALID",
+        "MODEL_FORMAT_UNSUPPORTED",
+        "PATCH_INVALID",
+        "PATCH_AMBIGUOUS",
+        "PATCH_TARGET_NOT_FOUND",
+        "DUPLICATE_ID",
+        "DUPLICATE_KEY",
+        "DANGLING_REF",
+        "REFERENCE_KIND_MISMATCH",
+        "BOUNDS_KIND_MISMATCH",
+        "BOUNDS_INVERTED",
+        "ENUM_WITHOUT_VALUES",
+        "ENUM_DUPLICATE_VALUE",
+        "DECIMAL_SHAPE_INVALID",
+        "VALUE_SHAPE_INCOMPLETE",
+        "DEFAULT_KIND_MISMATCH",
+        "TYPE_STATE_PROPERTY_INVALID",
+        "TYPE_KEY_INVALID",
+        "REPRESENTATION_EXPOSES_PRIVATE",
+        "REPRESENTATION_TRUST_VIOLATION",
         "OPERATION_REPRESENTATION_MISMATCH",
-        "MAPPING_FIELD_UNKNOWN", "MAPPING_KIND_MISMATCH", "MAPPING_LOSSY_UNDECLARED", "MAPPING_INCOMPLETE", "MAPPING_NULLABILITY_NARROWED",
-        "STORAGE_NONOWNER", "STORAGE_TABLE_DUPLICATE", "STORAGE_KEY_INVALID", "STORAGE_KEY_WIDE", "STORAGE_COLUMN_UNKNOWN_PROPERTY",
-        "STORAGE_COLUMN_TYPE_MISMATCH", "STORAGE_COLUMN_LOSSY", "STORAGE_COLUMN_NULLABILITY_MISMATCH", "STORAGE_PROPERTY_UNMAPPED",
-        "STORAGE_FOREIGN_KEY_INVALID", "STORAGE_TYPE_UNSUPPORTED",
-        "BINDING_NOT_KEY", "BINDING_KIND_MISMATCH", "BINDING_NULLABILITY_MISMATCH", "BINDING_SQL_TYPE_MISMATCH",
-        "HTTP_BINDING_INCOMPLETE", "HTTP_ROUTE_INVALID", "HTTP_ROUTE_DUPLICATE", "HTTP_PATH_PARAMETER_UNDECLARED",
-        "HTTP_PARAMETER_NOT_IN_PATH", "HTTP_PARAMETER_UNKNOWN_PROPERTY", "HTTP_BODY_NOT_ALLOWED", "HTTP_RESPONSE_INVALID",
-        "OPERATION_SECURITY_UNDECLARED", "OPERATION_INVOCATION_INVALID", "OPERATION_ENFORCEMENT_MISSING",
-        "ROUTINE_NONOWNER_STORAGE_WRITE", "ROUTINE_MUTATION_OWNER_MISMATCH", "ROUTINE_EMPTY_RESULTSET", "ROUTINE_WRITE_SET_INCOMPLETE",
-        "ROUTINE_WRITES_UNKNOWN_COLUMN", "ROUTINE_TRANSACTION_SCOPE_INVALID", "ROUTINE_WRITE_OUTSIDE_TRANSACTION", "ENUM_PARAM_UNBOUND",
-        "MUTATION_NONOWNER", "MUTATION_NO_STATE_PROPERTY", "MUTATION_ILLEGAL_STATE", "MUTATION_WRITE_UNKNOWN_PROPERTY",
-        "MUTATION_IMMUTABLE_WRITE", "MUTATION_CREATION_MISSING_REQUIRED", "MUTATION_MIXED_ORIGIN", "MUTATION_STATE_WRITE_UNDECLARED",
-        "MUTATION_NO_REQUIREMENT", "MUTATION_NO_SCENARIO",
-        "PREDICATE_PROPERTY_UNKNOWN", "PREDICATE_TYPE_MISMATCH", "PREDICATE_UNVERIFIED", "INVARIANT_ENFORCER_MISSING",
+        "MAPPING_FIELD_UNKNOWN",
+        "MAPPING_KIND_MISMATCH",
+        "MAPPING_LOSSY_UNDECLARED",
+        "MAPPING_INCOMPLETE",
+        "MAPPING_NULLABILITY_NARROWED",
+        "STORAGE_NONOWNER",
+        "STORAGE_TABLE_DUPLICATE",
+        "STORAGE_KEY_INVALID",
+        "STORAGE_KEY_WIDE",
+        "STORAGE_COLUMN_UNKNOWN_PROPERTY",
+        "STORAGE_COLUMN_TYPE_MISMATCH",
+        "STORAGE_COLUMN_LOSSY",
+        "STORAGE_COLUMN_NULLABILITY_MISMATCH",
+        "STORAGE_PROPERTY_UNMAPPED",
+        "STORAGE_FOREIGN_KEY_INVALID",
+        "STORAGE_TYPE_UNSUPPORTED",
+        "BINDING_NOT_KEY",
+        "BINDING_KIND_MISMATCH",
+        "BINDING_NULLABILITY_MISMATCH",
+        "BINDING_SQL_TYPE_MISMATCH",
+        "HTTP_BINDING_INCOMPLETE",
+        "HTTP_ROUTE_INVALID",
+        "HTTP_ROUTE_DUPLICATE",
+        "HTTP_PATH_PARAMETER_UNDECLARED",
+        "HTTP_PARAMETER_NOT_IN_PATH",
+        "HTTP_PARAMETER_UNKNOWN_PROPERTY",
+        "HTTP_BODY_NOT_ALLOWED",
+        "HTTP_RESPONSE_INVALID",
+        "OPERATION_SECURITY_UNDECLARED",
+        "OPERATION_INVOCATION_INVALID",
+        "OPERATION_ENFORCEMENT_MISSING",
+        "ROUTINE_NONOWNER_STORAGE_WRITE",
+        "ROUTINE_MUTATION_OWNER_MISMATCH",
+        "ROUTINE_EMPTY_RESULTSET",
+        "ROUTINE_WRITE_SET_INCOMPLETE",
+        "ROUTINE_WRITES_UNKNOWN_COLUMN",
+        "ROUTINE_TRANSACTION_SCOPE_INVALID",
+        "ROUTINE_WRITE_OUTSIDE_TRANSACTION",
+        "ENUM_PARAM_UNBOUND",
+        "MUTATION_NONOWNER",
+        "MUTATION_NO_STATE_PROPERTY",
+        "MUTATION_ILLEGAL_STATE",
+        "MUTATION_WRITE_UNKNOWN_PROPERTY",
+        "MUTATION_IMMUTABLE_WRITE",
+        "MUTATION_CREATION_MISSING_REQUIRED",
+        "MUTATION_MIXED_ORIGIN",
+        "MUTATION_STATE_WRITE_UNDECLARED",
+        "MUTATION_NO_REQUIREMENT",
+        "MUTATION_NO_SCENARIO",
+        "PREDICATE_PROPERTY_UNKNOWN",
+        "PREDICATE_TYPE_MISMATCH",
+        "PREDICATE_UNVERIFIED",
+        "INVARIANT_ENFORCER_MISSING",
         "INVARIANT_ENFORCEMENT_CONFLICT",
-        "WORKFLOW_DEPENDENCY_CYCLE", "WORKFLOW_IMPORT_VERSION_MISMATCH", "EDGE_BUILD_CYCLE", "EDGE_RUNTIME_CYCLE_UNDEFINED",
-        "REQUIREMENT_WITHOUT_CRITERIA", "CRITERION_UNCOVERED", "CRITERION_SELF_ORACLE", "SOURCE_REFERENCE_MISSING",
-        "CLAIM_ACCEPTANCE_UNVERIFIED", "CONCERN_UNRESOLVED", "DECISION_UNJUSTIFIED", "DECISION_ASSUMPTION_INVALIDATED",
-        "DECISION_INPUT_CHANGED", "RETAINED_BEHAVIOR_UNCOVERED", "BASELINE_EXECUTION_UNKNOWN", "RATIONALE_REVIEW_REQUIRED",
-        "ASSUMPTION_EXPIRED", "UNKNOWN_OPEN", "INVENTORY_REPLACEMENT_UNDECLARED",
-        "HOST_CAPABILITY_MISMATCH", "COHOSTING_UNJUSTIFIED", "COMPONENT_UNDEPLOYED", "PORTABILITY_VIOLATION",
-        "VERSION_SUPPORT_INVALID", "VERSION_BINDING_UNSUPPORTED", "VERSION_RETIREMENT_BLOCKED",
-        "PUBLISHED_CONTRACT_UNRESOLVED", "PUBLISHED_CONTRACT_DIGEST_MISMATCH", "PUBLISHED_CONTRACT_INCOMPATIBLE",
+        "WORKFLOW_DEPENDENCY_CYCLE",
+        "WORKFLOW_IMPORT_VERSION_MISMATCH",
+        "EDGE_BUILD_CYCLE",
+        "EDGE_RUNTIME_CYCLE_UNDEFINED",
+        "REQUIREMENT_WITHOUT_CRITERIA",
+        "CRITERION_UNCOVERED",
+        "CRITERION_SELF_ORACLE",
+        "SOURCE_REFERENCE_MISSING",
+        "CLAIM_ACCEPTANCE_UNVERIFIED",
+        "CONCERN_UNRESOLVED",
+        "DECISION_UNJUSTIFIED",
+        "DECISION_ASSUMPTION_INVALIDATED",
+        "DECISION_INPUT_CHANGED",
+        "RETAINED_BEHAVIOR_UNCOVERED",
+        "BASELINE_EXECUTION_UNKNOWN",
+        "RATIONALE_REVIEW_REQUIRED",
+        "ASSUMPTION_EXPIRED",
+        "UNKNOWN_OPEN",
+        "INVENTORY_REPLACEMENT_UNDECLARED",
+        "HOST_CAPABILITY_MISMATCH",
+        "COHOSTING_UNJUSTIFIED",
+        "COMPONENT_UNDEPLOYED",
+        "PORTABILITY_VIOLATION",
+        "VERSION_SUPPORT_INVALID",
+        "VERSION_BINDING_UNSUPPORTED",
+        "VERSION_RETIREMENT_BLOCKED",
+        "PUBLISHED_CONTRACT_UNRESOLVED",
+        "PUBLISHED_CONTRACT_DIGEST_MISMATCH",
+        "PUBLISHED_CONTRACT_INCOMPATIBLE",
         "PUBLISHED_CONTRACT_REFERENCE_UNKNOWN",
-        "MIGRATION_MISSING", "MIGRATION_DEPENDENCY_CYCLE", "MIGRATION_VERSION_INVALID",
-        "BREAKING_CHANGE_WITHOUT_VERSION_BUMP", "BREAKING_CHANGE_UNACKNOWLEDGED", "CHANGE_REQUIRES_REVIEW", "CHANGE_UNACCEPTED",
-        "CHANGE_PROHIBITED", "FROZEN_COMPONENT_CHANGED",
-        "BASELINE_MISSING", "BASELINE_UNTRUSTED", "BASELINE_HASH_MISMATCH", "ACCEPTANCE_MISSING", "ACCEPTANCE_UNTRUSTED",
-        "POLICY_UNRESOLVED", "POLICY_UNTRUSTED", "POLICY_WEAKENED", "SEALED_FLAG_UNBACKED", "STALE_BASE_REVISION",
-        "EVIDENCE_MISSING", "EVIDENCE_FAILED", "EVIDENCE_UNKNOWN", "EVIDENCE_STALE", "EVIDENCE_UNTRUSTED",
-        "EVIDENCE_SUBSTITUTE_NOT_PERMITTED", "EVIDENCE_NOT_APPLICABLE_UNJUSTIFIED", "EVIDENCE_REVISION_SET_INCONSISTENT",
+        "MIGRATION_MISSING",
+        "MIGRATION_DEPENDENCY_CYCLE",
+        "MIGRATION_VERSION_INVALID",
+        "BREAKING_CHANGE_WITHOUT_VERSION_BUMP",
+        "BREAKING_CHANGE_UNACKNOWLEDGED",
+        "CHANGE_REQUIRES_REVIEW",
+        "CHANGE_UNACCEPTED",
+        "CHANGE_PROHIBITED",
+        "FROZEN_COMPONENT_CHANGED",
+        "BASELINE_MISSING",
+        "BASELINE_UNTRUSTED",
+        "BASELINE_HASH_MISMATCH",
+        "ACCEPTANCE_MISSING",
+        "ACCEPTANCE_UNTRUSTED",
+        "POLICY_UNRESOLVED",
+        "POLICY_UNTRUSTED",
+        "POLICY_WEAKENED",
+        "SEALED_FLAG_UNBACKED",
+        "STALE_BASE_REVISION",
+        "EVIDENCE_MISSING",
+        "EVIDENCE_FAILED",
+        "EVIDENCE_UNKNOWN",
+        "EVIDENCE_STALE",
+        "EVIDENCE_UNTRUSTED",
+        "EVIDENCE_SUBSTITUTE_NOT_PERMITTED",
+        "EVIDENCE_NOT_APPLICABLE_UNJUSTIFIED",
+        "EVIDENCE_REVISION_SET_INCONSISTENT",
         "EVIDENCE_STORE_UNAVAILABLE",
-        "READINESS_PREREQUISITE_UNMET", "READINESS_MATURITY_INSUFFICIENT", "READINESS_BLOCKED_BY_UNKNOWN",
-        "READINESS_BLOCKED_BY_ASSUMPTION", "READINESS_SUBSTITUTE_APPLIED", "READINESS_INPUT_MISSING", "WORKSPACE_UNPLANNED",
-        "QUALIFICATION_NOT_ESTABLISHED", "VALIDATION_FINDINGS",
-        "PROFILE_UNSUPPORTED_CONSTRUCT", "PROJECTION_DRAFT", "PROJECTION_COVERAGE_LOSS", "PROJECTION_INVALID", "DIAGRAM_TERMINAL_UNFAITHFUL",
-        "SCOPE_OVERLAP", "SCOPE_COMPONENT_UNKNOWN", "SCOPE_ROOT_INVALID", "SCOPE_ROOT_MISSING", "SCOPE_COMPONENT_ROOT_OVERLAP",
-        "SCOPE_UNRESOLVED", "SCOPE_NO_OWNER", "CHECKOUT_MISSING", "DESCRIPTOR_UNREADABLE", "ROOT_INACCESSIBLE", "WRITE_OUTSIDE_WORKSPACE",
-        "INIT_NOT_REPOSITORY_ROOT", "INIT_ALREADY_INITIALIZED", "INIT_REPAIR_REQUIRED",
-        "CONFIG_INVALID", "CONFIG_MODEL_MISSING", "CONFIG_PROFILE_UNKNOWN", "CONFIG_PROFILE_NOT_PERMITTED",
-        "OUTPUT_COLLISION", "OUTPUT_OUTSIDE_WORKSPACE", "OUTPUT_PROTECTED_TARGET", "OUTPUT_DRIFT", "OUTPUT_MISSING",
-        "MANIFEST_MISSING", "MANIFEST_STALE", "INSTALL_INCOMPLETE", "VALIDATION_ONLY_MODE", "CLIENT_CAPABILITY_UNSUPPORTED",
-        "DOCUMENT_LINK_BROKEN", "DOCUMENT_RECORD_UNKNOWN", "DOCUMENT_HISTORY_MARKER", "DOCUMENT_DUPLICATES_GENERATED",
-        "DOCUMENT_INTERFACE_DROPPED", "DOCUMENT_PROHIBITED_MARKER", "CAPABILITY_CODE_UNRESOLVED", "CAPABILITY_CONTRACT_UNRESOLVED", "CAPABILITY_CASE_UNKNOWN",
-        "CAPABILITY_CASE_FAILED"
+        "READINESS_PREREQUISITE_UNMET",
+        "READINESS_MATURITY_INSUFFICIENT",
+        "READINESS_BLOCKED_BY_UNKNOWN",
+        "READINESS_BLOCKED_BY_ASSUMPTION",
+        "READINESS_SUBSTITUTE_APPLIED",
+        "READINESS_INPUT_MISSING",
+        "WORKSPACE_UNPLANNED",
+        "QUALIFICATION_NOT_ESTABLISHED",
+        "VALIDATION_FINDINGS",
+        "PROFILE_UNSUPPORTED_CONSTRUCT",
+        "PROJECTION_DRAFT",
+        "PROJECTION_COVERAGE_LOSS",
+        "PROJECTION_INVALID",
+        "DIAGRAM_TERMINAL_UNFAITHFUL",
+        "SCOPE_OVERLAP",
+        "SCOPE_COMPONENT_UNKNOWN",
+        "SCOPE_ROOT_INVALID",
+        "SCOPE_ROOT_MISSING",
+        "SCOPE_COMPONENT_ROOT_OVERLAP",
+        "SCOPE_UNRESOLVED",
+        "SCOPE_NO_OWNER",
+        "CHECKOUT_MISSING",
+        "DESCRIPTOR_UNREADABLE",
+        "ROOT_INACCESSIBLE",
+        "WRITE_OUTSIDE_WORKSPACE",
+        "INIT_NOT_REPOSITORY_ROOT",
+        "INIT_ALREADY_INITIALIZED",
+        "INIT_REPAIR_REQUIRED",
+        "CONFIG_INVALID",
+        "CONFIG_MODEL_MISSING",
+        "CONFIG_PROFILE_UNKNOWN",
+        "CONFIG_PROFILE_NOT_PERMITTED",
+        "OUTPUT_COLLISION",
+        "OUTPUT_OUTSIDE_WORKSPACE",
+        "OUTPUT_PROTECTED_TARGET",
+        "OUTPUT_DRIFT",
+        "OUTPUT_MISSING",
+        "MANIFEST_MISSING",
+        "MANIFEST_STALE",
+        "INSTALL_INCOMPLETE",
+        "VALIDATION_ONLY_MODE",
+        "CLIENT_CAPABILITY_UNSUPPORTED",
+        "DOCUMENT_LINK_BROKEN",
+        "DOCUMENT_RECORD_UNKNOWN",
+        "DOCUMENT_HISTORY_MARKER",
+        "DOCUMENT_DUPLICATES_GENERATED",
+        "DOCUMENT_INTERFACE_DROPPED",
+        "DOCUMENT_PROHIBITED_MARKER",
+        "CAPABILITY_CODE_UNRESOLVED",
+        "CAPABILITY_CONTRACT_UNRESOLVED",
+        "CAPABILITY_CASE_UNKNOWN",
+        "CAPABILITY_CASE_FAILED",
+        "STATE_TERMINALS_UNDECLARED",
+        "STATE_NONTERMINAL_NO_EXIT",
+        "STATE_TERMINAL_HAS_EXIT",
+        "STATE_UNREACHABLE",
+        "TRUST_BOUNDARY_CYCLE",
+        "WORKFLOW_STEP_ACTION_OWNER_MISMATCH"
       ]
     },
-    "Severity": { "enum": ["error", "warning", "info"] },
+    "Severity": {
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ]
+    },
     "AffectedElement": {
       "description": "An element affected by a change or a finding, with the dependency path or direct reason that explains why.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["ref", "reason", "path"],
+      "required": [
+        "ref",
+        "reason",
+        "path"
+      ],
       "properties": {
-        "ref": { "$ref": "common.schema.json#/$defs/RecordRef" },
-        "reason": { "enum": ["direct-change", "depends-on", "former-consumer", "new-consumer", "co-hosted", "evidence-input"] },
+        "ref": {
+          "$ref": "common.schema.json#/$defs/RecordRef"
+        },
+        "reason": {
+          "enum": [
+            "direct-change",
+            "depends-on",
+            "former-consumer",
+            "new-consumer",
+            "co-hosted",
+            "evidence-input"
+          ]
+        },
         "path": {
           "description": "Ids from the changed element to the affected one; a direct change has a one-element path.",
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "edgeKinds": { "type": "array", "items": { "enum": ["semantic", "structural", "runtime", "build", "integration", "reference"] } }
+        "edgeKinds": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "semantic",
+              "structural",
+              "runtime",
+              "build",
+              "integration",
+              "reference"
+            ]
+          }
+        }
       }
     },
     "Repair": {
       "description": "A repair alternative. An intent-changing repair always requires acceptance and is never applied automatically.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "description", "kind", "requiresAcceptance", "preconditions", "consequences"],
+      "required": [
+        "id",
+        "description",
+        "kind",
+        "requiresAcceptance",
+        "preconditions",
+        "consequences"
+      ],
       "properties": {
-        "id": { "$ref": "common.schema.json#/$defs/Id" },
-        "description": { "$ref": "common.schema.json#/$defs/Text" },
-        "kind": { "enum": ["mechanical", "intent-change"] },
-        "requiresAcceptance": { "type": "boolean" },
-        "preconditions": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
-        "consequences": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Text" } },
-        "patches": { "type": "array", "items": { "$ref": "patch.schema.json#/$defs/Patch" } }
+        "id": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "description": {
+          "$ref": "common.schema.json#/$defs/Text"
+        },
+        "kind": {
+          "enum": [
+            "mechanical",
+            "intent-change"
+          ]
+        },
+        "requiresAcceptance": {
+          "type": "boolean"
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Text"
+          }
+        },
+        "consequences": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Text"
+          }
+        },
+        "patches": {
+          "type": "array",
+          "items": {
+            "$ref": "patch.schema.json#/$defs/Patch"
+          }
+        }
       }
     },
     "Finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "severity", "path", "message"],
+      "required": [
+        "code",
+        "severity",
+        "path",
+        "message"
+      ],
       "properties": {
-        "code": { "$ref": "#/$defs/FindingCode" },
-        "severity": { "$ref": "#/$defs/Severity" },
-        "path": { "type": "string" },
-        "message": { "type": "string" },
-        "impact": { "type": "array", "items": { "$ref": "#/$defs/AffectedElement" } },
-        "fix": { "type": "string" },
-        "refs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } },
-        "repairs": { "type": "array", "items": { "$ref": "#/$defs/Repair" } }
+        "code": {
+          "$ref": "#/$defs/FindingCode"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "path": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "impact": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AffectedElement"
+          }
+        },
+        "fix": {
+          "type": "string"
+        },
+        "refs": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/RecordRef"
+          }
+        },
+        "repairs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Repair"
+          }
+        }
       }
     },
     "ChangeKind": {
       "description": "'requiresReview' marks a delta no comparison rule classifies; it is never treated as compatible.",
-      "enum": ["breaking", "compatible", "requiresReview", "nonSemantic"]
+      "enum": [
+        "breaking",
+        "compatible",
+        "requiresReview",
+        "nonSemantic"
+      ]
     },
     "Change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "kind", "dimension", "rule", "reason", "element", "elementKind", "consumers"],
+      "required": [
+        "path",
+        "kind",
+        "dimension",
+        "rule",
+        "reason",
+        "element",
+        "elementKind",
+        "consumers"
+      ],
       "properties": {
-        "path": { "type": "string" },
-        "kind": { "$ref": "#/$defs/ChangeKind" },
-        "dimension": { "$ref": "common.schema.json#/$defs/Dimension" },
-        "rule": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
-        "reason": { "type": "string" },
-        "element": { "type": "string" },
-        "elementKind": { "$ref": "common.schema.json#/$defs/RecordKind" },
-        "consumers": { "type": "array", "items": { "$ref": "#/$defs/AffectedElement" } },
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChangeKind"
+        },
+        "dimension": {
+          "$ref": "common.schema.json#/$defs/Dimension"
+        },
+        "rule": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "element": {
+          "type": "string"
+        },
+        "elementKind": {
+          "$ref": "common.schema.json#/$defs/RecordKind"
+        },
+        "consumers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AffectedElement"
+          }
+        },
         "before": {},
         "after": {}
       }
@@ -130,146 +402,328 @@
     "Reason": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "message", "refs"],
+      "required": [
+        "code",
+        "message",
+        "refs"
+      ],
       "properties": {
-        "code": { "$ref": "#/$defs/FindingCode" },
-        "message": { "type": "string" },
-        "refs": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/RecordRef" } }
+        "code": {
+          "$ref": "#/$defs/FindingCode"
+        },
+        "message": {
+          "type": "string"
+        },
+        "refs": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/RecordRef"
+          }
+        }
       }
     },
     "ValidationState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "reasons"],
+      "required": [
+        "state",
+        "reasons"
+      ],
       "properties": {
-        "state": { "enum": ["valid", "invalid", "notEvaluated"] },
-        "profile": { "type": "string" },
-        "reasons": { "type": "array", "items": { "$ref": "#/$defs/Reason" } }
+        "state": {
+          "enum": [
+            "valid",
+            "invalid",
+            "notEvaluated"
+          ]
+        },
+        "profile": {
+          "type": "string"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reason"
+          }
+        }
       }
     },
     "ReadinessState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "reasons"],
+      "required": [
+        "state",
+        "reasons"
+      ],
       "properties": {
-        "state": { "enum": ["ready", "blocked", "unresolved", "notEvaluated"] },
-        "task": { "$ref": "common.schema.json#/$defs/TaskClass" },
-        "reasons": { "type": "array", "items": { "$ref": "#/$defs/Reason" } }
+        "state": {
+          "enum": [
+            "ready",
+            "blocked",
+            "unresolved",
+            "notEvaluated"
+          ]
+        },
+        "task": {
+          "$ref": "common.schema.json#/$defs/TaskClass"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reason"
+          }
+        }
       }
     },
     "QualificationState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "reasons"],
+      "required": [
+        "state",
+        "reasons"
+      ],
       "properties": {
-        "state": { "enum": ["qualified", "unqualified", "unknown", "notEvaluated"] },
-        "reasons": { "type": "array", "items": { "$ref": "#/$defs/Reason" } }
+        "state": {
+          "enum": [
+            "qualified",
+            "unqualified",
+            "unknown",
+            "notEvaluated"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reason"
+          }
+        }
       }
     },
     "AcceptanceState": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "reasons"],
+      "required": [
+        "state",
+        "reasons"
+      ],
       "properties": {
-        "state": { "enum": ["accepted", "unaccepted", "notEvaluated"] },
-        "baseline": { "$ref": "common.schema.json#/$defs/Id" },
-        "reasons": { "type": "array", "items": { "$ref": "#/$defs/Reason" } }
+        "state": {
+          "enum": [
+            "accepted",
+            "unaccepted",
+            "notEvaluated"
+          ]
+        },
+        "baseline": {
+          "$ref": "common.schema.json#/$defs/Id"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reason"
+          }
+        }
       }
     },
     "States": {
       "description": "Independent result dimensions. A valid model can be implementation-ready under a permitted substitute and still be unqualified for integration.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["validation", "readiness", "qualification", "acceptance"],
+      "required": [
+        "validation",
+        "readiness",
+        "qualification",
+        "acceptance"
+      ],
       "properties": {
-        "validation": { "$ref": "#/$defs/ValidationState" },
-        "readiness": { "$ref": "#/$defs/ReadinessState" },
-        "qualification": { "$ref": "#/$defs/QualificationState" },
-        "acceptance": { "$ref": "#/$defs/AcceptanceState" }
+        "validation": {
+          "$ref": "#/$defs/ValidationState"
+        },
+        "readiness": {
+          "$ref": "#/$defs/ReadinessState"
+        },
+        "qualification": {
+          "$ref": "#/$defs/QualificationState"
+        },
+        "acceptance": {
+          "$ref": "#/$defs/AcceptanceState"
+        }
       }
     },
     "RevisionSet": {
       "description": "Exact inputs a result was evaluated against. Each member versions independently.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["contractDigest", "resultVersion"],
+      "required": [
+        "contractDigest",
+        "resultVersion"
+      ],
       "properties": {
-        "contractDigest": { "$ref": "common.schema.json#/$defs/Hash" },
-        "resultVersion": { "const": 1 },
-        "modelFormat": { "type": "integer", "minimum": 1 },
-        "model": { "$ref": "common.schema.json#/$defs/Hash" },
+        "contractDigest": {
+          "$ref": "common.schema.json#/$defs/Hash"
+        },
+        "resultVersion": {
+          "const": 1
+        },
+        "modelFormat": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "model": {
+          "$ref": "common.schema.json#/$defs/Hash"
+        },
         "config": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["hash", "configVersion"],
+          "required": [
+            "hash",
+            "configVersion"
+          ],
           "properties": {
-            "hash": { "$ref": "common.schema.json#/$defs/Hash" },
-            "configVersion": { "type": "integer", "minimum": 1 }
+            "hash": {
+              "$ref": "common.schema.json#/$defs/Hash"
+            },
+            "configVersion": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         },
         "policy": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ref", "revision", "hash"],
+          "required": [
+            "ref",
+            "revision",
+            "hash"
+          ],
           "properties": {
-            "ref": { "$ref": "common.schema.json#/$defs/Id" },
-            "revision": { "type": "integer", "minimum": 1 },
-            "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            "ref": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "hash": {
+              "$ref": "common.schema.json#/$defs/Hash"
+            }
           }
         },
         "baseline": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "hash"],
+          "required": [
+            "id",
+            "hash"
+          ],
           "properties": {
-            "id": { "$ref": "common.schema.json#/$defs/Id" },
-            "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+            "id": {
+              "$ref": "common.schema.json#/$defs/Id"
+            },
+            "hash": {
+              "$ref": "common.schema.json#/$defs/Hash"
+            }
           }
         },
         "profile": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "version"],
+          "required": [
+            "id",
+            "version"
+          ],
           "properties": {
-            "id": { "type": "string" },
-            "version": { "type": "integer", "minimum": 1 }
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         },
-        "imports": { "description": "Hash of the canonical JSON of the workspace's import pins, set on every result evaluated against a workspace.", "$ref": "common.schema.json#/$defs/Hash" },
-        "sources": { "type": "array", "items": { "$ref": "#/$defs/SourceRevision" } }
+        "imports": {
+          "description": "Hash of the canonical JSON of the workspace's import pins, set on every result evaluated against a workspace.",
+          "$ref": "common.schema.json#/$defs/Hash"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRevision"
+          }
+        }
       }
     },
     "SourceRevision": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "revision"],
+      "required": [
+        "repository",
+        "revision"
+      ],
       "properties": {
-        "repository": { "$ref": "common.schema.json#/$defs/RelativePath" },
-        "revision": { "$ref": "common.schema.json#/$defs/CommitId" },
-        "dirty": { "type": "boolean" }
+        "repository": {
+          "$ref": "common.schema.json#/$defs/RelativePath"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/CommitId"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
       }
     },
     "SourceSnapshot": {
       "description": "The exact source one model was read from: its repository identity, commit, the digest of its content, whether the working tree was dirty and every input file with its hash. Dirty content is exploratory and never committed release evidence.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["modelId", "repositoryIdentity", "commit", "contentDigest", "dirty", "inputFiles"],
+      "required": [
+        "modelId",
+        "repositoryIdentity",
+        "commit",
+        "contentDigest",
+        "dirty",
+        "inputFiles"
+      ],
       "properties": {
-        "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
-        "repositoryIdentity": { "description": "Opaque or descriptive identity of the repository, such as its remote host and path; never a local absolute path.", "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?![A-Za-z]:)(?![/\\\\])[^\\s\\\\]+$" },
-        "commit": { "$ref": "common.schema.json#/$defs/CommitId" },
-        "contentDigest": { "description": "Hash of the canonical JSON of the input files and their hashes.", "$ref": "common.schema.json#/$defs/Hash" },
-        "dirty": { "type": "boolean" },
+        "modelId": {
+          "$ref": "common.schema.json#/$defs/ModelId"
+        },
+        "repositoryIdentity": {
+          "description": "Opaque or descriptive identity of the repository, such as its remote host and path; never a local absolute path.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^(?![A-Za-z]:)(?![/\\\\])[^\\s\\\\]+$"
+        },
+        "commit": {
+          "$ref": "common.schema.json#/$defs/CommitId"
+        },
+        "contentDigest": {
+          "description": "Hash of the canonical JSON of the input files and their hashes.",
+          "$ref": "common.schema.json#/$defs/Hash"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
         "inputFiles": {
           "type": "array",
           "x-loom-key": "path",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["path", "hash"],
+            "required": [
+              "path",
+              "hash"
+            ],
             "properties": {
-              "path": { "$ref": "common.schema.json#/$defs/RelativePath" },
-              "hash": { "$ref": "common.schema.json#/$defs/Hash" }
+              "path": {
+                "$ref": "common.schema.json#/$defs/RelativePath"
+              },
+              "hash": {
+                "$ref": "common.schema.json#/$defs/Hash"
+              }
             }
           }
         }
@@ -279,9 +733,14 @@
       "description": "The deterministic identity of a composition's inputs: for each participating model, ordered by model id, its model, configuration, policy, contract and generator hashes and its import pins. It holds no time and no local absolute path, so its digest is the same on every machine.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["vectorVersion", "models"],
+      "required": [
+        "vectorVersion",
+        "models"
+      ],
       "properties": {
-        "vectorVersion": { "const": 1 },
+        "vectorVersion": {
+          "const": 1
+        },
         "models": {
           "type": "array",
           "minItems": 1,
@@ -290,15 +749,50 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["modelId", "model", "config", "policy", "contract", "generator", "imports"],
+            "required": [
+              "modelId",
+              "model",
+              "config",
+              "policy",
+              "contract",
+              "generator",
+              "imports"
+            ],
             "properties": {
-              "modelId": { "$ref": "common.schema.json#/$defs/ModelId" },
-              "model": { "$ref": "common.schema.json#/$defs/Hash" },
-              "config": { "$ref": "common.schema.json#/$defs/Hash" },
-              "policy": { "description": "Hash of the trusted policy, or null when the model names none.", "anyOf": [{ "$ref": "common.schema.json#/$defs/Hash" }, { "type": "null" }] },
-              "contract": { "description": "The contract digest the model was evaluated under.", "$ref": "common.schema.json#/$defs/Hash" },
-              "generator": { "description": "Hash of the identity of the generator that renders its artifacts.", "$ref": "common.schema.json#/$defs/Hash" },
-              "imports": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/ContractPin" } }
+              "modelId": {
+                "$ref": "common.schema.json#/$defs/ModelId"
+              },
+              "model": {
+                "$ref": "common.schema.json#/$defs/Hash"
+              },
+              "config": {
+                "$ref": "common.schema.json#/$defs/Hash"
+              },
+              "policy": {
+                "description": "Hash of the trusted policy, or null when the model names none.",
+                "anyOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/Hash"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "contract": {
+                "description": "The contract digest the model was evaluated under.",
+                "$ref": "common.schema.json#/$defs/Hash"
+              },
+              "generator": {
+                "description": "Hash of the identity of the generator that renders its artifacts.",
+                "$ref": "common.schema.json#/$defs/Hash"
+              },
+              "imports": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/ContractPin"
+                }
+              }
             }
           }
         }
@@ -307,55 +801,135 @@
     "Completeness": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["complete", "truncated", "omitted"],
+      "required": [
+        "complete",
+        "truncated",
+        "omitted"
+      ],
       "properties": {
-        "complete": { "type": "boolean" },
-        "truncated": { "type": "boolean" },
+        "complete": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
         "omitted": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["reason"],
+            "required": [
+              "reason"
+            ],
             "properties": {
-              "ref": { "$ref": "common.schema.json#/$defs/RecordRef" },
-              "section": { "type": "string" },
-              "reason": { "enum": ["budget", "out-of-scope", "unavailable", "not-requested", "not-evaluated"] },
-              "continuation": { "type": "string" }
+              "ref": {
+                "$ref": "common.schema.json#/$defs/RecordRef"
+              },
+              "section": {
+                "type": "string"
+              },
+              "reason": {
+                "enum": [
+                  "budget",
+                  "out-of-scope",
+                  "unavailable",
+                  "not-requested",
+                  "not-evaluated"
+                ]
+              },
+              "continuation": {
+                "type": "string"
+              }
             }
           }
         },
-        "continuation": { "type": "string" }
+        "continuation": {
+          "type": "string"
+        }
       }
     },
     "RefusalCause": {
       "description": "Why a request was refused. 'unknown-handle' applies when a workspace or run id names no handle or run of the requesting session, which is distinct from 'unresolved-context', where no model or workspace governs the request; the remedy is to inspect or open the workspace. 'cleanup-incomplete' applies when closing a handle or cancelling a run leaves an owned resource, which the result reports with its recovery while evidence and journals are kept. 'recovery-required' applies when a federation journal holds an incomplete change across repositories, which blocks further composed writes and composed readiness until recovery completes or restores it. 'access-denied' applies when the access or capabilities of the handle do not permit the action: read access that would mutate, publish, run checks or change policy, a handle without the publish or qualify capability the action needs, a path outside the server's configured allowed roots, or any handle asked to grant acceptance, which no handle grants; the remedy is a handle opened with the access the action needs, or a path inside an allowed root.",
-      "enum": ["invalid-input", "unresolved-context", "unmet-prerequisite", "policy-failure", "stale-base", "unknown-handle", "access-denied", "cleanup-incomplete", "recovery-required"]
+      "enum": [
+        "invalid-input",
+        "unresolved-context",
+        "unmet-prerequisite",
+        "policy-failure",
+        "stale-base",
+        "unknown-handle",
+        "access-denied",
+        "cleanup-incomplete",
+        "recovery-required"
+      ]
     },
     "Refusal": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cause", "message"],
+      "required": [
+        "cause",
+        "message"
+      ],
       "properties": {
-        "cause": { "$ref": "#/$defs/RefusalCause" },
-        "message": { "type": "string" },
-        "nextActions": { "description": "Concrete actions that would let the request succeed, such as asking again from the first page once a continuation went stale; each one's arguments satisfy its tool's input.", "type": "array", "items": { "$ref": "tools.schema.json#/$defs/NextAction" } }
+        "cause": {
+          "$ref": "#/$defs/RefusalCause"
+        },
+        "message": {
+          "type": "string"
+        },
+        "nextActions": {
+          "description": "Concrete actions that would let the request succeed, such as asking again from the first page once a continuation went stale; each one's arguments satisfy its tool's input.",
+          "type": "array",
+          "items": {
+            "$ref": "tools.schema.json#/$defs/NextAction"
+          }
+        }
       }
     },
     "ResultEnvelope": {
       "description": "Every CLI, MCP and designer result. 'data' carries the tool-specific payload declared by the tool's output contract.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["resultVersion", "tool", "outcome", "revisions", "states", "findings", "completeness"],
+      "required": [
+        "resultVersion",
+        "tool",
+        "outcome",
+        "revisions",
+        "states",
+        "findings",
+        "completeness"
+      ],
       "properties": {
-        "resultVersion": { "const": 1 },
-        "tool": { "type": "string", "pattern": "^[a-z][A-Za-z]*(\\.[a-z][A-Za-z]*)*$" },
-        "outcome": { "enum": ["ok", "refused"] },
-        "revisions": { "$ref": "#/$defs/RevisionSet" },
-        "states": { "$ref": "#/$defs/States" },
-        "findings": { "type": "array", "items": { "$ref": "#/$defs/Finding" } },
-        "completeness": { "$ref": "#/$defs/Completeness" },
-        "refusal": { "$ref": "#/$defs/Refusal" },
+        "resultVersion": {
+          "const": 1
+        },
+        "tool": {
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z]*(\\.[a-z][A-Za-z]*)*$"
+        },
+        "outcome": {
+          "enum": [
+            "ok",
+            "refused"
+          ]
+        },
+        "revisions": {
+          "$ref": "#/$defs/RevisionSet"
+        },
+        "states": {
+          "$ref": "#/$defs/States"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "completeness": {
+          "$ref": "#/$defs/Completeness"
+        },
+        "refusal": {
+          "$ref": "#/$defs/Refusal"
+        },
         "data": {}
       }
     }

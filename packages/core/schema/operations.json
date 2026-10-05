@@ -5,31 +5,71 @@
     "synopsis": "loom <command> [options]   (every command takes --json to print the result envelope)",
     "invocation": "node packages/cli/dist/index.js",
     "commonOptions": [
-      { "usage": "--model <path>", "purpose": "selects a document (the governing workspace still applies)" },
-      { "usage": "--boundary <dir>" },
-      { "usage": "--trusted-ref <ref>" },
-      { "usage": "--as-of <date>" }
+      {
+        "usage": "--model <path>",
+        "purpose": "selects a document (the governing workspace still applies)"
+      },
+      {
+        "usage": "--boundary <dir>"
+      },
+      {
+        "usage": "--trusted-ref <ref>"
+      },
+      {
+        "usage": "--as-of <date>"
+      }
     ],
     "exitStatus": "0 ok, 1 refusal or error finding, 2 usage error."
   },
-  "mcp": { "toolBudget": 8192, "instructionsBudget": 2400 },
+  "mcp": {
+    "toolBudget": 8192,
+    "instructionsBudget": 2400
+  },
   "presenceRules": [
     {
       "id": "model-or-workspace",
       "accept": [
-        { "present": ["model"], "absent": ["workspace"] },
-        { "present": ["workspace"], "absent": ["model"] }
+        {
+          "present": [
+            "model"
+          ],
+          "absent": [
+            "workspaceId"
+          ]
+        },
+        {
+          "present": [
+            "workspaceId"
+          ],
+          "absent": [
+            "model"
+          ]
+        }
       ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
-      "message": "send exactly one of 'model' (an inline document) or 'workspace': true",
-      "fix": "send 'model' for a pure calculation or 'workspace': true for the workspace model"
+      "message": "send exactly one of 'model' (an inline document) or 'workspaceId' (an open handle)",
+      "fix": "send 'model' for a pure calculation or 'workspaceId' (an open handle) for the workspace model"
     },
     {
       "id": "patch-or-patches",
       "accept": [
-        { "present": ["patch"], "absent": ["patches"] },
-        { "present": ["patches"], "absent": ["patch"] }
+        {
+          "present": [
+            "patch"
+          ],
+          "absent": [
+            "patches"
+          ]
+        },
+        {
+          "present": [
+            "patches"
+          ],
+          "absent": [
+            "patch"
+          ]
+        }
       ],
       "code": "PATCH_AMBIGUOUS",
       "path": "(root)",
@@ -39,8 +79,18 @@
     {
       "id": "workspace-revision",
       "accept": [
-        { "present": ["expectation"], "absent": [] },
-        { "present": [], "absent": ["workspace"] }
+        {
+          "present": [
+            "expectation"
+          ],
+          "absent": []
+        },
+        {
+          "present": [],
+          "absent": [
+            "workspaceId"
+          ]
+        }
       ],
       "code": "STRUCTURAL_INVALID",
       "path": "expectation",
@@ -50,20 +100,60 @@
     {
       "id": "one-comparison",
       "accept": [
-        { "present": ["before", "after"], "absent": ["againstBaseline"] },
-        { "present": ["againstBaseline", "after"], "absent": ["workspace", "before"] },
-        { "present": ["againstBaseline", "workspace"], "absent": ["after", "before"] }
+        {
+          "present": [
+            "before",
+            "after"
+          ],
+          "absent": [
+            "againstBaseline"
+          ]
+        },
+        {
+          "present": [
+            "againstBaseline",
+            "after"
+          ],
+          "absent": [
+            "workspaceId",
+            "before"
+          ]
+        },
+        {
+          "present": [
+            "againstBaseline",
+            "workspaceId"
+          ],
+          "absent": [
+            "after",
+            "before"
+          ]
+        }
       ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
-      "message": "send 'before' and 'after', or 'againstBaseline': true with an inline 'after' or with 'workspace': true",
+      "message": "send 'before' and 'after', or 'againstBaseline': true with an inline 'after' or with 'workspaceId' (an open handle)",
       "fix": "name exactly one comparison"
     },
     {
       "id": "describe-operation",
       "accept": [
-        { "present": ["operation"], "absent": ["detail", "sections", "profile"] },
-        { "present": [], "absent": ["operation"] }
+        {
+          "present": [
+            "operation"
+          ],
+          "absent": [
+            "detail",
+            "sections",
+            "profile"
+          ]
+        },
+        {
+          "present": [],
+          "absent": [
+            "operation"
+          ]
+        }
       ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
@@ -73,8 +163,19 @@
     {
       "id": "describe-sections-detail",
       "accept": [
-        { "present": ["detail"], "absent": [] },
-        { "present": [], "absent": ["sections", "profile"] }
+        {
+          "present": [
+            "detail"
+          ],
+          "absent": []
+        },
+        {
+          "present": [],
+          "absent": [
+            "sections",
+            "profile"
+          ]
+        }
       ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
@@ -83,8 +184,23 @@
     },
     {
       "id": "describe-summary",
-      "when": [{ "member": "detail", "in": ["summary"] }],
-      "accept": [{ "present": [], "absent": ["sections", "profile"] }],
+      "when": [
+        {
+          "member": "detail",
+          "in": [
+            "summary"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [],
+          "absent": [
+            "sections",
+            "profile"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "the summary carries no sections; 'sections' and 'profile' select the sections of a full description",
@@ -92,8 +208,29 @@
     },
     {
       "id": "workspace-inspect",
-      "when": [{ "member": "action", "in": ["inspect"] }],
-      "accept": [{ "present": ["path"], "absent": ["declaration", "dryRun", "expectedInspection", "access", "view", "workspaceId"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "inspect"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path"
+          ],
+          "absent": [
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "access",
+            "view",
+            "workspaceId"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "inspect takes 'path' and an optional 'boundary', and nothing else",
@@ -101,8 +238,29 @@
     },
     {
       "id": "workspace-initialize",
-      "when": [{ "member": "action", "in": ["initialize"] }],
-      "accept": [{ "present": ["path", "declaration", "dryRun"], "absent": ["boundary", "access", "view", "workspaceId"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "initialize"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path",
+            "declaration",
+            "dryRun"
+          ],
+          "absent": [
+            "boundary",
+            "access",
+            "view",
+            "workspaceId"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "initialize takes 'path', 'declaration' and 'dryRun', and 'expectedInspection' when it writes",
@@ -110,8 +268,28 @@
     },
     {
       "id": "workspace-initialize-apply",
-      "when": [{ "member": "action", "in": ["initialize"] }, { "member": "dryRun", "in": [false] }],
-      "accept": [{ "present": ["expectedInspection"], "absent": [] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "initialize"
+          ]
+        },
+        {
+          "member": "dryRun",
+          "in": [
+            false
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "expectedInspection"
+          ],
+          "absent": []
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "expectedInspection",
       "message": "an initialization that writes names the inspection it was prepared against",
@@ -119,8 +297,29 @@
     },
     {
       "id": "workspace-open",
-      "when": [{ "member": "action", "in": ["open"] }],
-      "accept": [{ "present": ["path", "access"], "absent": ["boundary", "declaration", "dryRun", "expectedInspection", "workspaceId"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "open"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "path",
+            "access"
+          ],
+          "absent": [
+            "boundary",
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "workspaceId"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "open takes 'path' and 'access', and an optional 'view'",
@@ -128,8 +327,31 @@
     },
     {
       "id": "workspace-handle",
-      "when": [{ "member": "action", "in": ["status", "close"] }],
-      "accept": [{ "present": ["workspaceId"], "absent": ["path", "boundary", "declaration", "dryRun", "expectedInspection", "access", "view"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "status",
+            "close"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "workspaceId"
+          ],
+          "absent": [
+            "path",
+            "boundary",
+            "declaration",
+            "dryRun",
+            "expectedInspection",
+            "access",
+            "view"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "status and close take only the 'workspaceId' that open returned",
@@ -137,8 +359,27 @@
     },
     {
       "id": "federation-inspect",
-      "when": [{ "member": "action", "in": ["inspect"] }],
-      "accept": [{ "present": [], "absent": ["changes", "expectedVector", "proposalId", "snapshotDigest", "export", "purpose"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "inspect"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [],
+          "absent": [
+            "changes",
+            "expectedVector",
+            "proposalId",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "inspect takes only 'workspaceId'",
@@ -146,8 +387,28 @@
     },
     {
       "id": "federation-plan",
-      "when": [{ "member": "action", "in": ["plan"] }],
-      "accept": [{ "present": ["changes", "expectedVector"], "absent": ["proposalId", "snapshotDigest", "export", "purpose"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "plan"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "changes",
+            "expectedVector"
+          ],
+          "absent": [
+            "proposalId",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "plan takes 'changes' and the 'expectedVector' they were prepared against",
@@ -155,8 +416,28 @@
     },
     {
       "id": "federation-apply",
-      "when": [{ "member": "action", "in": ["apply"] }],
-      "accept": [{ "present": ["proposalId", "expectedVector"], "absent": ["changes", "snapshotDigest", "export", "purpose"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "apply"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "proposalId",
+            "expectedVector"
+          ],
+          "absent": [
+            "changes",
+            "snapshotDigest",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "apply takes the 'proposalId' a plan returned and the 'expectedVector' it was planned against",
@@ -164,8 +445,26 @@
     },
     {
       "id": "federation-check",
-      "when": [{ "member": "action", "in": ["check"] }],
-      "accept": [{ "present": [], "absent": ["changes", "expectedVector", "proposalId", "export", "purpose"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "check"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [],
+          "absent": [
+            "changes",
+            "expectedVector",
+            "proposalId",
+            "export",
+            "purpose"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "check takes 'workspaceId' and an optional 'snapshotDigest'",
@@ -173,8 +472,28 @@
     },
     {
       "id": "federation-publish",
-      "when": [{ "member": "action", "in": ["publish"] }],
-      "accept": [{ "present": ["export", "expectedVector", "purpose"], "absent": ["changes", "proposalId", "snapshotDigest"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "publish"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "export",
+            "expectedVector",
+            "purpose"
+          ],
+          "absent": [
+            "changes",
+            "proposalId",
+            "snapshotDigest"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "publish takes 'export', 'expectedVector' and 'purpose'",
@@ -182,8 +501,28 @@
     },
     {
       "id": "qualify-start",
-      "when": [{ "member": "action", "in": ["start"] }],
-      "accept": [{ "present": ["checks", "target", "expectedVector", "executionPolicy"], "absent": ["runId", "cursor"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "start"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy"
+          ],
+          "absent": [
+            "runId",
+            "cursor"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "start takes 'checks', 'target', 'expectedVector' and 'executionPolicy'",
@@ -191,8 +530,27 @@
     },
     {
       "id": "qualify-status",
-      "when": [{ "member": "action", "in": ["status"] }],
-      "accept": [{ "present": ["runId"], "absent": ["checks", "target", "expectedVector", "executionPolicy"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "status"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "runId"
+          ],
+          "absent": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "status takes 'runId' and an optional 'cursor'",
@@ -200,8 +558,28 @@
     },
     {
       "id": "qualify-cancel",
-      "when": [{ "member": "action", "in": ["cancel"] }],
-      "accept": [{ "present": ["runId"], "absent": ["checks", "target", "expectedVector", "executionPolicy", "cursor"] }],
+      "when": [
+        {
+          "member": "action",
+          "in": [
+            "cancel"
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "present": [
+            "runId"
+          ],
+          "absent": [
+            "checks",
+            "target",
+            "expectedVector",
+            "executionPolicy",
+            "cursor"
+          ]
+        }
+      ],
       "code": "STRUCTURAL_INVALID",
       "path": "(root)",
       "message": "cancel takes only 'runId'",
@@ -212,15 +590,34 @@
     {
       "id": "validate",
       "purpose": "Validate a model, inline or the workspace model under its verified baseline, acceptance, evidence and policy, against every structural and semantic rule, each finding carrying a stable code, a path, its impact and a fix while the four result states stay independent.",
-      "prerequisites": ["an inline model document, or a governed workspace for 'workspace': true"],
+      "prerequisites": [
+        "an inline model document, or a governed workspace for 'workspace': true"
+      ],
       "effects": "none",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request breaks the tool input contract or the model breaks the structural contract" },
-        { "cause": "unresolved-context", "when": "'workspace': true finds no workspace model governing the server directory" }
+        {
+          "cause": "invalid-input",
+          "when": "the request breaks the tool input contract or the model breaks the structural contract"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "'workspace': true finds no workspace model governing the server directory"
+        }
       ],
-      "nextAction": { "action": "preview the change that clears a finding", "operation": "planChange" },
+      "nextAction": {
+        "action": "preview the change that clears a finding",
+        "operation": "planChange"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.validate", "input": "ValidateInput", "data": "ValidateData", "presence": ["model-or-workspace"], "examples": [] },
+        "mcp": {
+          "tool": "loom.validate",
+          "input": "ValidateInput",
+          "data": "ValidateData",
+          "presence": [
+            "model-or-workspace"
+          ],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line validates inside check, together with ownership, the baseline comparison and the installed outputs."
       }
@@ -228,38 +625,80 @@
     {
       "id": "init",
       "purpose": "Scaffold .loom with model.json, loom.json, state.json and .gitignore at a repository root, never staging or committing them.",
-      "prerequisites": ["the root of a Git repository whose path no ancestor's or descendant's descriptor claims"],
+      "prerequisites": [
+        "the root of a Git repository whose path no ancestor's or descendant's descriptor claims"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "invalid-input", "when": "the directory is not a repository root, already holds a .loom or yields a scaffold that fails validation" },
-        { "cause": "policy-failure", "when": "an ancestor's or a descendant's descriptor claims the path or cannot be read" },
-        { "cause": "unmet-prerequisite", "when": "with --force, an authority file of the existing .loom needs repair by its owner" }
+        {
+          "cause": "invalid-input",
+          "when": "the directory is not a repository root, already holds a .loom or yields a scaffold that fails validation"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "an ancestor's or a descendant's descriptor claims the path or cannot be read"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "with --force, an authority file of the existing .loom needs repair by its owner"
+        }
       ],
-      "nextAction": { "action": "declare the components and their roots in the scope of loom.json, then check the workspace", "operation": "check" },
+      "nextAction": {
+        "action": "declare the components and their roots in the scope of loom.json, then check the workspace",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "init", "usage": ["init --model-id <id> --model-kind <composition|implementation|mixed> [--force]"], "examples": [{ "description": "Scaffold .loom at the root of the current repository.", "command": "init --model-id payments --model-kind implementation" }] },
+        "cli": {
+          "command": "init",
+          "usage": [
+            "init --model-id <id> --model-kind <composition|implementation|mixed> --dry-run",
+            "init --declaration <file> --apply --expected-inspection <digest>"
+          ],
+          "examples": [
+            {
+              "description": "Scaffold .loom at the root of the current repository.",
+              "command": "init --model-id payments --model-kind implementation"
+            }
+          ]
+        },
         "reason": "The MCP server serves a workspace that already exists; initializing one is a command-line step."
       }
     },
     {
       "id": "check",
       "purpose": "Check one model in order, its ownership and configuration, its validity, its comparison with the trusted accepted baseline and its installed outputs and manifest, or with --out a directory of projections, without writing.",
-      "prerequisites": ["a governed workspace, or a model document named with --model, which outside a workspace is checked in validation-only mode"],
+      "prerequisites": [
+        "a governed workspace, or a model document named with --model, which outside a workspace is checked in validation-only mode"
+      ],
       "effects": "reads",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unresolved-context", "when": "no model applies because neither --model nor a governing workspace names one" }
+        {
+          "cause": "unresolved-context",
+          "when": "no model applies because neither --model nor a governing workspace names one"
+        }
       ],
-      "nextAction": { "action": "install current outputs once the model is corrected", "operation": "write" },
+      "nextAction": {
+        "action": "install current outputs once the model is corrected",
+        "operation": "write"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "check",
-          "usage": ["check [--model <path>] [--out <dir>]"],
+          "usage": [
+            "check [--model <path>] [--out <dir>]"
+          ],
           "examples": [
-            { "description": "Check the workspace model and its installed outputs.", "command": "check" },
-            { "description": "Check a directory of projections against a model document.", "command": "check --model model.json --out projection" }
+            {
+              "description": "Check the workspace model and its installed outputs.",
+              "command": "check"
+            },
+            {
+              "description": "Check a directory of projections against a model document.",
+              "command": "check --model model.json --out projection"
+            }
           ]
         },
         "reason": "Agents validate with loom.validate and compare with loom.diff; the installed outputs and their manifest are checked on the command line."
@@ -268,37 +707,75 @@
     {
       "id": "checkAll",
       "purpose": "Check every descriptor under the boundary, the global disjointness of their claims and whether the walk covered the whole boundary.",
-      "prerequisites": ["a boundary to walk, named with --boundary or found from the working directory"],
+      "prerequisites": [
+        "a boundary to walk, named with --boundary or found from the working directory"
+      ],
       "effects": "reads",
       "dependsOnProfiles": true,
       "refusals": [],
-      "nextAction": { "action": "check a reported descriptor on its own from its repository root", "operation": "check" },
+      "nextAction": {
+        "action": "check a reported descriptor on its own from its repository root",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "check --all", "usage": ["check --all [--boundary <dir>]"], "examples": [{ "description": "Check every descriptor under the current directory.", "command": "check --all --boundary ." }] },
+        "cli": {
+          "command": "check --all",
+          "usage": [
+            "check --all [--boundary <dir>]"
+          ],
+          "examples": [
+            {
+              "description": "Check every descriptor under the current directory.",
+              "command": "check --all --boundary ."
+            }
+          ]
+        },
         "reason": "Discovery across every descriptor of a boundary is a repository walk the command line performs; the MCP server serves one workspace."
       }
     },
     {
       "id": "write",
       "purpose": "Install every artifact the workspace's projection profile enables, with the readiness, coverage and evidence views evaluated under the verified inputs, or with --out write every projection into a directory.",
-      "prerequisites": ["a governed workspace, or a model document and --out <dir>"],
+      "prerequisites": [
+        "a governed workspace, or a model document and --out <dir>"
+      ],
       "effects": "writes",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unresolved-context", "when": "no model applies, or no workspace governs an installation without --out" },
-        { "cause": "invalid-input", "when": "the model has error findings while projecting into a directory" },
-        { "cause": "policy-failure", "when": "the bundle fails its checks, for example an output collision or a protected target, and nothing is written" }
+        {
+          "cause": "unresolved-context",
+          "when": "no model applies, or no workspace governs an installation without --out"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the model has error findings while projecting into a directory"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the bundle fails its checks, for example an output collision or a protected target, and nothing is written"
+        }
       ],
-      "nextAction": { "action": "confirm that the installed outputs are current", "operation": "check" },
+      "nextAction": {
+        "action": "confirm that the installed outputs are current",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "write",
-          "usage": ["write [--out <dir>] [--draft]"],
+          "usage": [
+            "write [--out <dir>] [--draft]"
+          ],
           "examples": [
-            { "description": "Install the enabled artifacts of the workspace.", "command": "write" },
-            { "description": "Write every projection of a model document into a directory.", "command": "write --model model.json --out projection" }
+            {
+              "description": "Install the enabled artifacts of the workspace.",
+              "command": "write"
+            },
+            {
+              "description": "Write every projection of a model document into a directory.",
+              "command": "write --model model.json --out projection"
+            }
           ]
         },
         "reason": "loom.project and loom.projectAll return projections as data; installing them into the repository is a command-line step."
@@ -307,31 +784,72 @@
     {
       "id": "docs",
       "purpose": "Install the documentation bundle, every enabled artifact with the readiness, coverage and evidence views evaluated, exactly as write installs it.",
-      "prerequisites": ["a governed workspace, or a model document and --out <dir>"],
+      "prerequisites": [
+        "a governed workspace, or a model document and --out <dir>"
+      ],
       "effects": "writes",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unresolved-context", "when": "no model applies, or no workspace governs an installation without --out" },
-        { "cause": "invalid-input", "when": "the model has error findings while projecting into a directory" },
-        { "cause": "policy-failure", "when": "the bundle fails its checks, for example an output collision or a protected target, and nothing is written" }
+        {
+          "cause": "unresolved-context",
+          "when": "no model applies, or no workspace governs an installation without --out"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the model has error findings while projecting into a directory"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the bundle fails its checks, for example an output collision or a protected target, and nothing is written"
+        }
       ],
-      "nextAction": { "action": "check the documents, their links and the installed views", "operation": "docsCheck" },
+      "nextAction": {
+        "action": "check the documents, their links and the installed views",
+        "operation": "docsCheck"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "docs", "usage": ["docs [--out <dir>] [--draft]"], "examples": [{ "description": "Install the documentation bundle of the workspace.", "command": "docs" }] },
+        "cli": {
+          "command": "docs",
+          "usage": [
+            "docs [--out <dir>] [--draft]"
+          ],
+          "examples": [
+            {
+              "description": "Install the documentation bundle of the workspace.",
+              "command": "docs"
+            }
+          ]
+        },
         "reason": "loom.project and loom.projectAll return projections as data; installing them into the repository is a command-line step."
       }
     },
     {
       "id": "docsCheck",
       "purpose": "Check the README, the Docs documents and the package source comments for broken links, anchors and record references, narrated history and hand-authored copies of generated registers, and inside a workspace the installed views and the interfaces the accepted baseline holds.",
-      "prerequisites": ["a repository, where a governing workspace adds the record, view and accepted-interface checks"],
+      "prerequisites": [
+        "a repository, where a governing workspace adds the record, view and accepted-interface checks"
+      ],
       "effects": "reads",
       "refusals": [],
-      "nextAction": { "action": "regenerate the views from the model rather than editing them", "operation": "docs" },
+      "nextAction": {
+        "action": "regenerate the views from the model rather than editing them",
+        "operation": "docs"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "docs --check", "usage": ["docs --check"], "examples": [{ "description": "Check the documents of the current repository.", "command": "docs --check" }] },
+        "cli": {
+          "command": "docs --check",
+          "usage": [
+            "docs --check"
+          ],
+          "examples": [
+            {
+              "description": "Check the documents of the current repository.",
+              "command": "docs --check"
+            }
+          ]
+        },
         "reason": "The documentation checks walk the repository's files on the command line; the MCP server returns projections as data."
       }
     },
@@ -341,10 +859,23 @@
       "prerequisites": [],
       "effects": "reads",
       "refusals": [],
-      "nextAction": { "action": "name each reported capability descriptively, as the current release states it" },
+      "nextAction": {
+        "action": "name each reported capability descriptively, as the current release states it"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "docs --check --self", "usage": ["docs --check --self"], "examples": [{ "description": "Hold this Loom installation's own repository to its release wording.", "command": "docs --check --self" }] },
+        "cli": {
+          "command": "docs --check --self",
+          "usage": [
+            "docs --check --self"
+          ],
+          "examples": [
+            {
+              "description": "Hold this Loom installation's own repository to its release wording.",
+              "command": "docs --check --self"
+            }
+          ]
+        },
         "reason": "The documentation checks walk the repository's files on the command line; the MCP server returns projections as data."
       }
     },
@@ -354,44 +885,96 @@
       "prerequisites": [],
       "effects": "reads",
       "refusals": [],
-      "nextAction": { "action": "check the owning model from its repository root", "operation": "check" },
+      "nextAction": {
+        "action": "check the owning model from its repository root",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "owner", "usage": ["owner [<path>]"], "examples": [{ "description": "Name the model that owns the ordering directory.", "command": "owner ordering" }] },
+        "cli": {
+          "command": "owner",
+          "usage": [
+            "owner [<path>]"
+          ],
+          "examples": [
+            {
+              "description": "Name the model that owns the ordering directory.",
+              "command": "owner ordering"
+            }
+          ]
+        },
         "reason": "Path ownership is resolved across every descriptor on the command line; the MCP server serves one workspace."
       }
     },
     {
       "id": "migrate",
       "purpose": "Migrate a model document to the current model format, writing the result only to a new file named with --to and never replacing its source.",
-      "prerequisites": ["a model document named with --model, or the governing descriptor's model at the repository root"],
+      "prerequisites": [
+        "a model document named with --model, or the governing descriptor's model at the repository root"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "invalid-input", "when": "no registered migration leads from the document's format to the current one" }
+        {
+          "cause": "invalid-input",
+          "when": "no registered migration leads from the document's format to the current one"
+        }
       ],
-      "nextAction": { "action": "check the migrated document before it replaces the model", "operation": "check" },
+      "nextAction": {
+        "action": "check the migrated document before it replaces the model",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "migrate", "usage": ["migrate [--model <path>] [--to <file>]"], "examples": [{ "description": "Migrate a model document into a new file.", "command": "migrate --model model.json --to migrated.json" }] },
+        "cli": {
+          "command": "migrate",
+          "usage": [
+            "migrate [--model <path>] [--to <file>]"
+          ],
+          "examples": [
+            {
+              "description": "Migrate a model document into a new file.",
+              "command": "migrate --model model.json --to migrated.json"
+            }
+          ]
+        },
         "reason": "A migration reads and writes model documents as files on the command line; the MCP tools take and return models as data."
       }
     },
     {
       "id": "baselineCreate",
       "purpose": "Record a baseline of the workspace model at its current revision, accepted by a named acceptance record and optionally frozen.",
-      "prerequisites": ["a governed workspace", "an acceptance of the baseline, recorded with accept"],
+      "prerequisites": [
+        "a governed workspace",
+        "an acceptance of the baseline, recorded with accept"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unresolved-context", "when": "no workspace governs the directory" },
-        { "cause": "invalid-input", "when": "the acceptance record is missing or the baseline cannot be recorded" }
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the directory"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the acceptance record is missing or the baseline cannot be recorded"
+        }
       ],
-      "nextAction": { "action": "commit the baseline to the trusted ref through review, then check the workspace against it", "operation": "check" },
+      "nextAction": {
+        "action": "commit the baseline to the trusted ref through review, then check the workspace against it",
+        "operation": "check"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "baseline create",
-          "usage": ["baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]"],
-          "examples": [{ "description": "Record baseline bl-1 under the acceptance acc-1.", "command": "baseline create --id bl-1 --acceptance acc-1" }]
+          "usage": [
+            "baseline create --id <id> --acceptance <id> [--predecessor <id>] [--frozen]"
+          ],
+          "examples": [
+            {
+              "description": "Record baseline bl-1 under the acceptance acc-1.",
+              "command": "baseline create --id bl-1 --acceptance acc-1"
+            }
+          ]
         },
         "reason": "The MCP tools never record a baseline or an acceptance; both are recorded on the command line and trusted once they reach the trusted ref through review or carry a signature the policy lists."
       }
@@ -399,20 +982,41 @@
     {
       "id": "accept",
       "purpose": "Record an acceptance of the current model revision, as a baseline or a change, by a named authority under the workspace policy, optionally signed.",
-      "prerequisites": ["a governed workspace with a policy, the trusted one or the one gates.policyRef names in loom.json"],
+      "prerequisites": [
+        "a governed workspace with a policy, the trusted one or the one gates.policyRef names in loom.json"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unresolved-context", "when": "no workspace governs the directory" },
-        { "cause": "unmet-prerequisite", "when": "no policy is named" },
-        { "cause": "invalid-input", "when": "the acceptance record cannot be stored" }
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the directory"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "no policy is named"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the acceptance record cannot be stored"
+        }
       ],
-      "nextAction": { "action": "commit the acceptance to the trusted ref through review, then record the baseline it accepts", "operation": "baselineCreate" },
+      "nextAction": {
+        "action": "commit the acceptance to the trusted ref through review, then record the baseline it accepts",
+        "operation": "baselineCreate"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "accept",
-          "usage": ["accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]"],
-          "examples": [{ "description": "Accept the current revision as baseline bl-1 for the architecture team.", "command": "accept --id acc-1 --authority team-architecture --subject baseline --baseline bl-1" }]
+          "usage": [
+            "accept --id <id> --authority <alias> [--subject baseline|change] [--baseline <id>] [--scope kind:id,...] [--classes ...]"
+          ],
+          "examples": [
+            {
+              "description": "Accept the current revision as baseline bl-1 for the architecture team.",
+              "command": "accept --id acc-1 --authority team-architecture --subject baseline --baseline bl-1"
+            }
+          ]
         },
         "reason": "The MCP tools never record a baseline or an acceptance; both are recorded on the command line and trusted once they reach the trusted ref through review or carry a signature the policy lists."
       }
@@ -427,30 +1031,59 @@
       ],
       "effects": "writes",
       "refusals": [
-        { "cause": "invalid-input", "when": "a patch or the resulting model is invalid, and the model is unchanged" },
-        { "cause": "policy-failure", "when": "a breaking or unclassified change lacks its version bump or acknowledgement" },
-        { "cause": "stale-base", "when": "the model, configuration, policy or import pins changed since the expectation, and nothing is written" },
-        { "cause": "unresolved-context", "when": "no governed workspace serves a persistent change" }
+        {
+          "cause": "invalid-input",
+          "when": "a patch or the resulting model is invalid, and the model is unchanged"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "a breaking or unclassified change lacks its version bump or acknowledgement"
+        },
+        {
+          "cause": "stale-base",
+          "when": "the model, configuration, policy or import pins changed since the expectation, and nothing is written"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "no governed workspace serves a persistent change"
+        }
       ],
-      "nextAction": { "action": "check readiness for the task the change serves", "operation": "checkReadiness" },
+      "nextAction": {
+        "action": "check readiness for the task the change serves",
+        "operation": "checkReadiness"
+      },
       "exposure": {
         "mcp": {
           "tool": "loom.mutate",
           "input": "MutateInput",
           "data": "MutateData",
-          "presence": ["model-or-workspace", "patch-or-patches", "workspace-revision"],
+          "presence": [
+            "model-or-workspace",
+            "patch-or-patches",
+            "workspace-revision"
+          ],
           "examples": [
             {
               "description": "Preview changing a mutation guard in the workspace model; nothing persists on a dry run.",
               "input": {
-                "workspace": true,
+                "workspaceId": "ws_example",
                 "expectation": {
                   "model": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                   "config": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
                   "policy": null,
                   "imports": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
                 },
-                "patch": { "op": "update", "collection": "mutations", "id": "order.pay", "set": { "guard": { "form": "prose", "text": "Payment for the order total has been captured." } } },
+                "patch": {
+                  "op": "update",
+                  "collection": "mutations",
+                  "id": "order.pay",
+                  "set": {
+                    "guard": {
+                      "form": "prose",
+                      "text": "Payment for the order total has been captured."
+                    }
+                  }
+                },
                 "dryRun": true
               }
             }
@@ -458,7 +1091,9 @@
         },
         "cli": {
           "command": "mutate",
-          "usage": ["mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]"],
+          "usage": [
+            "mutate --patch <file> --expected-model <hash> --expected-config <hash> --expected-policy <hash|none> --expected-imports <hash> [--ack id,...] [--dry-run]"
+          ],
           "examples": [
             {
               "description": "Preview patch.json against the model, config, policy and imports hashes it was prepared against, as revisions reports them, without writing.",
@@ -471,15 +1106,34 @@
     {
       "id": "diff",
       "purpose": "Compare two models, or a candidate against the trusted accepted baseline, giving every change its kind, compatibility dimension, rule and affected consumers and marking a comparison with an invalid side provisional.",
-      "prerequisites": ["two inline models, or a trusted accepted baseline at the trusted ref and a candidate, inline or the workspace model"],
+      "prerequisites": [
+        "two inline models, or a trusted accepted baseline at the trusted ref and a candidate, inline or the workspace model"
+      ],
       "effects": "none",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request or a model breaks its contract" },
-        { "cause": "unresolved-context", "when": "no trusted accepted baseline is available, or 'workspace': true finds no workspace model" }
+        {
+          "cause": "invalid-input",
+          "when": "the request or a model breaks its contract"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "no trusted accepted baseline is available, or 'workspace': true finds no workspace model"
+        }
       ],
-      "nextAction": { "action": "preview a repair of a breaking change", "operation": "planChange" },
+      "nextAction": {
+        "action": "preview a repair of a breaking change",
+        "operation": "planChange"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.diff", "input": "DiffInput", "data": "DiffData", "presence": ["one-comparison"], "examples": [] },
+        "mcp": {
+          "tool": "loom.diff",
+          "input": "DiffInput",
+          "data": "DiffData",
+          "presence": [
+            "one-comparison"
+          ],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line compares the model with the trusted accepted baseline inside check."
       }
@@ -487,16 +1141,35 @@
     {
       "id": "project",
       "purpose": "Project a model to one target with its source-to-output coverage manifest, running no external validator and failing closed on error findings, while a draft renders an explicitly incomplete artifact that never qualifies.",
-      "prerequisites": ["a model, inline or the workspace model"],
+      "prerequisites": [
+        "a model, inline or the workspace model"
+      ],
       "effects": "none",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "invalid-input", "when": "the request breaks its contract or the model has error findings" },
-        { "cause": "policy-failure", "when": "outside a draft, the model uses a construct the target's profile does not support" }
+        {
+          "cause": "invalid-input",
+          "when": "the request breaks its contract or the model has error findings"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "outside a draft, the model uses a construct the target's profile does not support"
+        }
       ],
-      "nextAction": { "action": "qualify the projected artifacts with their profile checks", "operation": "qualify" },
+      "nextAction": {
+        "action": "qualify the projected artifacts with their profile checks",
+        "operation": "qualify"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.project", "input": "ProjectInput", "data": "ProjectData", "presence": ["model-or-workspace"], "examples": [] },
+        "mcp": {
+          "tool": "loom.project",
+          "input": "ProjectInput",
+          "data": "ProjectData",
+          "presence": [
+            "model-or-workspace"
+          ],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line writes projections into files with write --out."
       }
@@ -504,16 +1177,35 @@
     {
       "id": "projectAll",
       "purpose": "Project a model to every target, with per-component artifact instances and coverage manifests, failing closed as project does.",
-      "prerequisites": ["a model, inline or the workspace model"],
+      "prerequisites": [
+        "a model, inline or the workspace model"
+      ],
       "effects": "none",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "invalid-input", "when": "the request breaks its contract or the model has error findings" },
-        { "cause": "policy-failure", "when": "outside a draft, the model uses a construct a target's profile does not support" }
+        {
+          "cause": "invalid-input",
+          "when": "the request breaks its contract or the model has error findings"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "outside a draft, the model uses a construct a target's profile does not support"
+        }
       ],
-      "nextAction": { "action": "qualify the projected artifacts with their profile checks", "operation": "qualify" },
+      "nextAction": {
+        "action": "qualify the projected artifacts with their profile checks",
+        "operation": "qualify"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.projectAll", "input": "ProjectAllInput", "data": "ProjectData", "presence": ["model-or-workspace"], "examples": [] },
+        "mcp": {
+          "tool": "loom.projectAll",
+          "input": "ProjectAllInput",
+          "data": "ProjectData",
+          "presence": [
+            "model-or-workspace"
+          ],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line writes every projection into a directory with write --out, or installs the enabled ones with write."
       }
@@ -521,14 +1213,27 @@
     {
       "id": "export",
       "purpose": "Serialize a model to canonical JSON or YAML, failing closed on an invalid model.",
-      "prerequisites": ["an inline model document"],
+      "prerequisites": [
+        "an inline model document"
+      ],
       "effects": "none",
       "refusals": [
-        { "cause": "invalid-input", "when": "the model breaks its structural contract or has error findings" }
+        {
+          "cause": "invalid-input",
+          "when": "the model breaks its structural contract or has error findings"
+        }
       ],
-      "nextAction": { "action": "store the canonical text as the model document" },
+      "nextAction": {
+        "action": "store the canonical text as the model document"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.export", "input": "ExportInput", "data": "ExportData", "presence": [], "examples": [] },
+        "mcp": {
+          "tool": "loom.export",
+          "input": "ExportInput",
+          "data": "ExportData",
+          "presence": [],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line reads and writes model documents as files, and migrate writes the canonical form."
       }
@@ -536,14 +1241,28 @@
     {
       "id": "import",
       "purpose": "Parse a model from JSON or YAML text and check its structure, returning the model with its findings.",
-      "prerequisites": ["the text of a model document"],
+      "prerequisites": [
+        "the text of a model document"
+      ],
       "effects": "none",
       "refusals": [
-        { "cause": "invalid-input", "when": "the text does not parse or breaks the structural contract" }
+        {
+          "cause": "invalid-input",
+          "when": "the text does not parse or breaks the structural contract"
+        }
       ],
-      "nextAction": { "action": "validate the imported model against every rule", "operation": "validate" },
+      "nextAction": {
+        "action": "validate the imported model against every rule",
+        "operation": "validate"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.import", "input": "ImportInput", "data": "ImportData", "presence": [], "examples": [] },
+        "mcp": {
+          "tool": "loom.import",
+          "input": "ImportInput",
+          "data": "ImportData",
+          "presence": [],
+          "examples": []
+        },
         "cli": "none",
         "reason": "The command line reads model documents from files with --model."
       }
@@ -558,17 +1277,31 @@
       "effects": "writes",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unresolved-context", "when": "no workspace governs the directory and --self is not given" }
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the directory and --self is not given"
+        }
       ],
-      "nextAction": { "action": "inspect the evidence the run produced", "operation": "evidence" },
+      "nextAction": {
+        "action": "inspect the evidence the run produced",
+        "operation": "evidence"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "qualify",
-          "usage": ["qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]"],
+          "usage": [
+            "qualify [--self] [--profile p,...] [--checks id,...] [--fixtures <file>] [--store] [--metrics [--compare <metrics.json>]] [--key-id <id> --key-env <var>]"
+          ],
           "examples": [
-            { "description": "Run one named check against the workspace.", "command": "qualify --checks documentation.yaml-roundtrip" },
-            { "description": "Qualify this Loom installation against its own fixtures and measure its outcome metrics.", "command": "qualify --self --metrics" }
+            {
+              "description": "Run one named check against the workspace.",
+              "command": "qualify --checks documentation.yaml-roundtrip"
+            },
+            {
+              "description": "Qualify this Loom installation against its own fixtures and measure its outcome metrics.",
+              "command": "qualify --self --metrics"
+            }
           ]
         },
         "reason": "Native tools run only in the qualification adapter, whose interfaces the command line consumes and the MCP server does not."
@@ -577,15 +1310,35 @@
     {
       "id": "evidence",
       "purpose": "List the stored evidence with each record's trust under the trusted policy, or show one record.",
-      "prerequisites": ["a governed workspace"],
+      "prerequisites": [
+        "a governed workspace"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unresolved-context", "when": "no workspace governs the directory, or the named record is not stored" }
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the directory, or the named record is not stored"
+        }
       ],
-      "nextAction": { "action": "run again a check whose evidence failed or went stale", "operation": "qualify" },
+      "nextAction": {
+        "action": "run again a check whose evidence failed or went stale",
+        "operation": "qualify"
+      },
       "exposure": {
         "mcp": "none",
-        "cli": { "command": "evidence", "usage": ["evidence list", "evidence show <id>"], "examples": [{ "description": "List the stored evidence.", "command": "evidence list" }] },
+        "cli": {
+          "command": "evidence",
+          "usage": [
+            "evidence list",
+            "evidence show <id>"
+          ],
+          "examples": [
+            {
+              "description": "List the stored evidence.",
+              "command": "evidence list"
+            }
+          ]
+        },
         "reason": "The evidence store is read on the command line; loom.context and loom.checkReadiness report the evidence obligations of their scope."
       }
     },
@@ -598,13 +1351,23 @@
       ],
       "effects": "reads",
       "refusals": [],
-      "nextAction": { "action": "supply the results of every case reported without one" },
+      "nextAction": {
+        "action": "supply the results of every case reported without one"
+      },
       "exposure": {
         "mcp": "none",
         "cli": {
           "command": "coverage",
-          "usage": ["coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>]", "coverage --list-cases"],
-          "examples": [{ "description": "List every declared verification case.", "command": "coverage --list-cases" }]
+          "usage": [
+            "coverage --check [--register <file>] [--results <tap,...>] [--run <run.json>]",
+            "coverage --list-cases"
+          ],
+          "examples": [
+            {
+              "description": "List every declared verification case.",
+              "command": "coverage --list-cases"
+            }
+          ]
         },
         "reason": "The capability register belongs to the repository that holds it and is checked on the command line."
       }
@@ -612,13 +1375,35 @@
     {
       "id": "selftest",
       "purpose": "Run Loom's self-test, which qualifies Loom's own engine and never an adopting system: the MCP tool runs the engine battery, and the command adds the drift gate, the release wording and every profile check against Loom's fixtures.",
-      "prerequisites": ["for the command, the native tools of every profile check"],
+      "prerequisites": [
+        "for the command, the native tools of every profile check"
+      ],
       "effects": "none",
       "refusals": [],
-      "nextAction": { "action": "describe what this build supports", "operation": "describe" },
+      "nextAction": {
+        "action": "describe what this build supports",
+        "operation": "describe"
+      },
       "exposure": {
-        "mcp": { "tool": "loom.selftest", "input": "SelftestInput", "data": "SelftestData", "presence": [], "examples": [] },
-        "cli": { "command": "--self-test", "usage": ["--self-test"], "examples": [{ "description": "Run the whole self-test of this Loom installation.", "command": "--self-test" }] }
+        "mcp": {
+          "tool": "loom.selftest",
+          "input": "SelftestInput",
+          "data": "SelftestData",
+          "presence": [],
+          "examples": []
+        },
+        "cli": {
+          "command": "--self-test",
+          "usage": [
+            "--self-test"
+          ],
+          "examples": [
+            {
+              "description": "Run the whole self-test of this Loom installation.",
+              "command": "--self-test"
+            }
+          ]
+        }
       }
     },
     {
@@ -627,29 +1412,69 @@
       "prerequisites": [],
       "effects": "none",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request breaks its contract, names no catalogue operation, or sends a cursor issued for another request" },
-        { "cause": "stale-base", "when": "the cursor was issued by another build; the refusal names the request that starts again" }
+        {
+          "cause": "invalid-input",
+          "when": "the request breaks its contract, names no catalogue operation, or sends a cursor issued for another request"
+        },
+        {
+          "cause": "stale-base",
+          "when": "the cursor was issued by another build; the refusal names the request that starts again"
+        }
       ],
-      "nextAction": { "action": "read the required context of the component or task at hand", "operation": "context" },
+      "nextAction": {
+        "action": "read the required context of the component or task at hand",
+        "operation": "context"
+      },
       "exposure": {
         "mcp": {
           "tool": "loom.describe",
           "input": "DescribeInput",
           "data": "DescribeData",
-          "presence": ["describe-operation", "describe-sections-detail", "describe-summary"],
+          "presence": [
+            "describe-operation",
+            "describe-sections-detail",
+            "describe-summary"
+          ],
           "examples": [
-            { "description": "The orientation summary.", "input": {} },
-            { "description": "The first page of the patch operations.", "input": { "detail": "full", "sections": ["patches"] } },
-            { "description": "What the result of a projection does not establish.", "input": { "operation": "project" } }
+            {
+              "description": "The orientation summary.",
+              "input": {}
+            },
+            {
+              "description": "The first page of the patch operations.",
+              "input": {
+                "detail": "full",
+                "sections": [
+                  "patches"
+                ]
+              }
+            },
+            {
+              "description": "What the result of a projection does not establish.",
+              "input": {
+                "operation": "project"
+              }
+            }
           ]
         },
         "cli": {
           "command": "describe",
-          "usage": ["describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]"],
+          "usage": [
+            "describe [--detail summary|full] [--sections a,b] [--profile <id>] [--operation <id>] [--max-bytes n] [--max-records n] [--cursor <token>]"
+          ],
           "examples": [
-            { "description": "The orientation summary.", "command": "describe" },
-            { "description": "The first page of the patch operations.", "command": "describe --detail full --sections patches" },
-            { "description": "What the result of a projection does not establish.", "command": "describe --operation project" }
+            {
+              "description": "The orientation summary.",
+              "command": "describe"
+            },
+            {
+              "description": "The first page of the patch operations.",
+              "command": "describe --detail full --sections patches"
+            },
+            {
+              "description": "What the result of a projection does not establish.",
+              "command": "describe --operation project"
+            }
           ]
         }
       }
@@ -657,56 +1482,132 @@
     {
       "id": "context",
       "purpose": "Retrieve the required context of a component, record, claim or task a page at a time within a discovery budget, nearest first, with sources, owners, baseline status, constraints, decisions and evidence, or for a resume target the recorded outcome, phase, owning scopes, frozen contracts, blocking unknowns, evidence, pending work and next actions, record text coming back as data and never as an instruction.",
-      "prerequisites": ["a model, inline or the workspace model", "a target, with an optional budget whose members take their defaults"],
+      "prerequisites": [
+        "a model, inline or the workspace model",
+        "a target, with an optional budget whose members take their defaults"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request names no target, breaks its contract, or sends a continuation issued for another target or budget" },
-        { "cause": "stale-base", "when": "a continuation or modelRevision belongs to another revision; the refusal names the request that starts again" },
-        { "cause": "unresolved-context", "when": "'workspace': true finds no workspace model, or no recorded progress is supplied for a resume target" }
+        {
+          "cause": "invalid-input",
+          "when": "the request names no target, breaks its contract, or sends a continuation issued for another target or budget"
+        },
+        {
+          "cause": "stale-base",
+          "when": "a continuation or modelRevision belongs to another revision; the refusal names the request that starts again"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "'workspace': true finds no workspace model, or no recorded progress is supplied for a resume target"
+        }
       ],
-      "nextAction": { "action": "follow the continuation while completeness lists omissions, then check readiness for the task", "operation": "checkReadiness" },
+      "nextAction": {
+        "action": "follow the continuation while completeness lists omissions, then check readiness for the task",
+        "operation": "checkReadiness"
+      },
       "exposure": {
         "mcp": {
           "tool": "loom.context",
           "input": "ContextInput",
           "data": "ContextData",
-          "presence": ["model-or-workspace"],
+          "presence": [
+            "model-or-workspace"
+          ],
           "examples": [
-            { "description": "The required context of one component within 50 records.", "input": { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "budget": { "maxRecords": 50 } } }
+            {
+              "description": "The required context of one component within 50 records.",
+              "input": {
+                "workspaceId": "ws_example",
+                "target": {
+                  "kind": "component",
+                  "ref": {
+                    "kind": "component",
+                    "id": "ordering"
+                  }
+                },
+                "budget": {
+                  "maxRecords": 50
+                }
+              }
+            }
           ]
         },
         "cli": {
           "command": "context",
-          "usage": ["context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]"],
-          "examples": [{ "description": "The required context of the ordering component within 50 records.", "command": "context --kind component --id ordering --max-records 50" }]
+          "usage": [
+            "context --kind component|record|claim|task --id <id> [--record-kind <kind>] [--max-records n] [--max-bytes n] [--continuation <token>]"
+          ],
+          "examples": [
+            {
+              "description": "The required context of the ordering component within 50 records.",
+              "command": "context --kind component --id ordering --max-records 50"
+            }
+          ]
         }
       }
     },
     {
       "id": "checkReadiness",
       "purpose": "Evaluate whether a task is ready, blocked or unresolved, with the exact missing prerequisites, permitted substitutes, allowed next work and its work package.",
-      "prerequisites": ["a model, inline or the workspace model", "the class, mode and scope of the task"],
+      "prerequisites": [
+        "a model, inline or the workspace model",
+        "the class, mode and scope of the task"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "invalid-input", "when": "the request names no task or breaks its contract" },
-        { "cause": "stale-base", "when": "the model is not at the requested candidateRevision" },
-        { "cause": "unresolved-context", "when": "'workspace': true finds no workspace model" }
+        {
+          "cause": "invalid-input",
+          "when": "the request names no task or breaks its contract"
+        },
+        {
+          "cause": "stale-base",
+          "when": "the model is not at the requested candidateRevision"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "'workspace': true finds no workspace model"
+        }
       ],
-      "nextAction": { "action": "read the context of a missing prerequisite, or start the allowed next work", "operation": "context" },
+      "nextAction": {
+        "action": "read the context of a missing prerequisite, or start the allowed next work",
+        "operation": "context"
+      },
       "exposure": {
         "mcp": {
           "tool": "loom.checkReadiness",
           "input": "CheckReadinessInput",
           "data": "ReadinessData",
-          "presence": ["model-or-workspace"],
+          "presence": [
+            "model-or-workspace"
+          ],
           "examples": [
-            { "description": "Is the billing component ready for implementation?", "input": { "workspace": true, "task": { "class": "implementation", "mode": "component", "components": ["billing"] } } }
+            {
+              "description": "Is the billing component ready for implementation?",
+              "input": {
+                "workspaceId": "ws_example",
+                "task": {
+                  "class": "implementation",
+                  "mode": "component",
+                  "components": [
+                    "billing"
+                  ]
+                }
+              }
+            }
           ]
         },
         "cli": {
           "command": "readiness",
-          "usage": ["readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...]", "readiness --task <file>"],
-          "examples": [{ "description": "Is the billing component ready for implementation?", "command": "readiness --class implementation --components billing" }]
+          "usage": [
+            "readiness --class <class> [--mode component|slice] [--components a,b] [--requirements r,...]",
+            "readiness --task <file>"
+          ],
+          "examples": [
+            {
+              "description": "Is the billing component ready for implementation?",
+              "command": "readiness --class implementation --components billing"
+            }
+          ]
         }
       }
     },
@@ -719,385 +1620,986 @@
       ],
       "effects": "none",
       "refusals": [
-        { "cause": "stale-base", "when": "the model is not at the base revision" },
-        { "cause": "invalid-input", "when": "a patch or the resulting model is invalid" },
-        { "cause": "policy-failure", "when": "a breaking or unclassified change lacks its version bump or acknowledgement" }
+        {
+          "cause": "stale-base",
+          "when": "the model is not at the base revision"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "a patch or the resulting model is invalid"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "a breaking or unclassified change lacks its version bump or acknowledgement"
+        }
       ],
-      "nextAction": { "action": "apply the change against the same revision", "operation": "mutate" },
+      "nextAction": {
+        "action": "apply the change against the same revision",
+        "operation": "mutate"
+      },
       "exposure": {
         "mcp": {
           "tool": "loom.planChange",
           "input": "PlanChangeInput",
           "data": "PlanChangeData",
-          "presence": ["model-or-workspace", "patch-or-patches"],
+          "presence": [
+            "model-or-workspace",
+            "patch-or-patches"
+          ],
           "examples": [
             {
               "description": "Preview adding an optional property against a base revision.",
               "input": {
-                "workspace": true,
+                "workspaceId": "ws_example",
                 "baseRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-                "patch": { "op": "addItem", "collection": "types", "id": "order", "field": "properties", "item": { "name": "currency", "kind": "string", "required": false, "nullable": true, "immutable": false, "origin": "client" } }
+                "patch": {
+                  "op": "addItem",
+                  "collection": "types",
+                  "id": "order",
+                  "field": "properties",
+                  "item": {
+                    "name": "currency",
+                    "kind": "string",
+                    "required": false,
+                    "nullable": true,
+                    "immutable": false,
+                    "origin": "client"
+                  }
+                }
               }
             }
           ]
         },
-        "cli": { "command": "plan", "usage": ["plan --patch <file> [--base <revision>] [--ack id,...]"], "examples": [{ "description": "Preview patch.json against the current revision.", "command": "plan --patch patch.json" }] }
+        "cli": {
+          "command": "plan",
+          "usage": [
+            "plan --patch <file> [--base <revision>] [--ack id,...]"
+          ],
+          "examples": [
+            {
+              "description": "Preview patch.json against the current revision.",
+              "command": "plan --patch patch.json"
+            }
+          ]
+        }
       }
     },
     {
       "id": "workspaceInspect",
       "purpose": "Inspect a local path: its repository, the descriptors that own or overlap it, the enclosing composition, the existing models, the direct submodules, the affected tracked and untracked paths, and suggested workspace placements with their reasons and an inspection digest.",
-      "prerequisites": ["a local path"],
+      "prerequisites": [
+        "a local path"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "invalid-input", "when": "the path does not exist" }
+        {
+          "cause": "invalid-input",
+          "when": "the path does not exist"
+        }
       ],
-      "nextAction": { "action": "initialize a workspace at a suggested placement", "operation": "workspaceInitialize" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild exposes it, and the CLI commands add it as `workspace inspect [<path>] [--boundary <dir>]`." },
-      "agentTool": {
-        "tool": "loom.workspace",
-        "action": "inspect",
-        "input": "WorkspaceInput",
-        "data": "WorkspaceInspectData",
-        "presence": ["workspace-inspect"],
-        "examples": [{ "description": "Inspect a checkout before placing a workspace in it.", "input": { "action": "inspect", "path": "services/payments" } }]
+      "nextAction": {
+        "action": "initialize a workspace at a suggested placement",
+        "operation": "workspaceInitialize"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.workspace",
+          "action": "inspect",
+          "input": "WorkspaceInput",
+          "data": "WorkspaceData",
+          "presence": [
+            "workspace-inspect"
+          ],
+          "examples": [
+            {
+              "description": "Inspect a checkout before placing a workspace in it.",
+              "input": {
+                "action": "inspect",
+                "path": "services/payments"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "workspace inspect",
+          "usage": [
+            "workspace inspect [<path>] [--boundary <dir>]"
+          ],
+          "examples": [
+            {
+              "description": "Read workspace inspect.",
+              "command": "workspace inspect . --json"
+            }
+          ]
+        }
       }
     },
     {
       "id": "workspaceInitialize",
       "purpose": "Initialize a workspace from a declaration validated as persistent configuration: a dry run proposes the scaffold, and an apply writes only the scaffold and its journal.",
-      "prerequisites": ["the path's inspection digest", "a declaration of the model id, kind, claims and members"],
+      "prerequisites": [
+        "the path's inspection digest",
+        "a declaration of the model id, kind, claims and members"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "invalid-input", "when": "the declaration breaks the configuration contract or the path is no repository root" },
-        { "cause": "policy-failure", "when": "the declaration claims a path another descriptor owns" },
-        { "cause": "stale-base", "when": "the inspection changed since 'expectedInspection', and nothing is written" }
+        {
+          "cause": "invalid-input",
+          "when": "the declaration breaks the configuration contract or the path is no repository root"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the declaration claims a path another descriptor owns"
+        },
+        {
+          "cause": "stale-base",
+          "when": "the inspection changed since 'expectedInspection', and nothing is written"
+        }
       ],
-      "nextAction": { "action": "open the created workspace", "operation": "workspaceOpen" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.workspace",
-        "action": "initialize",
-        "input": "WorkspaceInput",
-        "data": "WorkspaceInitializeData",
-        "presence": ["workspace-initialize", "workspace-initialize-apply"],
-        "examples": [
-          {
-            "description": "Propose the scaffold of an implementation workspace without writing it.",
-            "input": { "action": "initialize", "path": "services/payments", "declaration": { "configVersion": 1, "modelId": "payments", "modelKind": "implementation", "model": "model.json", "scope": { "payments": ["src"] }, "outputs": {}, "gates": {} }, "dryRun": true }
-          },
-          {
-            "description": "Create it against the inspection it was prepared from.",
-            "input": { "action": "initialize", "path": "services/payments", "declaration": { "configVersion": 1, "modelId": "payments", "modelKind": "implementation", "model": "model.json", "scope": { "payments": ["src"] }, "outputs": {}, "gates": {} }, "dryRun": false, "expectedInspection": "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-          }
-        ]
+      "nextAction": {
+        "action": "open the created workspace",
+        "operation": "workspaceOpen"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.workspace",
+          "action": "initialize",
+          "input": "WorkspaceInput",
+          "data": "WorkspaceData",
+          "presence": [
+            "workspace-initialize",
+            "workspace-initialize-apply"
+          ],
+          "examples": [
+            {
+              "description": "Propose the scaffold of an implementation workspace without writing it.",
+              "input": {
+                "action": "initialize",
+                "path": "services/payments",
+                "declaration": {
+                  "configVersion": 1,
+                  "modelId": "payments",
+                  "modelKind": "implementation",
+                  "model": "model.json",
+                  "scope": {
+                    "payments": [
+                      "src"
+                    ]
+                  },
+                  "outputs": {},
+                  "gates": {}
+                },
+                "dryRun": true
+              }
+            },
+            {
+              "description": "Create it against the inspection it was prepared from.",
+              "input": {
+                "action": "initialize",
+                "path": "services/payments",
+                "declaration": {
+                  "configVersion": 1,
+                  "modelId": "payments",
+                  "modelKind": "implementation",
+                  "model": "model.json",
+                  "scope": {
+                    "payments": [
+                      "src"
+                    ]
+                  },
+                  "outputs": {},
+                  "gates": {}
+                },
+                "dryRun": false,
+                "expectedInspection": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+              }
+            }
+          ]
+        },
+        "cli": "none",
+        "reason": "Workspace handles belong to a server session; initialization is also available through init."
       }
     },
     {
       "id": "workspaceOpen",
       "purpose": "Open a workspace for this session with read or edit access, returning its handle, a bounded summary and, unless declined, its browser view's loopback URL, without changing the model.",
-      "prerequisites": ["a governed workspace at the path"],
+      "prerequisites": [
+        "a governed workspace at the path"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "access-denied", "when": "the path is outside the server's configured allowed roots" },
-        { "cause": "unresolved-context", "when": "no workspace governs the path; inspect and initialize one" }
+        {
+          "cause": "access-denied",
+          "when": "the path is outside the server's configured allowed roots"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "no workspace governs the path; inspect and initialize one"
+        }
       ],
-      "nextAction": { "action": "read the workspace status", "operation": "workspaceStatus" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild exposes it. A handle is scoped to one server session, so the command line has no form of it." },
-      "agentTool": {
-        "tool": "loom.workspace",
-        "action": "open",
-        "input": "WorkspaceInput",
-        "data": "WorkspaceSummary",
-        "presence": ["workspace-open"],
-        "examples": [
-          { "description": "Open a workspace to read it, with its browser view.", "input": { "action": "open", "path": "services/payments", "access": "read" } },
-          { "description": "Open it for editing without a browser view.", "input": { "action": "open", "path": "services/payments", "access": "edit", "view": false } }
-        ]
+      "nextAction": {
+        "action": "read the workspace status",
+        "operation": "workspaceStatus"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.workspace",
+          "action": "open",
+          "input": "WorkspaceInput",
+          "data": "WorkspaceData",
+          "presence": [
+            "workspace-open"
+          ],
+          "examples": [
+            {
+              "description": "Open a workspace to read it, with its browser view.",
+              "input": {
+                "action": "open",
+                "path": "services/payments",
+                "access": "read"
+              }
+            },
+            {
+              "description": "Open it for editing without a browser view.",
+              "input": {
+                "action": "open",
+                "path": "services/payments",
+                "access": "edit",
+                "view": false
+              }
+            }
+          ]
+        },
+        "cli": "none",
+        "reason": "Workspace handles belong to a server session; initialization is also available through init."
       }
     },
     {
       "id": "workspaceStatus",
       "purpose": "Report an open workspace's current revisions, the resources it serves, its pending runs and the next actions.",
-      "prerequisites": ["a handle this session opened"],
+      "prerequisites": [
+        "a handle this session opened"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session; open the workspace again" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session; open the workspace again"
+        }
       ],
-      "nextAction": { "action": "follow a next action, or close the handle", "operation": "workspaceClose" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild exposes it, and the CLI commands add it as `workspace status [<path>]`." },
-      "agentTool": {
-        "tool": "loom.workspace",
-        "action": "status",
-        "input": "WorkspaceInput",
-        "data": "WorkspaceStatus",
-        "presence": ["workspace-handle"],
-        "examples": [{ "description": "Read the status of an open workspace.", "input": { "action": "status", "workspaceId": "ws_3f9a1c7d" } }]
+      "nextAction": {
+        "action": "follow a next action, or close the handle",
+        "operation": "workspaceClose"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.workspace",
+          "action": "status",
+          "input": "WorkspaceInput",
+          "data": "WorkspaceData",
+          "presence": [
+            "workspace-handle"
+          ],
+          "examples": [
+            {
+              "description": "Read the status of an open workspace.",
+              "input": {
+                "action": "status",
+                "workspaceId": "ws_3f9a1c7d"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "workspace status",
+          "usage": [
+            "workspace status [<path>] [--boundary <dir>]"
+          ],
+          "examples": [
+            {
+              "description": "Read workspace status.",
+              "command": "workspace status . --json"
+            }
+          ]
+        }
       }
     },
     {
       "id": "workspaceClose",
       "purpose": "Close a handle: cancel or await its runs, detach its watchers, revoke its browser access and release it, reporting every cleanup failure.",
-      "prerequisites": ["a handle this session opened"],
+      "prerequisites": [
+        "a handle this session opened"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "cleanup-incomplete", "when": "an owned resource remains, which the result names with its recovery" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "cleanup-incomplete",
+          "when": "an owned resource remains, which the result names with its recovery"
+        }
       ],
-      "nextAction": { "action": "open the workspace again to continue", "operation": "workspaceOpen" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild exposes it. A handle is scoped to one server session, so the command line has no form of it." },
-      "agentTool": {
-        "tool": "loom.workspace",
-        "action": "close",
-        "input": "WorkspaceInput",
-        "data": "WorkspaceCloseData",
-        "presence": ["workspace-handle"],
-        "examples": [{ "description": "Close a handle and release what it owns.", "input": { "action": "close", "workspaceId": "ws_3f9a1c7d" } }]
+      "nextAction": {
+        "action": "open the workspace again to continue",
+        "operation": "workspaceOpen"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.workspace",
+          "action": "close",
+          "input": "WorkspaceInput",
+          "data": "WorkspaceData",
+          "presence": [
+            "workspace-handle"
+          ],
+          "examples": [
+            {
+              "description": "Close a handle and release what it owns.",
+              "input": {
+                "action": "close",
+                "workspaceId": "ws_3f9a1c7d"
+              }
+            }
+          ]
+        },
+        "cli": "none",
+        "reason": "Workspace handles belong to a server session; initialization is also available through init."
       }
     },
     {
       "id": "federationInspect",
       "purpose": "Inspect a composition: its direct members and pins, the roots each model claims, missing inputs and the dependency graph between models.",
-      "prerequisites": ["a handle on a composition or mixed workspace"],
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "unmet-prerequisite", "when": "the workspace declares no composition" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "the workspace declares no composition"
+        }
       ],
-      "nextAction": { "action": "plan a change to the composition", "operation": "federationPlan" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.federation",
-        "action": "inspect",
-        "input": "FederationInput",
-        "data": "FederationInspectData",
-        "presence": ["federation-inspect"],
-        "examples": [{ "description": "Inspect the members and pins of an open composition.", "input": { "action": "inspect", "workspaceId": "ws_3f9a1c7d" } }]
+      "nextAction": {
+        "action": "plan a change to the composition",
+        "operation": "federationPlan"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.federation",
+          "action": "inspect",
+          "input": "FederationInput",
+          "data": "FederationData",
+          "presence": [
+            "federation-inspect"
+          ],
+          "examples": [
+            {
+              "description": "Inspect the members and pins of an open composition.",
+              "input": {
+                "action": "inspect",
+                "workspaceId": "ws_3f9a1c7d"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "federation inspect",
+          "usage": [
+            "federation inspect [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "federationPlan",
       "purpose": "Plan typed changes to membership, agreements, export pins or output claims as an immutable proposal with its owner-local writes, impact, invalidated evidence and required acceptance, writing nothing.",
-      "prerequisites": ["a handle on a composition or mixed workspace"],
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "stale-base", "when": "an input changed since 'expectedVector'; the result names the current revisions" },
-        { "cause": "policy-failure", "when": "a change claims a root another model owns or edits another owner's record" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'; the result names the current revisions"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "a change claims a root another model owns or edits another owner's record"
+        }
       ],
-      "nextAction": { "action": "apply the proposal against the same revision vector", "operation": "federationApply" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.federation",
-        "action": "plan",
-        "input": "FederationInput",
-        "data": "ChangeProposal",
-        "presence": ["federation-plan"],
-        "examples": [
-          {
-            "description": "Plan claiming the generated documentation root for the composition.",
-            "input": { "action": "plan", "workspaceId": "ws_3f9a1c7d", "changes": [{ "change": "claimOutput", "path": "Docs/Loom" }], "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
-          }
-        ]
+      "nextAction": {
+        "action": "apply the proposal against the same revision vector",
+        "operation": "federationApply"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.federation",
+          "action": "plan",
+          "input": "FederationInput",
+          "data": "FederationData",
+          "presence": [
+            "federation-plan"
+          ],
+          "examples": [
+            {
+              "description": "Plan claiming the generated documentation root for the composition.",
+              "input": {
+                "action": "plan",
+                "workspaceId": "ws_3f9a1c7d",
+                "changes": [
+                  {
+                    "change": "claimOutput",
+                    "path": "Docs/Loom"
+                  }
+                ],
+                "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "federation plan",
+          "usage": [
+            "federation plan [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "federationApply",
       "purpose": "Apply a planned proposal as journaled owner-local writes in canonical repository order after the authorization and revision checks; an incomplete change stays visibly recoverable.",
-      "prerequisites": ["a proposal a plan returned", "the acceptance the owners' trusted policies require"],
+      "prerequisites": [
+        "a proposal a plan returned",
+        "the acceptance the owners' trusted policies require"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "access-denied", "when": "the handle was opened with read access" },
-        { "cause": "stale-base", "when": "an input changed since 'expectedVector', and nothing is written" },
-        { "cause": "unmet-prerequisite", "when": "an owner's trusted policy requires an acceptance the proposal lacks" },
-        { "cause": "recovery-required", "when": "a journal holds an incomplete change" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "access-denied",
+          "when": "the handle was opened with read access"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector', and nothing is written"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "an owner's trusted policy requires an acceptance the proposal lacks"
+        },
+        {
+          "cause": "recovery-required",
+          "when": "a journal holds an incomplete change"
+        }
       ],
-      "nextAction": { "action": "check the composed result", "operation": "federationCheck" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.federation",
-        "action": "apply",
-        "input": "FederationInput",
-        "data": "FederationApplyData",
-        "presence": ["federation-apply"],
-        "examples": [
-          { "description": "Apply a planned proposal against the vector it was planned on.", "input": { "action": "apply", "workspaceId": "ws_3f9a1c7d", "proposalId": "prop-1", "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000" } }
-        ]
+      "nextAction": {
+        "action": "check the composed result",
+        "operation": "federationCheck"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.federation",
+          "action": "apply",
+          "input": "FederationInput",
+          "data": "FederationData",
+          "presence": [
+            "federation-apply"
+          ],
+          "examples": [
+            {
+              "description": "Apply a planned proposal against the vector it was planned on.",
+              "input": {
+                "action": "apply",
+                "workspaceId": "ws_3f9a1c7d",
+                "proposalId": "prop-1",
+                "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "federation apply",
+          "usage": [
+            "federation apply [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "federationCheck",
       "purpose": "Resolve a composition snapshot's closure and evaluate its composed validation and readiness, manufacturing no acceptance.",
-      "prerequisites": ["a handle on a composition or mixed workspace"],
+      "prerequisites": [
+        "a handle on a composition or mixed workspace"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "unresolved-context", "when": "'snapshotDigest' names no snapshot of the composition" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "unresolved-context",
+          "when": "'snapshotDigest' names no snapshot of the composition"
+        }
       ],
-      "nextAction": { "action": "publish the export or the agreements", "operation": "federationPublish" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.federation",
-        "action": "check",
-        "input": "FederationInput",
-        "data": "FederationCheckData",
-        "presence": ["federation-check"],
-        "examples": [{ "description": "Check the current composition snapshot.", "input": { "action": "check", "workspaceId": "ws_3f9a1c7d" } }]
+      "nextAction": {
+        "action": "publish the export or the agreements",
+        "operation": "federationPublish"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.federation",
+          "action": "check",
+          "input": "FederationInput",
+          "data": "FederationData",
+          "presence": [
+            "federation-check"
+          ],
+          "examples": [
+            {
+              "description": "Check the current composition snapshot.",
+              "input": {
+                "action": "check",
+                "workspaceId": "ws_3f9a1c7d"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "federation check",
+          "usage": [
+            "federation check [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "federationPublish",
       "purpose": "Publish an immutable bundle, a member's export or a composition's agreements; a draft is never trusted as a release, and a release needs the configured acceptance and evidence.",
-      "prerequisites": ["a handle with the publish capability"],
+      "prerequisites": [
+        "a handle with the publish capability"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "access-denied", "when": "the handle lacks the publish capability" },
-        { "cause": "stale-base", "when": "an input changed since 'expectedVector'" },
-        { "cause": "unmet-prerequisite", "when": "a release lacks its configured acceptance or evidence" },
-        { "cause": "policy-failure", "when": "the export omits a record of its required closure" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "access-denied",
+          "when": "the handle lacks the publish capability"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a release lacks its configured acceptance or evidence"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the export omits a record of its required closure"
+        }
       ],
-      "nextAction": { "action": "pin the published bundle in the consuming composition", "operation": "federationPlan" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.federation",
-        "action": "publish",
-        "input": "FederationInput",
-        "data": "FederationPublishData",
-        "presence": ["federation-publish"],
-        "examples": [
-          {
-            "description": "Publish a draft export of the payment capture operation.",
-            "input": { "action": "publish", "workspaceId": "ws_3f9a1c7d", "export": { "contract": "payments-export", "version": 1, "records": [{ "kind": "operation", "id": "payment.capture" }] }, "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "purpose": "draft" }
-          }
-        ]
+      "nextAction": {
+        "action": "pin the published bundle in the consuming composition",
+        "operation": "federationPlan"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.federation",
+          "action": "publish",
+          "input": "FederationInput",
+          "data": "FederationData",
+          "presence": [
+            "federation-publish"
+          ],
+          "examples": [
+            {
+              "description": "Publish a draft export of the payment capture operation.",
+              "input": {
+                "action": "publish",
+                "workspaceId": "ws_3f9a1c7d",
+                "export": {
+                  "contract": "payments-export",
+                  "version": 1,
+                  "records": [
+                    {
+                      "kind": "operation",
+                      "id": "payment.capture"
+                    }
+                  ]
+                },
+                "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                "purpose": "draft"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "federation publish",
+          "usage": [
+            "federation publish [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "diagram",
       "purpose": "Draw a diagram of one record or the whole workspace as the structured graph, Mermaid text or terminal text within a rendering budget, with the source vector it was drawn from.",
-      "prerequisites": ["a handle this session opened", "for a terminal format, a renderer provisioned in trusted configuration"],
+      "prerequisites": [
+        "a handle this session opened",
+        "for a terminal format, a renderer provisioned in trusted configuration"
+      ],
       "effects": "reads",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "invalid-input", "when": "the target names no record of the model or the request breaks the tool input contract" },
-        { "cause": "unmet-prerequisite", "when": "a terminal format is requested and no provisioned renderer is available" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the target names no record of the model or the request breaks the tool input contract"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a terminal format is requested and no provisioned renderer is available"
+        }
       ],
-      "nextAction": { "action": "read the context of a record the diagram shows", "operation": "context" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.diagram",
-        "input": "DiagramInput",
-        "data": "DiagramData",
-        "presence": [],
-        "examples": [
-          {
-            "description": "Draw the dependencies of the ordering component as Mermaid text.",
-            "input": { "workspaceId": "ws_3f9a1c7d", "target": { "kind": "record", "ref": { "kind": "component", "id": "ordering" } }, "scope": { "kind": "component-dependency", "depth": 1 }, "formats": ["mermaid"], "budget": { "maxNodes": 50, "maxBytes": 8192 } }
-          }
-        ]
+      "nextAction": {
+        "action": "read the context of a record the diagram shows",
+        "operation": "context"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.diagram",
+          "input": "DiagramInput",
+          "data": "DiagramData",
+          "presence": [],
+          "examples": [
+            {
+              "description": "Draw the dependencies of the ordering component as Mermaid text.",
+              "input": {
+                "workspaceId": "ws_3f9a1c7d",
+                "target": {
+                  "kind": "record",
+                  "ref": {
+                    "kind": "component",
+                    "id": "ordering"
+                  }
+                },
+                "scope": {
+                  "kind": "component-dependency",
+                  "depth": 1
+                },
+                "formats": [
+                  "mermaid"
+                ],
+                "budget": {
+                  "maxNodes": 50,
+                  "maxBytes": 8192
+                }
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "diagram",
+          "usage": [
+            "diagram [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "qualifyStart",
       "purpose": "Start a qualification run of named profile checks against one record or the whole workspace under a provisioned execution policy, returning its handle after preflight and starting only the checks the trusted policy authorizes.",
-      "prerequisites": ["a handle with the qualify capability", "the revision vector the run must qualify, as 'expectedVector'", "an execution policy naming a runner identity provisioned in trusted local configuration"],
+      "prerequisites": [
+        "a handle with the qualify capability",
+        "the revision vector the run must qualify, as 'expectedVector'",
+        "an execution policy naming a runner identity provisioned in trusted local configuration"
+      ],
       "effects": "writes",
       "dependsOnProfiles": true,
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId names no handle of this session" },
-        { "cause": "access-denied", "when": "the handle lacks the qualify capability" },
-        { "cause": "stale-base", "when": "an input changed since 'expectedVector'" },
-        { "cause": "policy-failure", "when": "the trusted policy does not authorize a check, or the execution policy names no provisioned identity" },
-        { "cause": "unmet-prerequisite", "when": "a check's native tool or runner is not provisioned, so qualification is not established" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId names no handle of this session"
+        },
+        {
+          "cause": "access-denied",
+          "when": "the handle lacks the qualify capability"
+        },
+        {
+          "cause": "stale-base",
+          "when": "an input changed since 'expectedVector'"
+        },
+        {
+          "cause": "policy-failure",
+          "when": "the trusted policy does not authorize a check, or the execution policy names no provisioned identity"
+        },
+        {
+          "cause": "unmet-prerequisite",
+          "when": "a check's native tool or runner is not provisioned, so qualification is not established"
+        }
       ],
-      "nextAction": { "action": "follow the run's progress", "operation": "qualifyStatus" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.qualify",
-        "action": "start",
-        "input": "QualifyInput",
-        "data": "QualifyRun",
-        "presence": ["qualify-start"],
-        "examples": [
-          {
-            "description": "Run the SQL behavior check against the workspace under the CI runner identity.",
-            "input": { "action": "start", "workspaceId": "ws_3f9a1c7d", "checks": ["sql.behavior"], "target": { "kind": "workspace" }, "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "executionPolicy": "ci-runner" }
-          }
-        ]
+      "nextAction": {
+        "action": "follow the run's progress",
+        "operation": "qualifyStatus"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.qualify",
+          "action": "start",
+          "input": "QualifyInput",
+          "data": "QualifyData",
+          "presence": [
+            "qualify-start"
+          ],
+          "examples": [
+            {
+              "description": "Run the SQL behavior check against the workspace under the CI runner identity.",
+              "input": {
+                "action": "start",
+                "workspaceId": "ws_3f9a1c7d",
+                "checks": [
+                  "sql.behavior"
+                ],
+                "target": {
+                  "kind": "workspace"
+                },
+                "expectedVector": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+                "executionPolicy": "ci-runner"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "qualify start",
+          "usage": [
+            "qualify start [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "qualifyStatus",
       "purpose": "Report a run's phase, a bounded page of its progress, the evidence it recorded and its cleanup.",
-      "prerequisites": ["a run this session started"],
+      "prerequisites": [
+        "a run this session started"
+      ],
       "effects": "reads",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId or runId names no handle or run of this session" },
-        { "cause": "invalid-input", "when": "the cursor was not issued for this run" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId or runId names no handle or run of this session"
+        },
+        {
+          "cause": "invalid-input",
+          "when": "the cursor was not issued for this run"
+        }
       ],
-      "nextAction": { "action": "inspect the evidence the run recorded", "operation": "evidence" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.qualify",
-        "action": "status",
-        "input": "QualifyInput",
-        "data": "QualifyRunStatus",
-        "presence": ["qualify-status"],
-        "examples": [{ "description": "Read the progress of a run.", "input": { "action": "status", "workspaceId": "ws_3f9a1c7d", "runId": "run-1" } }]
+      "nextAction": {
+        "action": "inspect the evidence the run recorded",
+        "operation": "evidence"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.qualify",
+          "action": "status",
+          "input": "QualifyInput",
+          "data": "QualifyData",
+          "presence": [
+            "qualify-status"
+          ],
+          "examples": [
+            {
+              "description": "Read the progress of a run.",
+              "input": {
+                "action": "status",
+                "workspaceId": "ws_3f9a1c7d",
+                "runId": "run-1"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "qualify status",
+          "usage": [
+            "qualify status [options]"
+          ],
+          "examples": []
+        }
       }
     },
     {
       "id": "qualifyCancel",
       "purpose": "Request the cancellation of a run, idempotently, and report it completed only once its processes and resources have settled.",
-      "prerequisites": ["a run this session started"],
+      "prerequisites": [
+        "a run this session started"
+      ],
       "effects": "writes",
       "refusals": [
-        { "cause": "unknown-handle", "when": "the workspaceId or runId names no handle or run of this session" },
-        { "cause": "cleanup-incomplete", "when": "the run left an owned resource, which the result names with its recovery" }
+        {
+          "cause": "unknown-handle",
+          "when": "the workspaceId or runId names no handle or run of this session"
+        },
+        {
+          "cause": "cleanup-incomplete",
+          "when": "the run left an owned resource, which the result names with its recovery"
+        }
       ],
-      "nextAction": { "action": "read the run's final status", "operation": "qualifyStatus" },
-      "exposure": { "mcp": "none", "cli": "none", "reason": "Catalogued before it is advertised; the server rebuild and CLI commands expose it." },
-      "agentTool": {
-        "tool": "loom.qualify",
-        "action": "cancel",
-        "input": "QualifyInput",
-        "data": "QualifyCancelData",
-        "presence": ["qualify-cancel"],
-        "examples": [{ "description": "Cancel a run.", "input": { "action": "cancel", "workspaceId": "ws_3f9a1c7d", "runId": "run-1" } }]
+      "nextAction": {
+        "action": "read the run's final status",
+        "operation": "qualifyStatus"
+      },
+      "exposure": {
+        "mcp": {
+          "tool": "loom.qualify",
+          "action": "cancel",
+          "input": "QualifyInput",
+          "data": "QualifyData",
+          "presence": [
+            "qualify-cancel"
+          ],
+          "examples": [
+            {
+              "description": "Cancel a run.",
+              "input": {
+                "action": "cancel",
+                "workspaceId": "ws_3f9a1c7d",
+                "runId": "run-1"
+              }
+            }
+          ]
+        },
+        "cli": {
+          "command": "qualify cancel",
+          "usage": [
+            "qualify cancel [options]"
+          ],
+          "examples": []
+        }
       }
     }
   ],
   "workflow": [
-    { "step": "Orient on what this build supports and what each kind of proof establishes", "operations": ["describe"] },
-    { "step": "Identify the workspace and the requested outcome, and read the context, constraints, evidence and unresolved decisions of the task", "operations": ["context"] },
-    { "step": "Preview a change through the owning model, then apply it against the same revision", "operations": ["planChange", "mutate"] },
-    { "step": "Check readiness for the actual task and implement only the scope its work package permits", "operations": ["checkReadiness"] },
-    { "step": "Regenerate the artifacts from the model and check them for drift", "operations": ["projectAll", "check"] },
-    { "step": "Qualify the real implementation and bind its evidence to the exact inputs", "operations": ["qualify", "evidence"] }
+    {
+      "step": "Orient on what this build supports and what each kind of proof establishes",
+      "operations": [
+        "describe"
+      ]
+    },
+    {
+      "step": "Identify the workspace and the requested outcome, and read the context, constraints, evidence and unresolved decisions of the task",
+      "operations": [
+        "context"
+      ]
+    },
+    {
+      "step": "Preview a change through the owning model, then apply it against the same revision",
+      "operations": [
+        "planChange",
+        "mutate"
+      ]
+    },
+    {
+      "step": "Check readiness for the actual task and implement only the scope its work package permits",
+      "operations": [
+        "checkReadiness"
+      ]
+    },
+    {
+      "step": "Regenerate the artifacts from the model and check them for drift",
+      "operations": [
+        "projectAll",
+        "check"
+      ]
+    },
+    {
+      "step": "Qualify the real implementation and bind its evidence to the exact inputs",
+      "operations": [
+        "qualify",
+        "evidence"
+      ]
+    }
   ],
   "proofLimits": [
     {
       "id": "validation-scope",
       "text": "Model validation establishes conformance to the declared rule set; it does not establish that the requirements are correct or complete.",
-      "operations": ["validate", "mutate", "diff", "planChange", "checkReadiness", "check", "checkAll", "federationCheck"]
+      "operations": [
+        "validate",
+        "mutate",
+        "diff",
+        "planChange",
+        "checkReadiness",
+        "check",
+        "checkAll",
+        "federationCheck"
+      ]
     },
     {
       "id": "generated-equality",
       "text": "Generated-file equality establishes that artifacts match their inputs, not that an implementation conforms.",
-      "operations": ["project", "projectAll", "write", "docs", "docsCheck", "check", "checkAll"]
+      "operations": [
+        "project",
+        "projectAll",
+        "write",
+        "docs",
+        "docsCheck",
+        "check",
+        "checkAll"
+      ]
     },
     {
       "id": "supplied-records",
       "text": "Readiness, acceptance and qualification are evaluated only over the baseline, acceptance, evidence and policy records supplied; their provenance is verified by the adapter.",
-      "operations": ["diff", "planChange", "checkReadiness", "context", "check", "checkAll", "qualify", "evidence", "federationCheck", "qualifyStart"]
+      "operations": [
+        "diff",
+        "planChange",
+        "checkReadiness",
+        "context",
+        "check",
+        "checkAll",
+        "qualify",
+        "evidence",
+        "federationCheck",
+        "qualifyStart"
+      ]
     },
     {
       "id": "predicates",
       "text": "A prose predicate is never evaluated; an expression predicate is type-checked, never run against live data.",
-      "operations": ["validate", "mutate", "planChange", "check", "checkAll"]
+      "operations": [
+        "validate",
+        "mutate",
+        "planChange",
+        "check",
+        "checkAll"
+      ]
     }
   ],
   "resources": [
@@ -1127,16 +2629,14 @@
       "purpose": "The status of one open workspace, for the session that holds its handle.",
       "contents": "WorkspaceStatus",
       "scope": "session",
-      "exposure": "none",
-      "reason": "Catalogued before it is listed; the server rebuild serves it."
+      "exposure": "listed"
     },
     {
       "uri": "loom://workspaces/{workspaceId}/records/{kind}/{id}",
       "purpose": "One record of an open workspace at the model revision the result names, which a context or describe page points to when the record is too large for the page.",
       "contents": "RecordResource",
       "scope": "session",
-      "exposure": "none",
-      "reason": "Catalogued before it is listed; the server rebuild serves it."
+      "exposure": "listed"
     },
     {
       "uri": "loom://workspaces/{workspaceId}/diagrams/{diagramId}",

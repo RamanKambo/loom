@@ -66,6 +66,8 @@ import {
   verifyRecord,
   type Session,
   type Workspace,
+  HandleRegistry,
+  scaffoldConfig,
 } from '@loom/workspace';
 import { runChecks, selfQualify, type Fixtures, type RunOutput, type Signer } from '@loom/qualification';
 import { UsageError, flag, has, integer, list, required, type Args } from './args.js';
@@ -229,11 +231,31 @@ export function cmdCheck(ctx: Context): CommandResult {
   return { env, detail: [`mode: ${s.mode}`] };
 }
 
-export function cmdInit(ctx: Context): CommandResult {
-  const boundary = flag(ctx.args, 'boundary');
-  const modelId = required(ctx.args, 'model-id');
-  const modelKind = required(ctx.args, 'model-kind') as ModelKind;
-  return { env: initWorkspace(ctx.cwd, { modelId, modelKind, ...(has(ctx.args, 'force') ? { force: true } : {}), ...(boundary ? { boundary: resolve(ctx.cwd, boundary) } : {}) }) };
+export async function cmdInit(ctx: Context): Promise<CommandResult> {
+  if (has(ctx.args, 'force')) throw new UsageError('initialization never replaces .loom; open the existing workspace');
+  const declarationFile = flag(ctx.args, 'declaration');
+  const declaration = declarationFile ? readJsonFile(resolve(ctx.cwd, declarationFile), 'workspace declaration') : scaffoldConfig(required(ctx.args, 'model-id'), required(ctx.args, 'model-kind') as ModelKind);
+  const registry = new HandleRegistry({ allowedRoots: [ctx.cwd] });
+  const env = await registry.initialize(ctx.cwd, declaration, {
+    dryRun: !has(ctx.args, 'apply'),
+    ...(flag(ctx.args, 'expected-inspection') ? { expectedInspection: flag(ctx.args, 'expected-inspection') as string } : {}),
+  });
+  return { env };
+}
+
+export function cmdWorkspace(ctx: Context): CommandResult {
+  const action = ctx.args.positionals[0];
+  const path = resolve(ctx.cwd, ctx.args.positionals[1] ?? '.');
+  const boundary = resolve(ctx.cwd, flag(ctx.args, 'boundary') ?? findBoundary(path));
+  const registry = new HandleRegistry({ allowedRoots: [boundary] });
+  if (action === 'inspect') return { env: registry.inspect(path, { boundary }) };
+  if (action !== 'status') throw new UsageError('workspace takes inspect or status');
+  const opened = registry.open(path, 'read', { view: false });
+  if (opened.refusal) return { env: opened };
+  const id = (opened.data as { workspace: { workspaceId: string } }).workspace.workspaceId;
+  const env = registry.status(id);
+  registry.close(id);
+  return { env };
 }
 
 /** Install the bundle: every enabled artifact, with readiness, coverage and evidence views evaluated under the verified inputs. */

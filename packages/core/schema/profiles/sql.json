@@ -66,6 +66,11 @@
       "construct": "check.prose",
       "reason": "A prose check predicate cannot be rendered as a CHECK constraint.",
       "onUse": "draft"
+    },
+    {
+      "construct": "type.externalSchema",
+      "reason": "External schemas are not represented as a closed local type contract.",
+      "onUse": "fail"
     }
   ],
   "tooling": [

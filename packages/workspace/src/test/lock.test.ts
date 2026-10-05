@@ -1,10 +1,18 @@
 import { strict as assert } from 'node:assert';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { ProcessIdentity } from '@loom/core';
 import { abandoned, processIdentity, withLock } from '../lock.js';
 import { scratch } from '../testing/helpers.js';
+
+test('an asynchronous callback retains its repository lock until settlement', async()=>{
+  const path=join(scratch(),'async.lock');let finish!:()=>void;let entered!:()=>void;
+  const started=new Promise<void>(resolve=>{entered=resolve;});
+  const gate=new Promise<void>(resolve=>{finish=resolve;});
+  const lock=withLock(path,async()=>{entered();await gate;assert.ok(existsSync(path),'the repository remains locked while asynchronous owner work is pending');return 'settled';},async pid=>({pid,createdAt:'2026-01-01T00:00:00.000Z'}));
+  await started;assert.ok(existsSync(path));finish();const result=await lock;assert.deepEqual(result,{ok:true,value:'settled'});assert.equal(existsSync(path),false);
+});
 
 test('a holder with a live pid and another creation time is taken over', async () => {
   const self = await processIdentity(process.pid);

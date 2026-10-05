@@ -9,7 +9,7 @@
       "refusals": [{ "cause": "invalid-input", "when": "the model breaks the structural contract" }],
       "nextAction": { "action": "preview the change that clears a finding", "operation": "planChange" },
       "exposure": {
-        "mcp": { "tool": "loom.validate", "input": "ValidateInput", "data": "ValidateData", "presence": ["model-or-workspace"], "examples": [{ "description": "Validate the workspace model.", "input": { "workspace": true } }] },
+        "mcp": { "tool": "loom.validate", "input": "ValidateInput", "data": "ValidateData", "presence": ["model-or-workspace"], "examples": [{ "description": "Validate the workspace model.", "input": { "workspaceId": "ws_example" } }] },
         "cli": "none",
         "reason": "The command line validates inside check."
       }

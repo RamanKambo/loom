@@ -86,10 +86,10 @@ test('a tool outside the version policy is UNKNOWN and its actual version is rec
 });
 
 test('a runner that never finishes is stopped and reported UNKNOWN', async () => {
-  const hang: Runner = () => new Promise(() => undefined);
+  const hang: Runner = (ctx) => new Promise((resolve) => ctx.signal?.addEventListener('abort', () => resolve(outcome('UNKNOWN', 'cancelled')), { once: true }));
   const out = await run([check('t.hang')], { 't.hang': hang }, { timeoutMs: 50 });
   assert.equal(out.run.checks[0]!.result, 'UNKNOWN');
-  assert.match(out.run.checks[0]!.reason ?? '', /did not finish/);
+  assert.match(out.run.checks[0]!.reason ?? '', /deadline exceeded/);
 });
 
 test('a runner that crashes is reported UNKNOWN with the error', async () => {

@@ -39,6 +39,10 @@ export const structureRules: Rule = (ctx) => {
     ctx.report(FINDING.WORKFLOW_DEPENDENCY_CYCLE, `workflows: ${cycle.join(' -> ')}`, `workflow dependency cycle: ${cycle.join(' -> ')}`, cycle.map((id) => ref('workflow', id)), `remove one dependsOn link in ${cycle.join(' -> ')}`);
   }
   for (const w of ctx.model.workflows) {
+    for (const step of w.steps) {
+      const action = ctx.index.byKind.get(step.action.kind)?.get(step.action.id) as { owner?: string } | undefined;
+      if (action?.owner && action.owner !== step.target) ctx.report(FINDING.WORKFLOW_STEP_ACTION_OWNER_MISMATCH, `workflows/${w.id}/steps/${step.id}/target`, `step '${step.id}' targets '${step.target}', but ${step.action.kind} '${step.action.id}' belongs to '${action.owner}'`, [ref('workflow', w.id), ref(step.action.kind, step.action.id)], `set step '${step.id}' target to component '${action.owner}', or select an action that '${step.target}' owns`);
+    }
     for (const im of w.imports) {
       if (splitQualified(im.typeId)) continue;
       const t = ctx.index.types.get(im.typeId);

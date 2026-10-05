@@ -11,12 +11,15 @@ Notify optional switch). The contract check parses this file and never runs it.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
+    [ValidateNotNull()]
     [string] $OrderId,
 
     [Parameter()]
+    [ValidateNotNull()]
     [ValidateSet('pending', 'dispatched', 'delivered')]
     [string] $InitialState = 'pending',
 
+    [ValidateNotNull()]
     [switch] $Notify
 )
 

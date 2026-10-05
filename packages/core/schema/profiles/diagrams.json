@@ -70,6 +70,28 @@
       "environment": "process",
       "requiredByDefault": true,
       "limits": "Syntax only."
+    },
+    {
+      "id": "diagrams.terminal",
+      "revision": 1,
+      "layer": "parse",
+      "evidence": "parse",
+      "claim": "All diagram kinds preserve their semantic graph and render with the pinned terminal renderer.",
+      "tool": {
+        "name": "mermaid-ascii",
+        "versionPolicy": {
+          "exact": "0.0.0-20260908213847-5f00e3d9ac9f",
+          "digest": "sha256:fd751149989a32ea6b3472aa146ca184936f33268ddc59fb867f1f25c652b02e"
+        }
+      },
+      "runner": "mermaid-terminal",
+      "inputs": [
+        "workflow",
+        "architecture"
+      ],
+      "environment": "process",
+      "requiredByDefault": true,
+      "limits": "Layout and semantic coverage do not prove runtime behavior."
     }
   ]
 }

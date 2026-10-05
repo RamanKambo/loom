@@ -32,7 +32,7 @@ async function inDatabase(ctx: RunnerContext, purpose: string, steps: (inst: Loc
     const r = await steps(inst.value, db.value);
     return { boundaries: realBoundary, tool: { name: 'sqlcmd', version: `${ctx.tool.version}; SQL Server ${inst.value.engineVersion}` }, ...r };
   } finally {
-    await dropDatabase(ctx, inst.value, db.value);
+    if (!ctx.lifecycle) await dropDatabase(ctx, inst.value, db.value);
   }
 }
 
@@ -94,7 +94,7 @@ const sqlParse: Runner = async (ctx) => {
   const reports: string[] = [];
   for (const platform of platforms.length ? platforms : (['sqlserver-2022'] as const)) {
     const parser = PLATFORM_PARSER[platform];
-    const r = await runPwsh(pwsh.tool.path, PARSE_SCRIPT(ctx.tool.path, parser, files.map((f) => f.path)), { timeoutMs: ctx.timeoutMs });
+    const r = await runPwsh(pwsh.tool.path, PARSE_SCRIPT(ctx.tool.path, parser, files.map((f) => f.path)), { timeoutMs: ctx.timeoutMs, signal: ctx.signal });
     if (!r.ok) return outcome('UNKNOWN', r.reason);
     if (r.json['loadError'] !== undefined) return outcome('UNKNOWN', `ScriptDom ${ctx.tool.version} at ${ctx.tool.path} did not load: ${String(r.json['loadError'])}`);
     const results = (r.json['results'] ?? []) as Array<{ file: string; errors: number; first: string[] }>;
@@ -149,7 +149,7 @@ const sqlBuild: Runner = async (ctx) => {
       'utf8',
     );
     for (const f of files) writeFileSync(join(dir, `${f.component ?? 'schema'}.sql`), declarativeDdl(read(f.path)), 'utf8');
-    const r = await exec(dotnet.tool.path, ['build', join(dir, 'Loom.Schema.sqlproj'), '-nologo', '-v:minimal', '-p:NuGetAudit=false'], { cwd: dir, timeoutMs: ctx.timeoutMs });
+    const r = await exec(dotnet.tool.path, ['build', join(dir, 'Loom.Schema.sqlproj'), '-nologo', '-v:minimal', '-p:NuGetAudit=false'], { cwd: dir, timeoutMs: ctx.timeoutMs, signal: ctx.signal });
     if (!r.ok) return outcome('UNKNOWN', `dotnet build (${platform}): ${r.reason}`);
     const text = `${r.stdout}\n${r.stderr}`;
     if (r.status !== 0) {
@@ -215,7 +215,7 @@ async function runContractTests(ctx: RunnerContext, which: 'conforming' | 'viola
     if (!r.ok) return { unknown: r.reason };
     return { exit: r.status, output: `${r.stdout}\n${r.stderr}` };
   } finally {
-    await dropDatabase(ctx, inst.value, db.value);
+    if (!ctx.lifecycle) await dropDatabase(ctx, inst.value, db.value);
   }
 }
 

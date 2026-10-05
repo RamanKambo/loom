@@ -97,7 +97,7 @@ const openapiCompatibility: Runner = async (ctx) => {
   const revPath = join(ctx.dir, 'candidate.openapi.json');
   writeFileSync(basePath, base.content, 'utf8');
   writeFileSync(revPath, rev.content, 'utf8');
-  const r = await exec(ctx.tool.path, ['breaking', basePath, revPath, '--format', 'json', '--allow-external-refs=false'], { cwd: ctx.dir, timeoutMs: ctx.timeoutMs });
+  const r = await exec(ctx.tool.path, ['breaking', basePath, revPath, '--format', 'json', '--allow-external-refs=false'], { cwd: ctx.dir, timeoutMs: ctx.timeoutMs, signal: ctx.signal });
   if (!r.ok) return outcome('UNKNOWN', r.reason);
   if (r.status !== 0) return outcome('UNKNOWN', `oasdiff exited ${r.status}: ${firstErrorLine(`${r.stdout}\n${r.stderr}`)}`);
   let items: OasdiffItem[];

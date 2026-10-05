@@ -46,7 +46,7 @@ function implementationFor(ctx: RunnerContext, which: 'conforming' | 'violating'
 }
 
 const build = async (ctx: RunnerContext, project: string, implementation: string) =>
-  exec(ctx.tool.path, ['build', project, '-nologo', '-v:minimal', `-p:LoomImplementationProject=${implementation}`, '-p:NuGetAudit=false'], { cwd: dirname(project), timeoutMs: ctx.timeoutMs });
+  exec(ctx.tool.path, ['build', project, '-nologo', '-v:minimal', `-p:LoomImplementationProject=${implementation}`, '-p:NuGetAudit=false'], { cwd: dirname(project), timeoutMs: ctx.timeoutMs, signal: ctx.signal });
 
 const csharpBuild: Runner = async (ctx) => {
   const list = instances(ctx);
@@ -94,7 +94,7 @@ async function test(ctx: RunnerContext, inst: Instance, implementation: string, 
   const r = await exec(
     ctx.tool.path,
     ['test', staged.project, '-nologo', '-v:minimal', `-p:LoomImplementationProject=${staged.implementation}`, '-p:NuGetAudit=false', '--logger', 'trx;LogFileName=result.trx', '--results-directory', results],
-    { cwd: dirname(staged.project), timeoutMs: ctx.timeoutMs },
+    { cwd: dirname(staged.project), timeoutMs: ctx.timeoutMs, signal: ctx.signal },
   );
   if (!r.ok) return { unknown: r.reason };
   const counts = readTrx(results);

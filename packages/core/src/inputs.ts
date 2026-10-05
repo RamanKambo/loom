@@ -25,6 +25,8 @@ export interface EvaluationInputs {
   gates?: LoomConfig['gates'];
   state?: WorkflowState;
   publishedContracts?: PublishedContract[];
+  /** Owner-preserving aggregate view inputs captured by the workspace adapter. */
+  composition?: { models: {modelId:string;model:Model}[]; snapshotDigest:string };
   /** ISO date supplied by the adapter; the core has no clock. */
   asOf?: string;
   /** Current hash of each generated artifact instance, for evidence whose inputs name an artifact. */
@@ -38,7 +40,7 @@ export interface EvaluationInputs {
  * store, so evidence about it would go stale the moment it was stored.
  */
 export function artifactInputs(inputs: EvaluationInputs): EvaluationInputs | undefined {
-  return inputs.publishedContracts?.length ? { publishedContracts: inputs.publishedContracts } : undefined;
+  return inputs.publishedContracts?.length||inputs.composition ? { ...(inputs.publishedContracts?.length?{publishedContracts:inputs.publishedContracts}:{}),...(inputs.composition?{composition:inputs.composition}:{}) } : undefined;
 }
 
 export type ImplementationGate = 'none' | 'proposed-contract' | 'accepted-contract';

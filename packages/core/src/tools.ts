@@ -72,7 +72,7 @@ export interface ContextOptions {
   recordResource?: (ref: RecordRef) => string;
   /** The recorded progress of the workspace, which answers a resume target. */
   resume?: ResumeInputs;
-  /** The members that address the same model in a follow-up call, such as `{ workspace: true }`; without them a next action repeats the inline model. */
+  /** The members that address the same model in a follow-up call, such as `{ workspaceId }`; without them a next action repeats the inline model. */
   address?: Readonly<Record<string, unknown>>;
 }
 
@@ -95,7 +95,7 @@ function pageStates(model: Model, inputs: EvaluationInputs, completeness: Comple
  */
 export function contextTool(input: Partial<ContextInput> & { model?: unknown }, inputs: EvaluationInputs = {}, options: ContextOptions = {}): ResultEnvelope {
   const tool = 'loom.context';
-  if (input.workspace) return workspaceRefusal(tool);
+  if (input.workspaceId) return workspaceRefusal(tool);
   const loaded = loadOrRefuse(tool, input.model);
   if ('refused' in loaded) return loaded.refused;
   const model = loaded.model;
@@ -143,7 +143,7 @@ export function contextTool(input: Partial<ContextInput> & { model?: unknown }, 
 }
 
 export function checkReadinessTool(input: Partial<CheckReadinessInput> & { model?: unknown }, inputs: EvaluationInputs = {}): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.checkReadiness');
+  if (input.workspaceId) return workspaceRefusal('loom.checkReadiness');
   const loaded = loadOrRefuse('loom.checkReadiness', input.model);
   if ('refused' in loaded) return loaded.refused;
   if (!input.task) {
@@ -160,7 +160,7 @@ export function checkReadinessTool(input: Partial<CheckReadinessInput> & { model
 
 export interface PlanChangeToolInput {
   model?: unknown;
-  workspace?: boolean;
+  workspaceId?: string;
   baseRevision?: string;
   patch?: unknown;
   patches?: unknown;
@@ -174,7 +174,7 @@ export interface PlanChangeToolInput {
  * whether policy requires acceptance. A stale base is refused.
  */
 export function planChangeTool(input: PlanChangeToolInput, inputs: EvaluationInputs = {}): ResultEnvelope {
-  if (input.workspace) return workspaceRefusal('loom.planChange');
+  if (input.workspaceId) return workspaceRefusal('loom.planChange');
   const loaded = loadOrRefuse('loom.planChange', input.model);
   if ('refused' in loaded) return loaded.refused;
   const base = loaded.model;

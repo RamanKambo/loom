@@ -241,6 +241,13 @@ export function guardFindings(before: Model, after: Model, changes: readonly Cha
 export function mutate(model: Model, patches: Patch | readonly Patch[], options: MutateOptions = {}): MutateResult {
   const list = Array.isArray(patches) ? (patches as readonly Patch[]) : [patches as Patch];
   const empty = (findings: Finding[]): MutateResult => ({ model: null, findings, changes: [], impact: [], repairs: [] });
+  for (let i=0;i<list.length;i++) {
+    const patch=list[i] as Patch & {id?:string};
+    if(typeof patch.id !== 'string'||!patch.id.includes(':'))continue;
+    const prefix=patch.id.slice(0,patch.id.indexOf(':'));
+    const imported=model.publishedContracts.find(pin=>pin.id===prefix);
+    if(imported)return empty([finding('PATCH_INVALID',`patches/${i}`,`imported record '${patch.id}' is read-only; its owner is '${imported.publisher}'`,`propose the change to owner '${imported.publisher}', publish a new exact export and update the consumer pin`)]);
+  }
   const inputFindings = structuralFindings(model);
   if (inputFindings.length) return empty(inputFindings);
   const patchFindings = list.flatMap((p, i) => checkPatch(p, `patches/${i}`));

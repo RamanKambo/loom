@@ -1,15 +1,15 @@
 {
   "definition": "ContextInput",
   "valid": [
-    { "workspace": true, "target": { "kind": "resume" } },
-    { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } },
-    { "workspace": true, "target": { "kind": "record", "ref": { "kind": "operation", "id": "order.get" } }, "budget": { "maxRecords": 50 }, "continuation": "context.sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.0123456789abcdef.12" }
+    { "workspaceId": "ws_example", "target": { "kind": "resume" } },
+    { "workspaceId": "ws_example", "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } },
+    { "workspaceId": "ws_example", "target": { "kind": "record", "ref": { "kind": "operation", "id": "order.get" } }, "budget": { "maxRecords": 50 }, "continuation": "context.sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.0123456789abcdef.12" }
   ],
   "invalid": [
-    { "because": "a page holds at most the maximum number of records", "keyword": "maximum", "path": "/budget/maxRecords", "instance": { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "budget": { "maxRecords": 10000 } } },
-    { "because": "a resume target names no record", "keyword": "oneOf", "path": "/target", "instance": { "workspace": true, "target": { "kind": "resume", "ref": { "kind": "component", "id": "ordering" } } } },
-    { "because": "a continuation is an opaque token, never a URL", "keyword": "pattern", "path": "/continuation", "instance": { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "continuation": "https://example.com/next" } },
-    { "because": "a context request names its target", "keyword": "required", "path": "", "instance": { "workspace": true, "budget": { "maxRecords": 5 } } },
-    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "workspace": true, "target": { "kind": "resume" }, "everything": true } }
+    { "because": "a page holds at most the maximum number of records", "keyword": "maximum", "path": "/budget/maxRecords", "instance": { "workspaceId": "ws_example", "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "budget": { "maxRecords": 10000 } } },
+    { "because": "a resume target names no record", "keyword": "oneOf", "path": "/target", "instance": { "workspaceId": "ws_example", "target": { "kind": "resume", "ref": { "kind": "component", "id": "ordering" } } } },
+    { "because": "a continuation is an opaque token, never a URL", "keyword": "pattern", "path": "/continuation", "instance": { "workspaceId": "ws_example", "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } }, "continuation": "https://example.com/next" } },
+    { "because": "a context request names its target", "keyword": "required", "path": "", "instance": { "workspaceId": "ws_example", "budget": { "maxRecords": 5 } } },
+    { "because": "an unknown member is rejected", "keyword": "additionalProperties", "path": "", "instance": { "workspaceId": "ws_example", "target": { "kind": "resume" }, "everything": true } }
   ]
 }

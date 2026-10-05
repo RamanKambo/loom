@@ -29,7 +29,7 @@ const ctxOf = (cwd: string, loomRoot: string, argv: string[]): Context => ({ cwd
  * and an initialized workspace each check clean after writing, and report a
  * hand edit and a deleted file.
  */
-function driftChecks(loomRoot: string, log: Log): void {
+async function driftChecks(loomRoot: string, log: Log): Promise<void> {
   const work = mkdtempSync(join(tmpdir(), 'loom-cli-self-test-'));
   try {
     const modelFile = join(work, 'model.json');
@@ -47,7 +47,9 @@ function driftChecks(loomRoot: string, log: Log): void {
     const repo = join(work, 'repo');
     gitRepo(repo);
     for (const c of ['ordering', 'fulfillment', 'billing']) mkdirSync(join(repo, c), { recursive: true });
-    expect(cmdInit(ctxOf(repo, loomRoot, ['init', '--model-id', 'self-test', '--model-kind', 'implementation'])).env.outcome === 'ok', 'init refused a fresh repository root');
+    const proposed = (await cmdInit(ctxOf(repo, loomRoot, ['init', '--model-id', 'self-test', '--model-kind', 'implementation']))).env;
+    const inspection = (proposed.data as { inspectionDigest: string }).inspectionDigest;
+    expect((await cmdInit(ctxOf(repo, loomRoot, ['init', '--model-id', 'self-test', '--model-kind', 'implementation', '--apply', '--expected-inspection', inspection]))).env.outcome === 'ok', 'init refused a fresh repository root');
     writeFileSync(join(repo, '.loom', 'model.json'), `${exportModel(sampleModel())}\n`, 'utf8');
     const configPath = join(repo, '.loom', 'loom.json');
     const config = JSON.parse(readFileSync(configPath, 'utf8')) as LoomConfig;
@@ -68,7 +70,7 @@ function driftChecks(loomRoot: string, log: Log): void {
 /** The engine battery, the drift gate, Loom's release wording, then every profile check against Loom's own fixtures. */
 export async function runSelfTest(loomRoot: string, log: Log): Promise<number> {
   selfTest();
-  driftChecks(loomRoot, log);
+  await driftChecks(loomRoot, log);
   const wording = releaseWordingFindings(loomRoot);
   for (const f of wording) log(`release wording ${f.path}: ${f.message}`);
   log(`loom cli: release wording - ${wording.length} prohibited markers in Loom's documents, comments and JSON prose.`);

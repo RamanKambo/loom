@@ -2,6 +2,16 @@
   "registerVersion": 1,
   "capabilities": [
     {
+      "id": "workspace.federation",
+      "description": "Explicit composition membership resolves exact immutable exports and owner-preserving record closure, rejects missing checkouts and stale content, and keeps implementation source roots and declared output claims exclusive. Planning is read-only and an applied owner-local proposal is journaled and recoverable without overwriting external edits.",
+      "code": ["packages/core/src/composition.ts#resolveComposition","packages/core/src/composition.ts#exactExport","packages/workspace/src/composition.ts#inspectFederation","packages/workspace/src/composition.ts#planFederation","packages/workspace/src/composition.ts#applyFederation","packages/workspace/src/composition.ts#recoverFederation"],
+      "contract": ["tools.schema.json#/$defs/FederationInspectData","tools.schema.json#/$defs/ChangeProposal","workspace.schema.json#/$defs/FederationJournal"],
+      "verification": ["workspace.composition.nested-real-repositories-resolve-exact-exports-incorrect-digest-remains-stale","workspace.composition.planning-is-read-only-applying-journals-the-write-and-is-idempotent","workspace.composition.interrupted-journal-blocks-readiness-and-recovery-preserves-external-edits","workspace.composition.parent-unrestricted-source-ownership-and-output-collisions-stay-refused"],
+      "negativeVerification": ["workspace.composition.missing-checkout-blocks-composed-readiness","workspace.composition.interrupted-journal-blocks-readiness-and-recovery-preserves-external-edits"],
+      "proofLimits": "Adapter scenarios use real nested repositories and filesystem writes. Composition release checks do not deploy or move gitlinks. Child qualification and parent integration evidence remain independent obligations.",
+      "environments": ["process"]
+    },
+    {
       "id": "agent.describe",
       "description": "loom.describe returns the orientation summary by default: the orientation, the workflow entry points, the tool summaries, selected capability facts and the guide and resource links within the default discovery budget; 'detail': 'full' returns the requested sections a page at a time, 'operation' returns the deduplicated proof limits of one operation, every omitted part, section or record is listed in completeness, and a cursor binds the request and the build that issued it.",
       "code": ["packages/core/src/describe.ts#describe","packages/core/src/describe.ts#TOOL_SUMMARIES","packages/core/src/discovery.ts#fillPage","packages/core/src/discovery.ts#pageCompleteness","packages/core/src/discovery.ts#checkContinuation","packages/core/src/tools.ts#describeTool","packages/cli/src/commands.ts#cmdDescribe"],

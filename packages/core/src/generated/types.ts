@@ -784,7 +784,13 @@ export type FindingCode =
   | 'CAPABILITY_CODE_UNRESOLVED'
   | 'CAPABILITY_CONTRACT_UNRESOLVED'
   | 'CAPABILITY_CASE_UNKNOWN'
-  | 'CAPABILITY_CASE_FAILED';
+  | 'CAPABILITY_CASE_FAILED'
+  | 'STATE_TERMINALS_UNDECLARED'
+  | 'STATE_NONTERMINAL_NO_EXIT'
+  | 'STATE_TERMINAL_HAS_EXIT'
+  | 'STATE_UNREACHABLE'
+  | 'TRUST_BOUNDARY_CYCLE'
+  | 'WORKFLOW_STEP_ACTION_OWNER_MISMATCH';
 export type Severity = 'error' | 'warning' | 'info';
 /**
  * A tool's effect on persisted state.
@@ -875,6 +881,20 @@ export type SanitizedLine = string;
  * A short-lived, one-use capability that lets a browser exchange it once for a scoped session, carried in the URL fragment of a workspace view. It is an opaque random token, never a filesystem path, and is never logged.
  */
 export type BootstrapCapability = string;
+/**
+ * The result of a workspace lifecycle operation, selected by its action.
+ */
+export type WorkspaceData =
+  WorkspaceInspectData | WorkspaceInitializeData | WorkspaceSummary | WorkspaceStatus | WorkspaceCloseData;
+/**
+ * The action-selected result of loom.federation.
+ */
+export type FederationData =
+  FederationInspectData | ChangeProposal | FederationApplyData | FederationCheckData | FederationPublishData;
+/**
+ * The action-selected result of loom.qualify.
+ */
+export type QualifyData = QualifyRun | QualifyRunStatus | QualifyCancelData;
 
 /**
  * Content of .loom/baselines/<id>.json: an accepted baseline. Model format, config version, contract versions, source revisions and generator version are recorded separately.
@@ -7526,14 +7546,13 @@ export interface ResultEnvelope {
  */
 export interface ValidateInput {
   model?: Model;
-  workspace?: true;
+  workspaceId?: WorkspaceId;
 }
 /**
  * Exactly one of 'patch' or 'patches'. A workspace mutation is persistent and requires 'expectation', the MutationExpectation it was prepared against; an inline-model mutation is a pure calculation.
  */
 export interface MutateInput {
   model?: Model;
-  workspace?: true;
   patch?: Patch;
   /**
    * @minItems 1
@@ -7542,6 +7561,7 @@ export interface MutateInput {
   acknowledgeBreaking?: string[];
   expectation?: MutationExpectation;
   dryRun?: boolean;
+  workspaceId?: WorkspaceId;
 }
 /**
  * The revisions a single-workspace write was prepared against: every input that changes how the model is interpreted, not only the model file. The write proceeds only while all of them still hold.
@@ -7564,22 +7584,22 @@ export interface MutationExpectation {
 export interface DiffInput {
   before?: Model;
   after?: Model;
-  workspace?: true;
   againstBaseline?: true;
+  workspaceId?: WorkspaceId;
 }
 export interface ProjectInput {
   model?: Model;
-  workspace?: true;
   target: ProjectionTarget;
   /**
    * Render an explicitly incomplete draft that cannot qualify or publish.
    */
   draft?: boolean;
+  workspaceId?: WorkspaceId;
 }
 export interface ProjectAllInput {
   model?: Model;
-  workspace?: true;
   draft?: boolean;
+  workspaceId?: WorkspaceId;
 }
 export interface ExportInput {
   model: Model;
@@ -7651,11 +7671,11 @@ export interface TaskSpec {
  */
 export interface ContextInput {
   model?: Model;
-  workspace?: true;
   modelRevision?: Hash;
   target: ContextTarget | ContextResumeTarget;
   budget?: DiscoveryBudget;
   continuation?: Cursor;
+  workspaceId?: WorkspaceId;
 }
 /**
  * A context target of kind 'resume': the state a resumed session restates before it continues, answered by ResumeData.
@@ -7665,15 +7685,14 @@ export interface ContextResumeTarget {
 }
 export interface CheckReadinessInput {
   model?: Model;
-  workspace?: true;
   task: TaskSpec;
   candidateRevision?: Hash;
   baseline?: Id;
   evidence?: Id[];
+  workspaceId?: WorkspaceId;
 }
 export interface PlanChangeInput {
   model?: Model;
-  workspace?: true;
   baseRevision: Hash;
   patch?: Patch;
   /**
@@ -7681,6 +7700,7 @@ export interface PlanChangeInput {
    */
   patches?: Patch[];
   acknowledgeBreaking?: string[];
+  workspaceId?: WorkspaceId;
 }
 export interface AppliedSubstitute {
   dependency: RecordRef;
@@ -8670,8 +8690,19 @@ export interface PublishedContract {
      * The evidence a consumer can rely on the exporter to hold for the exported records.
      */
     evidenceObligations?: EvidenceObligation[];
+    /**
+     * Every owned record in the exported transitive behavioral and evidence closure.
+     */
+    records?: {
+      ref: RecordRef;
+      record: {};
+    }[];
   };
   signature?: Signature;
+  /**
+   * Exact upstream contract bundles used by the exported behavioral closure.
+   */
+  imports?: ContractPin[];
 }
 /**
  * An exact pin of immutable published content. A version alone does not identify content; the digest and the source commit do.
@@ -8844,6 +8875,10 @@ export interface BrowserSession {
    * When the browser session ends; a later request needs a new bootstrap capability.
    */
   expiresAt: string;
+  /**
+   * Opaque identity of one agent or browser session; never a credential.
+   */
+  sessionId: string;
 }
 /**
  * The request body of POST /api/workspaces/{workspaceId}/actions on the browser host: one catalogue operation and its arguments, for the workspace the route names. The revision expectations travel inside the arguments as the operation's own input defines them, 'expectedVector' in the input of a cross-model plan, apply or publish and the expectation of a single-workspace write in that write's input, so the agent tools, the command line and the browser share one home for each. The response is the same result envelope the corresponding agent or command-line action returns, refused with the same causes, so no second response shape exists.
@@ -9048,6 +9083,10 @@ export interface CatalogueOperation {
              */
             input: {};
           }[];
+          /**
+           * The action selecting an operation of a shared tool.
+           */
+          action?: string;
         };
     cli:
       | 'none'
@@ -9157,6 +9196,15 @@ export interface CatalogueResource {
    */
   exposure: 'listed' | 'none';
   reason?: Text;
+}
+/**
+ * The workspace model and its exact write expectation, evaluated by the shared adapter.
+ */
+export interface WorkspaceSnapshot {
+  model: Model;
+  expectation: MutationExpectation;
+  states: States;
+  revisions: RevisionSet;
 }
 /**
  * Content of .loom/loom.json: the model's identity and kind, governed path set, explicit composition, output routing and policy bindings.

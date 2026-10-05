@@ -45,10 +45,12 @@ function tsType(shape: Shape, refs: Set<string>): string | null {
 }
 
 function typeBlock(t: TypeDef, sample: Record<string, unknown>, refs: Set<string>, ctx: RenderContext): string[] {
+  if (t.externalSchema) ctx.unsupported('type.externalSchema', { kind: 'type', id: t.id }, `type '${t.id}' uses an authored external schema that this generated TypeScript test cannot qualify`);
   const name = pascal(t.id);
   const declared = `Loom${name}`;
   const members: string[] = [];
   for (const p of t.properties) {
+    if (p.kind === 'integer' && (p.bounds?.min === undefined || p.bounds?.max === undefined || !Number.isSafeInteger(p.bounds.min) || !Number.isSafeInteger(p.bounds.max))) ctx.unsupported('type.exactInteger', { kind: 'property', id: `${t.id}.${p.name}` }, `integer '${t.id}.${p.name}' is not bounded within JavaScript's exact integer range`);
     const type = tsType(p, refs);
     if (type === null) {
       ctx.unsupported('type.union', { kind: 'type', id: t.id }, `property '${t.id}.${p.name}' is a union, which this profile does not express`);
@@ -76,6 +78,8 @@ function typeBlock(t: TypeDef, sample: Record<string, unknown>, refs: Set<string
     '});',
   ];
   for (const p of t.properties) {
+    if (!p.required) L.push('', `test(${JSON.stringify(`${t.id}: absence of optional ${p.name} is preserved`)}, () => {`, `  const payload = structuredClone(${sampleName});`, `  delete payload[${JSON.stringify(p.name)}];`, `  assert.deepStrictEqual(codecs[${key}].serialize(codecs[${key}].parse(payload)), payload);`, '});');
+    L.push('', `test(${JSON.stringify(`${t.id}: present ${p.name} ${p.nullable ? 'accepts and preserves' : 'rejects'} null`)}, () => {`, `  const payload = { ...structuredClone(${sampleName}), ${JSON.stringify(p.name)}: null };`, p.nullable ? `  assert.deepStrictEqual(codecs[${key}].serialize(codecs[${key}].parse(payload)), payload);` : `  assert.throws(() => codecs[${key}].parse(payload));`, '});');
     if (p.required) {
       L.push(
         '',

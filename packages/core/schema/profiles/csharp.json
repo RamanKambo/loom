@@ -51,6 +51,16 @@
       "construct": "routine.any",
       "reason": "Routines are qualified by the SQL and PowerShell profiles.",
       "onUse": "fail"
+    },
+    {
+      "construct": "type.externalSchema",
+      "reason": "External JSON Schema has no faithful emitted C# contract.",
+      "onUse": "fail"
+    },
+    {
+      "construct": "type.decimalPrecision",
+      "reason": "CLR decimal cannot represent declared precision above 28 digits.",
+      "onUse": "fail"
     }
   ],
   "tooling": [

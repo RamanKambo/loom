@@ -9,7 +9,7 @@ export interface Args {
 export class UsageError extends Error {}
 
 /** Flags that never take a value; every other flag takes the next argument or its `=value`. */
-const SWITCHES = new Set(['json', 'all', 'force', 'draft', 'check', 'dry-run', 'self', 'metrics', 'store', 'list-cases', 'frozen', 'self-test', 'help']);
+const SWITCHES = new Set(['json', 'all', 'force', 'apply', 'draft', 'check', 'dry-run', 'self', 'metrics', 'store', 'list-cases', 'frozen', 'self-test', 'help']);
 
 export function parseArgs(argv: readonly string[]): Args {
   const positionals: string[] = [];

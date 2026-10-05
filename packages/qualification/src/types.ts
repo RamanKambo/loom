@@ -1,4 +1,6 @@
-import type { CheckDefinition, CheckResult, EvaluationInputs, EvidenceClaim, EvidenceRecord, Model, ProjectedFile, ProjectionTarget } from '@loom/core';
+import type { CheckDefinition, CheckResult, EvaluationInputs, EvidenceClaim, EvidenceRecord, Model, ProjectedFile, ProjectionTarget, RunBudgets, RunRecord } from '@loom/core';
+import type { Lifecycle } from './lifecycle.js';
+import type { ProviderEntry } from './provider.js';
 import type { ToolInfo, ToolLocator } from './tools.js';
 
 /** One rendered artifact file, written into the run directory so native tools can read it. */
@@ -73,6 +75,10 @@ export interface RunnerContext {
   tool: ToolInfo;
   tools: ToolLocator;
   timeoutMs: number;
+  signal?: AbortSignal;
+  budgets?: RunBudgets;
+  lifecycle?: Lifecycle;
+  provider?: ProviderEntry;
   /** Shared per-run resources, such as the run's own LocalDB instance. */
   resources: RunResources;
 }
@@ -80,6 +86,8 @@ export interface RunnerContext {
 export interface RunnerOutcome {
   result: CheckResult;
   reason: string;
+  cause?: NonNullable<RunRecord['checks'][number]['cause']>;
+  dependency?: string;
   /** Tool identity to record when it differs from the primary tool, for example the Pester module chosen. */
   tool?: { name: string; version: string };
   boundaries?: EvidenceRecord['boundaries'];
@@ -94,7 +102,16 @@ export type Runner = (ctx: RunnerContext) => Promise<RunnerOutcome>;
 
 /** Resources a run creates once and releases when it ends; each is owned by exactly one run. */
 export interface RunResources {
-  acquire<T>(key: string, create: () => Promise<T>, release: (value: T) => Promise<void>): Promise<T>;
+  acquire<T>(key: string, create: () => Promise<T>, release: (value: T) => Promise<void>, partial?: () => T | undefined): Promise<T>;
 }
 
-export const outcome = (result: CheckResult, reason: string, extra: Partial<RunnerOutcome> = {}): RunnerOutcome => ({ result, reason, ...extra });
+export function unavailableCause(reason: string): NonNullable<RunnerOutcome['cause']> {
+  if (/cancel/i.test(reason)) return 'cancelled';
+  if (/timeout|deadline|did not finish/i.test(reason)) return 'timeout';
+  if (/not found|missing|not installed|no .* supplied|no .* available/i.test(reason)) return 'tool-absent';
+  if (/version|policy/i.test(reason)) return 'version-policy';
+  if (/connection|connect|server/i.test(reason)) return 'connection';
+  if (/budget|memory|disk|resource/i.test(reason)) return 'insufficient-resources';
+  return 'unreadable';
+}
+export const outcome = (result: CheckResult, reason: string, extra: Partial<RunnerOutcome> = {}): RunnerOutcome => ({ result, reason, ...(result === 'UNKNOWN' ? { cause: unavailableCause(reason), dependency: 'declared qualification inputs and native runtime' } : {}), ...extra });

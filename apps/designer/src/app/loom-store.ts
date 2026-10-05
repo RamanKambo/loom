@@ -43,6 +43,10 @@ import {
   type ResultEnvelope,
   type SchemaError,
   type TaskSpec,
+  type MutationExpectation,
+  type States,
+  type BrowserSession,
+  type ActivityEvent,
 } from '@loom/core';
 import type { ModelFile } from './model-file';
 
@@ -122,6 +126,95 @@ function parseJson(text: string): { ok: true; value: unknown } | { ok: false; er
  */
 @Injectable({ providedIn: 'root' })
 export class LoomStore {
+  readonly connection = signal<{ workspaceId: string; sessionId: string; expectation: MutationExpectation; edit: boolean } | null>(null);
+  readonly connectionError = signal<string | null>(null);
+  readonly activity = signal<readonly ActivityEvent[]>([]);
+  readonly adapterStates = signal<States | null>(null);
+  readonly remoteChanged = signal(false);
+  readonly saving = signal(false);
+  private stream: EventSource | null = null;
+  private readonly pendingEdits: Array<{ patches: Patch[]; acknowledgeBreaking: string[] }> = [];
+
+  async connectFromLocation(): Promise<void> {
+    const id = /^\/workspaces\/(ws_[A-Za-z0-9]+)$/.exec(location.pathname)?.[1];
+    if (!id) return;
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    const capability = fragment.get('capability');
+    history.replaceState(null, '', location.pathname);
+    try {
+      let session: BrowserSession;
+      if (capability) {
+        const response = await fetch('/api/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ capability }) });
+        if (!response.ok) throw new Error('The workspace link expired or was already used. Open a new view from Loom.');
+        session = await response.json() as BrowserSession;
+        if (schemaErrors('BrowserSession', session).length) throw new Error('The browser session response violates its contract.');
+        sessionStorage.setItem(`loom-view-${id}`, session.sessionId);
+      } else {
+        const selector = sessionStorage.getItem(`loom-view-${id}`);
+        if (!selector) throw new Error('This view needs a fresh workspace link from Loom.');
+        session = { sessionId: selector, handles: [], expiresAt: '' };
+      }
+      this.connection.set({ workspaceId: id, sessionId: session.sessionId, expectation: { model: '', config: '', imports: '', policy: null }, edit: session.handles[0]?.access === 'edit' });
+      const summaryResponse = await this.connectedFetch(`/api/workspaces/${id}`);
+      if (!summaryResponse.ok) throw new Error('The workspace session is unavailable.');
+      const summary = await summaryResponse.json() as { workspace: { capabilities: string[] } };
+      if (schemaErrors('WorkspaceSummary', summary).length) throw new Error('The workspace summary violates its contract.');
+      this.connection.update((c) => c ? { ...c, edit: summary.workspace.capabilities.includes('edit') } : c);
+      this.undoStack.set([]);
+      await this.refreshConnected();
+      const stream = new EventSource(`/api/workspaces/${id}/activity?session=${encodeURIComponent(session.sessionId)}`);
+      this.stream?.close(); this.stream = stream;
+      stream.onmessage = (message) => {
+        const event = JSON.parse(message.data as string) as ActivityEvent;
+        if (schemaErrors('ActivityEvent', event).length || event.workspaceId !== id) return;
+        this.activity.update((events) => [...events.slice(-199), event]);
+        if (event.kind === 'model.changed' && event.revision !== this.base()) {
+          this.remoteChanged.set(true);
+          if (this.history().length === 0) void this.refreshConnected();
+        }
+      };
+      stream.addEventListener('gap', () => { this.remoteChanged.set(true); if (this.history().length === 0) void this.refreshConnected(); });
+      stream.onerror = () => this.connectionError.set('The activity connection is interrupted. Your draft is retained; refresh the workspace to check its current revision.');
+    } catch (err) { this.connectionError.set((err as Error).message); }
+  }
+
+  private async connectedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    const connection = this.connection();
+    if (!connection) throw new Error('No workspace is connected.');
+    return fetch(path, { ...init, headers: { ...init.headers, 'X-Loom-Session': connection.sessionId } });
+  }
+  async refreshConnected(): Promise<void> {
+    const connection = this.connection();
+    if (!connection) return;
+    if (this.history().length > 0) { this.remoteChanged.set(true); return; }
+    const response = await this.connectedFetch(`/api/workspaces/${connection.workspaceId}/model`);
+    if (!response.ok) throw new Error('The workspace session is unavailable. The current draft has been retained.');
+    const snapshot = await response.json() as { model: Model; expectation: MutationExpectation; states: States };
+    if (schemaErrors('WorkspaceSnapshot', snapshot).length) throw new Error('The workspace snapshot violates its contract.');
+    if (this.connection()?.sessionId !== connection.sessionId || this.history().length > 0) return;
+    this.install(snapshot.model, connection.workspaceId, null);
+    this.connection.set({ ...connection, expectation: snapshot.expectation });
+    this.adapterStates.set(snapshot.states);
+    this.remoteChanged.set(false); this.connectionError.set(null);
+    this.pendingEdits.length = 0;
+  }
+
+  async connectedAction(operation: string, args: Record<string, unknown>): Promise<ResultEnvelope> {
+    const connection = this.connection();
+    if (!connection) throw new Error('No workspace is connected.');
+    const response = await this.connectedFetch(`/api/workspaces/${connection.workspaceId}/actions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operation, arguments: { ...args, workspaceId: connection.workspaceId } }) });
+    if (!response.ok) throw new Error('The workspace action was rejected before execution.');
+    const result = await response.json() as ResultEnvelope;
+    if (schemaErrors('ResultEnvelope', result).length) throw new Error('The action response violates its contract.');
+    return result;
+  }
+
+  async disconnect(): Promise<void> {
+    const connection = this.connection();
+    this.stream?.close(); this.stream = null;
+    if (connection) { await this.connectedFetch('/api/session', { method: 'DELETE' }); sessionStorage.removeItem(`loom-view-${connection.workspaceId}`); }
+    this.connection.set(null); this.adapterStates.set(null); this.connectionError.set(null);
+  }
   /** Projection targets as the engine publishes them. */
   readonly targets: readonly ProjectionTarget[] = PROJECTION_TARGETS;
 
@@ -271,6 +364,7 @@ export class LoomStore {
 
   /** Import a model file's text; on a structural error keep the current model and record the error. */
   loadText(text: string, sourceName: string): boolean {
+    if (this.connection()) { this.loadFailure.set('Disconnect the workspace before importing a file.'); return false; }
     try {
       this.install(importModel(text), sourceName, null);
       return true;
@@ -282,6 +376,7 @@ export class LoomStore {
 
   /** Open a file the designer can later save back to, after checking it is still at this revision. */
   async openFile(file: ModelFile): Promise<boolean> {
+    if (this.connection()) { this.loadFailure.set('Disconnect the workspace before opening a file.'); return false; }
     let text: string;
     try {
       text = await file.read();
@@ -299,11 +394,14 @@ export class LoomStore {
   }
 
   loadSample(): void {
+    if (this.connection()) return;
     this.install(sampleModel(), 'sample', null);
   }
 
   /** Run one patch or an atomic batch through mutate(); the model changes only if the engine accepts. */
   apply(patches: Patch | Patch[], acknowledgeBreaking: string[] = []): MutationOutcome {
+    if (this.saving()) throw new Error('Wait for the current save to finish before editing.');
+    if (this.connection() && !this.connection()!.edit) throw new Error('This workspace view grants read access only.');
     const before = this.current();
     if (!before) throw new Error('no model is loaded');
     const result = mutate(before, patches, { acknowledgeBreaking });
@@ -317,6 +415,7 @@ export class LoomStore {
     if (result.model !== null) {
       this.undoStack.update((h) => [...h, before]);
       this.current.set(result.model);
+      if (this.connection()) this.pendingEdits.push({ patches: Array.isArray(patches) ? patches : [patches], acknowledgeBreaking });
     }
     this.mutation.set(outcome);
     this.plan.set(null);
@@ -336,11 +435,13 @@ export class LoomStore {
   readonly planData = computed(() => (this.plan()?.data as PlanChangeData | undefined) ?? null);
 
   undo(): void {
+    if (this.saving()) return;
     const h = this.undoStack();
     const previous = h[h.length - 1];
     if (previous === undefined) return;
     this.undoStack.set(h.slice(0, -1));
     this.current.set(previous);
+    if (this.connection()) this.pendingEdits.pop();
     this.mutation.set(null);
     this.plan.set(null);
   }
@@ -353,6 +454,31 @@ export class LoomStore {
   async save(): Promise<SaveOutcome> {
     const m = this.current();
     if (!m) throw new Error('no model is loaded');
+    const connection = this.connection();
+    if (connection) {
+      const expected = connection.expectation.model;
+      if (this.saving()) return { kind: 'refused', reason: 'A save is already in progress.', findings: [], diskRevision: null, expectedRevision: expected };
+      if (!connection.edit) return { kind: 'refused', reason: 'This workspace view grants read access only.', findings: [], diskRevision: null, expectedRevision: expected };
+      const edits = this.pendingEdits.flatMap((e) => e.patches);
+      if (!edits.length) return { kind: 'saved', revision: expected };
+      this.saving.set(true);
+      try {
+        const env = await this.connectedAction('mutate', { patches: edits, expectation: connection.expectation, acknowledgeBreaking: [...new Set(this.pendingEdits.flatMap((e) => e.acknowledgeBreaking))] });
+        if (env.outcome !== 'ok') {
+          const rejected: SaveOutcome = { kind: 'refused', reason: env.refusal?.message ?? 'The workspace refused the change.', findings: env.findings, diskRevision: env.revisions.model ?? null, expectedRevision: expected };
+          this.conflict.set(rejected); return rejected;
+        }
+        this.undoStack.set([]); this.pendingEdits.length = 0;
+        const revision = env.revisions.model ?? modelRevision(m);
+        this.base.set(revision); this.opened.set(m); this.conflict.set(null);
+        try { await this.refreshConnected(); }
+        catch { this.connectionError.set('The save succeeded, but the refreshed workspace could not be loaded. Refresh before editing again.'); this.connection.update((c) => c ? { ...c, edit: false } : c); }
+        return { kind: 'saved', revision };
+      } catch (error) {
+        const rejected: SaveOutcome = { kind: 'refused', reason: (error as Error).message, findings: [], diskRevision: null, expectedRevision: expected };
+        this.conflict.set(rejected); return rejected;
+      } finally { this.saving.set(false); }
+    }
     const exported = this.exportCanonical();
     if (!exported.ok) {
       const refused: SaveOutcome = { kind: 'refused', reason: exported.error, findings: exported.findings, diskRevision: null, expectedRevision: this.base() ?? '' };

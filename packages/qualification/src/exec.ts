@@ -5,12 +5,13 @@ import { delimiter, isAbsolute, join } from 'node:path';
 
 export type ExecResult =
   | { ok: true; status: number; stdout: string; stderr: string }
-  | { ok: false; kind: 'missing' | 'timeout' | 'crash'; reason: string; stdout: string; stderr: string };
+  | { ok: false; kind: 'missing' | 'timeout' | 'crash' | 'cancelled'; reason: string; stdout: string; stderr: string };
 
 export interface ExecOptions {
   cwd?: string;
   timeoutMs: number;
   env?: NodeJS.ProcessEnv;
+  signal?: AbortSignal;
 }
 
 /** The first executable named `name` on PATH, honouring PATHEXT on Windows; null when absent. */
@@ -38,12 +39,16 @@ export function which(name: string): string | null {
  * spawn children that would otherwise outlive the run and hold its files.
  */
 export function exec(exe: string, args: readonly string[], options: ExecOptions): Promise<ExecResult> {
+  if (options.signal?.aborted) return Promise.resolve({ ok: false, kind: 'cancelled', reason: `${exe} was cancelled before launch`, stdout: '', stderr: '' });
   return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
     let settled = false;
     let timedOut = false;
-    const child = spawn(exe, [...args], { cwd: options.cwd, env: options.env ?? process.env, windowsHide: true, shell: false });
+    let cancelled = false;
+    const child = spawn(exe, [...args], { cwd: options.cwd, env: options.env ?? process.env, windowsHide: true, shell: false, detached: process.platform !== 'win32' });
+    const abort = () => { cancelled = true; killTree(child.pid); };
+    options.signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(() => {
       timedOut = true;
       killTree(child.pid);
@@ -54,13 +59,15 @@ export function exec(exe: string, args: readonly string[], options: ExecOptions)
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      options.signal?.removeEventListener('abort', abort);
       resolve(r);
     };
     child.on('error', (e: NodeJS.ErrnoException) =>
       finish({ ok: false, kind: e.code === 'ENOENT' ? 'missing' : 'crash', reason: e.code === 'ENOENT' ? `${exe} was not found` : e.message, stdout, stderr }),
     );
     child.on('close', (code, signal) => {
-      if (timedOut) finish({ ok: false, kind: 'timeout', reason: `${exe} did not finish within ${options.timeoutMs} ms and was stopped`, stdout, stderr });
+      if (cancelled) finish({ ok: false, kind: 'cancelled', reason: `${exe} was cancelled and its process tree stopped`, stdout, stderr });
+      else if (timedOut) finish({ ok: false, kind: 'timeout', reason: `${exe} did not finish within ${options.timeoutMs} ms and was stopped`, stdout, stderr });
       else if (code === null) finish({ ok: false, kind: 'crash', reason: `${exe} ended without an exit code (signal ${String(signal)})`, stdout, stderr });
       else finish({ ok: true, status: code, stdout, stderr });
     });
@@ -100,7 +107,7 @@ export function lastJsonLine(text: string): Record<string, unknown> | null {
 /** A PowerShell single-quoted literal. */
 export const psq = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
-export type PwshResult = { ok: true; json: Record<string, unknown>; stderr: string } | { ok: false; kind: 'missing' | 'timeout' | 'crash' | 'unreadable'; reason: string };
+export type PwshResult = { ok: true; json: Record<string, unknown>; stderr: string } | { ok: false; kind: 'missing' | 'timeout' | 'crash' | 'cancelled' | 'unreadable'; reason: string };
 
 /**
  * Run a script in a fresh pwsh process and read its result from the last JSON

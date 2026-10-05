@@ -13,6 +13,11 @@ import { commitAll, foldModelId, gitInit, readJsonFile, scratch, writeJson } fro
 const CLI = fileURLToPath(new URL('../index.js', import.meta.url));
 
 function loom(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}): { status: number; env: ResultEnvelope; output: string } {
+  if (args[0] === 'init' && !args.includes('--apply')) {
+    const proposed = spawnSync(process.execPath, [CLI, ...args, '--json'], { cwd, encoding: 'utf8' });
+    const data = JSON.parse(proposed.stdout) as ResultEnvelope;
+    if (proposed.status === 0 && !data.refusal) args = [...args, '--apply', '--expected-inspection', (data.data as { inspectionDigest: string }).inspectionDigest];
+  }
   const r = spawnSync(process.execPath, [CLI, ...args, '--json'], { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
   let parsed = {} as ResultEnvelope;
   try {

@@ -3,15 +3,22 @@ import { dirname, join } from 'node:path';
 import { CONTRACT_DIGEST, LoomInvalidModelError, PROJECTION_PROFILES, PROJECTION_TARGETS, canonicalHash, envelope, modelRevision, renderTarget, textHash } from '@loom/core';
 import type { EvaluationInputs, Finding, InstallJournal, ManifestArtifact, OutputManifest, ProjectionTarget, ResultEnvelope } from '@loom/core';
 import { CACHE_DIR, LOOM_DIR, profileOf, type Workspace } from './config.js';
-import { ancestorDescriptors } from './discover.js';
+import { ancestorDescriptors, readDescriptor } from './discover.js';
 import { finding, hasErrors, refusal } from './findings.js';
 import { documentText, readJson, toPosix, writeFileAtomic } from './fsx.js';
 import { containsPath, isCaseSensitive, normalizeRelative, realPathOf, relativePathProblem, segmentsOf, samePath } from './paths.js';
 import { findBoundary } from './repo.js';
 import { ENGINE_VERSION } from './version.js';
+import { checkFederation, compositionModels } from './composition.js';
 
 export const MANIFEST_FILE = 'manifest.json';
 export const JOURNAL_FILE = 'install-journal.json';
+/** Explicit members, ancestors and their output claims; never scan unrelated source trees. */
+function outputDescriptors(ws: Workspace) {
+  const boundary=findBoundary(ws.root), descriptors=ancestorDescriptors(ws.root,boundary), seen=new Set<string>();
+  const visit=(home:string,depth:number):void=>{const real=realPathOf(home);if(seen.has(real)||depth>32)return;seen.add(real);const d=readDescriptor(home,boundary);if(!descriptors.some(other=>samePath(other.home,home)))descriptors.push(d);for(const member of d.config?.composition?.members??[]){if(relativePathProblem(member.repositoryPath))continue;const child=join(home,...member.repositoryPath.split('/'));if(containsPath(real,realPathOf(child))&&!samePath(child,home)&&existsSync(join(child,LOOM_DIR)))visit(child,depth+1);}};
+  for(const descriptor of [...descriptors])visit(descriptor.home,0);visit(ws.root,0);return descriptors;
+}
 const STAGED_SUFFIX = '.loom-staged';
 const DEFAULT_OUTPUT_DIR = 'Docs/Loom';
 
@@ -85,6 +92,7 @@ export function planOutputs(ws: Workspace, options: OutputOptions & { install?: 
   const targets = options.targets ?? enabledTargets(ws);
   const sensitive = isCaseSensitive(ws.root);
   const rootReal = realPathOf(ws.root);
+  if(ws.config.composition?.members.length&&!options.inputs?.composition){const checked=checkFederation(ws.root),models=compositionModels(ws.root);if(checked.data)options={...options,inputs:{...options.inputs,composition:{models:models.models.map(m=>({modelId:m.modelId,model:m.model})),snapshotDigest:checked.data.snapshotDigest}}};}
   for (const target of targets) {
     if (!PROJECTION_TARGETS.includes(target)) {
       findings.push(finding('PROJECTION_INVALID', target, `enabled target '${target}' is not rendered by this engine`, 'select a profile whose targets this engine renders'));
@@ -135,8 +143,9 @@ export function planOutputs(ws: Workspace, options: OutputOptions & { install?: 
         findings.push(finding('OUTPUT_PROTECTED_TARGET', a.path, `${a.instance} would write inside a .loom directory, which holds authority files`, 'route the artifact outside .loom'));
         continue;
       }
-      const owner = ancestorDescriptors(dirname(a.abs), boundary).find((d) => {
+      const owner = [...ancestorDescriptors(dirname(a.abs), boundary),...outputDescriptors(ws)].find((d) => {
         if (samePath(d.home, ws.root)) return false;
+        if((d.config?.composition?.outputClaims??[]).some(root=>containsPath(realPathOf(join(d.home,...root.split('/'))),realPathOf(a.abs))))return true;
         const theirs = readManifest(join(d.loomDir, MANIFEST_FILE));
         return theirs?.artifacts.some((m) => samePath(join(d.home, ...m.path.split('/')), a.abs)) ?? false;
       });

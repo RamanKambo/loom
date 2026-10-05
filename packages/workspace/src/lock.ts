@@ -94,7 +94,7 @@ export type IdentityProbe = (pid: number) => Promise<ProcessIdentity | null>;
  * a lock another waiter already took over is never deleted out from under it.
  * Waiting uses a timer, never Atomics.wait, so it never blocks the event loop.
  */
-export async function withLock<T>(lockPath: string, fn: () => T, identity: IdentityProbe = processIdentity): Promise<Locked<T>> {
+export async function withLock<T>(lockPath: string, fn: () => T | Promise<T>, identity: IdentityProbe = processIdentity): Promise<Locked<T>> {
   mkdirSync(dirname(lockPath), { recursive: true });
   const self = await ownIdentity(identity);
   const deadline = Date.now() + WAIT_MS;
@@ -134,7 +134,7 @@ export async function withLock<T>(lockPath: string, fn: () => T, identity: Ident
     }
   }
   try {
-    return { ok: true, value: fn() };
+    return { ok: true, value: await fn() };
   } finally {
     rmSync(lockPath, { force: true });
   }

@@ -407,7 +407,7 @@ test('documentation.yaml-roundtrip detects an export that no longer matches the 
   assert.equal(r.result, 'FAIL', r.reason);
 });
 
-test('two parallel runs each use their own LocalDB instance and leave none behind', NATIVE, async () => {
+test('concurrent SQL requests serialize under the user lease and each leaves nothing behind', NATIVE, async () => {
   const [a, b] = await Promise.all([one('sql.catalog'), one('sql.catalog')]);
   assert.equal(a.result, 'PASS', a.reason);
   assert.equal(b.result, 'PASS', b.reason);

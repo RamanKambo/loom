@@ -11,7 +11,7 @@
         { "id": "unk.retry", "question": "How often may a capture be retried?", "affects": [{ "kind": "operation", "id": "payment.capture" }], "blocks": ["implementation"], "owner": "team-payments", "evidenceNeeded": "The provider's documented retry limit.", "recommendedAction": { "action": "Retry once until the limit is known.", "reversible": true }, "resolution": "Read the provider contract.", "status": "open" }
       ],
       "pendingWork": [{ "workPackage": "wp.payments.specification", "status": "in-progress" }],
-      "nextActions": [{ "purpose": "Read the context of the capture operation.", "tool": "loom.context", "arguments": { "workspace": true, "target": { "kind": "record", "ref": { "kind": "operation", "id": "payment.capture" } }, "budget": { "maxRecords": 20 } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }],
+      "nextActions": [{ "purpose": "Read the context of the capture operation.", "tool": "loom.context", "arguments": { "workspaceId": "ws_example", "target": { "kind": "record", "ref": { "kind": "operation", "id": "payment.capture" } }, "budget": { "maxRecords": 20 } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }],
       "completeness": { "complete": true, "truncated": false, "omitted": [] }
     }
   ],

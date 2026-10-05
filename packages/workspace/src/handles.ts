@@ -286,7 +286,7 @@ export class HandleRegistry {
     const narrowed = this.roots.flatMap((root) =>
       client.filter((c) => containsPath(root, c) || containsPath(c, root)).map((c) => (containsPath(root, c) ? c : root)),
     );
-    if (narrowed.length) this.roots = [...new Set(narrowed)];
+    this.roots = [...new Set(narrowed)];
   }
 
   private withinAllowedRoots(abs: string): boolean {
@@ -296,8 +296,20 @@ export class HandleRegistry {
 
   /** The open workspace a handle resolves to, for a model tool to evaluate against; null for an id this session never opened. */
   resolve(workspaceId: string): Workspace | null {
-    return this.handles.get(workspaceId)?.ws ?? null;
+    const entry = this.handles.get(workspaceId);
+    if (!entry || !this.withinAllowedRoots(entry.ws.root)) return null;
+    const ws = openWorkspace(entry.ws.root).value;
+    if (ws) entry.ws = ws;
+    return ws ?? null;
   }
+
+  can(workspaceId: string, capability: 'read' | 'edit' | 'publish' | 'qualify'): boolean {
+    const entry = this.handles.get(workspaceId);
+    if (!entry || !this.withinAllowedRoots(entry.ws.root)) return false;
+    return capability === 'read' || (entry.access === 'edit' && (capability === 'edit' || this.grants[capability] === true));
+  }
+
+  ids(): string[] { return [...this.handles.keys()]; }
 
   /** Model, config, policy and import revisions read fresh, and the single-workspace revision vector (and its digest) built from them. */
   private evaluate(ws: Workspace): { current: CurrentInputs; revisions: RevisionSet; vector: ReturnType<typeof revisionVectorOf>; vectorDigest: string; findings: Finding[] } {
@@ -627,7 +639,9 @@ export class HandleRegistry {
     if (!entry) {
       return envelope(tool, { model: null, findings: [], refusal: refusal('unknown-handle', `'${workspaceId}' names no handle of this session`) });
     }
-    const { revisions, vectorDigest, findings } = this.evaluate(entry.ws);
+    const fresh = this.resolve(workspaceId);
+    if (!fresh) return envelope(tool, { model: null, findings: [], refusal: refusal('unresolved-context', 'the workspace is no longer readable within the permitted roots') });
+    const { revisions, vectorDigest, findings } = this.evaluate(fresh);
     const workspace = this.handleOf(workspaceId, entry.access, entry.ws, revisions, false);
     const status: WorkspaceStatus = {
       workspace,
@@ -637,6 +651,15 @@ export class HandleRegistry {
       nextActions: [],
     };
     return envelope(tool, { model: entry.ws.model, findings, data: status });
+  }
+
+  /** Read the current summary without allocating another handle or changing its identity. */
+  snapshot(workspaceId: string): ResultEnvelope {
+    const entry = this.handles.get(workspaceId);
+    const ws = this.resolve(workspaceId);
+    if (!entry || !ws) return this.status(workspaceId);
+    const { summary, findings } = this.summary(workspaceId, entry.access, ws, false);
+    return envelope('workspace.open', { model: ws.model, findings, data: summary });
   }
 
   /**
@@ -697,7 +720,7 @@ export class HandleRegistry {
     const obligations = deriveObligations(ws.model, undefined, inputs);
     const evidence = evaluateEvidence(ws.model, obligations, inputs).obligations;
     return {
-      address: { workspace: true },
+      address: { workspaceId },
       workspaceId,
       outcome: ws.state?.outcome ?? null,
       phase: ws.state?.phase ?? 'unplanned',

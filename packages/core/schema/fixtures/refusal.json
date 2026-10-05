@@ -5,7 +5,7 @@
     {
       "cause": "stale-base",
       "message": "The continuation was issued for another revision.",
-      "nextActions": [{ "purpose": "Retrieve the context again from its first page at the current revision.", "tool": "loom.context", "arguments": { "workspace": true, "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }]
+      "nextActions": [{ "purpose": "Retrieve the context again from its first page at the current revision.", "tool": "loom.context", "arguments": { "workspaceId": "ws_example", "target": { "kind": "component", "ref": { "kind": "component", "id": "ordering" } } }, "prerequisites": [], "effects": "reads", "blockedBy": [] }]
     }
   ],
   "invalid": [

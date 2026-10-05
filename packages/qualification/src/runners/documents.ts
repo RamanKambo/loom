@@ -6,6 +6,7 @@ import { exportModel, importModel, indexModel, renderAll, sampleObject } from '@
 import { checkOutputs, openSession, openWorkspace } from '@loom/workspace';
 import { filesOfTarget } from '../artifacts.js';
 import { outcome, type Runner } from '../types.js';
+import { mermaidTerminal } from './diagrams.js';
 
 const requireHere = createRequire(import.meta.url);
 
@@ -187,6 +188,7 @@ const yamlRoundTrip: Runner = async (ctx) => {
 };
 
 export const DOCUMENT_RUNNERS: Readonly<Record<string, Runner>> = {
+  'mermaid-terminal': mermaidTerminal,
   'json-schema-compile': jsonSchemaCompile,
   'mermaid-parse': mermaidParseRunner,
   'projection-drift': projectionDrift,

@@ -22,6 +22,25 @@ export function effectiveWrites(m: Mutation, t: TypeDef): string[] {
 
 /** Ownership, legal states, effective writes, creation completeness and traceability of mutations. */
 export const mutationRules: Rule = (ctx) => {
+  for (const t of ctx.model.types.filter((t) => t.stateProperty !== undefined)) {
+    const about = [ref('type', t.id)], base = `types/${t.id}`;
+    const states = t.properties.find((p) => p.name === t.stateProperty)?.enumValues ?? [];
+    const transitions = ctx.model.mutations.filter((m) => m.type === t.id);
+    if (t.terminalStates === undefined) ctx.report(FINDING.STATE_TERMINALS_UNDECLARED, `${base}/terminalStates`, `state machine '${t.id}' declares no terminal state set`, about, `declare terminalStates for type '${t.id}', using an empty set only for a continuing lifecycle`);
+    const terminal = new Set(t.terminalStates ?? []);
+    const reachable = new Set(transitions.filter(isCreation).map((m) => m.to));
+    let advanced = true;
+    while (advanced) {
+      advanced = false;
+      for (const m of transitions) if (m.from.some((s) => reachable.has(s)) && !reachable.has(m.to)) { reachable.add(m.to); advanced = true; }
+    }
+    for (const state of states) {
+      const exits = transitions.filter((m) => m.from.includes(state));
+      if (terminal.has(state) && exits.length) ctx.report(FINDING.STATE_TERMINAL_HAS_EXIT, `${base}/terminalStates`, `terminal state '${state}' of '${t.id}' has outgoing mutations ${exits.map((m) => m.id).join(', ')}`, about, `remove outgoing transitions from terminal state '${state}', or declare it nonterminal`);
+      if (!terminal.has(state) && !exits.length) ctx.report(FINDING.STATE_NONTERMINAL_NO_EXIT, `${base}/properties/${t.stateProperty}`, `nonterminal state '${state}' of '${t.id}' has no outgoing transition`, about, `declare a transition out of '${state}', or declare it terminal`);
+      if (!reachable.has(state)) ctx.report(FINDING.STATE_UNREACHABLE, `${base}/properties/${t.stateProperty}`, `state '${state}' of '${t.id}' is unreachable from creation`, about, `declare the creation and transition path that reaches '${state}', or remove the unreachable state`);
+    }
+  }
   for (const m of ctx.model.mutations) {
     const about = [ref('mutation', m.id)];
     const base = `mutations/${m.id}`;

@@ -9,19 +9,88 @@
             "modelId": "payments",
             "modelKind": "implementation",
             "displayName": "Payments",
-            "capabilities": ["read", "edit"],
-            "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1, "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+            "capabilities": [
+              "read",
+              "edit"
+            ],
+            "revisions": {
+              "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "resultVersion": 1,
+              "model": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
             "viewUrl": "http://127.0.0.1:41733/workspaces/ws_3f9a1c7d"
           },
           "access": "edit"
         }
       ],
-      "expiresAt": "2026-10-04T18:00:00Z"
+      "expiresAt": "2026-10-04T18:00:00Z",
+      "sessionId": "browser_0123456789abcdef01234567"
     }
   ],
   "invalid": [
-    { "because": "each handle states the access it grants", "keyword": "required", "path": "/handles/0", "instance": { "handles": [{ "handle": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } } }], "expiresAt": "2026-10-04T18:00:00Z" } },
-    { "because": "a session is granted for at least one handle", "keyword": "minItems", "path": "/handles", "instance": { "handles": [], "expiresAt": "2026-10-04T18:00:00Z" } },
-    { "because": "the session cookie is transport, never a member of the body", "keyword": "additionalProperties", "path": "", "instance": { "handles": [{ "handle": { "workspaceId": "ws_3f9a1c7d", "modelId": "payments", "modelKind": "implementation", "displayName": "Payments", "capabilities": ["read"], "revisions": { "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "resultVersion": 1 } }, "access": "read" }], "expiresAt": "2026-10-04T18:00:00Z", "cookie": "loom-session" } }
+    {
+      "because": "each handle states the access it grants",
+      "keyword": "required",
+      "path": "/handles/0",
+      "instance": {
+        "handles": [
+          {
+            "handle": {
+              "workspaceId": "ws_3f9a1c7d",
+              "modelId": "payments",
+              "modelKind": "implementation",
+              "displayName": "Payments",
+              "capabilities": [
+                "read"
+              ],
+              "revisions": {
+                "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "resultVersion": 1
+              }
+            }
+          }
+        ],
+        "expiresAt": "2026-10-04T18:00:00Z",
+        "sessionId": "browser_0123456789abcdef01234567"
+      }
+    },
+    {
+      "because": "a session is granted for at least one handle",
+      "keyword": "minItems",
+      "path": "/handles",
+      "instance": {
+        "handles": [],
+        "expiresAt": "2026-10-04T18:00:00Z",
+        "sessionId": "browser_0123456789abcdef01234567"
+      }
+    },
+    {
+      "because": "the session cookie is transport, never a member of the body",
+      "keyword": "additionalProperties",
+      "path": "",
+      "instance": {
+        "handles": [
+          {
+            "handle": {
+              "workspaceId": "ws_3f9a1c7d",
+              "modelId": "payments",
+              "modelKind": "implementation",
+              "displayName": "Payments",
+              "capabilities": [
+                "read"
+              ],
+              "revisions": {
+                "contractDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "resultVersion": 1
+              }
+            },
+            "access": "read"
+          }
+        ],
+        "expiresAt": "2026-10-04T18:00:00Z",
+        "cookie": "loom-session",
+        "sessionId": "browser_0123456789abcdef01234567"
+      }
+    }
   ]
 }

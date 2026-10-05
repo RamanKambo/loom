@@ -2,6 +2,7 @@ import { isAbsolute, resolve } from 'node:path';
 import { filesOfTarget } from '../artifacts.js';
 import { psq, runPwsh } from '../exec.js';
 import { outcome, type Runner, type RunnerContext } from '../types.js';
+import { satisfies } from '../tools.js';
 
 const atRoot = (ctx: RunnerContext, p: string): string => (isAbsolute(p) ? p : resolve(ctx.root, p));
 
@@ -18,7 +19,7 @@ const PARSE = (files: readonly string[]): string =>
 const powershellParse: Runner = async (ctx) => {
   const files = filesOfTarget(ctx.artifacts, 'pester-contract-tests');
   if (!files.length) return outcome('NOT_APPLICABLE', 'no component declares a PowerShell implementation with a runbook or function routine');
-  const r = await runPwsh(ctx.tool.path, PARSE(files.map((f) => f.path)), { timeoutMs: ctx.timeoutMs });
+  const r = await runPwsh(ctx.tool.path, PARSE(files.map((f) => f.path)), { timeoutMs: ctx.timeoutMs, signal: ctx.signal });
   if (!r.ok) return outcome('UNKNOWN', r.reason);
   const results = (r.json['results'] ?? []) as Array<{ file: string; errors: number; first: string[] }>;
   if (results.length !== files.length) return outcome('UNKNOWN', `the parser reported ${results.length} of ${files.length} files`);
@@ -48,14 +49,25 @@ const pesterConformance: Runner = async (ctx) => {
   if (!files.length) return outcome('NOT_APPLICABLE', 'no component declares a PowerShell implementation with a runbook or function routine');
   const conforming = ctx.fixtures.conforming?.powershellRoot;
   if (!conforming) return outcome('UNKNOWN', 'no routine root was supplied to run the generated Pester tests against');
-  const pwsh = await ctx.tools('pwsh', { minimum: '7.4' });
+  const desktop = ctx.check.runner === 'windows-pester-conformance';
+  const pwsh = await ctx.tools(desktop ? 'powershell' : 'pwsh', desktop ? { major: 5, minimum: '5.1' } : { minimum: '7.4' });
   if (pwsh.status !== 'found') return outcome('UNKNOWN', `Pester runs in pwsh: ${pwsh.reason}`);
-  const tool = { name: 'pester', version: ctx.tool.version };
+  let module = ctx.tool.path;
+  let version = ctx.tool.version;
+  if (desktop) {
+    const discovery = await runPwsh(pwsh.tool.path, "[pscustomobject]@{edition=$PSVersionTable.PSEdition;version=$PSVersionTable.PSVersion.ToString();modules=@(Get-Module -ListAvailable Pester | ForEach-Object {[pscustomobject]@{version=$_.Version.ToString();path=$_.Path}})} | ConvertTo-Json -Compress -Depth 4", { timeoutMs: ctx.timeoutMs, signal: ctx.signal });
+    if (!discovery.ok || discovery.json['edition'] !== 'Desktop' || !String(discovery.json['version']).startsWith('5.1')) return outcome('UNKNOWN', 'the declared Windows PowerShell 5.1 Desktop runtime is unavailable', { cause: 'version-policy' });
+    const modules = (discovery.json['modules'] ?? []) as { version: string; path: string }[];
+    const compatible = modules.filter((m) => satisfies(m.version, ctx.check.tool.versionPolicy)).sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }))[0];
+    if (!compatible) return outcome('UNKNOWN', 'no Pester version compatible with the declared Windows PowerShell 5.1 profile was found', { cause: 'tool-absent' });
+    module = compatible.path; version = compatible.version;
+  }
+  const tool = { name: 'pester', version: `${version}; ${desktop ? 'Windows PowerShell Desktop' : 'PowerShell Core'} ${pwsh.tool.version}` };
   const run = async (file: string, root: string) => {
-    const r = await runPwsh(pwsh.tool.path, RUN(ctx.tool.path, ctx.tool.version, file, atRoot(ctx, root)), { timeoutMs: ctx.timeoutMs });
+    const r = await runPwsh(pwsh.tool.path, RUN(module, version, file, atRoot(ctx, root)), { timeoutMs: ctx.timeoutMs, signal: ctx.signal });
     if (!r.ok) return { unknown: r.reason };
     const loaded = String(r.json['loaded']);
-    if (loaded !== ctx.tool.version) return { unknown: `Pester ${loaded} was loaded instead of the selected ${ctx.tool.version}` };
+    if (loaded !== version) return { unknown: `Pester ${loaded} was loaded instead of the selected ${version}` };
     return { passed: Number(r.json['passed']), failed: Number(r.json['failed']), failedTests: (r.json['failedTests'] ?? []) as string[] };
   };
   const parts: string[] = [];
@@ -82,4 +94,5 @@ const pesterConformance: Runner = async (ctx) => {
 export const POWERSHELL_RUNNERS: Readonly<Record<string, Runner>> = {
   'powershell-parse': powershellParse,
   'pester-conformance': pesterConformance,
+  'windows-pester-conformance': pesterConformance,
 };

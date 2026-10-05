@@ -1,6 +1,7 @@
 import type { Enforcer, Predicate } from '../generated/types.js';
 import { FINDING } from '../codes.js';
 import { durationSeconds } from '../inputs.js';
+import { findCycles } from './structure.js';
 import { ref, type Rule, type RuleContext } from './context.js';
 
 const UNDEPLOYED_EXEMPT = new Set(['library', 'external']);
@@ -8,6 +9,10 @@ const DEPLOYED_SYSTEMS = new Set(['service', 'application', 'distributed-system'
 
 /** Deployment units against the declared capabilities of their hosts, never their names. */
 export const hostingRules: Rule = (ctx) => {
+  const boundaries = new Map(ctx.model.trustBoundaries.map((b) => [b.id, b]));
+  for (const cycle of findCycles([...boundaries.keys()], (id) => { const parent = boundaries.get(id)?.within; return parent && boundaries.has(parent) ? [parent] : []; })) {
+    ctx.report(FINDING.TRUST_BOUNDARY_CYCLE, `trustBoundaries/${cycle[0]}/within`, `trust boundary containment cycle: ${cycle.join(' -> ')}`, cycle.slice(0, -1).map((id) => ref('trustBoundary', id)), `remove one within link from ${cycle.join(' -> ')}`);
+  }
   const hosts = new Map(ctx.model.hosts.map((h) => [h.id, h]));
   for (const u of ctx.model.deploymentUnits) {
     const host = hosts.get(u.host);

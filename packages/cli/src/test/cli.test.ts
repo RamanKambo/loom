@@ -22,6 +22,11 @@ interface Run {
 }
 
 function loom(cwd: string, ...args: string[]): Run {
+  if (args[0] === 'init' && !args.includes('--apply')) {
+    const proposed = spawnSync(process.execPath, [CLI, ...args, '--json'], { cwd, encoding: 'utf8' });
+    const data = JSON.parse(proposed.stdout) as ResultEnvelope;
+    if (proposed.status === 0 && !data.refusal) args = [...args, '--apply', '--expected-inspection', (data.data as { inspectionDigest: string }).inspectionDigest];
+  }
   const r = spawnSync(process.execPath, [CLI, ...args, '--json'], { cwd, encoding: 'utf8' });
   let env = {} as ResultEnvelope;
   try {

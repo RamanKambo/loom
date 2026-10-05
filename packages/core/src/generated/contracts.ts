@@ -284,6 +284,16 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "construct": "routine.any",
         "reason": "Routines are qualified by the SQL and PowerShell profiles.",
         "onUse": "fail"
+      },
+      {
+        "construct": "type.externalSchema",
+        "reason": "External JSON Schema has no faithful emitted C# contract.",
+        "onUse": "fail"
+      },
+      {
+        "construct": "type.decimalPrecision",
+        "reason": "CLR decimal cannot represent declared precision above 28 digits.",
+        "onUse": "fail"
       }
     ],
     "tooling": [
@@ -419,6 +429,28 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "environment": "process",
         "requiredByDefault": true,
         "limits": "Syntax only."
+      },
+      {
+        "id": "diagrams.terminal",
+        "revision": 1,
+        "layer": "parse",
+        "evidence": "parse",
+        "claim": "All diagram kinds preserve their semantic graph and render with the pinned terminal renderer.",
+        "tool": {
+          "name": "mermaid-ascii",
+          "versionPolicy": {
+            "exact": "0.0.0-20260908213847-5f00e3d9ac9f",
+            "digest": "sha256:fd751149989a32ea6b3472aa146ca184936f33268ddc59fb867f1f25c652b02e"
+          }
+        },
+        "runner": "mermaid-terminal",
+        "inputs": [
+          "workflow",
+          "architecture"
+        ],
+        "environment": "process",
+        "requiredByDefault": true,
+        "limits": "Layout and semantic coverage do not prove runtime behavior."
       }
     ]
   },
@@ -917,6 +949,11 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "construct": "routine.dynamicParameters",
         "reason": "Dynamic parameters cannot be resolved from the AST.",
         "onUse": "fail"
+      },
+      {
+        "construct": "type.externalSchema",
+        "reason": "External schemas are not represented as a closed local type contract.",
+        "onUse": "fail"
       }
     ],
     "tooling": [
@@ -936,6 +973,15 @@ export const PROFILES: readonly ProfileDefinition[] = [
         },
         "required": true,
         "purpose": "Executes the generated contract tests."
+      },
+      {
+        "tool": "powershell",
+        "versionPolicy": {
+          "major": 5,
+          "minimum": "5.1"
+        },
+        "required": true,
+        "purpose": "Runs the Windows PowerShell Desktop conformance check under its own Pester installation."
       }
     ],
     "proofLimits": [
@@ -977,6 +1023,31 @@ export const PROFILES: readonly ProfileDefinition[] = [
           }
         },
         "runner": "pester-conformance",
+        "inputs": [
+          "pester-contract-tests"
+        ],
+        "environment": "process",
+        "requiredByDefault": true,
+        "limits": "Parameter and output-shape contract only.",
+        "negativeControl": {
+          "fixture": "examples/violating/fulfillment/rb_dispatch.ps1",
+          "reason": "Failed"
+        }
+      },
+      {
+        "id": "powershell.windows-conformance",
+        "revision": 1,
+        "layer": "conformance",
+        "evidence": "conformance",
+        "claim": "Contract tests execute under Windows PowerShell 5.1 Desktop and its compatible Pester major version 5.",
+        "tool": {
+          "name": "powershell",
+          "versionPolicy": {
+            "major": 5,
+            "minimum": "5.1"
+          }
+        },
+        "runner": "windows-pester-conformance",
         "inputs": [
           "pester-contract-tests"
         ],
@@ -1058,6 +1129,11 @@ export const PROFILES: readonly ProfileDefinition[] = [
         "construct": "check.prose",
         "reason": "A prose check predicate cannot be rendered as a CHECK constraint.",
         "onUse": "draft"
+      },
+      {
+        "construct": "type.externalSchema",
+        "reason": "External schemas are not represented as a closed local type contract.",
+        "onUse": "fail"
       }
     ],
     "tooling": [
@@ -1293,6 +1369,16 @@ export const PROFILES: readonly ProfileDefinition[] = [
       {
         "construct": "routine.any",
         "reason": "Routines are qualified by the SQL and PowerShell profiles.",
+        "onUse": "fail"
+      },
+      {
+        "construct": "type.externalSchema",
+        "reason": "External JSON Schema has no faithful emitted TypeScript contract.",
+        "onUse": "fail"
+      },
+      {
+        "construct": "type.exactInteger",
+        "reason": "JavaScript number cannot preserve integers outside its safe range.",
         "onUse": "fail"
       }
     ],

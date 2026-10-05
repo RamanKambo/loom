@@ -20,6 +20,12 @@ export const FINDING = Object.fromEntries(SCHEMA_BUNDLE.$defs.FindingCode.enum.m
  * schema without a rule here fails compilation.
  */
 export const FINDING_RULES = {
+  STATE_TERMINALS_UNDECLARED: { severity: 'warning', rule: 'A state machine declares its terminal states explicitly, including an empty set for a continuing lifecycle.' },
+  STATE_NONTERMINAL_NO_EXIT: { severity: 'warning', rule: 'Every nonterminal state has a declared outgoing transition.' },
+  STATE_TERMINAL_HAS_EXIT: { severity: 'error', rule: 'A terminal state has no outgoing mutation transition.' },
+  STATE_UNREACHABLE: { severity: 'warning', rule: 'Every state is reachable from a creation transition.' },
+  TRUST_BOUNDARY_CYCLE: { severity: 'error', rule: 'Trust boundary nesting forms an acyclic containment hierarchy.' },
+  WORKFLOW_STEP_ACTION_OWNER_MISMATCH: { severity: 'error', rule: 'A workflow step targets the component that owns its action.' },
   STRUCTURAL_INVALID: { severity: 'error', rule: 'The document satisfies the JSON Schema 2020-12 model contract; unknown members are rejected.' },
   MODEL_FORMAT_UNSUPPORTED: { severity: 'error', rule: 'The model format version is one this engine supports; another version is migrated explicitly, never reinterpreted.' },
   PATCH_INVALID: { severity: 'error', rule: 'A patch matches exactly one patch variant of the contract, field for field.' },
